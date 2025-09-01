@@ -1,0 +1,81 @@
+# 1) Инициализация
+cargo run -p app -- --db truth_db.sqlite init
+
+# 2) Сид базы знаний (RU)
+cargo run -p app -- --db truth_db.sqlite seed --locale ru
+# (или EN)
+# cargo run -p app -- --db truth_db.sqlite seed --locale en
+
+# 3) Добавить событие (используем готовый контекст, например id=2 "Межличностные: сокрытие")
+cargo run -p app -- --db truth_db.sqlite add-event \
+  --description "Сокрытие факта в разговоре" --context 2 --vector false
+
+# 4) Отметить распознавание
+cargo run -p app -- --db truth_db.sqlite detect --id 1 --detected false --corrected false
+
+# 5) Добавить влияние (репутационное, негативное)
+cargo run -p app -- --db truth_db.sqlite impact --event 1 --type-id 1 --positive false --notes "Потеря доверия"
+
+# 6) Пересчёт метрик
+cargo run -p app -- --db truth_db.sqlite recalc
+
+# 7) Добавить контекст
+cargo run -p app -- --db truth_db.sqlite insert-context --name "Приватность в социальных сетях"
+
+# 8) Добавить источник
+cargo run -p app -- --db truth_db.sqlite insert-source --name "Журнал кибербезопасности"
+
+# 9) Добавить утверждение (statement)
+cargo run -p app -- --db truth_db.sqlite insert-statement --context 1 --text "Социальная сеть X передает данные третьим лицам"
+
+# 10) Добавить событие (event)
+cargo run -p app -- --db truth_db.sqlite insert-event --statement 1 --description "Рассмотрение факта утечки"
+
+# 11) Добавить связь с источником (event_sources)
+cargo run -p app -- --db truth_db.sqlite link-event-source --event 1 --source 1
+
+# 12) Загрузить все контексты
+cargo run -p app -- --db truth_db.sqlite load-contexts
+
+# 13) Загрузить утверждения по контексту
+cargo run -p app -- --db truth_db.sqlite load-statements --context 1
+
+# 14) Загрузить события по утверждению
+cargo run -p app -- --db truth_db.sqlite load-events --statement 1
+
+# 15) Загрузить источники по событию
+cargo run -p app -- --db truth_db.sqlite load-sources --event 1
+
+# 16) Показать вопросы для события (без ответов)
+cargo run -p app -- --db truth_db.sqlite assess --event 1
+
+# 17) Оценить ответы и получить подсказку
+cargo run -p app -- --db truth_db.sqlite assess --event 1 \
+  --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}'
+
+# 18) Применить подсказку (обновить detected=true)
+cargo run -p app -- --db truth_db.sqlite assess --event 1 \
+  --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}' \
+  --apply
+
+# Показать вопросы для события
+cargo run -p app -- --db truth_db.sqlite assess --event 1
+
+# Оценить с ответами (поддерживает правду)
+cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}'
+
+# Автоматически применить результат
+cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes",...}' --apply
+
+бинарник app успешно запускается из корня воркспейса через:
+cargo run -p app -- --db truth_db.sqlite init
+
+Инициализировать справочники: cargo run -p app -- --db truth_db.sqlite seed
+Добавить событие: cargo run -p app -- add-event --description "Первое событие" --context 1 --vector true
+Отметить распознавание: cargo run -p app -- detect --id 1 --detected true --corrected false
+Добавить влияние: cargo run -p app -- impact --event 1 --type-id 1 --positive true --notes "Репутация+"
+Пересчитать метрики: cargo run -p app -- recalc
+Показать событие: cargo run -p app -- show --id 1
+
+
+https://chatgpt.com/share/68b08235-da78-8007-a352-0f410a0a1269
