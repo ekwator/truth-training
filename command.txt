@@ -77,5 +77,5 @@ cargo run -p app -- --db truth_db.sqlite init
 Пересчитать метрики: cargo run -p app -- recalc
 Показать событие: cargo run -p app -- show --id 1
 
-
+https://chatgpt.com/s/t_68b5da774f048191825b5868903b9ad1
 https://chatgpt.com/share/68b08235-da78-8007-a352-0f410a0a1269
