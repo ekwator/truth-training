@@ -54,18 +54,14 @@ flowchart TD
     A[Событие] --> B[Контекст]
     B --> C[Экспертная оценка]
     C --> D[Влияние лжи]
-```
----
-## 📊 Архитектура сеть
-```mermaid
-flowchart TD
+
     A[HTTP API / Actix-web] --> B[SQLite DB]
     A --> C[Sync Engine]
     C --> D[UDP Beacon Sender]
     C --> E[UDP Beacon Listener]
     E -->|Новые пировые адреса| C
     A --> F[Expert System (Detector)]
-
+```
 ---
 ## ⚙️ Технологический стек
 - **Rust** (Actix-web + Tokio)
