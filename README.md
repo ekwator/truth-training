@@ -61,7 +61,7 @@ flowchart TD
     C --> D[UDP Beacon Sender]
     C --> E[UDP Beacon Listener]
     E -->|Новые пировые адреса| C
-    A --> F[Expert System \[Detector\]]
+    A --> F[Expert System Detector]
 ```
 
 ## ⚙️ Технологический стек
