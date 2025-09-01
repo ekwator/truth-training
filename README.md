@@ -245,4 +245,4 @@ CLI-команды **заменены API-вызовами**, т.к. проек�
 ## 📥 Скачать этот README.md
 
 После загрузки на GitHub:  
-[Скачать файл README.md](https://github.com/ekwator/truth-training/blob/main/README.md)
+[Скачать файл README.md](https://github.com/433f41a3-37a9-4863-a19b-7bfb807fa055)
