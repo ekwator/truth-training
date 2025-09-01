@@ -56,7 +56,8 @@ flowchart TD
     C --> D[Влияние лжи]
 ```
 ---
-## 📊 Архитектура сеть```mermaid
+## 📊 Архитектура сеть
+```mermaid
 flowchart TD
     A[HTTP API / Actix-web] --> B[SQLite DB]
     A --> C[Sync Engine]
