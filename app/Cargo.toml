@@ -1,0 +1,11 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+core_lib = { path = "../core-lib" }
+chrono = { version = "0.4", features = ["clock"] }
+clap = { version = "4", features = ["derive"] }
+rusqlite = { version = "0.31", features = ["chrono"] }
+serde_json = "1"
