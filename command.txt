@@ -1,7 +1,7 @@
 # 1) Инициализация
 cargo run -p app -- --db truth_db.sqlite init
 
-# 2) Сид базы знаний (RU)
+# 2) Сид базы знаний (RU) Инициализировать справочники:
 cargo run -p app -- --db truth_db.sqlite seed --locale ru
 # (или EN)
 # cargo run -p app -- --db truth_db.sqlite seed --locale en
@@ -58,8 +58,6 @@ cargo run -p app -- --db truth_db.sqlite assess --event 1 \
   --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}' \
   --apply
 
-# Показать вопросы для события
-cargo run -p app -- --db truth_db.sqlite assess --event 1
 
 # Оценить с ответами (поддерживает правду)
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}'
@@ -67,13 +65,6 @@ cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_indep
 # Автоматически применить результат
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes",...}' --apply
 
-бинарник app успешно запускается из корня воркспейса через:
-cargo run -p app -- --db truth_db.sqlite init
-
-Инициализировать справочники: cargo run -p app -- --db truth_db.sqlite seed
-Добавить событие: cargo run -p app -- add-event --description "Первое событие" --context 1 --vector true
-Отметить распознавание: cargo run -p app -- detect --id 1 --detected true --corrected false
-Добавить влияние: cargo run -p app -- impact --event 1 --type-id 1 --positive true --notes "Репутация+"
 Пересчитать метрики: cargo run -p app -- recalc
 Показать событие: cargo run -p app -- show --id 1
 
