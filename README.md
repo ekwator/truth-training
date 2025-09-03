@@ -231,7 +231,7 @@ cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_indep
 # Автоматически применить результат
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes",...}' --apply
 
-Результаты тестирования:
+Результаты тестирования:  
 ✅ Положительные ответы → score=1.00, confidence=1.00, detected=true  
 ✅ Отрицательные ответы → score=-1.00, confidence=1.00, detected=true  
 ✅ Неопределенные ответы → score=0.00, confidence=0.40, detected=None  
