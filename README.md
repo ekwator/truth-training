@@ -236,7 +236,7 @@ cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_indep
 ✅ Отрицательные ответы → score=-1.00, confidence=1.00, detected=true
 ✅ Неопределенные ответы → score=0.00, confidence=0.40, detected=None
 ✅ Автоматическое применение работает корректно
----
+
 Теперь протестируем экспертную систему:
 cargo run -p app -- --db truth_db.sqlite assess --event 1
 
@@ -254,6 +254,8 @@ cargo run -p app -- --db truth_db.sqlite show --id 1
 
 Отлично! Экспертная система работает корректно. Давайте также протестируем случай с низкой уверенностью:
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"unknown","alt_hypothesis":"unknown","incentives":"unknown","reproducible":"unknown","logs_evidence":"unknown","belief_pressure":"unknown","time_distance":"unknown"}'
+
+---
 
 ## 📦 Исторические команды CLI (устаревший режим)
 На раннем этапе приложение работало через консоль с командами для управления базой данных.
