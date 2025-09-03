@@ -284,11 +284,12 @@ CLI-команды **заменены API-вызовами**, т.к. проек�
 ---
 
 ## 🔄 Документация
-[Technical Specification.doc](docs/Technical_Specification.doc) — Техническое задание
-[Data Schema.doc](docs/Data_Schema.doc) — Общая схема базы данных
+[Technical_Specification.doc](docs/Technical_Specification.doc) — Техническое задание
+[Data_Schema.doc](docs/Data_Schema.doc) — Общая схема базы данных
 [architecture.md](docs/architecture.md) — общая архитектура.
 [build_instructions.md](docs/build_instructions.md) — инструкции для сборки ядра и UI на Linux, Android, Windows и macOS.
 [ui_guidelines.md](docs/ui_guidelines.md) — правила интеграции интерфейсов с ядром, API, FFI, требования к UX.
+
 ---
 
 ## 📌 План перехода:
