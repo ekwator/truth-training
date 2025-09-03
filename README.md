@@ -232,27 +232,27 @@ cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_indep
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes",...}' --apply
 
 Результаты тестирования:
-✅ Положительные ответы → score=1.00, confidence=1.00, detected=true
-✅ Отрицательные ответы → score=-1.00, confidence=1.00, detected=true
-✅ Неопределенные ответы → score=0.00, confidence=0.40, detected=None
-✅ Автоматическое применение работает корректно
+✅ Положительные ответы → score=1.00, confidence=1.00, detected=true  
+✅ Отрицательные ответы → score=-1.00, confidence=1.00, detected=true  
+✅ Неопределенные ответы → score=0.00, confidence=0.40, detected=None  
+✅ Автоматическое применение работает корректно  
 
 Теперь протестируем экспертную систему:
 cargo run -p app -- --db truth_db.sqlite assess --event 1
 
-Отлично! Теперь протестируем экспертную систему с ответами:
+Отлично! Теперь протестируем экспертную систему с ответами:  
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}'
 
-Теперь протестируем с отрицательными ответами:
+Теперь протестируем с отрицательными ответами:  
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"no","alt_hypothesis":"no","incentives":"yes","reproducible":"no","logs_evidence":"no","belief_pressure":"yes","time_distance":"no"}'
 
-Теперь протестируем автоматическое применение результата:
+Теперь протестируем автоматическое применение результата:  
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"no","alt_hypothesis":"no","incentives":"yes","reproducible":"no","logs_evidence":"no","belief_pressure":"yes","time_distance":"no"}'
 
-Проверим, что событие было обновлено:
+Проверим, что событие было обновлено:  
 cargo run -p app -- --db truth_db.sqlite show --id 1
 
-Отлично! Экспертная система работает корректно. Давайте также протестируем случай с низкой уверенностью:
+Отлично! Экспертная система работает корректно. Давайте также протестируем случай с низкой уверенностью:  
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"unknown","alt_hypothesis":"unknown","incentives":"unknown","reproducible":"unknown","logs_evidence":"unknown","belief_pressure":"unknown","time_distance":"unknown"}'
 
 ---
