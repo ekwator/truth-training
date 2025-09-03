@@ -284,9 +284,9 @@ CLI-команды **заменены API-вызовами**, т.к. проек�
 ---
 
 ## 🔄 Документация
-[Technical_Specification.doc](docs/Technical_Specification.doc) — Техническое задание
+[Technical_Specification.md](docs/Technical_Specification.md) — Техническое задание
 
-[Data_Schema.doc](docs/Data_Schema.doc) — Общая схема базы данных
+[Data_Schema.doc](docs/Data_Schema.md) — Общая схема базы данных
 
 [architecture.md](docs/architecture.md) — общая архитектура
 
