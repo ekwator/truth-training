@@ -1,0 +1,137 @@
+# Build Instructions for Truth Training Platform
+
+---
+
+## ✅ 1. Core (Rust Library + REST API)
+
+### **Requirements:**
+
+* Rust (latest stable)
+* Cargo
+* SQLite3
+
+### **Build & Run:**
+
+```bash
+# Clone repository
+git clone https://github.com/your-org/truth-training.git
+cd truth-training
+
+# Build
+cargo build --release
+
+# Run with default DB
+target/release/truth-training --db truth_training.db --port 8080
+```
+
+**Run Tests:**
+
+```bash
+cargo test
+```
+
+---
+
+## ✅ 2. Linux UI (Tauri or GTK)
+
+### **Requirements:**
+
+* Rust
+* Node.js + npm (for Tauri)
+* libgtk-3-dev (for GTK-based UI)
+
+### **Setup & Build:**
+
+```bash
+# Clone UI repository
+git clone https://github.com/your-org/truth-training-unix.git
+cd truth-training-unix
+
+# Install Tauri dependencies
+npm install
+
+# Build UI and bundle with core
+npm run tauri build
+```
+
+**Run in Dev Mode:**
+
+```bash
+npm run tauri dev
+```
+
+---
+
+## ✅ 3. Android UI (Android Studio + JNI)
+
+### **Requirements:**
+
+* Android Studio (latest)
+* Rust toolchain for Android:
+
+```bash
+rustup target add aarch64-linux-android armv7-linux-androideabi
+```
+
+* NDK installed
+
+### **Build JNI Library:**
+
+```bash
+cd truth-training
+cargo ndk -t arm64-v8a -o ./jniLibs build --release
+```
+
+### **Integrate in Android Studio:**
+
+* Copy compiled `.so` libraries to `app/src/main/jniLibs/arm64-v8a/`
+* Use JNI bridge to call Rust core functions.
+
+---
+
+## ✅ 4. Windows UI (WinUI + Rust DLL)
+
+### **Requirements:**
+
+* Visual Studio 2022 with C++ Desktop Dev
+* Rust (Windows target)
+
+### **Build DLL:**
+
+```bash
+rustup target add x86_64-pc-windows-msvc
+cargo build --release --target x86_64-pc-windows-msvc
+```
+
+### **Integration:**
+
+* Create WinUI project in Visual Studio.
+* Load Rust DLL via FFI.
+
+---
+
+## ✅ 5. macOS UI (SwiftUI + Rust Framework)
+
+### **Requirements:**
+
+* Xcode
+* Rust (macOS target)
+
+### **Build Dynamic Library:**
+
+```bash
+rustup target add x86_64-apple-darwin aarch64-apple-darwin
+cargo build --release --target aarch64-apple-darwin
+```
+
+### **Integration:**
+
+* Add Rust library to Swift project.
+* Use `@objc` + `FFI` bridge for SwiftUI.
+
+---
+
+## ✅ Notes:
+
+* All UIs communicate with the core via **HTTP API** or **Direct FFI/JNI**.
+* For testing UI independently, you can run the core as a **local HTTP service** and point UI to `http://127.0.0.1:8080`.
