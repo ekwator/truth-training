@@ -1,9 +1,14 @@
-mod net;
-
-use actix_web::{web, App, HttpServer};
+use actix_web::{App, HttpServer};
 use clap::Parser;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+mod api;
+mod db;
+mod net;
+mod models;
+
 use net::{run_beacon_listener, run_beacon_sender, run_peer_logger, PeerSet};
-use std::{sync::Arc};
 use tokio::sync::RwLock;
 
 #[derive(Parser, Debug)]
@@ -42,15 +47,20 @@ async fn main() -> std::io::Result<()> {
 
     let peers = PeerSet(Arc::new(RwLock::new(Default::default())));
 
-    // Запуск фоновых задач
+    // Фоновые задачи
     tokio::spawn(run_beacon_sender(http_addr.clone()));
     tokio::spawn(run_beacon_listener(peers.clone()));
     tokio::spawn(run_peer_logger(peers.clone()));
 
-    // HTTP сервер (заглушка)
+    // Инициализация SQLite
+    let conn = db::init_db("truth_training.db");
+    let conn_data = Arc::new(Mutex::new(conn));
+
+    // HTTP сервер
     HttpServer::new(move || {
         App::new()
-            .route("/health", web::get().to(|| async { "OK" }))
+            .app_data(actix_web::web::Data::new(conn_data.clone()))
+            .configure(api::routes)
     })
     .bind(("0.0.0.0", args.port))?
     .run()

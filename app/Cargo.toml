@@ -7,5 +7,5 @@ edition = "2024"
 core_lib = { path = "../core-lib" }
 chrono = { version = "0.4", features = ["clock"] }
 clap = { version = "4", features = ["derive"] }
-rusqlite = { version = "0.31", features = ["chrono"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
 serde_json = "1"

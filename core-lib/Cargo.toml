@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rusqlite = { version = "0.31", features = ["chrono"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
 chrono = { version = "0.4", features = ["clock"] }
 rand = "0.8"
 blake3 = "1"

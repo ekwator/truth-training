@@ -1,86 +1,130 @@
 use actix_web::{get, post, web, HttpResponse, Responder};
 use serde::Deserialize;
-use crate::db::{get_all, insert_new_statement, upsert_statement};
-use crate::models::Statement;
-use rusqlite::Connection;
+use std::sync::{Arc, Mutex};
 
+use crate::db;
+use crate::models::{TruthEvent, Impact};
+
+type DbPool = Arc<Mutex<rusqlite::Connection>>;
+
+/// Health
 #[get("/health")]
-pub async fn health() -> impl Responder {
+async fn health() -> impl Responder {
     HttpResponse::Ok().body("OK")
 }
 
-#[post("/init")]
-pub async fn init() -> impl Responder {
-    // TODO: Реализация команды init
-    HttpResponse::Ok().json("DB initialized")
-}
+/// GET /statements
+#[get("/statements")]
+async fn get_statements(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    // web::block возвращает Result<T, BlockingError>.
+    // Внутри closure возвращаем rusqlite::Result<T>, поэтому итог — Result<Result<T,rusqlite::Error>, BlockingError>
+    let result = web::block(move || {
+        let conn = pool.lock().unwrap();
+        db::get_all(&conn)
+    })
+    .await;
 
-#[post("/seed")]
-pub async fn seed() -> impl Responder {
-    // TODO: seed --locale
-    HttpResponse::Ok().json("Database seeded")
-}
-
-#[post("/add-event")]
-pub async fn add_event() -> impl Responder {
-    HttpResponse::Ok().json("Event added")
-}
-
-#[post("/detect")]
-pub async fn detect() -> impl Responder {
-    HttpResponse::Ok().json("Detection updated")
-}
-
-#[post("/impact")]
-pub async fn impact() -> impl Responder {
-    HttpResponse::Ok().json("Impact added")
-}
-
-#[post("/recalc")]
-pub async fn recalc() -> impl Responder {
-    HttpResponse::Ok().json("Metrics recalculated")
-}
-
-#[get("/data")]
-pub async fn get_data(conn: web::Data<Connection>) -> impl Responder {
-    match get_all(&conn) {
-        Ok(v) => HttpResponse::Ok().json(v),
-        Err(e) => HttpResponse::InternalServerError().body(format!("db error: {e}")),
+    match result {
+        Ok(Ok(list)) => HttpResponse::Ok().json(list),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
 
 #[derive(Deserialize)]
-pub struct NewStatementReq {
-    pub text: String,
-    pub context: Option<String>,
-    pub truth_score: Option<f32>,
+struct NewStatement {
+    text: String,
+    context: Option<String>,
+    truth_score: Option<f32>,
 }
 
-#[post("/add")]
-pub async fn add_statement(
-    conn: web::Data<Connection>,
-    body: web::Json<NewStatementReq>,
+/// POST /statements
+#[post("/statements")]
+async fn add_statement(
+    pool: web::Data<DbPool>,
+    payload: web::Json<NewStatement>,
 ) -> impl Responder {
-    match insert_new_statement(&conn, &body.text, body.context.clone(), body.truth_score) {
-        Ok(s) => HttpResponse::Ok().json(s),
-        Err(e) => HttpResponse::InternalServerError().body(format!("db error: {e}")),
+    let pool = pool.clone();
+    let body = payload.into_inner();
+
+    let result = web::block(move || {
+        let conn = pool.lock().unwrap();
+        db::insert_new_statement(&conn, &body.text, body.context, body.truth_score)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(s)) => HttpResponse::Ok().json(s),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
 
-#[derive(Deserialize)]
-pub struct SyncPayload {
-    pub statements: Vec<Statement>,
+/// GET /events
+#[get("/events")]
+async fn get_events(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.lock().unwrap();
+        db::get_all_events(&conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(list)) => HttpResponse::Ok().json(list),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
 }
 
-#[post("/sync")]
-pub async fn sync_data(
-    conn: web::Data<Connection>,
-    body: web::Json<SyncPayload>,
-) -> impl Responder {
-    for s in &body.statements {
-        if let Err(e) = upsert_statement(&conn, s) {
-            return HttpResponse::InternalServerError().body(format!("db error: {e}"));
-        }
+/// POST /events
+#[post("/events")]
+async fn add_event(pool: web::Data<DbPool>, payload: web::Json<TruthEvent>) -> impl Responder {
+    let pool = pool.clone();
+    // клонируем событие, чтобы можно было вернуть его клиенту после вставки
+    let ev = payload.into_inner();
+    let ev_copy = ev.clone();
+
+    let result = web::block(move || {
+        let conn = pool.lock().unwrap();
+        db::insert_event(&conn, &ev_copy)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok().json(ev),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
-    HttpResponse::Ok().json(serde_json::json!({ "status": "ok", "received": body.statements.len() }))
+}
+
+/// POST /impacts
+#[post("/impacts")]
+async fn add_impact(pool: web::Data<DbPool>, payload: web::Json<Impact>) -> impl Responder {
+    let pool = pool.clone();
+    let im = payload.into_inner();
+    let im_copy = im.clone();
+
+    let result = web::block(move || {
+        let conn = pool.lock().unwrap();
+        db::insert_impact(&conn, &im_copy)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok().json(im),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// helper: зарегистрировать все маршруты
+pub fn routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(health)
+        .service(get_statements)
+        .service(add_statement)
+        .service(get_events)
+        .service(add_event)
+        .service(add_impact);
 }
