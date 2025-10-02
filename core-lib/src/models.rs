@@ -110,6 +110,7 @@ pub struct Impact {
     pub type_id: i64,  // FK → impact_type.id
     pub value: bool,   // true = позитивное, false = негативное
     pub notes: Option<String>,
+    pub code: Option<String>,
 }
 
 /// Метрики прогресса (таблица: progress_metrics)

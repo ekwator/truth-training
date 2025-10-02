@@ -35,7 +35,8 @@ pub fn init_db(path: &str) -> Connection {
             type_id INTEGER NOT NULL,
             positive INTEGER NOT NULL,
             notes TEXT,
-            created_at INTEGER NOT NULL
+            created_at INTEGER NOT NULL,
+            code TEXT NOT NULL
         );
 
         CREATE INDEX IF NOT EXISTS idx_statements_updated_at ON statements(updated_at);
@@ -160,6 +161,7 @@ pub fn get_all_events(conn: &Connection) -> rusqlite::Result<Vec<TruthEvent>> {
             timestamp_start: r.get(6)?,
             timestamp_end: r.get::<_, Option<i64>>(7)?,
             created_at: r.get(8)?,
+            code: r.get(9)?,
         })
     })?;
     Ok(rows.filter_map(Result::ok).collect())

@@ -34,11 +34,12 @@ pub struct TruthEvent {
     pub timestamp_start: i64,
     pub timestamp_end: Option<i64>,
     pub created_at: i64,
+    pub code: u8, // NEW FIELD
 }
 
 impl TruthEvent {
     #[allow(dead_code)]
-    pub fn new(description: impl Into<String>, context_id: i64, vector: bool) -> Self {
+    pub fn new(description: impl Into<String>, context_id: i64, vector: bool, code: u8) -> Self {
         let now = Utc::now().timestamp();
         Self {
             id: Uuid::new_v4(),
@@ -50,6 +51,7 @@ impl TruthEvent {
             timestamp_start: now,
             timestamp_end: None,
             created_at: now,
+            code: if code == 0 { 1 } else { code },
         }
     }
 }
@@ -87,6 +89,7 @@ mod tests {
             "Test event".to_string(),
             1,    // context_id
             true, // vector
+            1,    // code default 1
         );
 
         assert_eq!(event.description, "Test event");
@@ -94,5 +97,6 @@ mod tests {
         assert_eq!(event.detected, None); // должно быть None по умолчанию
         assert_eq!(event.corrected, false); // должно быть false по умолчанию
         assert!(event.timestamp_start <= Utc::now().timestamp());
+        assert_eq!(event.code, 1);
     }
 }

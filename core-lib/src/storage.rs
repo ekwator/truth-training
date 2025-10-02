@@ -795,7 +795,7 @@ fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError> {
 
 /// Загружаем все записи влияния
 fn load_impacts(conn: &Connection) -> Result<Vec<Impact>, CoreError> {
-    let mut stmt = conn.prepare("SELECT id, event_id, type_id, value, notes FROM impact")?;
+    let mut stmt = conn.prepare("SELECT id, event_id, type_id, value, notes, code FROM impact")?;
 
     let rows = stmt.query_map([], |row| {
         Ok(Impact {
@@ -804,6 +804,7 @@ fn load_impacts(conn: &Connection) -> Result<Vec<Impact>, CoreError> {
             type_id: row.get(2)?,
             value: row.get(3)?,
             notes: row.get(4)?,
+            code:  row.get(5)?,
         })
     })?;
 
