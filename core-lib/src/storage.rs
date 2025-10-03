@@ -2,7 +2,16 @@ use crate::{CoreError, Impact, NewTruthEvent, ProgressMetrics, TruthEvent};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 // serde_json используется через полные пути
+use uuid::Uuid;
+use chrono::Utc;
 use std::fs;
+
+/// Создать соединение с базой данных и инициализировать схему
+pub fn create_db_connection(db_path: &str) -> Result<Connection, CoreError> {
+    let conn = Connection::open(db_path)?;
+    init_db(&conn)?;
+    Ok(conn)
+}
 
 /// SQL-схема (knowledge_base + base)
 const SCHEMA_SQL: &str = r#"
@@ -75,17 +84,18 @@ CREATE TABLE IF NOT EXISTS truth_events (
     corrected       INTEGER NOT NULL DEFAULT 0,
     timestamp_start INTEGER NOT NULL,
     timestamp_end   INTEGER,
+    code            INTEGER NOT NULL DEFAULT 1,  -- 8-bit event code
     FOREIGN KEY(context_id) REFERENCES context(id)
 );
 
 CREATE TABLE IF NOT EXISTS impact (
-    id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id  INTEGER NOT NULL,
-    type_id   INTEGER NOT NULL,
-    value     INTEGER NOT NULL,  -- 0/1
-    notes     TEXT,
-    FOREIGN KEY(event_id) REFERENCES truth_events(id) ON DELETE CASCADE,
-    FOREIGN KEY(type_id)  REFERENCES impact_type(id)
+            id TEXT PRIMARY KEY,
+            event_id TEXT NOT NULL,
+            type_id INTEGER NOT NULL,
+            value INTEGER NOT NULL,      -- SQLite bool (0/1)
+            notes TEXT,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY(event_id) REFERENCES truth_events(id)
 );
 
 CREATE TABLE IF NOT EXISTS progress_metrics (
@@ -553,14 +563,15 @@ pub fn add_truth_event(conn: &Connection, new_ev: NewTruthEvent) -> Result<i64, 
 
     conn.execute(
         r#"INSERT INTO truth_events
-            (description, context_id, vector, detected, corrected, timestamp_start, timestamp_end)
+            (description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code)
           VALUES
-            (?1, ?2, ?3, NULL, 0, ?4, NULL)"#,
+            (?1, ?2, ?3, NULL, 0, ?4, NULL, ?5)"#,
         params![
             new_ev.description,
             new_ev.context_id,
             if new_ev.vector { 1 } else { 0 },
             new_ev.timestamp_start,
+            new_ev.code,
         ],
     )?;
 
@@ -570,7 +581,7 @@ pub fn add_truth_event(conn: &Connection, new_ev: NewTruthEvent) -> Result<i64, 
 /// Получить событие по id
 pub fn get_truth_event(conn: &Connection, id: i64) -> Result<Option<TruthEvent>, CoreError> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end
+        r#"SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code
            FROM truth_events WHERE id = ?1"#,
     )?;
 
@@ -585,6 +596,7 @@ pub fn get_truth_event(conn: &Connection, id: i64) -> Result<Option<TruthEvent>,
                 corrected: row.get::<_, i64>(5)? != 0,
                 timestamp_start: row.get(6)?,
                 timestamp_end: row.get::<_, Option<i64>>(7)?,
+                code: row.get(8)?,
             })
         })
         .optional()?;
@@ -621,13 +633,16 @@ pub fn add_impact(
     type_id: i64,
     value: bool,
     notes: Option<String>,
-) -> Result<i64, CoreError> {
+) -> Result<String, CoreError> {
+    let id = Uuid::new_v4().to_string();
+    let created_at = Utc::now().timestamp();
+
     conn.execute(
-        r#"INSERT INTO impact (event_id, type_id, value, notes)
-          VALUES (?1, ?2, ?3, ?4)"#,
-        params![event_id, type_id, if value { 1 } else { 0 }, notes],
+        r#"INSERT INTO impact (id, event_id, type_id, value, notes, created_at)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?6)"#,
+        params![id, event_id, type_id, if value { 1 } else { 0 }, notes, created_at],
     )?;
-    Ok(conn.last_insert_rowid())
+    Ok(id)
 }
 
 /// Пересчёт агрегатов для progress_metrics (MVP-версия)
@@ -715,8 +730,8 @@ pub fn import_from_json(conn: &mut Connection, file_path: &str) -> Result<(), Co
 
     for event in data.truth_events {
         tx.execute(
-            "INSERT INTO truth_events (id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO truth_events (id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             rusqlite::params![
                 event.id,
                 event.description,
@@ -725,21 +740,23 @@ pub fn import_from_json(conn: &mut Connection, file_path: &str) -> Result<(), Co
                 event.detected,
                 event.corrected,
                 event.timestamp_start,
-                event.timestamp_end
+                event.timestamp_end,
+                event.code
             ],
         )?;
     }
 
     for impact in data.impacts {
         tx.execute(
-            "INSERT INTO impact (id, event_id, type_id, value, notes)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT INTO impact (id, event_id, type_id, value, notes, created_at)
+ VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             rusqlite::params![
                 impact.id,
                 impact.event_id,
                 impact.type_id,
-                impact.value,
-                impact.notes
+                if impact.value { 1 } else { 0 },
+                impact.notes,
+                impact.created_at,
             ],
         )?;
     }
@@ -768,9 +785,9 @@ pub fn import_from_json(conn: &mut Connection, file_path: &str) -> Result<(), Co
 }
 
 /// Загружаем все события
-fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError> {
+pub fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError> {
     let mut stmt = conn.prepare(
-        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end FROM truth_events",
+        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code FROM truth_events",
     )?;
 
     let rows = stmt.query_map([], |row| {
@@ -783,6 +800,7 @@ fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError> {
             corrected: row.get(5)?,
             timestamp_start: row.get(6)?,
             timestamp_end: row.get(7)?,
+            code: row.get(8)?,
         })
     })?;
 
@@ -795,15 +813,16 @@ fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError> {
 
 /// Загружаем все записи влияния
 fn load_impacts(conn: &Connection) -> Result<Vec<Impact>, CoreError> {
-    let mut stmt = conn.prepare("SELECT id, event_id, type_id, value, notes FROM impact")?;
+    let mut stmt = conn.prepare("SELECT id, event_id, type_id, value, notes, created_at FROM impact")?;
 
     let rows = stmt.query_map([], |row| {
         Ok(Impact {
             id: row.get(0)?,
             event_id: row.get(1)?,
             type_id: row.get(2)?,
-            value: row.get(3)?,
+            value: row.get::<_, i64>(3)? != 0,
             notes: row.get(4)?,
+            created_at: row.get(5)?,
         })
     })?;
 

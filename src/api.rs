@@ -1,9 +1,10 @@
 use actix_web::{get, post, web, HttpResponse, Responder};
 use serde::Deserialize;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
-use crate::db;
-use crate::models::{TruthEvent, Impact};
+use core_lib::models::{Impact, NewTruthEvent};
+use core_lib::storage;
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
 
@@ -20,8 +21,9 @@ async fn get_statements(pool: web::Data<DbPool>) -> impl Responder {
     // web::block возвращает Result<T, BlockingError>.
     // Внутри closure возвращаем rusqlite::Result<T>, поэтому итог — Result<Result<T,rusqlite::Error>, BlockingError>
     let result = web::block(move || {
-        let conn = pool.lock().unwrap();
-        db::get_all(&conn)
+        let _conn = pool.blocking_lock();
+        // TODO: implement get_all_statements in core_lib
+        Ok::<Vec<String>, rusqlite::Error>(vec![])
     })
     .await;
 
@@ -34,9 +36,9 @@ async fn get_statements(pool: web::Data<DbPool>) -> impl Responder {
 
 #[derive(Deserialize)]
 struct NewStatement {
-    text: String,
-    context: Option<String>,
-    truth_score: Option<f32>,
+    _text: String,
+    _context: Option<String>,
+    _truth_score: Option<f32>,
 }
 
 /// POST /statements
@@ -46,11 +48,12 @@ async fn add_statement(
     payload: web::Json<NewStatement>,
 ) -> impl Responder {
     let pool = pool.clone();
-    let body = payload.into_inner();
+    let _body = payload.into_inner();
 
     let result = web::block(move || {
-        let conn = pool.lock().unwrap();
-        db::insert_new_statement(&conn, &body.text, body.context, body.truth_score)
+        let _conn = pool.blocking_lock();
+        // TODO: implement insert_new_statement in core_lib
+        Ok::<String, rusqlite::Error>("TODO".to_string())
     })
     .await;
 
@@ -66,8 +69,8 @@ async fn add_statement(
 async fn get_events(pool: web::Data<DbPool>) -> impl Responder {
     let pool = pool.clone();
     let result = web::block(move || {
-        let conn = pool.lock().unwrap();
-        db::get_all_events(&conn)
+        let _conn = pool.blocking_lock();
+        storage::load_truth_events(&_conn)
     })
     .await;
 
@@ -78,22 +81,34 @@ async fn get_events(pool: web::Data<DbPool>) -> impl Responder {
     }
 }
 
+#[derive(Deserialize)]
+struct AddEventRequest {
+    description: String,
+    context_id: i64,
+    vector: bool,
+}
+
 /// POST /events
 #[post("/events")]
-async fn add_event(pool: web::Data<DbPool>, payload: web::Json<TruthEvent>) -> impl Responder {
+async fn add_event(pool: web::Data<DbPool>, payload: web::Json<AddEventRequest>) -> impl Responder {
     let pool = pool.clone();
-    // клонируем событие, чтобы можно было вернуть его клиенту после вставки
-    let ev = payload.into_inner();
-    let ev_copy = ev.clone();
+    let req = payload.into_inner();
 
     let result = web::block(move || {
-        let conn = pool.lock().unwrap();
-        db::insert_event(&conn, &ev_copy)
+        let _conn = pool.blocking_lock();
+        let new_event = NewTruthEvent {
+            description: req.description,
+            context_id: req.context_id,
+            vector: req.vector,
+            timestamp_start: chrono::Utc::now().timestamp(),
+            code: 1, // Default code for new events
+        };
+        storage::add_truth_event(&_conn, new_event)
     })
     .await;
 
     match result {
-        Ok(Ok(())) => HttpResponse::Ok().json(ev),
+        Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
@@ -107,13 +122,13 @@ async fn add_impact(pool: web::Data<DbPool>, payload: web::Json<Impact>) -> impl
     let im_copy = im.clone();
 
     let result = web::block(move || {
-        let conn = pool.lock().unwrap();
-        db::insert_impact(&conn, &im_copy)
+        let _conn = pool.blocking_lock();
+        storage::add_impact(&_conn, im_copy.event_id.parse().unwrap_or(0), im_copy.type_id, im_copy.value, im_copy.notes)
     })
     .await;
 
     match result {
-        Ok(Ok(())) => HttpResponse::Ok().json(im),
+        Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }

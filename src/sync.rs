@@ -1,4 +1,4 @@
-use crate::models::TruthEvent;
+use core_lib::models::{TruthEvent};
 use reqwest::Client;
 use std::time::Duration;
 use anyhow::Result;

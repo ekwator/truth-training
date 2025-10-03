@@ -4,9 +4,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 mod api;
-mod db;
 mod net;
-mod models;
 
 use net::{run_beacon_listener, run_beacon_sender, run_peer_logger, PeerSet};
 use tokio::sync::RwLock;
@@ -53,7 +51,13 @@ async fn main() -> std::io::Result<()> {
     tokio::spawn(run_peer_logger(peers.clone()));
 
     // Инициализация SQLite
-    let conn = db::init_db("truth_training.db");
+    let mut conn = core_lib::storage::create_db_connection("truth_training.db")
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    
+    // Заполняем базу данных начальными данными
+    core_lib::storage::seed_knowledge_base(&mut conn, "ru")
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    
     let conn_data = Arc::new(Mutex::new(conn));
 
     // HTTP сервер
