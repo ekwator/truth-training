@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS forma (
 CREATE TABLE IF NOT EXISTS context (
     id          INTEGER PRIMARY KEY,
     name        TEXT NOT NULL,
-    category_id INTEGER,
+category_id INTEGER,
     forma_id    INTEGER,
     cause_id    INTEGER,
     develop_id  INTEGER,
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS context (
 CREATE TABLE IF NOT EXISTS impact_type (
     id          INTEGER PRIMARY KEY,
     name        TEXT NOT NULL,
-    description TEXT
+description TEXT
 );
 
 -- base
@@ -82,18 +82,18 @@ CREATE TABLE IF NOT EXISTS truth_events (
     vector          INTEGER NOT NULL,       -- 0/1 вместо BOOLEAN
     detected        INTEGER,                -- NULL/0/1
     corrected       INTEGER NOT NULL DEFAULT 0,
-    timestamp_start INTEGER NOT NULL,
+timestamp_start INTEGER NOT NULL,
     timestamp_end   INTEGER,
     code            INTEGER NOT NULL DEFAULT 1,  -- 8-bit event code
-    FOREIGN KEY(context_id) REFERENCES context(id)
+FOREIGN KEY(context_id) REFERENCES context(id)
 );
 
 CREATE TABLE IF NOT EXISTS impact (
             id TEXT PRIMARY KEY,
             event_id TEXT NOT NULL,
-            type_id INTEGER NOT NULL,
+type_id INTEGER NOT NULL,
             value INTEGER NOT NULL,      -- SQLite bool (0/1)
-            notes TEXT,
+notes TEXT,
             created_at INTEGER NOT NULL,
             FOREIGN KEY(event_id) REFERENCES truth_events(id)
 );
@@ -587,15 +587,15 @@ pub fn get_truth_event(conn: &Connection, id: i64) -> Result<Option<TruthEvent>,
 
     let row_opt = stmt
         .query_row(params![id], |row| {
-            Ok(TruthEvent {
-                id: row.get(0)?,
-                description: row.get(1)?,
-                context_id: row.get(2)?,
+        Ok(TruthEvent {
+            id: row.get(0)?,
+            description: row.get(1)?,
+            context_id: row.get(2)?,
                 vector: row.get::<_, i64>(3)? != 0,
-                detected: row.get::<_, Option<i64>>(4)?.map(|v| v != 0),
-                corrected: row.get::<_, i64>(5)? != 0,
-                timestamp_start: row.get(6)?,
-                timestamp_end: row.get::<_, Option<i64>>(7)?,
+            detected: row.get::<_, Option<i64>>(4)?.map(|v| v != 0),
+            corrected: row.get::<_, i64>(5)? != 0,
+            timestamp_start: row.get(6)?,
+            timestamp_end: row.get::<_, Option<i64>>(7)?,
                 code: row.get(8)?,
             })
         })
