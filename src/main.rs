@@ -36,6 +36,10 @@ fn guess_local_ip() -> String {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // Включаем логирование (по умолчанию выводит в stdout)
+    env_logger::init();
+    println!("Starting Truth node...");
+    
     let args = Args::parse();
     let host_ip = guess_local_ip();
     println!("Detected local IP: {}", host_ip);
@@ -66,10 +70,8 @@ async fn main() -> std::io::Result<()> {
     let peers_list = vec!["http://127.0.0.1:8081".to_string()];
 
     //Теперь при создании Node передаём CryptoIdentity
-    let crypto_identity = CryptoIdentity::new();
-    println!("Node public key: {}", crypto_identity.public_key_hex());
-    // Создаём и запускаем узел
-    let node = Node::new(peers_list, conn_data.clone(), crypto_identity);
+    let crypto_identity = Arc::new(CryptoIdentity::new());
+    let node = Node::new(peers_list, conn_data.clone(), crypto_identity.clone());
     tokio::spawn(async move {
         node.start().await;
     });

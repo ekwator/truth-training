@@ -1,45 +1,41 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use rusqlite::Connection;
-use crate::p2p::sync::sync_with_peer;
+use tokio::time::{self, Duration};
 use crate::p2p::encryption::CryptoIdentity;
+use crate::p2p::sync::sync_with_peer;
+use rusqlite::Connection;
+use log::{info, error};
 
 pub struct Node {
     pub peers: Vec<String>,
-    pub conn: Arc<Mutex<Connection>>,
-    pub identity: CryptoIdentity,
+    pub db: Arc<Mutex<Connection>>,
+    pub identity: Arc<CryptoIdentity>,
 }
 
 impl Node {
-    pub fn new(
-        peers: Vec<String>,
-        conn: Arc<Mutex<Connection>>,
-        identity: CryptoIdentity,
-    ) -> Self {
-        Self { peers, conn, identity }
+    /// Теперь принимает готовую CryptoIdentity
+    pub fn new(peers: Vec<String>, db: Arc<Mutex<Connection>>, identity: Arc<CryptoIdentity>) -> Self {
+        Self { peers, db, identity }
     }
 
+    /// Запуск узла — периодическая синхронизация с другими
     pub async fn start(&self) {
-        println!(
-            "🚀 Node started with {} peers, public key: {}",
-            self.peers.len(),
-            self.identity.public_key_hex()
-        );
-
-        {
-            let db = self.conn.lock().await;
-            println!("SQLite connected: autocommit={}", db.is_autocommit());
-        }
+        let mut interval = time::interval(Duration::from_secs(30)); // каждые 30 секунд
 
         loop {
-            for peer in &self.peers {
-                println!("🔄 Syncing with peer: {}", peer);
-                if let Err(err) = sync_with_peer(peer, self.conn.clone(), &self.identity).await {
-                    eprintln!("⚠️ Sync with {} failed: {}", peer, err);
-                }
-            }
+            interval.tick().await;
 
-            tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+            for peer in &self.peers {
+                let peer = peer.clone();
+                let identity = self.identity.clone();
+
+                tokio::spawn(async move {
+                    match sync_with_peer(&peer, &identity).await {
+                        Ok(_) => info!("✅ Synced successfully with {peer}"),
+                        Err(e) => error!("❌ Sync with {peer} failed: {e}"),
+                    }
+                });
+            }
         }
     }
 }

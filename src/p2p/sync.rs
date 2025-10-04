@@ -1,37 +1,40 @@
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use rusqlite::Connection;
 use reqwest::Client;
+use std::time::Duration;
 use crate::p2p::encryption::CryptoIdentity;
-use ed25519_dalek::Signature;
 
-pub async fn sync_with_peer(
-    peer_url: &str,
-    conn: Arc<Mutex<Connection>>,
-    identity: &CryptoIdentity,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::new();
+/// Асинхронная синхронизация с peer’ом
+pub async fn sync_with_peer(peer_url: &str, identity: &CryptoIdentity) -> anyhow::Result<()> {
+    // Создаём асинхронный HTTP клиент
+    let client = Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
 
     // Формируем сообщение для подписи
     let message = format!("sync_request:{}", chrono::Utc::now().timestamp());
-    let signature: Signature = identity.sign(message.as_bytes());
 
-    // Отправляем запрос с подписью
-    let resp = client
-        .get(format!("{}/events", peer_url))
-        .header("X-Public-Key", identity.public_key_hex())
-        .header("X-Signature", hex::encode(signature.to_bytes()))
+    // Подписываем сообщение приватным ключом
+    let signature = identity.sign(message.as_bytes());
+    let public_key_hex = identity.public_key_hex();
+    let signature_hex = hex::encode(signature.to_bytes());
+
+    // Выполняем асинхронный GET-запрос
+    let response = client
+        .get(format!("{peer_url}/events"))
+        .header("X-Public-Key", public_key_hex)
+        .header("X-Signature", signature_hex)
         .send()
         .await?;
 
-    if resp.status().is_success() {
-        let remote_events: serde_json::Value = resp.json().await?;
-        println!("📡 Got {} events from {}", remote_events, peer_url);
-
-        // TODO: сверить с локальной БД
-    } else {
-        println!("❌ Peer {} returned {}", peer_url, resp.status());
+    // Проверяем HTTP-код ответа
+    if !response.status().is_success() {
+        anyhow::bail!("Peer returned non-success status: {}", response.status());
     }
+
+    // Асинхронно читаем тело ответа
+    let body = response.text().await?;
+
+    // Здесь можно будет обработать полученные данные
+    log::info!("Received from {peer_url}: {body}");
 
     Ok(())
 }

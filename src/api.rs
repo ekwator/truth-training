@@ -8,45 +8,72 @@ use core_lib::storage;
 use ed25519_dalek::{VerifyingKey, Signature, Verifier};
 use hex;
 use chrono::Utc;
+use std::convert::TryInto;
+use std::fmt;
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
 
 /// Проверяет подпись сообщения, полученную от другого узла
+#[derive(Debug)]
+pub enum VerifyError {
+    PublicKeyHex(hex::FromHexError),
+    PublicKeyLength(usize),
+    PublicKeyParse(String),
+    SignatureHex(hex::FromHexError),
+    SignatureParse(String),
+    VerificationFailed(String),
+}
+
+impl fmt::Display for VerifyError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VerifyError::PublicKeyHex(e) => write!(f, "public key hex decode error: {}", e),
+            VerifyError::PublicKeyLength(len) => write!(f, "public key has invalid length: {}", len),
+            VerifyError::PublicKeyParse(s) => write!(f, "public key parse error: {}", s),
+            VerifyError::SignatureHex(e) => write!(f, "signature hex decode error: {}", e),
+            VerifyError::SignatureParse(s) => write!(f, "signature parse error: {}", s),
+            VerifyError::VerificationFailed(s) => write!(f, "verification failed: {}", s),
+        }
+    }
+}
+
+impl std::error::Error for VerifyError {}
+
+/// Проверяет подпись и возвращает Ok(()) при успехе, или Err(VerifyError) при любой ошибке.
 pub fn verify_signature(
     public_key_hex: &str,
     signature_hex: &str,
     message: &str,
-) -> bool {
-    // Декодируем публичный ключ
-    let public_key_bytes = match hex::decode(public_key_hex) {
-        Ok(b) => b,
-        Err(_) => return false,
-    };
+) -> Result<(), VerifyError> {
+    // 1) decode public key hex
+    let public_key_bytes = hex::decode(public_key_hex).map_err(VerifyError::PublicKeyHex)?;
+    if public_key_bytes.len() != 32 {
+        return Err(VerifyError::PublicKeyLength(public_key_bytes.len()));
+    }
 
-    // Проверяем длину ключа
-    let public_key_array: [u8; 32] = match public_key_bytes.as_slice().try_into() {
-        Ok(arr) => arr,
-        Err(_) => return false,
-    };
+    // 2) convert Vec<u8> -> [u8; 32]
+    let public_key_array: [u8; 32] = public_key_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| VerifyError::PublicKeyLength(public_key_bytes.len()))?;
 
-    let verifying_key = match VerifyingKey::from_bytes(&public_key_array) {
-        Ok(k) => k,
-        Err(_) => return false,
-    };
+    // 3) parse VerifyingKey
+    let verifying_key = VerifyingKey::from_bytes(&public_key_array)
+        .map_err(|e| VerifyError::PublicKeyParse(e.to_string()))?;
 
-    // Декодируем подпись
-    let signature_bytes = match hex::decode(signature_hex) {
-        Ok(b) => b,
-        Err(_) => return false,
-    };
+    // 4) decode signature hex
+    let signature_bytes = hex::decode(signature_hex).map_err(VerifyError::SignatureHex)?;
 
-    let signature = match Signature::try_from(signature_bytes.as_slice()) {
-        Ok(sig) => sig,
-        Err(_) => return false,
-    };
+    // 5) parse Signature
+    let signature = Signature::try_from(signature_bytes.as_slice())
+        .map_err(|e| VerifyError::SignatureParse(e.to_string()))?;
 
-    // Проверяем подпись
-    verifying_key.verify(message.as_bytes(), &signature).is_ok()
+    // 6) verify
+    verifying_key
+        .verify(message.as_bytes(), &signature)
+        .map_err(|e| VerifyError::VerificationFailed(e.to_string()))?;
+
+    Ok(())
 }
 
 /// Health
@@ -108,38 +135,46 @@ async fn add_statement(
 /// GET /events
 #[get("/events")]
 async fn get_events(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
-    // Читаем заголовки подписи
     let public_key = req
         .headers()
         .get("X-Public-Key")
-        .map(|v| v.to_str().unwrap_or(""))
+        .and_then(|v| v.to_str().ok())
         .unwrap_or("");
+
     let signature = req
         .headers()
         .get("X-Signature")
-        .map(|v| v.to_str().unwrap_or(""))
+        .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
-    // Формируем сообщение для проверки подписи
+    // Важное замечание: message должен быть **тем же самым** строковым payload,
+    // который подписывает отправитель. Надёжнее — чтобы отправитель включал
+    // отдельный заголовок X-Timestamp или X-Nonce и подписывал canonical payload.
     let message = format!("sync_request:{}", Utc::now().timestamp());
 
-    // Проверяем подпись
-    if !verify_signature(public_key, signature, &message) {
-        return HttpResponse::Unauthorized().body("Invalid signature");
-    }
+    // Используем Result: если ошибка — вернём 401 + причину (или generic)
+    match verify_signature(public_key, signature, &message) {
+        Ok(()) => {
+            // подпись валидна — возвращаем события из БД
+            let pool = pool.clone();
+            let result = web::block(move || {
+                let _conn = pool.blocking_lock();
+                storage::load_truth_events(&_conn)
+            })
+            .await;
 
-    // Если подпись верна — читаем события из БД
-    let pool = pool.clone();
-    let result = web::block(move || {
-        let _conn = pool.blocking_lock();
-        storage::load_truth_events(&_conn)
-    })
-    .await;
-
-    match result {
-        Ok(Ok(list)) => HttpResponse::Ok().json(list),
-        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            match result {
+                Ok(Ok(list)) => HttpResponse::Ok().json(list),
+                Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+                Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            }
+        }
+        Err(err) => {
+            // Можно не отдавать подробности в проде (логировать), но во время разработки
+            // удобно видеть причину.
+            log::warn!("Signature verification failed: {}", err);
+            HttpResponse::Unauthorized().body(format!("Invalid signature: {}", err))
+        }
     }
 }
 
