@@ -1,13 +1,15 @@
 use actix_web::{App, HttpServer};
 use clap::Parser;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 mod api;
 mod net;
+mod p2p;
 
 use net::{run_beacon_listener, run_beacon_sender, run_peer_logger, PeerSet};
-use tokio::sync::RwLock;
+use crate::p2p::node::Node;
+use crate::p2p::encryption::CryptoIdentity;
 
 #[derive(Parser, Debug)]
 #[command(name = "truth_training")]
@@ -35,7 +37,6 @@ fn guess_local_ip() -> String {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = Args::parse();
-
     let host_ip = guess_local_ip();
     println!("Detected local IP: {}", host_ip);
 
@@ -45,22 +46,35 @@ async fn main() -> std::io::Result<()> {
 
     let peers = PeerSet(Arc::new(RwLock::new(Default::default())));
 
-    // Фоновые задачи
+    // Запуск Beacon discovery
     tokio::spawn(run_beacon_sender(http_addr.clone()));
     tokio::spawn(run_beacon_listener(peers.clone()));
     tokio::spawn(run_peer_logger(peers.clone()));
 
-    // Инициализация SQLite
+    // Инициализация БД
     let mut conn = core_lib::storage::create_db_connection("truth_training.db")
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-    
-    // Заполняем базу данных начальными данными
     core_lib::storage::seed_knowledge_base(&mut conn, "ru")
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-    
     let conn_data = Arc::new(Mutex::new(conn));
 
-    // HTTP сервер
+    // 🔒 Генерация крипто-идентичности узла
+    let crypto_identity = CryptoIdentity::new();
+    println!("Node public key: {}", crypto_identity.public_key_hex());
+
+    // Список известных пиров
+    let peers_list = vec!["http://127.0.0.1:8081".to_string()];
+
+    //Теперь при создании Node передаём CryptoIdentity
+    let crypto_identity = CryptoIdentity::new();
+    println!("Node public key: {}", crypto_identity.public_key_hex());
+    // Создаём и запускаем узел
+    let node = Node::new(peers_list, conn_data.clone(), crypto_identity);
+    tokio::spawn(async move {
+        node.start().await;
+    });
+
+    // Запуск HTTP сервера
     HttpServer::new(move || {
         App::new()
             .app_data(actix_web::web::Data::new(conn_data.clone()))

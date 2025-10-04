@@ -1,12 +1,53 @@
-use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use core_lib::models::{Impact, NewTruthEvent};
 use core_lib::storage;
+use ed25519_dalek::{VerifyingKey, Signature, Verifier};
+use hex;
+use chrono::Utc;
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
+
+/// Проверяет подпись сообщения, полученную от другого узла
+pub fn verify_signature(
+    public_key_hex: &str,
+    signature_hex: &str,
+    message: &str,
+) -> bool {
+    // Декодируем публичный ключ
+    let public_key_bytes = match hex::decode(public_key_hex) {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+
+    // Проверяем длину ключа
+    let public_key_array: [u8; 32] = match public_key_bytes.as_slice().try_into() {
+        Ok(arr) => arr,
+        Err(_) => return false,
+    };
+
+    let verifying_key = match VerifyingKey::from_bytes(&public_key_array) {
+        Ok(k) => k,
+        Err(_) => return false,
+    };
+
+    // Декодируем подпись
+    let signature_bytes = match hex::decode(signature_hex) {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+
+    let signature = match Signature::try_from(signature_bytes.as_slice()) {
+        Ok(sig) => sig,
+        Err(_) => return false,
+    };
+
+    // Проверяем подпись
+    verifying_key.verify(message.as_bytes(), &signature).is_ok()
+}
 
 /// Health
 #[get("/health")]
@@ -66,7 +107,28 @@ async fn add_statement(
 
 /// GET /events
 #[get("/events")]
-async fn get_events(pool: web::Data<DbPool>) -> impl Responder {
+async fn get_events(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    // Читаем заголовки подписи
+    let public_key = req
+        .headers()
+        .get("X-Public-Key")
+        .map(|v| v.to_str().unwrap_or(""))
+        .unwrap_or("");
+    let signature = req
+        .headers()
+        .get("X-Signature")
+        .map(|v| v.to_str().unwrap_or(""))
+        .unwrap_or("");
+
+    // Формируем сообщение для проверки подписи
+    let message = format!("sync_request:{}", Utc::now().timestamp());
+
+    // Проверяем подпись
+    if !verify_signature(public_key, signature, &message) {
+        return HttpResponse::Unauthorized().body("Invalid signature");
+    }
+
+    // Если подпись верна — читаем события из БД
     let pool = pool.clone();
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
