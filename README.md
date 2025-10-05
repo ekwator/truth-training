@@ -169,19 +169,22 @@ cargo run -- --port 8080 --db truth_training.db
 | GET   | `/health`       | Проверка сервера                           |
 | POST  | `/init`         | Инициализация базы                        |
 | POST  | `/seed`         | Загрузка исходных данных                  |
-| POST  | `/add_event`    | Добавление события                        |
+| GET   | `/events`       | Получение событий (требует подпись)       |
+| POST  | `/events`       | Добавление события                        |
 | POST  | `/detect`       | Анализ несоответствий                     |
-| POST  | `/impact`       | Расчёт влияния                            |
-| POST  | `/recalc`       | Пересчёт связей                           |
+| POST  | `/impacts`      | Добавление воздействия                    |
+| POST  | `/recalc`       | Пересчёт метрик прогресса                 |
+| GET   | `/progress`     | Получение метрик прогресса                |
 | GET   | `/get_data`     | Получение всех данных                     |
-| POST  | `/add_statement`| Добавление утверждения                    |
+| GET   | `/statements`   | Получение утверждений                     |
+| POST  | `/statements`   | Добавление утверждения                    |
 Примеры использования:
 ```bash
 # Проверка состояния
 curl http://127.0.0.1:8080/health
 
 # Добавление события
-curl -X POST http://127.0.0.1:8080/add_event   -H "Content-Type: application/json"   -d '{"description":"Пример события","context":2,"vector":false}'
+curl -X POST http://127.0.0.1:8080/events   -H "Content-Type: application/json"   -d '{"description":"Пример события","context_id":2,"vector":false}'
 ```
 ---
 
@@ -225,12 +228,12 @@ curl -X POST http://localhost:8080/init
 
 ### 3. **Добавить событие**
 ```bash
-curl -X POST http://localhost:8080/add_event     -H "Content-Type: application/json"     -d '{"title":"Инцидент X","description":"Подробности..."}'
+curl -X POST http://localhost:8080/events     -H "Content-Type: application/json"     -d '{"description":"Инцидент X","context_id":1,"vector":true}'
 ```
 
 ### 4. **Добавить утверждение**
 ```bash
-curl -X POST http://localhost:8080/add_statement     -H "Content-Type: application/json"     -d '{"event_id":1,"text":"Это правда"}'
+curl -X POST http://localhost:8080/statements     -H "Content-Type: application/json"     -d '{"event_id":1,"text":"Это правда"}'
 ```
 
 ### 5. **Запустить детекцию лжи**
@@ -340,6 +343,12 @@ CLI-команды **заменены API-вызовами**, т.к. проек�
 [build_instructions.md](docs/build_instructions.md) — инструкции для сборки ядра и UI на Linux, Android, Windows и macOS
 
 [ui_guidelines.md](docs/ui_guidelines.md) — правила интеграции интерфейсов с ядром, API, FFI, требования к UX
+
+Спецификация (GitHub Spec Kit): см. каталог `spec/`
+- [spec/README.md](spec/README.md) — индекс спецификаций
+- [spec/05-api.md](spec/05-api.md) — текущий API
+- [spec/02-requirements.md](spec/02-requirements.md) — требования
+- [spec/07-event-rating-protocol.md](spec/07-event-rating-protocol.md) — протокол ранжирования событий (статус)
 
 ---
 
