@@ -5,10 +5,8 @@ use tokio::sync::Mutex;
 
 use core_lib::models::{Impact, NewTruthEvent};
 use core_lib::storage;
-use ed25519_dalek::{VerifyingKey, Signature, Verifier};
-use hex;
+use crate::p2p::encryption::CryptoIdentity;
 use chrono::Utc;
-use std::convert::TryInto;
 use std::fmt;
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
@@ -45,35 +43,11 @@ pub fn verify_signature(
     signature_hex: &str,
     message: &str,
 ) -> Result<(), VerifyError> {
-    // 1) decode public key hex
-    let public_key_bytes = hex::decode(public_key_hex).map_err(VerifyError::PublicKeyHex)?;
-    if public_key_bytes.len() != 32 {
-        return Err(VerifyError::PublicKeyLength(public_key_bytes.len()));
-    }
-
-    // 2) convert Vec<u8> -> [u8; 32]
-    let public_key_array: [u8; 32] = public_key_bytes
-        .as_slice()
-        .try_into()
-        .map_err(|_| VerifyError::PublicKeyLength(public_key_bytes.len()))?;
-
-    // 3) parse VerifyingKey
-    let verifying_key = VerifyingKey::from_bytes(&public_key_array)
-        .map_err(|e| VerifyError::PublicKeyParse(e.to_string()))?;
-
-    // 4) decode signature hex
-    let signature_bytes = hex::decode(signature_hex).map_err(VerifyError::SignatureHex)?;
-
-    // 5) parse Signature
-    let signature = Signature::try_from(signature_bytes.as_slice())
-        .map_err(|e| VerifyError::SignatureParse(e.to_string()))?;
-
-    // 6) verify
-    verifying_key
-        .verify(message.as_bytes(), &signature)
-        .map_err(|e| VerifyError::VerificationFailed(e.to_string()))?;
-
-    Ok(())
+    // Создаем CryptoIdentity из публичного ключа
+    let identity = CryptoIdentity::from_public_key_hex(public_key_hex)?;
+    
+    // Проверяем подпись используя метод CryptoIdentity
+    identity.verify_from_hex(message.as_bytes(), signature_hex)
 }
 
 /// Health
@@ -239,4 +213,38 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(get_events)
         .service(add_event)
         .service(add_impact);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::p2p::encryption::CryptoIdentity;
+    use hex;
+
+    #[test]
+    fn test_signature_verification_refactor() {
+        // Создаем новую криптографическую идентичность
+        let identity = CryptoIdentity::new();
+        
+        // Создаем сообщение для подписи
+        let message = "test message";
+        
+        // Подписываем сообщение
+        let signature = identity.sign(message.as_bytes());
+        let signature_hex = hex::encode(signature.to_bytes());
+        let public_key_hex = identity.public_key_hex();
+        
+        // Проверяем подпись используя рефакторенную функцию
+        let result = verify_signature(&public_key_hex, &signature_hex, message);
+        
+        // Проверяем, что верификация прошла успешно
+        assert!(result.is_ok(), "Signature verification should succeed");
+        
+        // Проверяем с неправильным сообщением
+        let wrong_message = "wrong message";
+        let wrong_result = verify_signature(&public_key_hex, &signature_hex, wrong_message);
+        
+        // Проверяем, что верификация с неправильным сообщением не прошла
+        assert!(wrong_result.is_err(), "Signature verification with wrong message should fail");
+    }
 }

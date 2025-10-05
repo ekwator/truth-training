@@ -1,21 +1,18 @@
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tokio::time::{self, Duration};
 use crate::p2p::encryption::CryptoIdentity;
 use crate::p2p::sync::sync_with_peer;
-use rusqlite::Connection;
 use log::{info, error};
 
 pub struct Node {
     pub peers: Vec<String>,
-    pub db: Arc<Mutex<Connection>>,
     pub identity: Arc<CryptoIdentity>,
 }
 
 impl Node {
     /// Теперь принимает готовую CryptoIdentity
-    pub fn new(peers: Vec<String>, db: Arc<Mutex<Connection>>, identity: Arc<CryptoIdentity>) -> Self {
-        Self { peers, db, identity }
+    pub fn new(peers: Vec<String>, identity: Arc<CryptoIdentity>) -> Self {
+        Self { peers, identity }
     }
 
     /// Запуск узла — периодическая синхронизация с другими

@@ -71,7 +71,7 @@ async fn main() -> std::io::Result<()> {
 
     //Теперь при создании Node передаём CryptoIdentity
     let crypto_identity = Arc::new(CryptoIdentity::new());
-    let node = Node::new(peers_list, conn_data.clone(), crypto_identity.clone());
+    let node = Node::new(peers_list, crypto_identity.clone());
     tokio::spawn(async move {
         node.start().await;
     });
