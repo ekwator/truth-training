@@ -34,9 +34,11 @@
 
   * `POST /init` – initialize DB.
   * `POST /seed` – load knowledge base.
-  * `POST /add-event` – add new event.
+  * `POST /events` – add new event.
   * `POST /detect` – mark detection.
-  * `POST /impact` – add impact.
+  * `POST /impacts` – add impact.
+  * `GET /events` – list events (signed for P2P use).
+  * `GET /progress` – read progress metrics.
   * `GET /progress` – get progress metrics.
 
 ---
