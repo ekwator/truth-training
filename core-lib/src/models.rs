@@ -91,6 +91,7 @@ pub struct TruthEvent {
     pub corrected: bool,            // BOOLEAN
     pub timestamp_start: i64,       // INTEGER (UNIX secs)
     pub timestamp_end: Option<i64>, // INTEGER NULLABLE (UNIX secs)
+    pub code: u8,                   // 8-bit event code (2 control bits + 6 counter bits)
 }
 
 /// Вспомогательная структура для вставки события
@@ -100,17 +101,18 @@ pub struct NewTruthEvent {
     pub context_id: i64,
     pub vector: bool,
     pub timestamp_start: i64,
+    pub code: u8,
 }
 
 /// Воздействие (таблица: impact)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Impact {
-    pub id: i64,
-    pub event_id: i64, // FK → truth_events.id
+    pub id: String,
+    pub event_id: String, // FK → truth_events.id
     pub type_id: i64,  // FK → impact_type.id
     pub value: bool,   // true = позитивное, false = негативное
     pub notes: Option<String>,
-    pub code: Option<String>,
+    pub created_at: i64,
 }
 
 /// Метрики прогресса (таблица: progress_metrics)

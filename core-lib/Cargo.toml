@@ -5,14 +5,15 @@ edition = "2024"
 
 [dependencies]
 rusqlite = { version = "0.31", features = ["bundled"] }
-chrono = { version = "0.4", features = ["clock"] }
+uuid = { version = "1.4", features = ["v4", "serde", "fast-rng"] }
+serde = { version = "1.0", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] } # если используешь DateTime
 rand = "0.8"
 blake3 = "1"
 argon2 = "0.5"
 ring = "0.17"
 ed25519-dalek = "2"
 zip = "0.6"
-serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 automerge = "0.5"     # проверишь актуальную
 thiserror = "1.0"

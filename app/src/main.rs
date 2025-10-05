@@ -112,6 +112,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     context_id: context,
                     vector,
                     timestamp_start: start.unwrap_or_else(|| Utc::now().timestamp()),
+                    code: 1, // Default code for CLI added events
                 },
             )?;
             println!("Inserted event id={}", id);

@@ -69,6 +69,7 @@
 * **corrected** (BOOLEAN) — event correction indicator
 * **timestamp\_start** (INTEGER) — event start time (UNIX)
 * **timestamp\_end** (INTEGER) — event end time (UNIX)
+* **code** (INTEGER) — event classification code (default: 1)
 
 ### **Table: impact**
 
