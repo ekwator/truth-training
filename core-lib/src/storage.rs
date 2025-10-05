@@ -1,4 +1,4 @@
-use crate::{CoreError, Impact, NewTruthEvent, ProgressMetrics, TruthEvent};
+use crate::{CoreError, Impact, NewTruthEvent, ProgressMetrics, TruthEvent, Statement, NewStatement};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 // serde_json используется через полные пути
@@ -86,6 +86,17 @@ timestamp_start INTEGER NOT NULL,
     timestamp_end   INTEGER,
     code            INTEGER NOT NULL DEFAULT 1,  -- 8-bit event code
 FOREIGN KEY(context_id) REFERENCES context(id)
+);
+
+CREATE TABLE IF NOT EXISTS statements (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id        INTEGER NOT NULL,
+    text            TEXT NOT NULL,
+    context         TEXT,
+    truth_score     REAL,
+    created_at      INTEGER NOT NULL,
+    updated_at      INTEGER NOT NULL,
+    FOREIGN KEY(event_id) REFERENCES truth_events(id)
 );
 
 CREATE TABLE IF NOT EXISTS impact (
@@ -784,6 +795,114 @@ pub fn import_from_json(conn: &mut Connection, file_path: &str) -> Result<(), Co
     Ok(())
 }
 
+/// Добавить утверждение
+pub fn add_statement(conn: &Connection, new_stmt: NewStatement) -> Result<i64, CoreError> {
+    if new_stmt.text.trim().is_empty() {
+        return Err(CoreError::InvalidArg("statement text is empty".into()));
+    }
+
+    let now = chrono::Utc::now().timestamp();
+    conn.execute(
+        r#"INSERT INTO statements (event_id, text, context, truth_score, created_at, updated_at)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?6)"#,
+        params![
+            new_stmt.event_id,
+            new_stmt.text,
+            new_stmt.context,
+            new_stmt.truth_score,
+            now,
+            now,
+        ],
+    )?;
+
+    Ok(conn.last_insert_rowid())
+}
+
+/// Получить утверждение по id
+pub fn get_statement(conn: &Connection, id: i64) -> Result<Option<Statement>, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"SELECT id, event_id, text, context, truth_score, created_at, updated_at
+           FROM statements WHERE id = ?1"#,
+    )?;
+
+    let row_opt = stmt
+        .query_row(params![id], |row| {
+            Ok(Statement {
+                id: row.get(0)?,
+                event_id: row.get(1)?,
+                text: row.get(2)?,
+                context: row.get(3)?,
+                truth_score: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })
+        .optional()?;
+
+    Ok(row_opt)
+}
+
+/// Получить все утверждения для события
+pub fn get_statements_for_event(conn: &Connection, event_id: i64) -> Result<Vec<Statement>, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"SELECT id, event_id, text, context, truth_score, created_at, updated_at
+           FROM statements WHERE event_id = ?1 ORDER BY created_at DESC"#,
+    )?;
+
+    let rows = stmt.query_map(params![event_id], |row| {
+        Ok(Statement {
+            id: row.get(0)?,
+            event_id: row.get(1)?,
+            text: row.get(2)?,
+            context: row.get(3)?,
+            truth_score: row.get(4)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
+        })
+    })?;
+
+    let mut statements = Vec::new();
+    for s in rows {
+        statements.push(s?);
+    }
+    Ok(statements)
+}
+
+/// Получить все утверждения
+pub fn load_statements(conn: &Connection) -> Result<Vec<Statement>, CoreError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, event_id, text, context, truth_score, created_at, updated_at FROM statements ORDER BY created_at DESC",
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok(Statement {
+            id: row.get(0)?,
+            event_id: row.get(1)?,
+            text: row.get(2)?,
+            context: row.get(3)?,
+            truth_score: row.get(4)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
+        })
+    })?;
+
+    let mut statements = Vec::new();
+    for s in rows {
+        statements.push(s?);
+    }
+    Ok(statements)
+}
+
+/// Обновить оценку правдивости утверждения
+pub fn update_statement_score(conn: &Connection, id: i64, truth_score: f32) -> Result<(), CoreError> {
+    let now = chrono::Utc::now().timestamp();
+    conn.execute(
+        r#"UPDATE statements SET truth_score = ?2, updated_at = ?3 WHERE id = ?1"#,
+        params![id, truth_score, now],
+    )?;
+    Ok(())
+}
+
 /// Загружаем все события
 pub fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError> {
     let mut stmt = conn.prepare(
@@ -812,7 +931,7 @@ pub fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError
 }
 
 /// Загружаем все записи влияния
-fn load_impacts(conn: &Connection) -> Result<Vec<Impact>, CoreError> {
+pub fn load_impacts(conn: &Connection) -> Result<Vec<Impact>, CoreError> {
     let mut stmt = conn.prepare("SELECT id, event_id, type_id, value, notes, created_at FROM impact")?;
 
     let rows = stmt.query_map([], |row| {
@@ -834,7 +953,7 @@ fn load_impacts(conn: &Connection) -> Result<Vec<Impact>, CoreError> {
 }
 
 /// Загружаем все метрики прогресса
-fn load_metrics(conn: &Connection) -> Result<Vec<ProgressMetrics>, CoreError> {
+pub fn load_metrics(conn: &Connection) -> Result<Vec<ProgressMetrics>, CoreError> {
     let mut stmt = conn.prepare(
         "SELECT id, timestamp, total_events, total_events_group, total_positive_impact, total_positive_impact_group, total_negative_impact, total_negative_impact_group, trend, trend_group FROM progress_metrics",
     )?;

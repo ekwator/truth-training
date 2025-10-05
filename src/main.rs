@@ -19,6 +19,9 @@ struct Args {
 
     #[arg(long)]
     http_addr: Option<String>,
+
+    #[arg(long, default_value = "truth_training.db")]
+    db: String,
 }
 
 fn guess_local_ip() -> String {
@@ -56,7 +59,7 @@ async fn main() -> std::io::Result<()> {
     tokio::spawn(run_peer_logger(peers.clone()));
 
     // Инициализация БД
-    let mut conn = core_lib::storage::create_db_connection("truth_training.db")
+    let mut conn = core_lib::storage::create_db_connection(&args.db)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
     core_lib::storage::seed_knowledge_base(&mut conn, "ru")
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;

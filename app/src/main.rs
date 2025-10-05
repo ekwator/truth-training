@@ -2,8 +2,8 @@ use chrono::Utc;
 use clap::{Parser, Subcommand};
 use core_lib::expert_simple::{evaluate_answers, questions_for_context};
 use core_lib::{
-    NewTruthEvent, add_impact, add_truth_event, get_truth_event, init_db, open_db,
-    recalc_progress_metrics, seed_knowledge_base, set_event_detected,
+    NewTruthEvent, NewStatement, add_impact, add_truth_event, add_statement, get_truth_event, get_statement,
+    init_db, open_db, recalc_progress_metrics, seed_knowledge_base, set_event_detected,
 };
 use std::collections::HashMap;
 
@@ -84,6 +84,26 @@ enum Commands {
         #[arg(long, default_value_t = false)]
         apply: bool,
     },
+    /// Add a statement to an event
+    AddStatement {
+        /// Event id (must exist)
+        #[arg(long)]
+        event: i64,
+        /// Statement text
+        #[arg(long)]
+        text: String,
+        /// Additional context
+        #[arg(long)]
+        context: Option<String>,
+        /// Truth score (-1.0 to 1.0)
+        #[arg(long)]
+        score: Option<f32>,
+    },
+    /// Show statement by id
+    ShowStatement {
+        #[arg(long)]
+        id: i64,
+    },
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -161,6 +181,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             apply,
         } => {
             cmd_assess(&conn, event, answers, apply)?;
+        }
+        Commands::AddStatement {
+            event,
+            text,
+            context,
+            score,
+        } => {
+            let id = add_statement(
+                &conn,
+                NewStatement {
+                    event_id: event,
+                    text,
+                    context,
+                    truth_score: score,
+                },
+            )?;
+            println!("Inserted statement id={}", id);
+        }
+        Commands::ShowStatement { id } => {
+            let stmt = get_statement(&conn, id)?;
+            match stmt {
+                Some(s) => println!("{:#?}", s),
+                None => println!("Statement {} not found", id),
+            }
         }
     }
 

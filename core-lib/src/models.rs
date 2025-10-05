@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 /// Ошибки уровня ядра
 #[derive(thiserror::Error, Debug)]
 pub enum CoreError {
-    #[error("Database error: {0}")]
-    Db(#[from] rusqlite::Error),
-    #[error("Invalid argument: {0}")]
-    InvalidArg(String),
+#[error("Database error: {0}")]
+Db(#[from] rusqlite::Error),
+#[error("Invalid argument: {0}")]
+InvalidArg(String),
     #[error("Not found: {0}")]
     NotFound(String),
     #[error("IO error: {0}")]
@@ -90,17 +90,17 @@ pub struct TruthEvent {
     pub detected: Option<bool>,     // BOOLEAN NULLABLE (распознано ли как ложь/правда)
     pub corrected: bool,            // BOOLEAN
     pub timestamp_start: i64,       // INTEGER (UNIX secs)
-    pub timestamp_end: Option<i64>, // INTEGER NULLABLE (UNIX secs)
+pub timestamp_end: Option<i64>, // INTEGER NULLABLE (UNIX secs)
     pub code: u8,                   // 8-bit event code (2 control bits + 6 counter bits)
 }
 
 /// Вспомогательная структура для вставки события
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewTruthEvent {
-    pub description: String,
-    pub context_id: i64,
-    pub vector: bool,
-    pub timestamp_start: i64,
+pub description: String,
+pub context_id: i64,
+pub vector: bool,
+pub timestamp_start: i64,
     pub code: u8,
 }
 
@@ -111,23 +111,44 @@ pub struct Impact {
     pub event_id: String, // FK → truth_events.id
     pub type_id: i64,  // FK → impact_type.id
     pub value: bool,   // true = позитивное, false = негативное
-    pub notes: Option<String>,
+pub notes: Option<String>,
     pub created_at: i64,
 }
 
 /// Метрики прогресса (таблица: progress_metrics)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgressMetrics {
-    pub id: i64,
-    pub timestamp: i64,
-    pub total_events: i64,
-    pub total_events_group: i64,
-    pub total_positive_impact: f64,
-    pub total_positive_impact_group: f64,
-    pub total_negative_impact: f64,
-    pub total_negative_impact_group: f64,
-    pub trend: f64,
-    pub trend_group: f64,
+pub id: i64,
+pub timestamp: i64,
+pub total_events: i64,
+pub total_events_group: i64,
+pub total_positive_impact: f64,
+pub total_positive_impact_group: f64,
+pub total_negative_impact: f64,
+pub total_negative_impact_group: f64,
+pub trend: f64,
+pub trend_group: f64,
+}
+
+/// Утверждение (таблица: statements)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Statement {
+    pub id: i64,                    // INTEGER, PK
+    pub event_id: i64,              // INTEGER (FK → truth_events.id)
+    pub text: String,               // TEXT - текст утверждения
+    pub context: Option<String>,    // TEXT NULLABLE - дополнительный контекст
+    pub truth_score: Option<f32>,   // REAL NULLABLE - оценка правдивости (-1..+1)
+    pub created_at: i64,            // INTEGER (UNIX secs)
+    pub updated_at: i64,            // INTEGER (UNIX secs)
+}
+
+/// Вспомогательная структура для вставки утверждения
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewStatement {
+    pub event_id: i64,
+    pub text: String,
+    pub context: Option<String>,
+    pub truth_score: Option<f32>,
 }
 
 /// Пользователь (для будущего расширения)

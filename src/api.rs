@@ -3,9 +3,10 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use core_lib::models::{Impact, NewTruthEvent};
+use core_lib::models::{Impact, NewTruthEvent, Statement, NewStatement};
 use core_lib::storage;
 use crate::p2p::encryption::CryptoIdentity;
+use crate::p2p::sync::{SyncData, SyncResult};
 use chrono::Utc;
 use std::fmt;
 
@@ -60,47 +61,50 @@ async fn health() -> impl Responder {
 #[get("/statements")]
 async fn get_statements(pool: web::Data<DbPool>) -> impl Responder {
     let pool = pool.clone();
-    // web::block возвращает Result<T, BlockingError>.
-    // Внутри closure возвращаем rusqlite::Result<T>, поэтому итог — Result<Result<T,rusqlite::Error>, BlockingError>
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
-        // TODO: implement get_all_statements in core_lib
-        Ok::<Vec<String>, rusqlite::Error>(vec![])
+        storage::load_statements(&_conn)
     })
     .await;
 
     match result {
-        Ok(Ok(list)) => HttpResponse::Ok().json(list),
+        Ok(Ok(statements)) => HttpResponse::Ok().json(statements),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
 
 #[derive(Deserialize)]
-struct NewStatement {
-    _text: String,
-    _context: Option<String>,
-    _truth_score: Option<f32>,
+struct AddStatementRequest {
+    event_id: i64,
+    text: String,
+    context: Option<String>,
+    truth_score: Option<f32>,
 }
 
 /// POST /statements
 #[post("/statements")]
 async fn add_statement(
     pool: web::Data<DbPool>,
-    payload: web::Json<NewStatement>,
+    payload: web::Json<AddStatementRequest>,
 ) -> impl Responder {
     let pool = pool.clone();
-    let _body = payload.into_inner();
+    let req = payload.into_inner();
 
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
-        // TODO: implement insert_new_statement in core_lib
-        Ok::<String, rusqlite::Error>("TODO".to_string())
+        let new_statement = NewStatement {
+            event_id: req.event_id,
+            text: req.text,
+            context: req.context,
+            truth_score: req.truth_score,
+        };
+        storage::add_statement(&_conn, new_statement)
     })
     .await;
 
     match result {
-        Ok(Ok(s)) => HttpResponse::Ok().json(s),
+        Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
@@ -205,14 +209,248 @@ async fn add_impact(pool: web::Data<DbPool>, payload: web::Json<Impact>) -> impl
     }
 }
 
+/// POST /init - Инициализация базы данных
+#[post("/init")]
+async fn init_db(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        storage::init_db(&_conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status": "initialized"})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[derive(Deserialize)]
+struct SeedRequest {
+    locale: Option<String>,
+}
+
+/// POST /seed - Загрузка исходных данных
+#[post("/seed")]
+async fn seed_db(pool: web::Data<DbPool>, payload: web::Json<SeedRequest>) -> impl Responder {
+    let pool = pool.clone();
+    let locale = payload.locale.clone().unwrap_or_else(|| "ru".to_string());
+    let locale_for_response = locale.clone();
+    
+    let result = web::block(move || {
+        let mut _conn = pool.blocking_lock();
+        storage::seed_knowledge_base(&mut _conn, &locale)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status": "seeded", "locale": locale_for_response})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /detect - Анализ несоответствий (отметка события как обнаруженного)
+#[post("/detect")]
+async fn detect_event(pool: web::Data<DbPool>, payload: web::Json<serde_json::Value>) -> impl Responder {
+    let pool = pool.clone();
+    let event_id = payload.get("event_id")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0);
+    let detected = payload.get("detected")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let corrected = payload.get("corrected")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        storage::set_event_detected(&_conn, event_id, detected, None, corrected)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status": "detected", "event_id": event_id})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /recalc - Пересчет связей (метрики прогресса)
+#[post("/recalc")]
+async fn recalc_metrics(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        storage::recalc_progress_metrics(&_conn, chrono::Utc::now().timestamp())
+    })
+    .await;
+
+    match result {
+        Ok(Ok(metric_id)) => HttpResponse::Ok().json(serde_json::json!({"status": "recalculated", "metric_id": metric_id})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /get_data - Получение всех данных
+#[get("/get_data")]
+async fn get_all_data(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        let events = storage::load_truth_events(&_conn)?;
+        let impacts = storage::load_impacts(&_conn)?;
+        let metrics = storage::load_metrics(&_conn)?;
+        Ok::<(Vec<core_lib::models::TruthEvent>, Vec<core_lib::models::Impact>, Vec<core_lib::models::ProgressMetrics>), core_lib::models::CoreError>((events, impacts, metrics))
+    })
+    .await;
+
+    match result {
+        Ok(Ok((events, impacts, metrics))) => {
+            HttpResponse::Ok().json(serde_json::json!({
+                "events": events,
+                "impacts": impacts,
+                "metrics": metrics
+            }))
+        },
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /progress - Получение метрик прогресса
+#[get("/progress")]
+async fn get_progress(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        storage::load_metrics(&_conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(metrics)) => HttpResponse::Ok().json(metrics),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /sync - Двунаправленная синхронизация данных
+#[post("/sync")]
+async fn sync_data(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json<SyncData>) -> impl Responder {
+    let public_key = req
+        .headers()
+        .get("X-Public-Key")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let signature = req
+        .headers()
+        .get("X-Signature")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let message = format!("sync_push:{}", Utc::now().timestamp());
+
+    match verify_signature(public_key, signature, &message) {
+        Ok(()) => {
+            let pool = pool.clone();
+            let received_data = payload.into_inner();
+            
+            let result = web::block(move || {
+                let _conn = pool.blocking_lock();
+                // Здесь будет обработка синхронизации данных
+                // Пока возвращаем заглушку
+                Ok::<SyncResult, core_lib::models::CoreError>(SyncResult {
+                    conflicts_resolved: 0,
+                    events_added: received_data.events.len() as u32,
+                    statements_added: received_data.statements.len() as u32,
+                    impacts_added: received_data.impacts.len() as u32,
+                    errors: Vec::new(),
+                })
+            })
+            .await;
+
+            match result {
+                Ok(Ok(sync_result)) => HttpResponse::Ok().json(sync_result),
+                Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+                Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            }
+        }
+        Err(err) => {
+            log::warn!("Sync signature verification failed: {}", err);
+            HttpResponse::Unauthorized().body(format!("Invalid signature: {}", err))
+        }
+    }
+}
+
+/// POST /incremental_sync - Инкрементальная синхронизация
+#[post("/incremental_sync")]
+async fn incremental_sync(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json<SyncData>) -> impl Responder {
+    let public_key = req
+        .headers()
+        .get("X-Public-Key")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let signature = req
+        .headers()
+        .get("X-Signature")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let message = format!("incremental_sync:{}", Utc::now().timestamp());
+
+    match verify_signature(public_key, signature, &message) {
+        Ok(()) => {
+            let pool = pool.clone();
+            let received_data = payload.into_inner();
+            
+            let result = web::block(move || {
+                let _conn = pool.blocking_lock();
+                // Здесь будет обработка инкрементальной синхронизации
+                Ok::<SyncResult, core_lib::models::CoreError>(SyncResult {
+                    conflicts_resolved: 0,
+                    events_added: received_data.events.len() as u32,
+                    statements_added: received_data.statements.len() as u32,
+                    impacts_added: received_data.impacts.len() as u32,
+                    errors: Vec::new(),
+                })
+            })
+            .await;
+
+            match result {
+                Ok(Ok(sync_result)) => HttpResponse::Ok().json(sync_result),
+                Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+                Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            }
+        }
+        Err(err) => {
+            log::warn!("Incremental sync signature verification failed: {}", err);
+            HttpResponse::Unauthorized().body(format!("Invalid signature: {}", err))
+        }
+    }
+}
+
 /// helper: зарегистрировать все маршруты
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(health)
+        .service(init_db)
+        .service(seed_db)
+        .service(detect_event)
+        .service(recalc_metrics)
+        .service(get_all_data)
+        .service(get_progress)
         .service(get_statements)
         .service(add_statement)
         .service(get_events)
         .service(add_event)
-        .service(add_impact);
+        .service(add_impact)
+        .service(sync_data)
+        .service(incremental_sync);
 }
 
 #[cfg(test)]
