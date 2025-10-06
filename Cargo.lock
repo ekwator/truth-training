@@ -326,7 +326,10 @@ dependencies = [
  "clap",
  "core_lib",
  "rusqlite",
+ "serde",
  "serde_json",
+ "tokio",
+ "truth_core",
 ]
 
 [[package]]
