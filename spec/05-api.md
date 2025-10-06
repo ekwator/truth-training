@@ -15,10 +15,16 @@ Base URL: http://<host>:<port>/
 - GET /progress → list of progress_metrics rows
 - GET /get_data → { events, impacts, metrics }
 - POST /sync (signed) → SyncResult
+  - Headers: X-Public-Key, X-Signature, X-Timestamp
+  - Message signed: `sync_push:{ts}`
+  - Body: SyncData { events, statements, impacts, metrics, last_sync }
 - POST /incremental_sync (signed) → SyncResult
+  - Headers: X-Public-Key, X-Signature, X-Timestamp
+  - Message signed: `incremental_sync:{ts}`
+  - Body: SyncData with recent changes only
 
 Notes
-- Signed endpoints require Ed25519 signature of a message pattern documented in code.
+- Signed endpoints require Ed25519 signature of the message pattern above.
 - /get_data is unauthenticated (local/LAN debug). Avoid exposing publicly.
 
 Future alignment

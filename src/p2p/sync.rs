@@ -3,9 +3,10 @@ use std::time::Duration;
 use crate::p2p::encryption::CryptoIdentity;
 use core_lib::models::{TruthEvent, Statement, Impact, ProgressMetrics};
 use core_lib::storage;
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use chrono::Utc;
 
 /// Данные для синхронизации
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +36,8 @@ pub async fn sync_with_peer(peer_url: &str, identity: &CryptoIdentity) -> anyhow
         .build()?;
 
     // Формируем сообщение для подписи
-    let message = format!("sync_request:{}", chrono::Utc::now().timestamp());
+    let ts = chrono::Utc::now().timestamp();
+    let message = format!("sync_request:{}", ts);
 
     // Подписываем сообщение приватным ключом
     let signature = identity.sign(message.as_bytes());
@@ -47,6 +49,7 @@ pub async fn sync_with_peer(peer_url: &str, identity: &CryptoIdentity) -> anyhow
         .get(format!("{peer_url}/get_data"))
         .header("X-Public-Key", public_key_hex)
         .header("X-Signature", signature_hex)
+        .header("X-Timestamp", ts.to_string())
         .send()
         .await?;
 
@@ -59,8 +62,12 @@ pub async fn sync_with_peer(peer_url: &str, identity: &CryptoIdentity) -> anyhow
     let body = response.text().await?;
     let sync_data: SyncData = serde_json::from_str(&body)?;
 
-    log::info!("Received sync data from {peer_url}: {} events, {} statements, {} impacts", 
-               sync_data.events.len(), sync_data.statements.len(), sync_data.impacts.len());
+    log::info!(
+        "Received sync data from {peer_url}: {} events, {} statements, {} impacts",
+        sync_data.events.len(),
+        sync_data.statements.len(),
+        sync_data.impacts.len()
+    );
 
     // Здесь будет обработка полученных данных
     // Пока возвращаем заглушку
@@ -99,7 +106,8 @@ pub async fn bidirectional_sync_with_peer(
         .build()?;
 
     // Формируем сообщение для подписи
-    let message = format!("sync_push:{}", chrono::Utc::now().timestamp());
+    let ts = chrono::Utc::now().timestamp();
+    let message = format!("sync_push:{}", ts);
 
     // Подписываем сообщение приватным ключом
     let signature = identity.sign(message.as_bytes());
@@ -111,6 +119,7 @@ pub async fn bidirectional_sync_with_peer(
         .post(format!("{peer_url}/sync"))
         .header("X-Public-Key", public_key_hex)
         .header("X-Signature", signature_hex)
+        .header("X-Timestamp", ts.to_string())
         .json(&sync_data)
         .send()
         .await?;
@@ -126,6 +135,275 @@ pub async fn bidirectional_sync_with_peer(
                sync_result.conflicts_resolved, sync_result.events_added);
 
     Ok(sync_result)
+}
+
+/// Push all local data to a peer's /sync endpoint with signing
+pub async fn push_local_data(
+    peer_url: &str,
+    identity: &CryptoIdentity,
+    conn: &Connection,
+) -> anyhow::Result<SyncResult> {
+    let sync_data = SyncData {
+        events: storage::load_truth_events(conn)?,
+        statements: storage::load_statements(conn)?,
+        impacts: storage::load_impacts(conn)?,
+        metrics: storage::load_metrics(conn)?,
+        last_sync: Utc::now().timestamp(),
+    };
+
+    let client = Client::builder().timeout(Duration::from_secs(30)).build()?;
+    let ts = Utc::now().timestamp();
+    let message = format!("sync_push:{}", ts);
+    let sig = identity.sign(message.as_bytes());
+    let signature_hex = hex::encode(sig.to_bytes());
+    let public_key_hex = identity.public_key_hex();
+
+    let resp = client
+        .post(format!("{peer_url}/sync"))
+        .header("X-Public-Key", public_key_hex)
+        .header("X-Signature", signature_hex)
+        .header("X-Timestamp", ts.to_string())
+        .json(&sync_data)
+        .send()
+        .await?;
+
+    if !resp.status().is_success() {
+        anyhow::bail!("Peer sync push failed: {}", resp.status());
+    }
+    Ok(resp.json().await?)
+}
+
+/// Pull remote data from peer by combining /get_data and /statements
+pub async fn pull_remote_data(peer_url: &str, identity: &CryptoIdentity) -> anyhow::Result<SyncData> {
+    let client = Client::builder().timeout(Duration::from_secs(30)).build()?;
+    let ts = Utc::now().timestamp();
+    let message = format!("sync_request:{}", ts);
+    let sig = identity.sign(message.as_bytes());
+    let signature_hex = hex::encode(sig.to_bytes());
+    let public_key_hex = identity.public_key_hex();
+
+    // get events, impacts, metrics
+    let resp_main = client
+        .get(format!("{peer_url}/get_data"))
+        .header("X-Public-Key", public_key_hex.clone())
+        .header("X-Signature", signature_hex.clone())
+        .header("X-Timestamp", ts.to_string())
+        .send()
+        .await?;
+    if !resp_main.status().is_success() {
+        anyhow::bail!("Peer returned non-success status: {}", resp_main.status());
+    }
+    let v = resp_main.json::<serde_json::Value>().await?;
+    let events: Vec<TruthEvent> = serde_json::from_value(v.get("events").cloned().unwrap_or_default())?;
+    let impacts: Vec<Impact> = serde_json::from_value(v.get("impacts").cloned().unwrap_or_default())?;
+    let metrics: Vec<ProgressMetrics> = serde_json::from_value(v.get("metrics").cloned().unwrap_or_default())?;
+
+    // get statements
+    let resp_stmts = client
+        .get(format!("{peer_url}/statements"))
+        .header("X-Public-Key", public_key_hex)
+        .header("X-Signature", signature_hex)
+        .header("X-Timestamp", ts.to_string())
+        .send()
+        .await?;
+    if !resp_stmts.status().is_success() {
+        anyhow::bail!("Peer returned non-success status: {}", resp_stmts.status());
+    }
+    let statements: Vec<Statement> = resp_stmts.json().await?;
+
+    Ok(SyncData {
+        events,
+        statements,
+        impacts,
+        metrics,
+        last_sync: ts,
+    })
+}
+
+/// Reconcile remote data into local DB using timestamp-based conflict resolution and log via sync_log
+pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncResult> {
+    let mut conflicts_resolved = 0u32;
+    let mut events_added = 0u32;
+    let mut statements_added = 0u32;
+    let mut impacts_added = 0u32;
+
+    // Events
+    for ev in &remote.events {
+        let existing = storage::get_truth_event(conn, ev.id).map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        match existing {
+            Some(local) => {
+                if ev.timestamp_start > local.timestamp_start {
+                    // remote wins -> update
+                    conn.execute(
+                        r#"UPDATE truth_events SET
+                            description=?2, context_id=?3, vector=?4, detected=?5, corrected=?6,
+                            timestamp_start=?7, timestamp_end=?8, code=?9, signature=?10, public_key=?11
+                          WHERE id=?1"#,
+                        params![
+                            ev.id,
+                            ev.description,
+                            ev.context_id,
+                            if ev.vector { 1 } else { 0 },
+                            ev.detected.map(|v| if v { 1 } else { 0 }),
+                            if ev.corrected { 1 } else { 0 },
+                            ev.timestamp_start,
+                            ev.timestamp_end,
+                            ev.code as i64,
+                            ev.signature,
+                            ev.public_key,
+                        ],
+                    )?;
+                    conflicts_resolved += 1;
+                    events_added += 1; // count updates as added for simplicity
+                    storage::log_sync(
+                        conn,
+                        "update",
+                        "truth_events",
+                        &ev.id.to_string(),
+                        ev.signature.clone(),
+                        ev.public_key.clone(),
+                    )?;
+                }
+            }
+            None => {
+                conn.execute(
+                    r#"INSERT OR IGNORE INTO truth_events
+                        (id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key)
+                      VALUES
+                        (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)"#,
+                    params![
+                        ev.id,
+                        ev.description,
+                        ev.context_id,
+                        if ev.vector { 1 } else { 0 },
+                        ev.detected.map(|v| if v { 1 } else { 0 }),
+                        if ev.corrected { 1 } else { 0 },
+                        ev.timestamp_start,
+                        ev.timestamp_end,
+                        ev.code as i64,
+                        ev.signature,
+                        ev.public_key,
+                    ],
+                )?;
+                events_added += 1;
+                storage::log_sync(
+                    conn,
+                    "insert",
+                    "truth_events",
+                    &ev.id.to_string(),
+                    ev.signature.clone(),
+                    ev.public_key.clone(),
+                )?;
+            }
+        }
+    }
+
+    // Statements
+    for st in &remote.statements {
+        let mut stmt = conn.prepare("SELECT updated_at FROM statements WHERE id=?1")?;
+        let upd: Option<i64> = stmt.query_row(params![st.id], |r| r.get(0)).optional()?;
+        match upd {
+            Some(local_updated_at) => {
+                if st.updated_at > local_updated_at {
+                    conn.execute(
+                        r#"UPDATE statements SET
+                            event_id=?2, text=?3, context=?4, truth_score=?5, created_at=?6, updated_at=?7, signature=?8, public_key=?9
+                          WHERE id=?1"#,
+                        params![
+                            st.id,
+                            st.event_id,
+                            st.text,
+                            st.context,
+                            st.truth_score,
+                            st.created_at,
+                            st.updated_at,
+                            st.signature,
+                            st.public_key,
+                        ],
+                    )?;
+                    conflicts_resolved += 1;
+                    statements_added += 1;
+                    storage::log_sync(
+                        conn,
+                        "update",
+                        "statements",
+                        &st.id.to_string(),
+                        st.signature.clone(),
+                        st.public_key.clone(),
+                    )?;
+                }
+            }
+            None => {
+                conn.execute(
+                    r#"INSERT OR IGNORE INTO statements
+                        (id, event_id, text, context, truth_score, created_at, updated_at, signature, public_key)
+                      VALUES
+                        (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)"#,
+                    params![
+                        st.id,
+                        st.event_id,
+                        st.text,
+                        st.context,
+                        st.truth_score,
+                        st.created_at,
+                        st.updated_at,
+                        st.signature,
+                        st.public_key,
+                    ],
+                )?;
+                statements_added += 1;
+                storage::log_sync(
+                    conn,
+                    "insert",
+                    "statements",
+                    &st.id.to_string(),
+                    st.signature.clone(),
+                    st.public_key.clone(),
+                )?;
+            }
+        }
+    }
+
+    // Impacts (append-only)
+    for im in &remote.impacts {
+        let mut stmt = conn.prepare("SELECT 1 FROM impact WHERE id=?1")?;
+        let exists: Option<i64> = stmt.query_row(params![im.id.clone()], |r| r.get(0)).optional()?;
+        if exists.is_none() {
+            conn.execute(
+                r#"INSERT OR IGNORE INTO impact
+                    (id, event_id, type_id, value, notes, created_at, signature, public_key)
+                  VALUES
+                    (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)"#,
+                params![
+                    im.id,
+                    im.event_id,
+                    im.type_id,
+                    if im.value { 1 } else { 0 },
+                    im.notes,
+                    im.created_at,
+                    im.signature,
+                    im.public_key,
+                ],
+            )?;
+            impacts_added += 1;
+            storage::log_sync(
+                conn,
+                "insert",
+                "impact",
+                &im.id,
+                im.signature.clone(),
+                im.public_key.clone(),
+            )?;
+        }
+    }
+
+    Ok(SyncResult {
+        conflicts_resolved,
+        events_added,
+        statements_added,
+        impacts_added,
+        errors: vec![],
+    })
 }
 
 /// Инкрементальная синхронизация - только изменения с последней синхронизации
@@ -181,7 +459,7 @@ pub async fn incremental_sync_with_peer(
 /// Получить события с определенного времени
 fn get_events_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<TruthEvent>> {
     let mut stmt = conn.prepare(
-        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code 
+        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key \
          FROM truth_events WHERE timestamp_start > ?1 ORDER BY timestamp_start"
     )?;
 
@@ -196,6 +474,8 @@ fn get_events_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Tru
             timestamp_start: row.get(6)?,
             timestamp_end: row.get::<_, Option<i64>>(7)?,
             code: row.get(8)?,
+            signature: row.get(9)?,
+            public_key: row.get(10)?,
         })
     })?;
 
@@ -209,7 +489,7 @@ fn get_events_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Tru
 /// Получить утверждения с определенного времени
 fn get_statements_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Statement>> {
     let mut stmt = conn.prepare(
-        "SELECT id, event_id, text, context, truth_score, created_at, updated_at 
+        "SELECT id, event_id, text, context, truth_score, created_at, updated_at, signature, public_key \
          FROM statements WHERE created_at > ?1 ORDER BY created_at"
     )?;
 
@@ -222,6 +502,8 @@ fn get_statements_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec
             truth_score: row.get(4)?,
             created_at: row.get(5)?,
             updated_at: row.get(6)?,
+            signature: row.get(7)?,
+            public_key: row.get(8)?,
         })
     })?;
 
@@ -235,7 +517,7 @@ fn get_statements_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec
 /// Получить воздействия с определенного времени
 fn get_impacts_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Impact>> {
     let mut stmt = conn.prepare(
-        "SELECT id, event_id, type_id, value, notes, created_at 
+        "SELECT id, event_id, type_id, value, notes, created_at, signature, public_key \
          FROM impact WHERE created_at > ?1 ORDER BY created_at"
     )?;
 
@@ -247,6 +529,8 @@ fn get_impacts_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Im
             value: row.get::<_, i64>(3)? != 0,
             notes: row.get(4)?,
             created_at: row.get(5)?,
+            signature: row.get(6)?,
+            public_key: row.get(7)?,
         })
     })?;
 
