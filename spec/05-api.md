@@ -30,3 +30,89 @@ Notes
 Future alignment
 - Consider consolidating GET /events and GET /get_data, and adding pagination.
 - Add OpenAPI in a follow-up.
+
+### JSON Schemas (informal)
+
+TruthEvent
+```json
+{
+  "id": 1,
+  "description": "string",
+  "context_id": 1,
+  "vector": true,
+  "detected": null,
+  "corrected": false,
+  "timestamp_start": 1710000000,
+  "timestamp_end": null,
+  "code": 1,
+  "signature": "hex|null",
+  "public_key": "hex|null"
+}
+```
+
+Statement
+```json
+{
+  "id": 1,
+  "event_id": 1,
+  "text": "string",
+  "context": "string|null",
+  "truth_score": 0.5,
+  "created_at": 1710000000,
+  "updated_at": 1710000000,
+  "signature": "hex|null",
+  "public_key": "hex|null"
+}
+```
+
+Impact
+```json
+{
+  "id": "uuid",
+  "event_id": "1",
+  "type_id": 1,
+  "value": true,
+  "notes": "string|null",
+  "created_at": 1710000000,
+  "signature": "hex|null",
+  "public_key": "hex|null"
+}
+```
+
+ProgressMetrics
+```json
+{
+  "id": 1,
+  "timestamp": 1710000000,
+  "total_events": 10,
+  "total_events_group": 10,
+  "total_positive_impact": 1.0,
+  "total_positive_impact_group": 1.0,
+  "total_negative_impact": 0.0,
+  "total_negative_impact_group": 0.0,
+  "trend": 1.0,
+  "trend_group": 1.0
+}
+```
+
+SyncData
+```json
+{
+  "events": [/* TruthEvent[] */],
+  "statements": [/* Statement[] */],
+  "impacts": [/* Impact[] */],
+  "metrics": [/* ProgressMetrics[] */],
+  "last_sync": 1710000000
+}
+```
+
+SyncResult
+```json
+{
+  "conflicts_resolved": 0,
+  "events_added": 0,
+  "statements_added": 0,
+  "impacts_added": 0,
+  "errors": ["string"]
+}
+```

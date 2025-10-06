@@ -1,21 +1,25 @@
 ## Architecture Overview
 
-See `docs/architecture.md` for module layout and mermaid diagrams.
+This document reflects the current `truth-core` implementation and the CLI utilities.
 
-Core responsibilities
+Responsibilities
 - Data logic and storage (SQLite via rusqlite).
-- REST API (actix-web) for UI/peers.
-- P2P sync and discovery.
+- REST API (actix-web) for local UI and peer interop.
+- P2P synchronization and peer discovery.
+- Ed25519 signing/verification for sync endpoints.
 
 Modules
 - core-lib: models, storage (schema + ops), expert heuristics.
-- server (workspace root): API (`src/api.rs`), P2P sync (`src/p2p/*`), encryption (`src/p2p/encryption.rs`), HTTP server.
-- app: CLI tools — legacy demo and `truthctl` for peers and sync.
+- api: HTTP routes in `src/api.rs` (health, init/seed, events/statements, impacts, progress, get_data, sync, incremental_sync) with signature verification helpers.
+- p2p: sync flows and reconciliation in `src/p2p/sync.rs`, periodic node loop in `src/p2p/node.rs`.
+- p2p/encryption: `CryptoIdentity` (Ed25519) with hex helpers and Result-based verify; header message patterns.
+- net: UDP beacon sender/listener in `src/net.rs` for LAN peer discovery.
+- app/truthctl: peer registry (`peers.json`), `peers add/list`, and `sync` orchestration (push or pull-only).
 
 Non-goals (MVP)
-- Full reputation and Sybil-resistance; advanced propagation semantics.
+- Reputation/Sybil resistance; validator weighting; global propagation semantics.
 
-Mermaid overview
+Overview
 ```mermaid
 flowchart TD
   UI -->|HTTP| API
@@ -24,4 +28,5 @@ flowchart TD
   P2P --> ENC[CryptoIdentity]
   P2P --> NET[Discovery]
   ENC -->|sign/verify| P2P
+  CLI[truthctl] -->|peers.json| P2P
 ```
