@@ -118,6 +118,14 @@ flowchart TD
 
 ---
 
+## 🧱 Модули (truth-core)
+
+- `core-lib` — модели и хранилище (SQLite), бизнес-логика, эксперты.
+- `api` — HTTP REST на базе Actix (`src/api.rs`), проверка подписей.
+- `p2p` — синхронизация узлов и обнаружение пиров (`src/p2p/*`).
+- `p2p/encryption` — Ed25519, подпись и верификация (`CryptoIdentity`).
+- `app/truthctl` — CLI для управления пирами и триггера синхронизации.
+
 ### Требования:
 - **Rust** ≥ 1.75
 - **cargo**
@@ -128,27 +136,24 @@ flowchart TD
 
 ## 🔧 Установка и сборка
 
-``bash
+```bash
 # Установка зависимостей
 sudo apt update && sudo apt install -y libsqlite3-dev pkg-config
 
-
-```bash
-# 1. Клонировать репозиторий
+# 1) Клонировать репозиторий
 git clone https://github.com/USERNAME/truth-training.git
 cd truth-training
 
-# Проверка
+# 2) Проверка и сборка
 cargo check
-
-# 2. Сборка
 cargo build --release
 
-# 3. Запуск
+# 3) Запуск (Actix HTTP + P2P)
 cargo run -- --port 8080 --db truth_training.db
-```
-# Запуск HTTP-сервера с синхронизацией
+
+# Альтернатива: запуск собранного бинарника
 ./target/release/truth_training --port 8080 --db truth_training.db
+```
 
 ---
 
@@ -198,6 +203,23 @@ curl -X POST http://127.0.0.1:8080/events   -H "Content-Type: application/json" 
 cargo run -- --port 8080 --db node1.db --http-addr http://127.0.0.1:8080
 cargo run -- --port 8081 --db node2.db --http-addr http://127.0.0.1:8081
 cargo run -- --port 8082 --db node3.db --http-addr http://127.0.0.1:8082
+```
+
+Настройка пиров и запуск синхронизации (`truthctl`):
+
+```bash
+# Добавляем пиров (используется файл peers.json в рабочей директории)
+truthctl peers add http://127.0.0.1:8081 <pubkey_hex_peer2>
+truthctl peers add http://127.0.0.1:8082 <pubkey_hex_peer3>
+
+# Просмотр списка
+truthctl peers list
+
+# Запуск синхронизации (push) со всеми пирами
+truthctl sync
+
+# Только pull с верификацией подписи и слиянием
+truthctl sync --pull-only
 ```
 ---
 
@@ -253,6 +275,22 @@ curl -X POST http://localhost:8080/detect     -H "Content-Type: application/json
 - `sync_request:{ts}` — для pull-запросов
 - `sync_push:{ts}` — для push (`/sync`)
 - `incremental_sync:{ts}` — для дельты
+
+Пример push-синхронизации:
+
+```bash
+TS=$(date +%s)
+PUB=<hex_pubkey>
+MSG="sync_push:${TS}"
+# Если в вашей сборке есть подпомощник, можно заменить SIG командой truthctl util sign
+SIG="<signature_hex>"
+curl -X POST http://localhost:8080/sync \
+  -H "Content-Type: application/json" \
+  -H "X-Public-Key: $PUB" \
+  -H "X-Signature: $SIG" \
+  -H "X-Timestamp: $TS" \
+  -d '{"events":[],"statements":[],"impacts":[],"metrics":[],"last_sync":0}'
+```
 
 ---
 
@@ -334,6 +372,8 @@ truthctl sync --pull-only
 
 Хранение пиров: `peers.json` в рабочей директории.
 
+Примечание: для работы `truthctl` локальная БД инициализируется автоматически; при `--verbose` выводится публичный ключ узла. Команды `peers add/list` и `sync` соответствуют потокам в `src/p2p/sync.rs`.
+
 ---
 
 ## 📦 Исторические команды CLI (устаревший режим)
@@ -361,6 +401,34 @@ CLI-команды **заменены API-вызовами**, т.к. проек�
 - управление выполняется через **HTTP API**.
 
 Для теста API можно использовать `curl` (см. раздел **API endpoints**).
+
+## 📱 Мобильные биндинги (FFI)
+Планируется FFI-слой (например, через `uniFFI`) для Android, позволяющий вызывать `truth-core` из Kotlin и использовать те же API/сущности. iOS рассматривается как следующий шаг.
+
+## 🔭 Диаграммы
+
+Диаграмма потоков данных синхронизации:
+
+```mermaid
+sequenceDiagram
+  participant A as Node A
+  participant B as Node B
+  A->>B: POST /sync (X-Public-Key, X-Signature, X-Timestamp)
+  B-->>A: 200 OK { SyncResult }
+  A->>B: POST /incremental_sync (delta)
+  B-->>A: 200 OK { SyncResult }
+```
+
+Диаграмма обнаружения пиров:
+
+```mermaid
+flowchart TD
+  A[Beacon Sender] -- UDP :37020 --> L[Local Network]
+  L --> B[Beacon Listener]
+  B -->|peer addr| P[Peer Registry peers.json]
+  P --> C[truthctl sync]
+  C -->|HTTP| S[Sync Engine]
+```
 
 ---
 
