@@ -14,6 +14,10 @@ Security
   - `incremental_sync:{ts}` for POST /incremental_sync
 - Future: per-item signatures and validator identity on impacts.
 
+Header requirements
+- `/sync` and `/incremental_sync` MUST include `X-Timestamp`; the server reconstructs the canonical message string for verification.
+- `/get_data` is currently unauthenticated for LAN debug; do not expose publicly.
+
 Roadmap
 - Integrate conflict resolution into API/service layer.
 - Apply incoming payloads to DB; idempotency and upserts.
