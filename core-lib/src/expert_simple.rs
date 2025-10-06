@@ -116,16 +116,16 @@ pub fn evaluate_answers(questions: &[Question], answers: &Answers) -> Suggestion
     let mut answered = 0;
 
     for q in questions {
-        if let Some(raw) = answers.get(&q.id)
-            && let Some(mut x) = value_to_num(&q.kind, raw)
-        {
-            // Направление: если truth_bias=false, инвертируем вклад
-            if !q.truth_bias {
-                x = 1.0 - x;
+        if let Some(raw) = answers.get(&q.id) {
+            if let Some(mut x) = value_to_num(&q.kind, raw) {
+                // Направление: если truth_bias=false, инвертируем вклад
+                if !q.truth_bias {
+                    x = 1.0 - x;
+                }
+                acc += (x - 0.5) * 2.0 * q.weight; // нормируем к [-1..+1] на вес
+                total_weight += q.weight;
+                answered += 1;
             }
-            acc += (x - 0.5) * 2.0 * q.weight; // нормируем к [-1..+1] на вес
-            total_weight += q.weight;
-            answered += 1;
         }
     }
 
