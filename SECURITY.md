@@ -43,7 +43,6 @@ Main risks include:
 ## 🧾 Reporting a Vulnerability
 
 Report privately:
-- 📧 **Email:** ekwatormail@gmail.cpm  
 - 🐙 [GitHub Security Advisory](https://github.com/ekwator/truth-training/security/advisories/new)
 
 Include:
