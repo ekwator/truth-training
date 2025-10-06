@@ -353,7 +353,12 @@ async fn sync_data(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
-    let message = format!("sync_push:{}", Utc::now().timestamp());
+    // Require caller to provide timestamp header used for signature
+    let ts_hdr = req.headers().get("X-Timestamp").and_then(|v| v.to_str().ok());
+    let message = match ts_hdr {
+        Some(ts) => format!("sync_push:{}", ts),
+        None => return HttpResponse::BadRequest().body("Missing X-Timestamp"),
+    };
 
     match verify_signature(public_key, signature, &message) {
         Ok(()) => {
@@ -362,15 +367,9 @@ async fn sync_data(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json
             
             let result = web::block(move || {
                 let _conn = pool.blocking_lock();
-                // Здесь будет обработка синхронизации данных
-                // Пока возвращаем заглушку
-                Ok::<SyncResult, core_lib::models::CoreError>(SyncResult {
-                    conflicts_resolved: 0,
-                    events_added: received_data.events.len() as u32,
-                    statements_added: received_data.statements.len() as u32,
-                    impacts_added: received_data.impacts.len() as u32,
-                    errors: Vec::new(),
-                })
+                // Reconcile into local DB and log
+                crate::p2p::sync::reconcile(&_conn, &received_data)
+                    .map_err(|e| core_lib::models::CoreError::InvalidArg(e.to_string()))
             })
             .await;
 
@@ -402,7 +401,11 @@ async fn incremental_sync(req: HttpRequest, pool: web::Data<DbPool>, payload: we
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
-    let message = format!("incremental_sync:{}", Utc::now().timestamp());
+    let ts_hdr = req.headers().get("X-Timestamp").and_then(|v| v.to_str().ok());
+    let message = match ts_hdr {
+        Some(ts) => format!("incremental_sync:{}", ts),
+        None => return HttpResponse::BadRequest().body("Missing X-Timestamp"),
+    };
 
     match verify_signature(public_key, signature, &message) {
         Ok(()) => {
@@ -411,14 +414,8 @@ async fn incremental_sync(req: HttpRequest, pool: web::Data<DbPool>, payload: we
             
             let result = web::block(move || {
                 let _conn = pool.blocking_lock();
-                // Здесь будет обработка инкрементальной синхронизации
-                Ok::<SyncResult, core_lib::models::CoreError>(SyncResult {
-                    conflicts_resolved: 0,
-                    events_added: received_data.events.len() as u32,
-                    statements_added: received_data.statements.len() as u32,
-                    impacts_added: received_data.impacts.len() as u32,
-                    errors: Vec::new(),
-                })
+                crate::p2p::sync::reconcile(&_conn, &received_data)
+                    .map_err(|e| core_lib::models::CoreError::InvalidArg(e.to_string()))
             })
             .await;
 
