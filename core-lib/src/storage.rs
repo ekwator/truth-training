@@ -133,6 +133,64 @@ pub fn open_db(path: &str) -> Result<Connection, CoreError> {
 /// Инициализация базы: создаёт таблицы, если их нет
 pub fn init_db(conn: &Connection) -> Result<(), CoreError> {
     conn.execute_batch(SCHEMA_SQL)?;
+    run_migrations(conn)?;
+    Ok(())
+}
+
+/// Выполнить миграции: добавить недостающие колонки и служебные таблицы
+pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
+    // Проверка наличия колонки в таблице
+    fn has_column(conn: &Connection, table: &str, column: &str) -> Result<bool, rusqlite::Error> {
+        let mut stmt = conn.prepare(&format!("PRAGMA table_info('{}')", table))?;
+        let mut rows = stmt.query([])?;
+        while let Some(row) = rows.next()? {
+            let name: String = row.get(1)?; // 1 = name
+            if name == column {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    // Добавить подписи/ключи для truth_events
+    if !has_column(conn, "truth_events", "signature")? {
+        conn.execute("ALTER TABLE truth_events ADD COLUMN signature TEXT", [])?;
+    }
+    if !has_column(conn, "truth_events", "public_key")? {
+        conn.execute("ALTER TABLE truth_events ADD COLUMN public_key TEXT", [])?;
+    }
+
+    // Добавить подписи/ключи для statements
+    if !has_column(conn, "statements", "signature")? {
+        conn.execute("ALTER TABLE statements ADD COLUMN signature TEXT", [])?;
+    }
+    if !has_column(conn, "statements", "public_key")? {
+        conn.execute("ALTER TABLE statements ADD COLUMN public_key TEXT", [])?;
+    }
+
+    // Добавить подписи/ключи для impact
+    if !has_column(conn, "impact", "signature")? {
+        conn.execute("ALTER TABLE impact ADD COLUMN signature TEXT", [])?;
+    }
+    if !has_column(conn, "impact", "public_key")? {
+        conn.execute("ALTER TABLE impact ADD COLUMN public_key TEXT", [])?;
+    }
+
+    // Таблица журнала синхронизации
+    conn.execute_batch(
+        r#"
+        CREATE TABLE IF NOT EXISTS sync_log (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            op           TEXT NOT NULL,
+            table_name   TEXT NOT NULL,
+            record_id    TEXT NOT NULL,
+            signature    TEXT,
+            public_key   TEXT,
+            created_at   INTEGER NOT NULL
+        );
+        "#,
+    )?;
+
     Ok(())
 }
 
@@ -592,7 +650,7 @@ pub fn add_truth_event(conn: &Connection, new_ev: NewTruthEvent) -> Result<i64, 
 /// Получить событие по id
 pub fn get_truth_event(conn: &Connection, id: i64) -> Result<Option<TruthEvent>, CoreError> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code
+        r#"SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key
            FROM truth_events WHERE id = ?1"#,
     )?;
 
@@ -608,6 +666,8 @@ pub fn get_truth_event(conn: &Connection, id: i64) -> Result<Option<TruthEvent>,
             timestamp_start: row.get(6)?,
             timestamp_end: row.get::<_, Option<i64>>(7)?,
                 code: row.get(8)?,
+                signature: row.get(9)?,
+                public_key: row.get(10)?,
             })
         })
         .optional()?;
@@ -741,26 +801,28 @@ pub fn import_from_json(conn: &mut Connection, file_path: &str) -> Result<(), Co
 
     for event in data.truth_events {
         tx.execute(
-            "INSERT INTO truth_events (id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO truth_events (id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             rusqlite::params![
                 event.id,
                 event.description,
                 event.context_id,
-                event.vector,
-                event.detected,
-                event.corrected,
+                if event.vector { 1 } else { 0 },
+                event.detected.map(|v| if v { 1 } else { 0 }),
+                if event.corrected { 1 } else { 0 },
                 event.timestamp_start,
                 event.timestamp_end,
-                event.code
+                event.code,
+                event.signature,
+                event.public_key
             ],
         )?;
     }
 
     for impact in data.impacts {
         tx.execute(
-            "INSERT INTO impact (id, event_id, type_id, value, notes, created_at)
- VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO impact (id, event_id, type_id, value, notes, created_at, signature, public_key)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             rusqlite::params![
                 impact.id,
                 impact.event_id,
@@ -768,6 +830,8 @@ pub fn import_from_json(conn: &mut Connection, file_path: &str) -> Result<(), Co
                 if impact.value { 1 } else { 0 },
                 impact.notes,
                 impact.created_at,
+                impact.signature,
+                impact.public_key,
             ],
         )?;
     }
@@ -821,7 +885,7 @@ pub fn add_statement(conn: &Connection, new_stmt: NewStatement) -> Result<i64, C
 /// Получить утверждение по id
 pub fn get_statement(conn: &Connection, id: i64) -> Result<Option<Statement>, CoreError> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, event_id, text, context, truth_score, created_at, updated_at
+        r#"SELECT id, event_id, text, context, truth_score, created_at, updated_at, signature, public_key
            FROM statements WHERE id = ?1"#,
     )?;
 
@@ -835,6 +899,8 @@ pub fn get_statement(conn: &Connection, id: i64) -> Result<Option<Statement>, Co
                 truth_score: row.get(4)?,
                 created_at: row.get(5)?,
                 updated_at: row.get(6)?,
+                signature: row.get(7)?,
+                public_key: row.get(8)?,
             })
         })
         .optional()?;
@@ -845,7 +911,7 @@ pub fn get_statement(conn: &Connection, id: i64) -> Result<Option<Statement>, Co
 /// Получить все утверждения для события
 pub fn get_statements_for_event(conn: &Connection, event_id: i64) -> Result<Vec<Statement>, CoreError> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, event_id, text, context, truth_score, created_at, updated_at
+        r#"SELECT id, event_id, text, context, truth_score, created_at, updated_at, signature, public_key
            FROM statements WHERE event_id = ?1 ORDER BY created_at DESC"#,
     )?;
 
@@ -858,6 +924,8 @@ pub fn get_statements_for_event(conn: &Connection, event_id: i64) -> Result<Vec<
             truth_score: row.get(4)?,
             created_at: row.get(5)?,
             updated_at: row.get(6)?,
+            signature: row.get(7)?,
+            public_key: row.get(8)?,
         })
     })?;
 
@@ -871,7 +939,7 @@ pub fn get_statements_for_event(conn: &Connection, event_id: i64) -> Result<Vec<
 /// Получить все утверждения
 pub fn load_statements(conn: &Connection) -> Result<Vec<Statement>, CoreError> {
     let mut stmt = conn.prepare(
-        "SELECT id, event_id, text, context, truth_score, created_at, updated_at FROM statements ORDER BY created_at DESC",
+        "SELECT id, event_id, text, context, truth_score, created_at, updated_at, signature, public_key FROM statements ORDER BY created_at DESC",
     )?;
 
     let rows = stmt.query_map([], |row| {
@@ -883,6 +951,8 @@ pub fn load_statements(conn: &Connection) -> Result<Vec<Statement>, CoreError> {
             truth_score: row.get(4)?,
             created_at: row.get(5)?,
             updated_at: row.get(6)?,
+            signature: row.get(7)?,
+            public_key: row.get(8)?,
         })
     })?;
 
@@ -906,7 +976,7 @@ pub fn update_statement_score(conn: &Connection, id: i64, truth_score: f32) -> R
 /// Загружаем все события
 pub fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError> {
     let mut stmt = conn.prepare(
-        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code FROM truth_events",
+        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key FROM truth_events",
     )?;
 
     let rows = stmt.query_map([], |row| {
@@ -914,12 +984,14 @@ pub fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError
             id: row.get(0)?,
             description: row.get(1)?,
             context_id: row.get(2)?,
-            vector: row.get(3)?,
-            detected: row.get(4)?,
-            corrected: row.get(5)?,
+            vector: row.get::<_, i64>(3)? != 0,
+            detected: row.get::<_, Option<i64>>(4)?.map(|v| v != 0),
+            corrected: row.get::<_, i64>(5)? != 0,
             timestamp_start: row.get(6)?,
             timestamp_end: row.get(7)?,
             code: row.get(8)?,
+            signature: row.get(9)?,
+            public_key: row.get(10)?,
         })
     })?;
 
@@ -932,7 +1004,7 @@ pub fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError
 
 /// Загружаем все записи влияния
 pub fn load_impacts(conn: &Connection) -> Result<Vec<Impact>, CoreError> {
-    let mut stmt = conn.prepare("SELECT id, event_id, type_id, value, notes, created_at FROM impact")?;
+    let mut stmt = conn.prepare("SELECT id, event_id, type_id, value, notes, created_at, signature, public_key FROM impact")?;
 
     let rows = stmt.query_map([], |row| {
         Ok(Impact {
@@ -942,6 +1014,8 @@ pub fn load_impacts(conn: &Connection) -> Result<Vec<Impact>, CoreError> {
             value: row.get::<_, i64>(3)? != 0,
             notes: row.get(4)?,
             created_at: row.get(5)?,
+            signature: row.get(6)?,
+            public_key: row.get(7)?,
         })
     })?;
 
@@ -978,4 +1052,76 @@ pub fn load_metrics(conn: &Connection) -> Result<Vec<ProgressMetrics>, CoreError
         metrics.push(m?);
     }
     Ok(metrics)
+}
+
+/// Добавить запись в журнал синхронизации
+pub fn log_sync(
+    conn: &Connection,
+    op: &str,
+    table_name: &str,
+    record_id: &str,
+    signature: Option<String>,
+    public_key: Option<String>,
+) -> Result<i64, CoreError> {
+    let created_at = Utc::now().timestamp();
+    conn.execute(
+        r#"INSERT INTO sync_log (op, table_name, record_id, signature, public_key, created_at)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6)"#,
+        params![op, table_name, record_id, signature, public_key, created_at],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inserts_and_sync_log_work() {
+        let mut conn = open_db(":memory:").expect("open db");
+        // Ensure FK targets exist
+        seed_knowledge_base(&mut conn, "en").expect("seed kb");
+
+        // Вставка события
+        let new_ev = NewTruthEvent {
+            description: "Test event".to_string(),
+            context_id: 1,
+            vector: true,
+            timestamp_start: 1_700_000_000,
+            code: 1,
+        };
+        let ev_id = add_truth_event(&conn, new_ev).expect("insert event");
+        let ev = get_truth_event(&conn, ev_id).expect("get event").expect("event exists");
+        assert_eq!(ev.id, ev_id);
+        assert_eq!(ev.description, "Test event");
+        assert!(ev.signature.is_none());
+        assert!(ev.public_key.is_none());
+
+        // Запись в sync_log
+        let log_id = log_sync(
+            &conn,
+            "insert",
+            "truth_events",
+            &ev_id.to_string(),
+            None,
+            None,
+        )
+        .expect("log sync");
+        assert!(log_id > 0);
+
+        // Проверка количества записей sync_log
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM sync_log", [], |r| r.get(0))
+            .expect("count sync_log");
+        assert_eq!(count, 1);
+
+        // Вставка impact и чтение
+        let _impact_id = add_impact(&conn, ev_id, 1, true, Some("note".to_string()))
+            .expect("add impact");
+        let impacts = load_impacts(&conn).expect("load impacts");
+        assert!(!impacts.is_empty());
+        let imp = &impacts[0];
+        assert!(imp.signature.is_none());
+        assert!(imp.public_key.is_none());
+    }
 }
