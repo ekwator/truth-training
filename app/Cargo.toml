@@ -5,7 +5,14 @@ edition = "2021"
 
 [dependencies]
 core_lib = { path = "../core-lib" }
+truth_core = { path = ".." }
 chrono = { version = "0.4", features = ["clock"] }
 clap = { version = "4", features = ["derive"] }
 rusqlite = { version = "0.31", features = ["bundled"] }
 serde_json = "1"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.37", features = ["full"] }
+
+[[bin]]
+name = "truthctl"
+path = "src/cli.rs"
