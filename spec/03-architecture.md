@@ -9,8 +9,19 @@ Core responsibilities
 
 Modules
 - core-lib: models, storage (schema + ops), expert heuristics.
-- server (workspace root): API, P2P, discovery, HTTP server.
-- app: CLI for local testing.
+- server (workspace root): API (`src/api.rs`), P2P sync (`src/p2p/*`), encryption (`src/p2p/encryption.rs`), HTTP server.
+- app: CLI tools — legacy demo and `truthctl` for peers and sync.
 
 Non-goals (MVP)
 - Full reputation and Sybil-resistance; advanced propagation semantics.
+
+Mermaid overview
+```mermaid
+flowchart TD
+  UI -->|HTTP| API
+  API --> DB[(SQLite)]
+  API --> P2P[Sync Engine]
+  P2P --> ENC[CryptoIdentity]
+  P2P --> NET[Discovery]
+  ENC -->|sign/verify| P2P
+```
