@@ -92,6 +92,8 @@ pub struct TruthEvent {
     pub timestamp_start: i64,       // INTEGER (UNIX secs)
 pub timestamp_end: Option<i64>, // INTEGER NULLABLE (UNIX secs)
     pub code: u8,                   // 8-bit event code (2 control bits + 6 counter bits)
+    pub signature: Option<String>,  // Подпись события
+    pub public_key: Option<String>, // Публичный ключ автора
 }
 
 /// Вспомогательная структура для вставки события
@@ -113,6 +115,8 @@ pub struct Impact {
     pub value: bool,   // true = позитивное, false = негативное
 pub notes: Option<String>,
     pub created_at: i64,
+    pub signature: Option<String>,  // Подпись записи влияния
+    pub public_key: Option<String>, // Публичный ключ автора
 }
 
 /// Метрики прогресса (таблица: progress_metrics)
@@ -140,6 +144,8 @@ pub struct Statement {
     pub truth_score: Option<f32>,   // REAL NULLABLE - оценка правдивости (-1..+1)
     pub created_at: i64,            // INTEGER (UNIX secs)
     pub updated_at: i64,            // INTEGER (UNIX secs)
+    pub signature: Option<String>,  // Подпись утверждения
+    pub public_key: Option<String>, // Публичный ключ автора
 }
 
 /// Вспомогательная структура для вставки утверждения
