@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::Utc;
 use std::fs;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Создать соединение с базой данных и инициализировать схему
 pub fn create_db_connection(db_path: &str) -> Result<Connection, CoreError> {
@@ -1057,6 +1058,122 @@ pub fn load_graph(conn: &Connection) -> Result<GraphData, CoreError> {
     for r in link_rows { links.push(r?); }
 
     Ok(GraphData { nodes, links })
+}
+
+/// Сформировать данные графа доверия с фильтрацией
+/// - Фильтр по минимальному скору узла (trust_score >= min_score)
+/// - Ограничение числа исходящих связей на узел (max_links)
+/// - depth: если задано, ограничить подграф узлами на расстоянии не более depth
+///   шагов от узла с максимальным trust_score (по неориентированным рёбрам)
+pub fn load_graph_filtered(
+    conn: &Connection,
+    min_score: f64,
+    max_links: usize,
+    depth: Option<usize>,
+) -> Result<GraphData, CoreError> {
+    // Узлы с порогом по trust_score
+    let mut stmt_nodes = conn.prepare(
+        "SELECT node_id, trust_score FROM node_ratings WHERE trust_score >= ?1 ORDER BY trust_score DESC",
+    )?;
+    let node_rows = stmt_nodes.query_map(params![min_score], |row| {
+        Ok(GraphNode { id: row.get(0)?, score: row.get(1)? })
+    })?;
+    let mut nodes: Vec<GraphNode> = Vec::new();
+    for r in node_rows { nodes.push(r?); }
+
+    // Быстрый выход, если узлов нет
+    if nodes.is_empty() {
+        return Ok(GraphData { nodes, links: Vec::new() });
+    }
+
+    // Множество допустимых узлов для фильтрации рёбер
+    let allowed_nodes: HashSet<String> = nodes.iter().map(|n| n.id.clone()).collect();
+
+    // Рёбра между валидаторами и авторами (агрегация положительных/отрицательных влияний)
+    let mut stmt_links = conn.prepare(
+        r#"
+        SELECT im.public_key AS source,
+               te.public_key AS target,
+               SUM(CASE WHEN im.value = 1 THEN 1 ELSE 0 END) AS pos,
+               SUM(CASE WHEN im.value = 0 THEN 1 ELSE 0 END) AS neg
+        FROM impact im
+        JOIN truth_events te ON CAST(im.event_id AS INTEGER) = te.id
+        WHERE im.public_key IS NOT NULL AND te.public_key IS NOT NULL AND im.public_key <> te.public_key
+        GROUP BY source, target
+        "#,
+    )?;
+    let link_rows = stmt_links.query_map([], |row| {
+        let source: String = row.get(0)?;
+        let target: String = row.get(1)?;
+        let pos: i64 = row.get(2)?;
+        let neg: i64 = row.get(3)?;
+        let total = (pos + neg).max(1) as f32;
+        let signed = (pos as f32 - neg as f32) / total; // -1..1
+        let weight = (signed + 1.0) / 2.0; // 0..1
+        Ok(GraphLink { source, target, weight })
+    })?;
+    let mut all_links: Vec<GraphLink> = Vec::new();
+    for r in link_rows { all_links.push(r?); }
+
+    // Фильтруем рёбра по доступным узлам
+    let mut filtered_links: Vec<GraphLink> = all_links
+        .into_iter()
+        .filter(|l| allowed_nodes.contains(&l.source) && allowed_nodes.contains(&l.target))
+        .collect();
+
+    // Ограничение числа исходящих рёбер для каждого source по убыванию веса
+    let mut by_source: HashMap<String, Vec<GraphLink>> = HashMap::new();
+    for link in filtered_links.into_iter() {
+        by_source.entry(link.source.clone()).or_default().push(link);
+    }
+    let mut limited: Vec<GraphLink> = Vec::new();
+    for (_src, mut links) in by_source.into_iter() {
+        links.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap_or(std::cmp::Ordering::Equal));
+        let take_n = links.len().min(max_links);
+        limited.extend(links.into_iter().take(take_n));
+    }
+    filtered_links = limited;
+
+    // Если задана глубина — ограничим подграф вокруг узла с максимальным trust_score
+    if let Some(depth_limit) = depth {
+        if depth_limit == 0 {
+            // Только один узел — с максимальным score
+            let center_id = nodes[0].id.clone();
+            nodes.retain(|n| n.id == center_id);
+            filtered_links.clear();
+        } else {
+            let center_id = nodes[0].id.clone(); // узел с максимальным score (nodes отсортированы DESC)
+            // Построим неориентированную смежность
+            let mut adj: HashMap<String, Vec<String>> = HashMap::new();
+            for l in &filtered_links {
+                adj.entry(l.source.clone()).or_default().push(l.target.clone());
+                adj.entry(l.target.clone()).or_default().push(l.source.clone());
+            }
+            // BFS до depth_limit
+            let mut visited: HashSet<String> = HashSet::new();
+            let mut q: VecDeque<(String, usize)> = VecDeque::new();
+            visited.insert(center_id.clone());
+            q.push_back((center_id.clone(), 0));
+            while let Some((node, d)) = q.pop_front() {
+                if d >= depth_limit { continue; }
+                if let Some(nei) = adj.get(&node) {
+                    for nxt in nei {
+                        if visited.insert(nxt.clone()) {
+                            q.push_back((nxt.clone(), d + 1));
+                        }
+                    }
+                }
+            }
+            // Оставим только посещённые узлы и рёбра между ними
+            nodes.retain(|n| visited.contains(&n.id));
+            filtered_links.retain(|l| visited.contains(&l.source) && visited.contains(&l.target));
+        }
+    }
+
+    // Финальная сортировка рёбер по весу убыв.
+    filtered_links.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap_or(std::cmp::Ordering::Equal));
+
+    Ok(GraphData { nodes, links: filtered_links })
 }
 
 #[derive(Serialize, Deserialize)]

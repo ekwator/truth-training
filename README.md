@@ -181,6 +181,9 @@ cargo run -- --port 8080 --db truth_training.db
 | POST  | `/recalc`       | Пересчёт метрик прогресса                 |
 | GET   | `/progress`     | Получение метрик прогресса                |
 | GET   | `/get_data`     | Получение всех данных (для отладки)       |
+| GET   | `/graph`        | Базовые данные графа доверия              |
+| GET   | `/graph/json`   | Детализированный граф с фильтрами (для UI)|
+| GET   | `/graph/summary`| Агрегированные метрики графа              |
 | GET   | `/statements`   | Получение утверждений                     |
 | POST  | `/statements`   | Добавление утверждения                    |
 | POST  | `/sync`         | Двунаправленная синхронизация (подпись)   |
@@ -192,6 +195,12 @@ curl http://127.0.0.1:8080/health
 
 # Добавление события
 curl -X POST http://127.0.0.1:8080/events   -H "Content-Type: application/json"   -d '{"description":"Пример события","context_id":2,"vector":false}'
+
+# Экспорт графа для визуализации (D3.js/Mermaid)
+curl "http://127.0.0.1:8080/graph/json?min_score=0.0&max_links=8&depth=2"
+
+# Сводка графа (для дашбордов)
+curl "http://127.0.0.1:8080/graph/summary?min_score=0.0&max_links=8&depth=2"
 ```
 ---
 

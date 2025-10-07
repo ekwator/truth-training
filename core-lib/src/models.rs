@@ -207,3 +207,39 @@ pub struct GraphData {
     pub nodes: Vec<GraphNode>,
     pub links: Vec<GraphLink>,
 }
+
+/// Сводные метрики графа для /graph/summary
+#[derive(Serialize, Deserialize)]
+pub struct GraphSummary {
+    pub total_nodes: usize,
+    pub total_links: usize,
+    pub avg_trust: f64,
+    pub top_nodes: Vec<(String, f64)>,
+}
+
+/// Подсчитать агрегаты и топ-узлы по trust_score
+pub fn summarize_graph(graph: &GraphData) -> GraphSummary {
+    let total_nodes = graph.nodes.len();
+    let total_links = graph.links.len();
+    let avg_trust: f64 = if total_nodes == 0 {
+        0.0
+    } else {
+        let sum: f64 = graph.nodes.iter().map(|n| n.score as f64).sum();
+        sum / (total_nodes as f64)
+    };
+    let mut top: Vec<(String, f64)> = graph
+        .nodes
+        .iter()
+        .map(|n| (n.id.clone(), n.score as f64))
+        .collect();
+    top.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    // Ограничим топ до 10 элементов для компактности
+    if top.len() > 10 { top.truncate(10); }
+
+    GraphSummary {
+        total_nodes,
+        total_links,
+        avg_trust,
+        top_nodes: top,
+    }
+}

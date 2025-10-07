@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use core_lib::models::{Impact, NewTruthEvent, NewStatement};
+use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary};
 use core_lib::storage;
 use crate::p2p::encryption::CryptoIdentity;
 use crate::p2p::sync::SyncData;
@@ -449,6 +449,8 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(get_node_ratings)
         .service(get_group_ratings)
         .service(get_graph)
+        .service(get_graph_json)
+        .service(get_graph_summary)
         .service(get_statements)
         .service(add_statement)
         .service(get_events)
@@ -521,6 +523,62 @@ async fn get_graph(pool: web::Data<DbPool>) -> impl Responder {
 
     match result {
         Ok(Ok(graph)) => HttpResponse::Ok().json(graph),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[derive(Deserialize)]
+struct GraphQuery {
+    min_score: Option<f64>,
+    max_links: Option<usize>,
+    depth: Option<usize>,
+}
+
+/// GET /graph/json — полный граф в JSON с параметрами фильтра
+#[get("/graph/json")]
+async fn get_graph_json(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) -> impl Responder {
+    let pool = pool.clone();
+    let GraphQuery { min_score, max_links, depth } = query.into_inner();
+
+    // Значения по умолчанию
+    let min_score = min_score.unwrap_or(-1.0);
+    let max_links = max_links.unwrap_or(10).max(0);
+    let depth = depth;
+
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(graph)) => HttpResponse::Ok().json(graph),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /graph/summary — агрегированные метрики по графу
+#[get("/graph/summary")]
+async fn get_graph_summary(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) -> impl Responder {
+    let pool = pool.clone();
+    let GraphQuery { min_score, max_links, depth } = query.into_inner();
+
+    let min_score = min_score.unwrap_or(-1.0);
+    let max_links = max_links.unwrap_or(10).max(0);
+    let depth = depth;
+
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        let graph: GraphData = core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)?;
+        let summary: GraphSummary = core_lib::models::summarize_graph(&graph);
+        Ok::<GraphSummary, core_lib::models::CoreError>(summary)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(summary)) => HttpResponse::Ok().json(summary),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
@@ -626,5 +684,146 @@ mod tests {
         let req = test::TestRequest::get().uri("/graph").to_request();
         let graph: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         assert!(graph.get("nodes").unwrap().as_array().unwrap().len() >= 1);
+    }
+
+    #[actix_web::test]
+    async fn graph_json_filters_work() {
+        // Prepare in-memory DB and app
+        let conn = core_lib::storage::open_db(":memory:").unwrap();
+        let conn_data = Arc::new(Mutex::new(conn));
+        {
+            let mut c = conn_data.lock().await;
+            core_lib::storage::seed_knowledge_base(&mut c, "en").unwrap();
+        }
+
+        let app = test::init_service(
+            App::new()
+                .app_data(actix_web::web::Data::new(conn_data.clone()))
+                .configure(crate::api::routes)
+        ).await;
+
+        // Event A (author nodeA) with positive statement; validator nodeB agrees
+        let add_event_req = serde_json::json!({
+            "description": "E1",
+            "context_id": 1,
+            "vector": true
+        });
+        let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let ev1 = resp.get("id").and_then(|v| v.as_i64()).unwrap();
+        {
+            let c = conn_data.lock().await;
+            c.execute("UPDATE truth_events SET public_key='nodeA' WHERE id=?1", rusqlite::params![ev1]).unwrap();
+        }
+        let add_stmt_req = serde_json::json!({
+            "event_id": ev1,
+            "text": "true",
+            "context": null,
+            "truth_score": 0.9
+        });
+        let req = test::TestRequest::post().uri("/statements").set_json(&add_stmt_req).to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        {
+            let c = conn_data.lock().await;
+            let impact_id = core_lib::storage::add_impact(&c, ev1, 1, true, Some("ok".into())).unwrap();
+            c.execute("UPDATE impact SET public_key='nodeB' WHERE id=?1", rusqlite::params![impact_id]).unwrap();
+        }
+
+        // Event C (author nodeC) with negative statement
+        let add_event_req = serde_json::json!({
+            "description": "E2",
+            "context_id": 1,
+            "vector": true
+        });
+        let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let ev2 = resp.get("id").and_then(|v| v.as_i64()).unwrap();
+        {
+            let c = conn_data.lock().await;
+            c.execute("UPDATE truth_events SET public_key='nodeC' WHERE id=?1", rusqlite::params![ev2]).unwrap();
+        }
+        let add_stmt_req = serde_json::json!({
+            "event_id": ev2,
+            "text": "false",
+            "context": null,
+            "truth_score": -0.9
+        });
+        let req = test::TestRequest::post().uri("/statements").set_json(&add_stmt_req).to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+
+        // Recalculate
+        let req = test::TestRequest::post().uri("/recalc").to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+
+        // min_score filter should exclude nodeB (0.0) and nodeC (<0)
+        let req = test::TestRequest::get().uri("/graph/json?min_score=0.1&max_links=5").to_request();
+        let graph_val: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let graph: core_lib::models::GraphData = serde_json::from_value(graph_val).unwrap();
+        let ids: std::collections::HashSet<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+        assert!(ids.contains("nodeA"));
+        assert!(!ids.contains("nodeB"));
+        assert!(!ids.contains("nodeC"));
+        assert!(graph.links.is_empty()); // no validator in set => no edges
+
+        // depth=1 around top node should include nodeB but not nodeC
+        let req = test::TestRequest::get().uri("/graph/json?min_score=-1&depth=1").to_request();
+        let graph_val: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let graph: core_lib::models::GraphData = serde_json::from_value(graph_val).unwrap();
+        let ids: std::collections::HashSet<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+        assert!(ids.contains("nodeA"));
+        assert!(ids.contains("nodeB"));
+        assert!(!ids.contains("nodeC"));
+    }
+
+    #[actix_web::test]
+    async fn graph_summary_consistent() {
+        // Prepare in-memory DB and app
+        let conn = core_lib::storage::open_db(":memory:").unwrap();
+        let conn_data = Arc::new(Mutex::new(conn));
+        {
+            let mut c = conn_data.lock().await;
+            core_lib::storage::seed_knowledge_base(&mut c, "en").unwrap();
+        }
+
+        let app = test::init_service(
+            App::new()
+                .app_data(actix_web::web::Data::new(conn_data.clone()))
+                .configure(crate::api::routes)
+        ).await;
+
+        // Create small dataset
+        let add_event_req = serde_json::json!({"description":"E1","context_id":1,"vector":true});
+        let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let ev1 = resp.get("id").and_then(|v| v.as_i64()).unwrap();
+        {
+            let c = conn_data.lock().await;
+            c.execute("UPDATE truth_events SET public_key='nodeA' WHERE id=?1", rusqlite::params![ev1]).unwrap();
+        }
+        let add_stmt_req = serde_json::json!({"event_id":ev1,"text":"t","context":null,"truth_score":0.7});
+        let req = test::TestRequest::post().uri("/statements").set_json(&add_stmt_req).to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        {
+            let c = conn_data.lock().await;
+            let impact_id = core_lib::storage::add_impact(&c, ev1, 1, true, None).unwrap();
+            c.execute("UPDATE impact SET public_key='nodeB' WHERE id=?1", rusqlite::params![impact_id]).unwrap();
+        }
+
+        let req = test::TestRequest::post().uri("/recalc").to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+
+        // Get graph and summary with the same filters
+        let req = test::TestRequest::get().uri("/graph/json?min_score=-1&max_links=10&depth=1").to_request();
+        let graph_val: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let graph: core_lib::models::GraphData = serde_json::from_value(graph_val).unwrap();
+
+        let req = test::TestRequest::get().uri("/graph/summary?min_score=-1&max_links=10&depth=1").to_request();
+        let summary: core_lib::models::GraphSummary = test::call_and_read_body_json(&app, req).await;
+
+        assert_eq!(summary.total_nodes, graph.nodes.len());
+        assert_eq!(summary.total_links, graph.links.len());
+        let avg: f64 = if graph.nodes.is_empty() { 0.0 } else { graph.nodes.iter().map(|n| n.score as f64).sum::<f64>() / (graph.nodes.len() as f64) };
+        assert!((summary.avg_trust - avg).abs() < 1e-9);
+        assert_eq!(summary.top_nodes.len(), std::cmp::min(10, graph.nodes.len()));
     }
 }
