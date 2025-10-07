@@ -6,7 +6,8 @@ use tokio::sync::Mutex;
 use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary};
 use core_lib::storage;
 use crate::p2p::encryption::CryptoIdentity;
-use crate::p2p::sync::SyncData;
+use crate::p2p::sync::{SyncData, compute_ratings_hash};
+use crate::p2p::node::Node;
 use chrono::Utc;
 use std::fmt;
 
@@ -359,8 +360,12 @@ async fn sync_data(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json
 
     // Require caller to provide timestamp header used for signature
     let ts_hdr = req.headers().get("X-Timestamp").and_then(|v| v.to_str().ok());
+    let ratings_hash_hdr = req.headers().get("X-Ratings-Hash").and_then(|v| v.to_str().ok());
     let message = match ts_hdr {
-        Some(ts) => format!("sync_push:{}", ts),
+        Some(ts) => match ratings_hash_hdr {
+            Some(h) if !h.is_empty() => format!("sync_push:{}:{}", ts, h),
+            _ => format!("sync_push:{}", ts),
+        },
         None => return HttpResponse::BadRequest().body("Missing X-Timestamp"),
     };
 
@@ -406,8 +411,12 @@ async fn incremental_sync(req: HttpRequest, pool: web::Data<DbPool>, payload: we
         .unwrap_or("");
 
     let ts_hdr = req.headers().get("X-Timestamp").and_then(|v| v.to_str().ok());
+    let ratings_hash_hdr = req.headers().get("X-Ratings-Hash").and_then(|v| v.to_str().ok());
     let message = match ts_hdr {
-        Some(ts) => format!("incremental_sync:{}", ts),
+        Some(ts) => match ratings_hash_hdr {
+            Some(h) if !h.is_empty() => format!("incremental_sync:{}:{}", ts, h),
+            _ => format!("incremental_sync:{}", ts),
+        },
         None => return HttpResponse::BadRequest().body("Missing X-Timestamp"),
     };
 
@@ -436,6 +445,15 @@ async fn incremental_sync(req: HttpRequest, pool: web::Data<DbPool>, payload: we
     }
 }
 
+/// POST /ratings/sync — инициирует широковещательную отправку локальных рейтингов на пиров
+#[post("/ratings/sync")]
+async fn ratings_sync(node: web::Data<Node>) -> impl Responder {
+    match node.broadcast_ratings().await {
+        Ok(()) => HttpResponse::Ok().json(serde_json::json!({"status":"broadcasted"})),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
 /// helper: зарегистрировать все маршруты
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(health)
@@ -457,7 +475,8 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(add_event)
         .service(add_impact)
         .service(sync_data)
-        .service(incremental_sync);
+        .service(incremental_sync)
+        .service(ratings_sync);
 }
 
 /// POST /recalc_ratings - Пересчет рейтингов узлов и групп

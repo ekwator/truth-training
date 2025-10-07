@@ -184,6 +184,7 @@ pub struct GroupRating {
     pub members: Vec<String>,
     pub avg_score: f32,
     pub coherence: f32, // 0..1
+    pub last_updated: i64,
 }
 
 /// Узел графа для визуализации

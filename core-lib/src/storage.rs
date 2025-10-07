@@ -1002,7 +1002,7 @@ pub fn load_node_ratings(conn: &Connection) -> Result<Vec<NodeRating>, CoreError
 /// Загрузить рейтинги групп
 pub fn load_group_ratings(conn: &Connection) -> Result<Vec<GroupRating>, CoreError> {
     let mut stmt = conn.prepare(
-        "SELECT group_id, members, avg_score, coherence FROM group_ratings ORDER BY group_id",
+        "SELECT group_id, members, avg_score, coherence, last_updated FROM group_ratings ORDER BY group_id",
     )?;
     let rows = stmt.query_map([], |row| {
         let members_json: String = row.get(1)?;
@@ -1012,11 +1012,75 @@ pub fn load_group_ratings(conn: &Connection) -> Result<Vec<GroupRating>, CoreErr
             members,
             avg_score: row.get(2)?,
             coherence: row.get(3)?,
+            last_updated: row.get(4)?,
         })
     })?;
     let mut out = Vec::new();
     for r in rows { out.push(r?); }
     Ok(out)
+}
+
+/// Слияние входящих рейтингов узлов и групп по правилам конфликта
+/// - Узлы: берём запись с бОльшим trust_score, при равенстве — с более новым last_updated
+/// - Группы: берём запись с более новым last_updated
+pub fn merge_ratings(
+    conn: &Connection,
+    incoming_nodes: &[NodeRating],
+    incoming_groups: &[GroupRating],
+) -> Result<(), CoreError> {
+    // Узлы
+    let mut stmt_nodes = conn.prepare(
+        r#"
+        INSERT INTO node_ratings (node_id, events_true, events_false, validations, reused_events, trust_score, last_updated)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        ON CONFLICT(node_id) DO UPDATE SET
+            events_true   = excluded.events_true,
+            events_false  = excluded.events_false,
+            validations   = excluded.validations,
+            reused_events = excluded.reused_events,
+            trust_score   = excluded.trust_score,
+            last_updated  = excluded.last_updated
+        WHERE excluded.trust_score > node_ratings.trust_score
+           OR (excluded.trust_score = node_ratings.trust_score AND excluded.last_updated > node_ratings.last_updated)
+        "#,
+    )?;
+    for nr in incoming_nodes {
+        stmt_nodes.execute(rusqlite::params![
+            nr.node_id,
+            nr.events_true as i64,
+            nr.events_false as i64,
+            nr.validations as i64,
+            nr.reused_events as i64,
+            nr.trust_score,
+            nr.last_updated,
+        ])?;
+    }
+
+    // Группы
+    let mut stmt_groups = conn.prepare(
+        r#"
+        INSERT INTO group_ratings (group_id, members, avg_score, coherence, last_updated)
+        VALUES (?1, ?2, ?3, ?4, ?5)
+        ON CONFLICT(group_id) DO UPDATE SET
+            members      = excluded.members,
+            avg_score    = excluded.avg_score,
+            coherence    = excluded.coherence,
+            last_updated = excluded.last_updated
+        WHERE excluded.last_updated > group_ratings.last_updated
+        "#,
+    )?;
+    for gr in incoming_groups {
+        let members_json = serde_json::to_string(&gr.members)?;
+        stmt_groups.execute(rusqlite::params![
+            gr.group_id,
+            members_json,
+            gr.avg_score,
+            gr.coherence,
+            gr.last_updated,
+        ])?;
+    }
+
+    Ok(())
 }
 
 /// Сформировать данные графа доверия
@@ -1592,5 +1656,67 @@ mod tests {
         let graph = load_graph(&conn).expect("load graph");
         assert!(graph.nodes.len() >= 2);
         assert!(graph.links.iter().any(|l| l.source == "nodeB" && l.target == "nodeA"));
+    }
+
+    #[test]
+    fn merge_ratings_conflict_resolution() {
+        let mut conn = open_db(":memory:").expect("open db");
+        // стартовые данные
+        conn.execute(
+            "INSERT INTO node_ratings (node_id, events_true, events_false, validations, reused_events, trust_score, last_updated) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params!["nodeX", 1, 0, 0, 0, 0.5_f64, 100],
+        ).unwrap();
+
+        // входящие: ниже trust_score и более новый — не должен перезаписать, если trust ниже
+        let incoming_nodes = vec![NodeRating {
+            node_id: "nodeX".into(),
+            events_true: 2,
+            events_false: 0,
+            validations: 0,
+            reused_events: 0,
+            trust_score: 0.4,
+            last_updated: 200,
+        }];
+        let incoming_groups: Vec<GroupRating> = vec![];
+        merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
+        let cur = load_node_ratings(&conn).unwrap();
+        let nx = cur.iter().find(|r| r.node_id == "nodeX").unwrap();
+        assert!((nx.trust_score - 0.5).abs() < 1e-6);
+        assert_eq!(nx.last_updated, 100);
+
+        // входящие: выше trust_score — должен перезаписать
+        let incoming_nodes = vec![NodeRating {
+            node_id: "nodeX".into(),
+            events_true: 3,
+            events_false: 0,
+            validations: 0,
+            reused_events: 0,
+            trust_score: 0.9,
+            last_updated: 150,
+        }];
+        merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
+        let cur = load_node_ratings(&conn).unwrap();
+        let nx = cur.iter().find(|r| r.node_id == "nodeX").unwrap();
+        assert!((nx.trust_score - 0.9).abs() < 1e-6);
+        assert_eq!(nx.last_updated, 150);
+
+        // Groups: берем более новый по last_updated
+        conn.execute(
+            "INSERT INTO group_ratings (group_id, members, avg_score, coherence, last_updated) VALUES ('g', '[]', 0.1, 0.5, 100)",
+            [],
+        ).unwrap();
+        let incoming_groups = vec![GroupRating {
+            group_id: "g".into(),
+            members: vec!["a".into()],
+            avg_score: 0.2,
+            coherence: 0.6,
+            last_updated: 200,
+        }];
+        merge_ratings(&conn, &[], &incoming_groups).unwrap();
+        let groups = load_group_ratings(&conn).unwrap();
+        let g = groups.iter().find(|g| g.group_id == "g").unwrap();
+        assert!((g.avg_score - 0.2).abs() < 1e-6);
+        assert!((g.coherence - 0.6).abs() < 1e-6);
+        assert_eq!(g.last_updated, 200);
     }
 }
