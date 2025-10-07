@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use core_lib::models::{Impact, NewTruthEvent, Statement, NewStatement};
+use core_lib::models::{Impact, NewTruthEvent, Statement, NewStatement, GraphData, NodeRating, GroupRating};
 use core_lib::storage;
 use crate::p2p::encryption::CryptoIdentity;
 use crate::p2p::sync::{SyncData, SyncResult};
@@ -268,6 +268,7 @@ async fn detect_event(pool: web::Data<DbPool>, payload: web::Json<serde_json::Va
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
         storage::set_event_detected(&_conn, event_id, detected, None, corrected)
+            .and_then(|_| core_lib::storage::recalc_ratings(&_conn, chrono::Utc::now().timestamp()))
     })
     .await;
 
@@ -284,7 +285,10 @@ async fn recalc_metrics(pool: web::Data<DbPool>) -> impl Responder {
     let pool = pool.clone();
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
-        storage::recalc_progress_metrics(&_conn, chrono::Utc::now().timestamp())
+        let ts = chrono::Utc::now().timestamp();
+        let metric_id = storage::recalc_progress_metrics(&_conn, ts)?;
+        core_lib::storage::recalc_ratings(&_conn, ts)?;
+        Ok::<i64, core_lib::models::CoreError>(metric_id)
     })
     .await;
 
@@ -439,8 +443,12 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(seed_db)
         .service(detect_event)
         .service(recalc_metrics)
+        .service(recalc_ratings)
         .service(get_all_data)
         .service(get_progress)
+        .service(get_node_ratings)
+        .service(get_group_ratings)
+        .service(get_graph)
         .service(get_statements)
         .service(add_statement)
         .service(get_events)
@@ -450,14 +458,85 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(incremental_sync);
 }
 
+/// POST /recalc_ratings - Пересчет рейтингов узлов и групп
+#[post("/recalc_ratings")]
+async fn recalc_ratings(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        core_lib::storage::recalc_ratings(&_conn, chrono::Utc::now().timestamp())
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status": "recalculated"})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /ratings/nodes
+#[get("/ratings/nodes")]
+async fn get_node_ratings(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        core_lib::storage::load_node_ratings(&_conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(ratings)) => HttpResponse::Ok().json(ratings),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /ratings/groups
+#[get("/ratings/groups")]
+async fn get_group_ratings(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        core_lib::storage::load_group_ratings(&_conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(ratings)) => HttpResponse::Ok().json(ratings),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /graph - данные графа доверия
+#[get("/graph")]
+async fn get_graph(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        core_lib::storage::load_graph(&_conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(graph)) => HttpResponse::Ok().json(graph),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::p2p::encryption::CryptoIdentity;
     use hex;
+    use actix_web::{test, App};
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
 
-    #[test]
-    fn test_signature_verification_refactor() {
+    #[actix_web::test]
+    async fn test_signature_verification_refactor() {
         // Создаем новую криптографическую идентичность
         let identity = CryptoIdentity::new();
         
@@ -481,5 +560,71 @@ mod tests {
         
         // Проверяем, что верификация с неправильным сообщением не прошла
         assert!(wrong_result.is_err(), "Signature verification with wrong message should fail");
+    }
+
+    #[actix_web::test]
+    async fn ratings_endpoints_work() {
+        // Prepare in-memory DB and app
+        let mut conn = core_lib::storage::open_db(":memory:").unwrap();
+        core_lib::storage::seed_knowledge_base(&mut conn, "en").unwrap();
+        let conn_data = Arc::new(Mutex::new(conn));
+
+        let app = test::init_service(
+            App::new()
+                .app_data(actix_web::web::Data::new(conn_data.clone()))
+                .configure(crate::api::routes)
+        ).await;
+
+        // Add event and statement + impact to have some ratings
+        let add_event_req = serde_json::json!({
+            "description": "Test for ratings",
+            "context_id": 1,
+            "vector": true
+        });
+        let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let ev_id = resp.get("id").and_then(|v| v.as_i64()).unwrap();
+
+        // set author public key on event
+        {
+            let _locked = conn_data.lock().await;
+        }
+        {
+            let mut c = conn_data.lock().await;
+            c.execute("UPDATE truth_events SET public_key='nodeA' WHERE id=?1", rusqlite::params![ev_id]).unwrap();
+        }
+
+        let add_stmt_req = serde_json::json!({
+            "event_id": ev_id,
+            "text": "true",
+            "context": null,
+            "truth_score": 0.8
+        });
+        let req = test::TestRequest::post().uri("/statements").set_json(&add_stmt_req).to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+
+        // direct DB insert impact to set validator pubkey
+        {
+            let mut c = conn_data.lock().await;
+            let impact_id = core_lib::storage::add_impact(&c, ev_id, 1, true, Some("ok".into())).unwrap();
+            c.execute("UPDATE impact SET public_key='nodeB' WHERE id=?1", rusqlite::params![impact_id]).unwrap();
+        }
+
+        // recalc
+        let req = test::TestRequest::post().uri("/recalc").to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+
+        // GET ratings
+        let req = test::TestRequest::get().uri("/ratings/nodes").to_request();
+        let nodes: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        assert!(nodes.as_array().unwrap().len() >= 1);
+
+        let req = test::TestRequest::get().uri("/ratings/groups").to_request();
+        let groups: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        assert!(groups.as_array().unwrap().len() >= 1);
+
+        let req = test::TestRequest::get().uri("/graph").to_request();
+        let graph: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        assert!(graph.get("nodes").unwrap().as_array().unwrap().len() >= 1);
     }
 }
