@@ -72,17 +72,19 @@ async fn main() -> std::io::Result<()> {
     // Список известных пиров
     let peers_list = vec!["http://127.0.0.1:8081".to_string()];
 
-    //Теперь при создании Node передаём CryptoIdentity
+    //Теперь при создании Node передаём CryptoIdentity и пул БД
     let crypto_identity = Arc::new(CryptoIdentity::new());
-    let node = Node::new(peers_list, crypto_identity.clone());
+    let node = Arc::new(Node::new(peers_list, conn_data.clone(), crypto_identity.clone()));
+    let node_for_task = node.clone();
     tokio::spawn(async move {
-        node.start().await;
+        node_for_task.start().await;
     });
 
     // Запуск HTTP сервера
     HttpServer::new(move || {
         App::new()
             .app_data(actix_web::web::Data::new(conn_data.clone()))
+            .app_data(actix_web::web::Data::new(node.clone()))
             .configure(api::routes)
     })
     .bind(("0.0.0.0", args.port))?
