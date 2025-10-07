@@ -1,4 +1,17 @@
-use crate::{CoreError, Impact, NewTruthEvent, ProgressMetrics, TruthEvent, Statement, NewStatement};
+use crate::{
+    CoreError,
+    Impact,
+    NewTruthEvent,
+    ProgressMetrics,
+    TruthEvent,
+    Statement,
+    NewStatement,
+    NodeRating,
+    GroupRating,
+    GraphData,
+    GraphNode,
+    GraphLink,
+};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 // serde_json используется через полные пути
@@ -121,6 +134,25 @@ CREATE TABLE IF NOT EXISTS progress_metrics (
     trend                        REAL    NOT NULL,
     trend_group                  REAL    NOT NULL
 );
+
+-- node and group ratings
+CREATE TABLE IF NOT EXISTS node_ratings (
+    node_id        TEXT PRIMARY KEY,
+    events_true    INTEGER NOT NULL DEFAULT 0,
+    events_false   INTEGER NOT NULL DEFAULT 0,
+    validations    INTEGER NOT NULL DEFAULT 0,
+    reused_events  INTEGER NOT NULL DEFAULT 0,
+    trust_score    REAL    NOT NULL DEFAULT 0.0,
+    last_updated   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS group_ratings (
+    group_id      TEXT PRIMARY KEY,
+    members       TEXT    NOT NULL,
+    avg_score     REAL    NOT NULL,
+    coherence     REAL    NOT NULL,
+    last_updated  INTEGER NOT NULL
+);
 "#;
 
 /// Открыть/инициализировать БД по пути
@@ -187,6 +219,29 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
             signature    TEXT,
             public_key   TEXT,
             created_at   INTEGER NOT NULL
+        );
+        "#,
+    )?;
+
+    // Ensure ratings tables exist (idempotent)
+    conn.execute_batch(
+        r#"
+        CREATE TABLE IF NOT EXISTS node_ratings (
+            node_id        TEXT PRIMARY KEY,
+            events_true    INTEGER NOT NULL DEFAULT 0,
+            events_false   INTEGER NOT NULL DEFAULT 0,
+            validations    INTEGER NOT NULL DEFAULT 0,
+            reused_events  INTEGER NOT NULL DEFAULT 0,
+            trust_score    REAL    NOT NULL DEFAULT 0.0,
+            last_updated   INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS group_ratings (
+            group_id      TEXT PRIMARY KEY,
+            members       TEXT    NOT NULL,
+            avg_score     REAL    NOT NULL,
+            coherence     REAL    NOT NULL,
+            last_updated  INTEGER NOT NULL
         );
         "#,
     )?;
@@ -770,6 +825,240 @@ pub fn recalc_progress_metrics(conn: &Connection, ts: i64) -> Result<i64, CoreEr
     Ok(conn.last_insert_rowid())
 }
 
+/// Пересчёт рейтингов узлов и групп на основе текущего состояния БД
+pub fn recalc_ratings(conn: &Connection, ts: i64) -> Result<(), CoreError> {
+    // 1) Узлы: очищаем и вставляем агрегаты
+    conn.execute("DELETE FROM node_ratings", [])?;
+
+    conn.execute(
+        r#"
+        WITH nodes AS (
+            SELECT DISTINCT public_key AS node_id FROM truth_events WHERE public_key IS NOT NULL
+            UNION
+            SELECT DISTINCT public_key FROM impact WHERE public_key IS NOT NULL
+        ),
+        stmt_avg AS (
+            SELECT event_id, AVG(truth_score) AS avg_score
+            FROM statements
+            WHERE truth_score IS NOT NULL
+            GROUP BY event_id
+        ),
+        events_true AS (
+            SELECT te.public_key AS node_id, COUNT(*) AS cnt
+            FROM truth_events te
+            LEFT JOIN stmt_avg sa ON sa.event_id = te.id
+            WHERE te.public_key IS NOT NULL AND sa.avg_score >= 0.5
+            GROUP BY te.public_key
+        ),
+        events_false AS (
+            SELECT te.public_key AS node_id, COUNT(*) AS cnt
+            FROM truth_events te
+            LEFT JOIN stmt_avg sa ON sa.event_id = te.id
+            WHERE te.public_key IS NOT NULL AND sa.avg_score <= -0.5
+            GROUP BY te.public_key
+        ),
+        validations AS (
+            SELECT im.public_key AS node_id, COUNT(*) AS cnt
+            FROM impact im
+            WHERE im.public_key IS NOT NULL
+            GROUP BY im.public_key
+        ),
+        reused AS (
+            SELECT te.public_key AS node_id, COUNT(DISTINCT te.id) AS cnt
+            FROM truth_events te
+            JOIN impact im ON CAST(im.event_id AS INTEGER) = te.id AND im.value = 1
+            WHERE te.public_key IS NOT NULL AND im.public_key IS NOT NULL AND im.public_key <> te.public_key
+            GROUP BY te.public_key
+        )
+        INSERT INTO node_ratings (node_id, events_true, events_false, validations, reused_events, trust_score, last_updated)
+        SELECT
+            n.node_id,
+            COALESCE(et.cnt, 0) AS events_true,
+            COALESCE(ef.cnt, 0) AS events_false,
+            COALESCE(v.cnt, 0)  AS validations,
+            COALESCE(r.cnt, 0)  AS reused_events,
+            (
+                CASE
+                    WHEN (COALESCE(et.cnt,0) + COALESCE(ef.cnt,0)) = 0 THEN 0.0
+                    ELSE
+                        (
+                            CAST(COALESCE(et.cnt,0) - COALESCE(ef.cnt,0) AS REAL) /
+                            CAST(COALESCE(et.cnt,0) + COALESCE(ef.cnt,0) AS REAL)
+                        )
+                        + 0.2 * CAST(COALESCE(r.cnt,0) AS REAL) /
+                          CAST(CASE WHEN (COALESCE(et.cnt,0) + COALESCE(ef.cnt,0)) = 0 THEN 1 ELSE (COALESCE(et.cnt,0) + COALESCE(ef.cnt,0)) END AS REAL)
+                END
+            ) AS trust_score_raw,
+            ?1 AS last_updated
+        FROM nodes n
+        LEFT JOIN events_true et ON et.node_id = n.node_id
+        LEFT JOIN events_false ef ON ef.node_id = n.node_id
+        LEFT JOIN validations v   ON v.node_id  = n.node_id
+        LEFT JOIN reused r        ON r.node_id  = n.node_id
+        ;
+        "#,
+        params![ts],
+    )?;
+
+    // 2) Обрезаем trust_score в диапазон [-1,1]
+    conn.execute(
+        r#"
+        UPDATE node_ratings
+        SET trust_score = CASE
+            WHEN trust_score > 1.0 THEN 1.0
+            WHEN trust_score < -1.0 THEN -1.0
+            ELSE trust_score
+        END
+        "#,
+        [],
+    )?;
+
+    // 3) Группы: пока формируем один глобальный кластер
+    // Список участников
+    let mut stmt_nodes = conn.prepare("SELECT node_id FROM node_ratings ORDER BY node_id")?;
+    let rows = stmt_nodes.query_map([], |row| row.get::<_, String>(0))?;
+    let mut members: Vec<String> = Vec::new();
+    for r in rows { members.push(r?); }
+    let members_json = serde_json::to_string(&members)?;
+
+    // Средний скор
+    let avg_score: f64 = conn.query_row(
+        "SELECT COALESCE(AVG(trust_score), 0.0) FROM node_ratings",
+        [],
+        |r| r.get(0),
+    )?;
+
+    // Коэффициент согласованности (coherence) валидаторов с агрегированным мнением по событиям
+    // total = кол-во оценок impact по событиям, где есть средний балл по statement
+    // agree = совпадение знака impact.value с знаком среднего truth_score по событию
+    let (total_votes, agree_votes): (i64, i64) = conn.query_row(
+        r#"
+        WITH stmt_avg AS (
+            SELECT event_id, AVG(truth_score) AS avg_score
+            FROM statements
+            WHERE truth_score IS NOT NULL
+            GROUP BY event_id
+        )
+        SELECT
+            COUNT(*) AS total_votes,
+            SUM(
+                CASE
+                    WHEN sa.avg_score IS NULL THEN 0
+                    WHEN (sa.avg_score >= 0.0 AND im.value = 1) OR (sa.avg_score < 0.0 AND im.value = 0)
+                        THEN 1 ELSE 0
+                END
+            ) AS agree_votes
+        FROM impact im
+        JOIN stmt_avg sa ON CAST(im.event_id AS INTEGER) = sa.event_id
+        WHERE im.public_key IS NOT NULL
+        "#,
+        [],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )?;
+
+    let coherence: f64 = if total_votes > 0 {
+        (agree_votes as f64) / (total_votes as f64)
+    } else { 0.0 };
+
+    // UPSERT глобальной группы
+    conn.execute(
+        r#"
+        INSERT INTO group_ratings (group_id, members, avg_score, coherence, last_updated)
+        VALUES ('global', ?1, ?2, ?3, ?4)
+        ON CONFLICT(group_id) DO UPDATE SET
+            members = excluded.members,
+            avg_score = excluded.avg_score,
+            coherence = excluded.coherence,
+            last_updated = excluded.last_updated
+        "#,
+        params![members_json, avg_score, coherence, ts],
+    )?;
+
+    Ok(())
+}
+
+/// Загрузить рейтинги узлов
+pub fn load_node_ratings(conn: &Connection) -> Result<Vec<NodeRating>, CoreError> {
+    let mut stmt = conn.prepare(
+        "SELECT node_id, events_true, events_false, validations, reused_events, trust_score, last_updated FROM node_ratings ORDER BY trust_score DESC",
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok(NodeRating {
+            node_id: row.get(0)?,
+            events_true: row.get::<_, i64>(1)? as u32,
+            events_false: row.get::<_, i64>(2)? as u32,
+            validations: row.get::<_, i64>(3)? as u32,
+            reused_events: row.get::<_, i64>(4)? as u32,
+            trust_score: row.get(5)?,
+            last_updated: row.get(6)?,
+        })
+    })?;
+    let mut out = Vec::new();
+    for r in rows { out.push(r?); }
+    Ok(out)
+}
+
+/// Загрузить рейтинги групп
+pub fn load_group_ratings(conn: &Connection) -> Result<Vec<GroupRating>, CoreError> {
+    let mut stmt = conn.prepare(
+        "SELECT group_id, members, avg_score, coherence FROM group_ratings ORDER BY group_id",
+    )?;
+    let rows = stmt.query_map([], |row| {
+        let members_json: String = row.get(1)?;
+        let members: Vec<String> = serde_json::from_str(&members_json).unwrap_or_default();
+        Ok(GroupRating {
+            group_id: row.get(0)?,
+            members,
+            avg_score: row.get(2)?,
+            coherence: row.get(3)?,
+        })
+    })?;
+    let mut out = Vec::new();
+    for r in rows { out.push(r?); }
+    Ok(out)
+}
+
+/// Сформировать данные графа доверия
+pub fn load_graph(conn: &Connection) -> Result<GraphData, CoreError> {
+    // Узлы (id + score)
+    let mut stmt_nodes = conn.prepare(
+        "SELECT node_id, trust_score FROM node_ratings",
+    )?;
+    let node_rows = stmt_nodes.query_map([], |row| {
+        Ok(GraphNode { id: row.get(0)?, score: row.get(1)? })
+    })?;
+    let mut nodes: Vec<GraphNode> = Vec::new();
+    for r in node_rows { nodes.push(r?); }
+
+    // Рёбра между валидаторами и авторами
+    let mut stmt_links = conn.prepare(
+        r#"
+        SELECT im.public_key AS source,
+               te.public_key AS target,
+               SUM(CASE WHEN im.value = 1 THEN 1 ELSE 0 END) AS pos,
+               SUM(CASE WHEN im.value = 0 THEN 1 ELSE 0 END) AS neg
+        FROM impact im
+        JOIN truth_events te ON CAST(im.event_id AS INTEGER) = te.id
+        WHERE im.public_key IS NOT NULL AND te.public_key IS NOT NULL AND im.public_key <> te.public_key
+        GROUP BY source, target
+        "#,
+    )?;
+    let link_rows = stmt_links.query_map([], |row| {
+        let source: String = row.get(0)?;
+        let target: String = row.get(1)?;
+        let pos: i64 = row.get(2)?;
+        let neg: i64 = row.get(3)?;
+        let total = (pos + neg).max(1) as f32;
+        let signed = (pos as f32 - neg as f32) / total; // -1..1
+        let weight = (signed + 1.0) / 2.0; // 0..1
+        Ok(GraphLink { source, target, weight })
+    })?;
+    let mut links: Vec<GraphLink> = Vec::new();
+    for r in link_rows { links.push(r?); }
+
+    Ok(GraphData { nodes, links })
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ExportData {
     pub truth_events: Vec<TruthEvent>,
@@ -1123,5 +1412,68 @@ mod tests {
         let imp = &impacts[0];
         assert!(imp.signature.is_none());
         assert!(imp.public_key.is_none());
+    }
+
+    #[test]
+    fn recalc_ratings_basic() {
+        let mut conn = open_db(":memory:").expect("open db");
+        seed_knowledge_base(&mut conn, "en").expect("seed kb");
+
+        // Author nodeA creates an event
+        let new_ev = NewTruthEvent {
+            description: "Rated event".to_string(),
+            context_id: 1,
+            vector: true,
+            timestamp_start: 1_700_000_100,
+            code: 1,
+        };
+        let ev_id = add_truth_event(&conn, new_ev).expect("insert event");
+        conn.execute(
+            "UPDATE truth_events SET public_key=?1 WHERE id=?2",
+            params!["nodeA", ev_id],
+        )
+        .expect("set event author pk");
+
+        // Statement with positive truth_score for this event
+        let stmt_id = add_statement(&conn, NewStatement {
+            event_id: ev_id,
+            text: "Looks true".to_string(),
+            context: None,
+            truth_score: Some(0.9),
+        }).expect("add statement");
+        assert!(stmt_id > 0);
+
+        // Validator nodeB adds positive impact for the event
+        let impact_id = add_impact(&conn, ev_id, 1, true, Some("agree".to_string())).expect("add impact");
+        conn.execute(
+            "UPDATE impact SET public_key=?1 WHERE id=?2",
+            params!["nodeB", impact_id],
+        ).expect("set impact validator pk");
+
+        // Recalc ratings
+        recalc_ratings(&conn, 1_700_000_200).expect("recalc ratings");
+
+        // Load and assert node ratings
+        let ratings = load_node_ratings(&conn).expect("load node ratings");
+        assert!(ratings.iter().any(|r| r.node_id == "nodeA"));
+        assert!(ratings.iter().any(|r| r.node_id == "nodeB"));
+        let ra = ratings.iter().find(|r| r.node_id == "nodeA").unwrap();
+        assert_eq!(ra.events_true, 1);
+        assert_eq!(ra.events_false, 0);
+        assert!(ra.trust_score > 0.0);
+        let rb = ratings.iter().find(|r| r.node_id == "nodeB").unwrap();
+        assert!(rb.validations >= 1);
+
+        // Group rating exists and includes members
+        let groups = load_group_ratings(&conn).expect("load group ratings");
+        assert!(!groups.is_empty());
+        let g = &groups[0];
+        assert!(g.members.contains(&"nodeA".to_string()));
+        assert!(g.members.contains(&"nodeB".to_string()));
+
+        // Graph data contains nodes and link between nodeB (validator) and nodeA (author)
+        let graph = load_graph(&conn).expect("load graph");
+        assert!(graph.nodes.len() >= 2);
+        assert!(graph.links.iter().any(|l| l.source == "nodeB" && l.target == "nodeA"));
     }
 }
