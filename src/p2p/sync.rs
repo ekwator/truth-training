@@ -1,12 +1,13 @@
 use reqwest::Client;
 use std::time::Duration;
 use crate::p2p::encryption::CryptoIdentity;
-use core_lib::models::{TruthEvent, Statement, Impact, ProgressMetrics};
+use core_lib::models::{TruthEvent, Statement, Impact, ProgressMetrics, NodeRating, GroupRating};
 use core_lib::storage;
 use rusqlite::{Connection, params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use chrono::Utc;
+use sha2::{Sha256, Digest};
 
 /// Данные для синхронизации
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,6 +16,8 @@ pub struct SyncData {
     pub statements: Vec<Statement>,
     pub impacts: Vec<Impact>,
     pub metrics: Vec<ProgressMetrics>,
+    pub node_ratings: Vec<NodeRating>,
+    pub group_ratings: Vec<GroupRating>,
     pub last_sync: i64,
 }
 
@@ -26,6 +29,27 @@ pub struct SyncResult {
     pub statements_added: u32,
     pub impacts_added: u32,
     pub errors: Vec<String>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum SyncError {
+    #[error("Network error: {0}")]
+    Network(#[from] reqwest::Error),
+    #[error("Serialization error: {0}")]
+    Serde(#[from] serde_json::Error),
+    #[error("Other: {0}")]
+    Other(String),
+}
+
+pub fn compute_ratings_hash(node_ratings: &[NodeRating], group_ratings: &[GroupRating]) -> Result<String, serde_json::Error> {
+    let v = serde_json::json!({
+        "node_ratings": node_ratings,
+        "group_ratings": group_ratings,
+    });
+    let bytes = serde_json::to_vec(&v)?;
+    let mut hasher = Sha256::new();
+    hasher.update(&bytes);
+    Ok(hex::encode(hasher.finalize()))
 }
 
 /// Асинхронная синхронизация с peer'ом
@@ -92,11 +116,15 @@ pub async fn bidirectional_sync_with_peer(
     let local_impacts = storage::load_impacts(conn)?;
     let local_metrics = storage::load_metrics(conn)?;
 
+    let local_node_ratings = core_lib::storage::load_node_ratings(conn)?;
+    let local_group_ratings = core_lib::storage::load_group_ratings(conn)?;
     let sync_data = SyncData {
         events: local_events,
         statements: local_statements,
         impacts: local_impacts,
         metrics: local_metrics,
+        node_ratings: local_node_ratings.clone(),
+        group_ratings: local_group_ratings.clone(),
         last_sync: chrono::Utc::now().timestamp(),
     };
 
@@ -107,7 +135,8 @@ pub async fn bidirectional_sync_with_peer(
 
     // Формируем сообщение для подписи
     let ts = chrono::Utc::now().timestamp();
-    let message = format!("sync_push:{}", ts);
+    let ratings_hash = compute_ratings_hash(&sync_data.node_ratings, &sync_data.group_ratings)?;
+    let message = format!("sync_push:{}:{}", ts, ratings_hash);
 
     // Подписываем сообщение приватным ключом
     let signature = identity.sign(message.as_bytes());
@@ -120,6 +149,7 @@ pub async fn bidirectional_sync_with_peer(
         .header("X-Public-Key", public_key_hex)
         .header("X-Signature", signature_hex)
         .header("X-Timestamp", ts.to_string())
+        .header("X-Ratings-Hash", ratings_hash)
         .json(&sync_data)
         .send()
         .await?;
@@ -143,17 +173,22 @@ pub async fn push_local_data(
     identity: &CryptoIdentity,
     conn: &Connection,
 ) -> anyhow::Result<SyncResult> {
+    let node_ratings = core_lib::storage::load_node_ratings(conn)?;
+    let group_ratings = core_lib::storage::load_group_ratings(conn)?;
     let sync_data = SyncData {
         events: storage::load_truth_events(conn)?,
         statements: storage::load_statements(conn)?,
         impacts: storage::load_impacts(conn)?,
         metrics: storage::load_metrics(conn)?,
+        node_ratings: node_ratings.clone(),
+        group_ratings: group_ratings.clone(),
         last_sync: Utc::now().timestamp(),
     };
 
     let client = Client::builder().timeout(Duration::from_secs(30)).build()?;
     let ts = Utc::now().timestamp();
-    let message = format!("sync_push:{}", ts);
+    let ratings_hash = compute_ratings_hash(&sync_data.node_ratings, &sync_data.group_ratings)?;
+    let message = format!("sync_push:{}:{}", ts, ratings_hash);
     let sig = identity.sign(message.as_bytes());
     let signature_hex = hex::encode(sig.to_bytes());
     let public_key_hex = identity.public_key_hex();
@@ -163,6 +198,7 @@ pub async fn push_local_data(
         .header("X-Public-Key", public_key_hex)
         .header("X-Signature", signature_hex)
         .header("X-Timestamp", ts.to_string())
+        .header("X-Ratings-Hash", ratings_hash)
         .json(&sync_data)
         .send()
         .await?;
@@ -216,6 +252,8 @@ pub async fn pull_remote_data(peer_url: &str, identity: &CryptoIdentity) -> anyh
         statements,
         impacts,
         metrics,
+        node_ratings: Vec::new(),
+        group_ratings: Vec::new(),
         last_sync: ts,
     })
 }
@@ -397,6 +435,13 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
         }
     }
 
+    // Ratings merge
+    core_lib::storage::merge_ratings(
+        conn,
+        &remote.node_ratings,
+        &remote.group_ratings,
+    ).map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
     Ok(SyncResult {
         conflicts_resolved,
         events_added,
@@ -418,11 +463,15 @@ pub async fn incremental_sync_with_peer(
     let recent_statements = get_statements_since(conn, last_sync_timestamp)?;
     let recent_impacts = get_impacts_since(conn, last_sync_timestamp)?;
 
+    let node_ratings = core_lib::storage::load_node_ratings(conn)?;
+    let group_ratings = core_lib::storage::load_group_ratings(conn)?;
     let sync_data = SyncData {
         events: recent_events,
         statements: recent_statements,
         impacts: recent_impacts,
         metrics: Vec::new(), // Метрики не инкрементальные
+        node_ratings: node_ratings.clone(),
+        group_ratings: group_ratings.clone(),
         last_sync: last_sync_timestamp,
     };
 
@@ -431,7 +480,9 @@ pub async fn incremental_sync_with_peer(
         .timeout(Duration::from_secs(30))
         .build()?;
 
-    let message = format!("incremental_sync:{}", chrono::Utc::now().timestamp());
+    let now = chrono::Utc::now().timestamp();
+    let ratings_hash = compute_ratings_hash(&sync_data.node_ratings, &sync_data.group_ratings)?;
+    let message = format!("incremental_sync:{}:{}", now, ratings_hash);
     let signature = identity.sign(message.as_bytes());
     let public_key_hex = identity.public_key_hex();
     let signature_hex = hex::encode(signature.to_bytes());
@@ -440,6 +491,7 @@ pub async fn incremental_sync_with_peer(
         .post(format!("{peer_url}/incremental_sync"))
         .header("X-Public-Key", public_key_hex)
         .header("X-Signature", signature_hex)
+        .header("X-Ratings-Hash", ratings_hash)
         .json(&sync_data)
         .send()
         .await?;
