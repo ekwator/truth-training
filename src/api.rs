@@ -3,10 +3,10 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use core_lib::models::{Impact, NewTruthEvent, Statement, NewStatement, GraphData, NodeRating, GroupRating};
+use core_lib::models::{Impact, NewTruthEvent, NewStatement};
 use core_lib::storage;
 use crate::p2p::encryption::CryptoIdentity;
-use crate::p2p::sync::{SyncData, SyncResult};
+use crate::p2p::sync::SyncData;
 use chrono::Utc;
 use std::fmt;
 
@@ -565,9 +565,12 @@ mod tests {
     #[actix_web::test]
     async fn ratings_endpoints_work() {
         // Prepare in-memory DB and app
-        let mut conn = core_lib::storage::open_db(":memory:").unwrap();
-        core_lib::storage::seed_knowledge_base(&mut conn, "en").unwrap();
+        let conn = core_lib::storage::open_db(":memory:").unwrap();
         let conn_data = Arc::new(Mutex::new(conn));
+        {
+            let mut c = conn_data.lock().await;
+            core_lib::storage::seed_knowledge_base(&mut c, "en").unwrap();
+        }
 
         let app = test::init_service(
             App::new()
@@ -587,10 +590,7 @@ mod tests {
 
         // set author public key on event
         {
-            let _locked = conn_data.lock().await;
-        }
-        {
-            let mut c = conn_data.lock().await;
+            let c = conn_data.lock().await;
             c.execute("UPDATE truth_events SET public_key='nodeA' WHERE id=?1", rusqlite::params![ev_id]).unwrap();
         }
 
@@ -605,7 +605,7 @@ mod tests {
 
         // direct DB insert impact to set validator pubkey
         {
-            let mut c = conn_data.lock().await;
+            let c = conn_data.lock().await;
             let impact_id = core_lib::storage::add_impact(&c, ev_id, 1, true, Some("ok".into())).unwrap();
             c.execute("UPDATE impact SET public_key='nodeB' WHERE id=?1", rusqlite::params![impact_id]).unwrap();
         }
