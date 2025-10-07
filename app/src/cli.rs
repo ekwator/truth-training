@@ -63,7 +63,7 @@ fn save_peers(path: &str, peers: &[PeerEntry]) -> std::io::Result<()> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    let mut conn = open_db(&cli.db)?;
+    let conn = open_db(&cli.db)?;
     init_db(&conn)?;
 
     match cli.cmd {

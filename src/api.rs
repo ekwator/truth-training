@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary};
 use core_lib::storage;
 use crate::p2p::encryption::CryptoIdentity;
-use crate::p2p::sync::{SyncData, compute_ratings_hash};
+use crate::p2p::sync::SyncData;
 use crate::p2p::node::Node;
 use chrono::Utc;
 use std::fmt;
