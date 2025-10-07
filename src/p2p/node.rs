@@ -1,18 +1,25 @@
 use std::sync::Arc;
 use tokio::time::{self, Duration};
+use tokio::sync::Mutex;
 use crate::p2p::encryption::CryptoIdentity;
-use crate::p2p::sync::sync_with_peer;
+use crate::p2p::sync::{sync_with_peer, SyncError, SyncData, compute_ratings_hash};
 use log::{info, error};
+use rusqlite::Connection;
+use reqwest::Client;
+use std::time::Duration as StdDuration;
+use chrono::Utc;
 
+#[derive(Clone)]
 pub struct Node {
     pub peers: Vec<String>,
-    pub identity: Arc<CryptoIdentity>,
+    pub conn_data: Arc<Mutex<Connection>>, // shared DB connection
+    pub crypto: Arc<CryptoIdentity>,
 }
 
 impl Node {
-    /// Теперь принимает готовую CryptoIdentity
-    pub fn new(peers: Vec<String>, identity: Arc<CryptoIdentity>) -> Self {
-        Self { peers, identity }
+    /// Теперь принимает готовую CryptoIdentity и пул БД
+    pub fn new(peers: Vec<String>, conn_data: Arc<Mutex<Connection>>, crypto: Arc<CryptoIdentity>) -> Self {
+        Self { peers, conn_data, crypto }
     }
 
     /// Запуск узла — периодическая синхронизация с другими
@@ -24,7 +31,7 @@ impl Node {
 
             for peer in &self.peers {
                 let peer = peer.clone();
-                let identity = self.identity.clone();
+                let identity = self.crypto.clone();
 
                 tokio::spawn(async move {
                     match sync_with_peer(&peer, &identity).await {
@@ -34,5 +41,52 @@ impl Node {
                 });
             }
         }
+    }
+
+    /// Широковещательная отправка локальных рейтингов всем известным пирам
+    pub async fn broadcast_ratings(&self) -> Result<(), SyncError> {
+        let conn = self.conn_data.lock().await;
+        let node_ratings = core_lib::storage::load_node_ratings(&conn)
+            .map_err(|e| SyncError::Other(e.to_string()))?;
+        let group_ratings = core_lib::storage::load_group_ratings(&conn)
+            .map_err(|e| SyncError::Other(e.to_string()))?;
+        drop(conn);
+
+        let payload = SyncData {
+            events: Vec::new(),
+            statements: Vec::new(),
+            impacts: Vec::new(),
+            metrics: Vec::new(),
+            node_ratings: node_ratings.clone(),
+            group_ratings: group_ratings.clone(),
+            last_sync: Utc::now().timestamp(),
+        };
+
+        let client = Client::builder().timeout(StdDuration::from_secs(30)).build()?;
+        let ts = Utc::now().timestamp();
+        let rhash = compute_ratings_hash(&payload.node_ratings, &payload.group_ratings)
+            .map_err(SyncError::from)?;
+        let message = format!("incremental_sync:{}:{}", ts, rhash);
+        let sig = self.crypto.sign(message.as_bytes());
+        let signature_hex = hex::encode(sig.to_bytes());
+        let public_key_hex = self.crypto.public_key_hex();
+
+        // Отправка последовательно (избегаем зависимости от futures)
+        for peer in &self.peers {
+            let url = format!("{}/incremental_sync", peer.trim_end_matches('/'));
+            let resp = client
+                .post(url)
+                .header("X-Public-Key", public_key_hex.clone())
+                .header("X-Signature", signature_hex.clone())
+                .header("X-Timestamp", ts.to_string())
+                .header("X-Ratings-Hash", rhash.clone())
+                .json(&payload)
+                .send()
+                .await?;
+            if !resp.status().is_success() {
+                return Err(SyncError::Other(format!("Peer {} responded {}", peer, resp.status())));
+            }
+        }
+        Ok(())
     }
 }
