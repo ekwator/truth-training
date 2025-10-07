@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use truth_core::p2p::encryption::CryptoIdentity;
 use truth_core::p2p::sync::{push_local_data, pull_remote_data, reconcile};
-use truth_core::{open_db, init_db};
+use core_lib::storage::{open_db, init_db};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct PeerEntry {
