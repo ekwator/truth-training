@@ -1660,7 +1660,7 @@ mod tests {
 
     #[test]
     fn merge_ratings_conflict_resolution() {
-        let mut conn = open_db(":memory:").expect("open db");
+        let conn = open_db(":memory:").expect("open db");
         // стартовые данные
         conn.execute(
             "INSERT INTO node_ratings (node_id, events_true, events_false, validations, reused_events, trust_score, last_updated) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
