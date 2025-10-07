@@ -164,3 +164,46 @@ pub struct User {
     pub created_at: i64,
     pub last_sync: Option<i64>,
 }
+
+/// Рейтинг узла/ноды (node_id = публичный ключ в hex)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NodeRating {
+    pub node_id: String,
+    pub events_true: u32,
+    pub events_false: u32,
+    pub validations: u32,
+    pub reused_events: u32,
+    pub trust_score: f32, // -1.0 .. 1.0
+    pub last_updated: i64,
+}
+
+/// Рейтинг группы узлов
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupRating {
+    pub group_id: String,
+    pub members: Vec<String>,
+    pub avg_score: f32,
+    pub coherence: f32, // 0..1
+}
+
+/// Узел графа для визуализации
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphNode {
+    pub id: String,
+    pub score: f32,
+}
+
+/// Ребро графа между валидатором (source) и автором события (target)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphLink {
+    pub source: String,
+    pub target: String,
+    pub weight: f32, // 0..1
+}
+
+/// Данные графа доверия
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphData {
+    pub nodes: Vec<GraphNode>,
+    pub links: Vec<GraphLink>,
+}
