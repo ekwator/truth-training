@@ -10,6 +10,7 @@ pub mod encryption;
 // Если ты пока не используешь эти re-export’ы — можно закомментировать их
 #[allow(unused_imports)]
 pub use node::Node;
+#[cfg(any(test, feature = "p2p-client-sync"))]
 #[allow(unused_imports)]
 pub use sync::sync_with_peer;
 #[allow(unused_imports)]

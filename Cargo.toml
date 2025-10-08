@@ -11,6 +11,12 @@ path = "src/lib.rs"
 members = ["app","core-lib","platform","ui-tui","ui-web"]
 resolver = "2"
 
+[features]
+# Включает клиентские вызовы p2p синхронизации (push/pull) и вспомогательные функции
+p2p-client-sync = []
+
+auth = []
+
 [dependencies]
 core_lib = { version = "0.1.0", path = "core-lib" }
 actix-web = "4"

@@ -563,7 +563,6 @@ async fn get_graph_json(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) 
     // Значения по умолчанию
     let min_score = min_score.unwrap_or(-1.0);
     let max_links = max_links.unwrap_or(10).max(0);
-    let depth = depth;
 
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
@@ -586,7 +585,6 @@ async fn get_graph_summary(pool: web::Data<DbPool>, query: web::Query<GraphQuery
 
     let min_score = min_score.unwrap_or(-1.0);
     let max_links = max_links.unwrap_or(10).max(0);
-    let depth = depth;
 
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
@@ -607,7 +605,7 @@ async fn get_graph_summary(pool: web::Data<DbPool>, query: web::Query<GraphQuery
 mod tests {
     use super::*;
     use crate::p2p::encryption::CryptoIdentity;
-    use hex;
+    // use hex; // not needed here
     use actix_web::{test, App};
     use std::sync::Arc;
     use tokio::sync::Mutex;
@@ -694,15 +692,15 @@ mod tests {
         // GET ratings
         let req = test::TestRequest::get().uri("/ratings/nodes").to_request();
         let nodes: serde_json::Value = test::call_and_read_body_json(&app, req).await;
-        assert!(nodes.as_array().unwrap().len() >= 1);
+        assert!(!nodes.as_array().unwrap().is_empty());
 
         let req = test::TestRequest::get().uri("/ratings/groups").to_request();
         let groups: serde_json::Value = test::call_and_read_body_json(&app, req).await;
-        assert!(groups.as_array().unwrap().len() >= 1);
+        assert!(!groups.as_array().unwrap().is_empty());
 
         let req = test::TestRequest::get().uri("/graph").to_request();
         let graph: serde_json::Value = test::call_and_read_body_json(&app, req).await;
-        assert!(graph.get("nodes").unwrap().as_array().unwrap().len() >= 1);
+        assert!(!graph.get("nodes").unwrap().as_array().unwrap().is_empty());
     }
 
     #[actix_web::test]
