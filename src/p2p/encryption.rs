@@ -71,3 +71,7 @@ impl CryptoIdentity {
         self.verify(data, &signature)
     }
 }
+
+impl Default for CryptoIdentity {
+    fn default() -> Self { Self::new() }
+}

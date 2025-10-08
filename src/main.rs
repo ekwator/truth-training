@@ -60,9 +60,9 @@ async fn main() -> std::io::Result<()> {
 
     // Инициализация БД
     let mut conn = core_lib::storage::create_db_connection(&args.db)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        .map_err(std::io::Error::other)?;
     core_lib::storage::seed_knowledge_base(&mut conn, "ru")
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        .map_err(std::io::Error::other)?;
     let conn_data = Arc::new(Mutex::new(conn));
 
     // 🔒 Генерация крипто-идентичности узла
