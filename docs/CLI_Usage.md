@@ -87,6 +87,26 @@ truthctl keys import <priv_hex> <pub_hex>
 truthctl keys list
 ```
 
+## Peer Management
+Работа со списком пиров (`~/.truthctl/peers.json`):
+```bash
+truthctl peers list
+truthctl peers add http://127.0.0.1:8081 <pub_hex>
+```
+
+## Network Sync
+Синхронизация со всеми известными пирами:
+```bash
+# Полная двунаправленная
+truthctl peers sync-all --mode full
+
+# Инкрементальная за последний час
+truthctl peers sync-all --mode incremental
+
+# Сухой прогон
+truthctl peers sync-all --mode full --dry-run
+```
+
 Примечания:
 - Команды `sync` и `verify` по умолчанию используют первый доступный ключ из локального хранилища, если явный файл не указан флагом `--identity`.
 - Формат ключей — hex (32 байта для приватного и публичного ключа Ed25519).

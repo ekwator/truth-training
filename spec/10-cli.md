@@ -10,6 +10,7 @@ Administrative CLI over truth-core for synchronization, verification, and rating
 - status — DB status, identity and basic stats
 - keys — key management
 - init-node — initialize node config and optional auto-peer registration
+- peers — list/add peers; sync-all with known peers
 
 ## Key Management
 
@@ -45,5 +46,13 @@ Files:
 `--auto-peer` appends the node to peers.json if not present.
 
 See also: `docs/CLI_Usage.md` for examples.
+
+## P2P Sync Integration
+The CLI invokes `truth_core::p2p::sync` functions:
+- `bidirectional_sync_with_peer`
+- `incremental_sync_with_peer`
+- `resolve_event_conflicts` (available for conflict inspection tooling)
+
+Feature-gated with `p2p-client-sync`.
 
 
