@@ -73,6 +73,20 @@ truthctl init-node <node_name> --port 8080 --db truth.db --auto-peer
 }
 ```
 
+## Configuration Management
+Управление пользовательской конфигурацией узла (`~/.truthctl/config.json`):
+```bash
+truthctl config show
+truthctl config set <key> <value>
+truthctl config reset [--confirm]
+```
+Поддерживаемые ключи:
+- `node_name`
+- `port` (u16)
+- `database` (путь к БД)
+- `auto_peer` (boolean)
+- `p2p_enabled` (boolean)
+
 ## Peer Auto-Registration
 Флаг `--auto-peer` автоматически добавляет локальный узел в `peers.json`.
 Пример записи:
