@@ -36,6 +36,50 @@ truthctl sync --peer http://127.0.0.1:8080 --identity keys/node1.json --mode pul
 truthctl status --db truth.db --identity keys/node1.json
 ```
 
+## Key Generation
+Генерация новой пары Ed25519 (hex):
+```bash
+truthctl keys generate
+# вывод:
+# private: <64-hex>
+# public:  <64-hex>
+
+# сохранить в локальное хранилище (~/.truthctl/keys.json)
+truthctl keys generate --save
+```
+
+## Node Initialization
+Создание конфигурации узла и файлов:
+```bash
+truthctl init-node <node_name> --port 8080 --db truth.db --auto-peer
+```
+Файлы:
+- `~/.truthctl/config.json`:
+```json
+{
+  "node_name": "mynode",
+  "port": 8080,
+  "db_path": "truth.db",
+  "public_key": "<hex>",
+  "private_key": "<hex>"
+}
+```
+- `~/.truthctl/peers.json` (при `--auto-peer`):
+```json
+{
+  "peers": [
+    { "url": "http://127.0.0.1:8080", "public_key": "<hex>" }
+  ]
+}
+```
+
+## Peer Auto-Registration
+Флаг `--auto-peer` автоматически добавляет локальный узел в `peers.json`.
+Пример записи:
+```json
+{ "url": "http://127.0.0.1:8080", "public_key": "<hex>" }
+```
+
 ## Управление ключами
 Импорт и список локальных ключей (хранятся в `~/.truthctl/keys.json`):
 ```bash
