@@ -70,6 +70,19 @@ impl CryptoIdentity {
         // verify using the existing verify method
         self.verify(data, &signature)
     }
+
+    /// Создание CryptoIdentity из пары ключей в hex (для CLI)
+    pub fn from_keypair_hex(private_key_hex: &str, public_key_hex: &str) -> Result<Self, String> {
+        let sk_bytes = hex::decode(private_key_hex).map_err(|e| e.to_string())?;
+        if sk_bytes.len() != 32 { return Err(format!("invalid private key length: {}", sk_bytes.len())); }
+        let pk_bytes = hex::decode(public_key_hex).map_err(|e| e.to_string())?;
+        if pk_bytes.len() != 32 { return Err(format!("invalid public key length: {}", pk_bytes.len())); }
+
+        let signing_key = SigningKey::from_bytes(&sk_bytes.try_into().map_err(|_| "bad sk".to_string())?);
+        let verifying_key = VerifyingKey::from_bytes(&pk_bytes.try_into().map_err(|_| "bad pk".to_string())?)
+            .map_err(|e| e.to_string())?;
+        Ok(Self { signing_key, verifying_key })
+    }
 }
 
 impl Default for CryptoIdentity {
