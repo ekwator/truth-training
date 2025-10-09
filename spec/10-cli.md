@@ -9,6 +9,7 @@ Administrative CLI over truth-core for synchronization, verification, and rating
 - ratings — show or recalc node/group ratings
 - status — DB status, identity and basic stats
 - keys — key management
+- init-node — initialize node config and optional auto-peer registration
 
 ## Key Management
 
@@ -33,5 +34,16 @@ truthctl keys list
 Notes:
 - `sync` and `verify` use the first available key by default if `--identity` is not provided.
 - Keys are validated with `CryptoIdentity::from_keypair_hex` (Ed25519 hex).
+
+## Node Initialization & Peers
+`truthctl init-node <node_name> [--port <u16>] [--db <PATH>] [--auto-peer]`
+
+Files:
+- `~/.truthctl/config.json` — node_name, port, db_path, public_key, private_key
+- `~/.truthctl/peers.json` — `{ "peers": [{ "url": "http://127.0.0.1:<port>", "public_key": "<hex>" }] }`
+
+`--auto-peer` appends the node to peers.json if not present.
+
+See also: `docs/CLI_Usage.md` for examples.
 
 
