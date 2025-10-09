@@ -19,10 +19,10 @@ enum Commands {
     Sync {
         /// URL пира (например, http://127.0.0.1:8080)
         #[arg(long)]
-        peer: String,
-        /// Путь к JSON-файлу ключей
+        peer: Option<String>,
+        /// Путь к JSON-файлу ключей (если не указан — берётся из локального хранилища)
         #[arg(long)]
-        identity: PathBuf,
+        identity: Option<PathBuf>,
         /// Путь к БД
         #[arg(long, default_value = "truth.db")]
         db: PathBuf,
@@ -59,6 +59,16 @@ enum Commands {
         #[command(subcommand)]
         cmd: KeysCmd,
     },
+    /// Инициализация локального узла и автодобавление в peers.json
+    InitNode {
+        node_name: String,
+        #[arg(long, default_value_t = 8080)]
+        port: u16,
+        #[arg(long, default_value = "truth.db")]
+        db: PathBuf,
+        #[arg(long)]
+        auto_peer: bool,
+    },
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -73,6 +83,8 @@ enum KeysCmd {
     Import { private_key_hex: String, public_key_hex: String },
     /// Список импортированных ключей
     List,
+    /// Генерация новой пары ключей Ed25519 (опционально сохранить)
+    Generate { #[arg(long)] save: bool },
 }
 
 #[tokio::main(flavor = "multi_thread")] 
@@ -80,7 +92,15 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Sync { peer, identity, db, mode } => {
-            run_sync(peer, identity, db, mode).await
+            let peer = peer.unwrap_or_else(|| {
+                // Если не указан --peer, пытаемся взять первого из peers.json
+                let mut url = String::new();
+                if let Ok(p) = load_peers() { if let Some(first) = p.peers.first() { url = first.url.clone(); } }
+                if url.is_empty() { eprintln!("{}", "No peer specified. Use --peer or add peers.json".red()); }
+                url
+            });
+            let identity_path = identity.unwrap_or_else(|| PathBuf::from("") );
+            run_sync(peer, identity_path, db, mode).await
         }
         Commands::Status { db, identity } => {
             run_status(db, identity).await
@@ -93,6 +113,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Keys { cmd } => {
             run_keys(cmd).await
+        }
+        Commands::InitNode { node_name, port, db, auto_peer } => {
+            run_init_node(node_name, port, db, auto_peer).await
         }
     }
 }
@@ -172,6 +195,25 @@ fn keystore_path() -> anyhow::Result<PathBuf> {
     Ok(dir.join("keys.json"))
 }
 
+fn config_path() -> anyhow::Result<PathBuf> {
+    let dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("no HOME"))?.join(".truthctl");
+    fs::create_dir_all(&dir)?;
+    Ok(dir.join("config.json"))
+}
+
+fn peers_path() -> anyhow::Result<PathBuf> {
+    let dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("no HOME"))?.join(".truthctl");
+    fs::create_dir_all(&dir)?;
+    Ok(dir.join("peers.json"))
+}
+
+fn load_peers() -> anyhow::Result<Peers> {
+    let path = peers_path()?;
+    if !path.exists() { return Ok(Peers::default()); }
+    let data = fs::read_to_string(path)?;
+    Ok(serde_json::from_str(&data).unwrap_or_default())
+}
+
 fn load_keys() -> anyhow::Result<KeyStore> {
     let path = keystore_path()?;
     if !path.exists() { return Ok(KeyStore::default()); }
@@ -216,6 +258,65 @@ async fn run_keys(cmd: KeysCmd) -> anyhow::Result<()> {
             } else {
                 print_keys_table(&store);
             }
+        }
+        KeysCmd::Generate { save } => {
+            use ed25519_dalek::{SigningKey, Signer};
+            use rand::rngs::OsRng;
+            let mut rng = OsRng;
+            let sk = SigningKey::generate(&mut rng);
+            let vk = sk.verifying_key();
+            let priv_hex = hex::encode(sk.to_bytes());
+            let pub_hex = hex::encode(vk.to_bytes());
+            println!("private: {}\npublic: {}", priv_hex, pub_hex);
+            if save {
+                let mut store = load_keys()?;
+                let next_id = store.keys.iter().map(|k| k.id).max().unwrap_or(0) + 1;
+                let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+                let created_at = chrono::DateTime::<chrono::Utc>::from(UNIX_EPOCH + std::time::Duration::from_secs(ts)).to_rfc3339();
+                store.keys.push(KeyPair { id: next_id, private_key_hex: priv_hex, public_key_hex: pub_hex, created_at });
+                save_keys(&store)?;
+                println!("{}", "✅ Key saved to ~/.truthctl/keys.json".green());
+            }
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct NodeConfig { node_name: String, port: u16, db_path: String, public_key: String, private_key: String }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct Peers { peers: Vec<PeerItem> }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct PeerItem { url: String, public_key: String }
+
+async fn run_init_node(node_name: String, port: u16, db: PathBuf, auto_peer: bool) -> anyhow::Result<()> {
+    // get a key
+    let ks = load_keys()?;
+    let first = ks.keys.first().ok_or_else(|| anyhow::anyhow!("No keys found. Generate or import one: truthctl keys generate --save"))?;
+    let cfg = NodeConfig {
+        node_name,
+        port,
+        db_path: db.display().to_string(),
+        public_key: first.public_key_hex.clone(),
+        private_key: first.private_key_hex.clone(),
+    };
+    let cfg_path = config_path()?;
+    fs::write(&cfg_path, serde_json::to_string_pretty(&cfg)?)?;
+    println!("{} {}", "✅ Node config written:".green(), cfg_path.display());
+
+    if auto_peer {
+        let mut peers: Peers = if peers_path()?.exists() {
+            let data = fs::read_to_string(peers_path()?)?;
+            serde_json::from_str(&data).unwrap_or_default()
+        } else { Peers::default() };
+        let url = format!("http://127.0.0.1:{}", port);
+        let me = PeerItem { url, public_key: cfg.public_key.clone() };
+        if !peers.peers.iter().any(|p| p.public_key == me.public_key) {
+            peers.peers.push(me);
+            fs::write(peers_path()?, serde_json::to_string_pretty(&peers)?)?;
+            println!("{}", "✅ Added self node to peers.json".green());
         }
     }
     Ok(())
