@@ -12,9 +12,9 @@ fn keygen_generates_and_saves() {
     std::fs::create_dir_all(&tmp_home).unwrap();
 
     // run generate
-    let out = Command::new("cargo")
-        .args(["run", "--bin", "truthctl", "--", "keys", "generate", "--save"]) 
-        .current_dir("..")
+    let bin = env!("CARGO_BIN_EXE_truthctl");
+    let out = Command::new(bin)
+        .args(["keys", "generate", "--save"]) 
         .env("HOME", &tmp_home)
         .output().expect("run");
     assert!(out.status.success());
