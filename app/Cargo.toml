@@ -15,6 +15,9 @@ tokio = { version = "1.37", features = ["full"] }
 anyhow = "1.0"
 colored = "2.0"
 dirs = "5"
+rand = "0.8"
+ed25519-dalek = "2"
+hex = "0.4"
 
 [features]
 default = []
@@ -25,5 +28,3 @@ name = "truthctl"
 path = "src/bin/truthctl.rs"
 
 [dev-dependencies]
-ed25519-dalek = "2"
-hex = "0.4"
