@@ -260,7 +260,7 @@ async fn run_keys(cmd: KeysCmd) -> anyhow::Result<()> {
             }
         }
         KeysCmd::Generate { save } => {
-            use ed25519_dalek::{SigningKey, Signer};
+            use ed25519_dalek::SigningKey;
             use rand::rngs::OsRng;
             let mut rng = OsRng;
             let sk = SigningKey::generate(&mut rng);
