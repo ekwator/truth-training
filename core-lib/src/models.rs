@@ -244,3 +244,14 @@ pub fn summarize_graph(graph: &GraphData) -> GraphSummary {
         top_nodes: top,
     }
 }
+
+/// Запись журнала синхронизации высокого уровня
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncLog {
+    pub id: i64,
+    pub timestamp: i64,
+    pub peer_url: String,
+    pub mode: String,
+    pub status: String,
+    pub details: String,
+}

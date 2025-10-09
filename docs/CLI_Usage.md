@@ -107,6 +107,14 @@ truthctl peers sync-all --mode incremental
 truthctl peers sync-all --mode full --dry-run
 ```
 
+## Logs
+Просмотр и очистка журнала синхронизации:
+```bash
+truthctl logs show --limit 100 --db truth.db
+truthctl logs clear --db truth.db
+```
+Столбцы: id, timestamp, peer_url, mode, status, details. Записи создаются автоматически после каждой попытки `peers sync-all`.
+
 Примечания:
 - Команды `sync` и `verify` по умолчанию используют первый доступный ключ из локального хранилища, если явный файл не указан флагом `--identity`.
 - Формат ключей — hex (32 байта для приватного и публичного ключа Ed25519).

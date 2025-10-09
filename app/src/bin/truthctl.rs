@@ -74,6 +74,11 @@ enum Commands {
         #[command(subcommand)]
         cmd: PeersCmd,
     },
+    /// Журналы синхронизации
+    Logs {
+        #[command(subcommand)]
+        cmd: LogsCmd,
+    },
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -105,6 +110,14 @@ enum PeersCmd {
         /// Сухой прогон без отправки
         #[arg(long)] dry_run: bool,
     },
+}
+
+#[derive(Subcommand, Debug)]
+enum LogsCmd {
+    /// Показать последние записи журнала синхронизации
+    Show { #[arg(long, default_value_t = 50)] limit: usize, #[arg(long, default_value = "truth.db")] db: PathBuf },
+    /// Очистить журнал синхронизации
+    Clear { #[arg(long, default_value = "truth.db")] db: PathBuf },
 }
 
 #[tokio::main(flavor = "multi_thread")] 
@@ -139,6 +152,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Peers { cmd } => {
             run_peers(cmd).await
+        }
+        Commands::Logs { cmd } => {
+            run_logs(cmd).await
         }
     }
 }
@@ -371,21 +387,24 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
             {
                 use truth_core::p2p::encryption::CryptoIdentity;
                 use truth_core::p2p::sync::{bidirectional_sync_with_peer, incremental_sync_with_peer};
-                use rusqlite::Connection;
 
                 let peers = load_peers().unwrap_or_default();
                 let store = load_keys()?;
                 let me = store.keys.first().ok_or_else(|| anyhow::anyhow!("No keys found"))?;
                 let identity = CryptoIdentity::from_keypair_hex(&me.private_key_hex, &me.public_key_hex)
                     .map_err(|e| anyhow::anyhow!(e))?;
-                let conn = Connection::open("truth.db")?; // по умолчанию
+                let conn = storage::open_db("truth.db")?; // по умолчанию
 
                 if peers.peers.is_empty() {
                     println!("{}", "No peers to sync".yellow());
                 }
                 for p in &peers.peers {
                     if p.public_key == me.public_key_hex { continue; } // skip self
-                    if dry_run { println!("{} {}", "[dry-run] would sync with", p.url.blue()); continue; }
+                    if dry_run {
+                        println!("[dry-run] would sync with {}", p.url.blue());
+                        let _ = core_lib::storage::log_sync_event(&conn, &p.url, &mode, "dry-run", "no network call");
+                        continue;
+                    }
                     let res = if mode == "incremental" {
                         let last = chrono::Utc::now().timestamp() - 3600;
                         incremental_sync_with_peer(&p.url, &identity, &conn, last).await
@@ -393,16 +412,50 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
                         bidirectional_sync_with_peer(&p.url, &identity, &conn).await
                     };
                     match res {
-                        Ok(r) => println!("{} {}: +E{} +S{} +I{} (conflicts {})",
-                            "✅ synced".green(), p.url, r.events_added, r.statements_added, r.impacts_added, r.conflicts_resolved),
-                        Err(e) => println!("{} {}: {}", "❌ failed".red(), p.url, e),
+                        Ok(r) => {
+                            println!("{} {}: +E{} +S{} +I{} (conflicts {})",
+                                "✅ synced".green(), p.url, r.events_added, r.statements_added, r.impacts_added, r.conflicts_resolved);
+                            let _ = core_lib::storage::log_sync_event(&conn, &p.url, &mode, "success",
+                                &format!("E{} S{} I{} C{}", r.events_added, r.statements_added, r.impacts_added, r.conflicts_resolved));
+                        }
+                        Err(e) => {
+                            println!("{} {}: {}", "❌ failed".red(), p.url, e);
+                            let _ = core_lib::storage::log_sync_event(&conn, &p.url, &mode, "error", &e.to_string());
+                        }
                     }
                 }
             }
             #[cfg(not(feature = "p2p-client-sync"))]
             {
+                // во избежание предупреждений о неиспользуемых переменных при отсутствии фичи
+                let _ = (mode, dry_run);
                 println!("Build with --features p2p-client-sync to use sync all");
             }
+        }
+    }
+    Ok(())
+}
+
+async fn run_logs(cmd: LogsCmd) -> anyhow::Result<()> {
+    match cmd {
+        LogsCmd::Show { limit, db } => {
+            let conn = storage::open_db(db.to_str().unwrap())?;
+            let logs = core_lib::storage::get_recent_sync_logs(&conn, limit)?;
+            if logs.is_empty() {
+                println!("{}", "No sync logs".yellow());
+            } else {
+                println!("{}", "Sync logs:".blue());
+                for l in logs {
+                    let ts = chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH + std::time::Duration::from_secs(l.timestamp as u64)).to_rfc3339();
+                    println!("#{} {} {} {} {}", l.id, ts, l.peer_url, l.mode, match l.status.as_str() { "success" => "✅", "error" => "❌", _ => "" });
+                    if !l.details.is_empty() { println!("   {}", l.details); }
+                }
+            }
+        }
+        LogsCmd::Clear { db } => {
+            let conn = storage::open_db(db.to_str().unwrap())?;
+            core_lib::storage::clear_sync_logs(&conn)?;
+            println!("{}", "✅ Logs cleared".green());
         }
     }
     Ok(())
@@ -441,7 +494,7 @@ async fn run_ratings(db_path: PathBuf, recalc: bool) -> anyhow::Result<()> {
 #[cfg(feature = "p2p-client-sync")]
 async fn run_sync(peer: String, identity_path: PathBuf, db_path: PathBuf, mode: Mode) -> anyhow::Result<()> {
     use truth_core::p2p::encryption::CryptoIdentity;
-    use truth_core::p2p::sync::{sync_with_peer, bidirectional_sync_with_peer, incremental_sync_with_peer, push_local_data, pull_remote_data};
+    use truth_core::p2p::sync::{bidirectional_sync_with_peer, incremental_sync_with_peer, push_local_data, pull_remote_data};
     use rusqlite::Connection;
 
     // Если указан файл ключа — используем его, иначе берём первый ключ из локального хранилища
@@ -487,6 +540,7 @@ async fn run_sync(_peer: String, _identity_path: PathBuf, _db_path: PathBuf, _mo
     anyhow::bail!("Build with --features p2p-client-sync to use sync commands")
 }
 
+#[allow(dead_code)]
 fn print_sync_result(res: truth_core::p2p::sync::SyncResult) {
     println!("{}", format!("✅ Sync successful:\n   - Events added: {}\n   - Statements added: {}\n   - Impacts added: {}\n   - Conflicts resolved: {}",
         res.events_added, res.statements_added, res.impacts_added, res.conflicts_resolved).green());
