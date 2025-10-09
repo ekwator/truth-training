@@ -12,6 +12,7 @@ Administrative CLI over truth-core for synchronization, verification, and rating
 - init-node — initialize node config and optional auto-peer registration
 - peers — list/add peers; sync-all with known peers
 - logs — show/clear persistent synchronization logs
+ - config — manage `~/.truthctl/config.json`
 
 ## Key Management
 
@@ -47,6 +48,28 @@ Files:
 `--auto-peer` appends the node to peers.json if not present.
 
 See also: `docs/CLI_Usage.md` for examples.
+
+## Configuration Management
+Command group to manage node configuration at `~/.truthctl/config.json`.
+
+Commands:
+```bash
+truthctl config show
+truthctl config set <key> <value>
+truthctl config reset [--confirm]
+```
+
+Supported keys and semantics:
+- `node_name` — string
+- `port` — u16
+- `database` — sets `db_path`
+- `auto_peer` — boolean
+- `p2p_enabled` — boolean
+
+Behavior:
+- `show`: prints pretty JSON
+- `set`: validates key and writes file, creating `~/.truthctl/` as needed
+- `reset`: writes defaults; preserves existing keys (public/private) if present; requires `--confirm`
 
 ## P2P Sync Integration
 The CLI invokes `truth_core::p2p::sync` functions:

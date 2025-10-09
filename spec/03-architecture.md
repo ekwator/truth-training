@@ -24,6 +24,7 @@ Modules
 - net: UDP beacon sender/listener in `src/net.rs` for LAN peer discovery.
 - app/truthctl: peer registry (`peers.json`), `peers add/list`, and `sync` orchestration (push or pull-only).
 - sync logs: persistent high-level sync logs in `core-lib/src/storage.rs` (table `sync_logs`), exposed via CLI `truthctl logs show|clear`.
+ - node configuration: user-editable `~/.truthctl/config.json` managed via `truthctl config` (show/set/reset).
 
 Non-goals (MVP)
 - Reputation/Sybil resistance; validator weighting; global propagation semantics.
