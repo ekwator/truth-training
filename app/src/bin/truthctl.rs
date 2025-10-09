@@ -69,6 +69,11 @@ enum Commands {
         #[arg(long)]
         auto_peer: bool,
     },
+    /// Управление пирами и синхронизация
+    Peers {
+        #[command(subcommand)]
+        cmd: PeersCmd,
+    },
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -85,6 +90,21 @@ enum KeysCmd {
     List,
     /// Генерация новой пары ключей Ed25519 (опционально сохранить)
     Generate { #[arg(long)] save: bool },
+}
+
+#[derive(Subcommand, Debug)]
+enum PeersCmd {
+    /// Список пиров из ~/.truthctl/peers.json
+    List,
+    /// Добавить пира
+    Add { url: String, public_key: String },
+    /// Синхронизировать со всеми пирами
+    SyncAll {
+        /// Режим: full или incremental
+        #[arg(long, default_value = "full")] mode: String,
+        /// Сухой прогон без отправки
+        #[arg(long)] dry_run: bool,
+    },
 }
 
 #[tokio::main(flavor = "multi_thread")] 
@@ -116,6 +136,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::InitNode { node_name, port, db, auto_peer } => {
             run_init_node(node_name, port, db, auto_peer).await
+        }
+        Commands::Peers { cmd } => {
+            run_peers(cmd).await
         }
     }
 }
@@ -317,6 +340,69 @@ async fn run_init_node(node_name: String, port: u16, db: PathBuf, auto_peer: boo
             peers.peers.push(me);
             fs::write(peers_path()?, serde_json::to_string_pretty(&peers)?)?;
             println!("{}", "✅ Added self node to peers.json".green());
+        }
+    }
+    Ok(())
+}
+
+async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
+    match cmd {
+        PeersCmd::List => {
+            let peers = load_peers().unwrap_or_default();
+            if peers.peers.is_empty() {
+                println!("{}", "No peers found".yellow());
+            } else {
+                println!("{}", "Peers:".blue());
+                for p in peers.peers { println!("- {} ({})", p.url, &p.public_key.get(0..8).unwrap_or("")); }
+            }
+        }
+        PeersCmd::Add { url, public_key } => {
+            let mut peers = load_peers().unwrap_or_default();
+            if peers.peers.iter().any(|p| p.url == url) {
+                println!("{}", "Peer already exists".yellow());
+            } else {
+                peers.peers.push(PeerItem { url: url.clone(), public_key });
+                fs::write(peers_path()?, serde_json::to_string_pretty(&peers)?)?;
+                println!("{} {}", "✅ Peer added:".green(), url);
+            }
+        }
+        PeersCmd::SyncAll { mode, dry_run } => {
+            #[cfg(feature = "p2p-client-sync")]
+            {
+                use truth_core::p2p::encryption::CryptoIdentity;
+                use truth_core::p2p::sync::{bidirectional_sync_with_peer, incremental_sync_with_peer};
+                use rusqlite::Connection;
+
+                let peers = load_peers().unwrap_or_default();
+                let store = load_keys()?;
+                let me = store.keys.first().ok_or_else(|| anyhow::anyhow!("No keys found"))?;
+                let identity = CryptoIdentity::from_keypair_hex(&me.private_key_hex, &me.public_key_hex)
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                let conn = Connection::open("truth.db")?; // по умолчанию
+
+                if peers.peers.is_empty() {
+                    println!("{}", "No peers to sync".yellow());
+                }
+                for p in &peers.peers {
+                    if p.public_key == me.public_key_hex { continue; } // skip self
+                    if dry_run { println!("{} {}", "[dry-run] would sync with", p.url.blue()); continue; }
+                    let res = if mode == "incremental" {
+                        let last = chrono::Utc::now().timestamp() - 3600;
+                        incremental_sync_with_peer(&p.url, &identity, &conn, last).await
+                    } else {
+                        bidirectional_sync_with_peer(&p.url, &identity, &conn).await
+                    };
+                    match res {
+                        Ok(r) => println!("{} {}: +E{} +S{} +I{} (conflicts {})",
+                            "✅ synced".green(), p.url, r.events_added, r.statements_added, r.impacts_added, r.conflicts_resolved),
+                        Err(e) => println!("{} {}: {}", "❌ failed".red(), p.url, e),
+                    }
+                }
+            }
+            #[cfg(not(feature = "p2p-client-sync"))]
+            {
+                println!("Build with --features p2p-client-sync to use sync all");
+            }
         }
     }
     Ok(())
