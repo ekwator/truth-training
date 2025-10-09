@@ -36,6 +36,17 @@ truthctl sync --peer http://127.0.0.1:8080 --identity keys/node1.json --mode pul
 truthctl status --db truth.db --identity keys/node1.json
 ```
 
+## Управление ключами
+Импорт и список локальных ключей (хранятся в `~/.truthctl/keys.json`):
+```bash
+truthctl keys import <priv_hex> <pub_hex>
+truthctl keys list
+```
+
+Примечания:
+- Команды `sync` и `verify` по умолчанию используют первый доступный ключ из локального хранилища, если явный файл не указан флагом `--identity`.
+- Формат ключей — hex (32 байта для приватного и публичного ключа Ed25519).
+
 ## Формат ключей
 `keys/node1.json`:
 ```json
