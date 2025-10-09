@@ -39,17 +39,17 @@ impl Node {
                     // 1) Считаем данные из БД синхронно и освободим соединение до await
                     let (sync_data, sig_hex, pub_hex, ts, rhash) = {
                         let conn = conn_data.lock().await;
-                        let events = core_lib::storage::load_truth_events(&*conn)
+                        let events = core_lib::storage::load_truth_events(&conn)
                             .map_err(|e| SyncError::Other(e.to_string()));
-                        let statements = core_lib::storage::load_statements(&*conn)
+                        let statements = core_lib::storage::load_statements(&conn)
                             .map_err(|e| SyncError::Other(e.to_string()));
-                        let impacts = core_lib::storage::load_impacts(&*conn)
+                        let impacts = core_lib::storage::load_impacts(&conn)
                             .map_err(|e| SyncError::Other(e.to_string()));
-                        let metrics = core_lib::storage::load_metrics(&*conn)
+                        let metrics = core_lib::storage::load_metrics(&conn)
                             .map_err(|e| SyncError::Other(e.to_string()));
-                        let node_ratings = core_lib::storage::load_node_ratings(&*conn)
+                        let node_ratings = core_lib::storage::load_node_ratings(&conn)
                             .map_err(|e| SyncError::Other(e.to_string()));
-                        let group_ratings = core_lib::storage::load_group_ratings(&*conn)
+                        let group_ratings = core_lib::storage::load_group_ratings(&conn)
                             .map_err(|e| SyncError::Other(e.to_string()));
                         let (events, statements, impacts, metrics, node_ratings, group_ratings) = match (events, statements, impacts, metrics, node_ratings, group_ratings) {
                             (Ok(a), Ok(b), Ok(c), Ok(d), Ok(e1), Ok(f)) => (a,b,c,d,e1,f),

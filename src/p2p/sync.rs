@@ -59,6 +59,7 @@ pub fn compute_ratings_hash(node_ratings: &[NodeRating], group_ratings: &[GroupR
 
 /// Асинхронная синхронизация с peer'ом
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 pub async fn sync_with_peer(peer_url: &str, identity: &CryptoIdentity) -> anyhow::Result<SyncResult> {
     // Создаём асинхронный HTTP клиент
     let client = Client::builder()
@@ -112,6 +113,7 @@ pub async fn sync_with_peer(peer_url: &str, identity: &CryptoIdentity) -> anyhow
 
 /// Двунаправленная синхронизация - отправка и получение данных
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 pub async fn bidirectional_sync_with_peer(
     peer_url: &str, 
     identity: &CryptoIdentity,
@@ -176,6 +178,7 @@ pub async fn bidirectional_sync_with_peer(
 
 /// Push all local data to a peer's /sync endpoint with signing
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 pub async fn push_local_data(
     peer_url: &str,
     identity: &CryptoIdentity,
@@ -219,6 +222,7 @@ pub async fn push_local_data(
 
 /// Pull remote data from peer by combining /get_data and /statements
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 pub async fn pull_remote_data(peer_url: &str, identity: &CryptoIdentity) -> anyhow::Result<SyncData> {
     let client = Client::builder().timeout(Duration::from_secs(30)).build()?;
     let ts = Utc::now().timestamp();
@@ -462,6 +466,7 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
 
 /// Инкрементальная синхронизация - только изменения с последней синхронизации
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 pub async fn incremental_sync_with_peer(
     peer_url: &str, 
     identity: &CryptoIdentity,
@@ -520,6 +525,7 @@ pub async fn incremental_sync_with_peer(
 
 /// Получить события с определенного времени
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 fn get_events_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<TruthEvent>> {
     let mut stmt = conn.prepare(
         "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key \
@@ -551,6 +557,7 @@ fn get_events_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Tru
 
 /// Получить утверждения с определенного времени
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 fn get_statements_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Statement>> {
     let mut stmt = conn.prepare(
         "SELECT id, event_id, text, context, truth_score, created_at, updated_at, signature, public_key \
@@ -580,6 +587,7 @@ fn get_statements_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec
 
 /// Получить воздействия с определенного времени
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 fn get_impacts_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Impact>> {
     let mut stmt = conn.prepare(
         "SELECT id, event_id, type_id, value, notes, created_at, signature, public_key \
@@ -608,6 +616,7 @@ fn get_impacts_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Im
 
 /// Конфликт-резолюшн для событий
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 pub fn resolve_event_conflicts(
     local_events: &[TruthEvent],
     remote_events: &[TruthEvent],

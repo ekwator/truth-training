@@ -11,6 +11,7 @@ Administrative CLI over truth-core for synchronization, verification, and rating
 - keys — key management
 - init-node — initialize node config and optional auto-peer registration
 - peers — list/add peers; sync-all with known peers
+- logs — show/clear persistent synchronization logs
 
 ## Key Management
 
@@ -54,5 +55,23 @@ The CLI invokes `truth_core::p2p::sync` functions:
 - `resolve_event_conflicts` (available for conflict inspection tooling)
 
 Feature-gated with `p2p-client-sync`.
+
+## Sync Logs
+Schema (SQLite table `sync_logs`):
+```
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+timestamp INTEGER,
+peer_url TEXT,
+mode TEXT,
+status TEXT,
+details TEXT
+```
+
+Commands:
+```bash
+truthctl logs show --limit 100 --db truth.db
+truthctl logs clear --db truth.db
+```
+Entries are appended from `peers sync-all` after each peer attempt (success or failure).
 
 
