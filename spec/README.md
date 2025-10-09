@@ -19,6 +19,9 @@ Purpose: a single source of truth for requirements, architecture, API, data, and
 - 15 Prompts & Automation (LLM workflows): `spec/15-prompts-and-automation.md`
 - 16 Test Plan: `spec/16-test-plan.md`
 
+External tools:
+- truthctl CLI: `docs/CLI_Usage.md` (introduced in v0.2.0)
+
 References (existing docs):
 - Project README: `README.md`
 - Architecture: `docs/architecture.md`

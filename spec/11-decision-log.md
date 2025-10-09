@@ -9,6 +9,7 @@ Summary (2025-10):
 - Migrated signature verification to Result-based API via `CryptoIdentity::verify_from_hex` with explicit error types.
 - Implemented async sync architecture with `/sync` and `/incremental_sync`, timestamped message patterns, and conflict resolution by latest timestamp.
 - Added `truthctl` CLI and file-based peer registry `peers.json` to manage peers and trigger syncs.
+- **Architectural separation**: Moved CLI to `app/` crate for modular testing and clean builds. `truth-core` remains library-only.
 
 Details
 - Verification now returns precise `VerifyError` variants (hex decode, parse, or verify failure), surfaced to 401 responses during development.
