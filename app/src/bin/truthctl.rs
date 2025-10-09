@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "../config_utils.rs"]
+mod config_utils;
+use config_utils::{default_config, load_config, save_config, Config as NodeConfig};
+
 #[derive(Parser, Debug)]
 #[command(name = "truthctl", version, about = "CLI для P2P синхронизации Truth Core")] 
 struct Cli {
@@ -69,6 +73,11 @@ enum Commands {
         #[arg(long)]
         auto_peer: bool,
     },
+    /// Управление конфигурацией узла
+    Config {
+        #[command(subcommand)]
+        cmd: ConfigCmd,
+    },
     /// Управление пирами и синхронизация
     Peers {
         #[command(subcommand)]
@@ -110,6 +119,16 @@ enum PeersCmd {
         /// Сухой прогон без отправки
         #[arg(long)] dry_run: bool,
     },
+}
+
+#[derive(Subcommand, Debug)]
+enum ConfigCmd {
+    /// Показать текущую конфигурацию узла
+    Show,
+    /// Установить значение по ключу
+    Set { key: String, value: String },
+    /// Сбросить конфигурацию к значениям по умолчанию
+    Reset { #[arg(long)] confirm: bool },
 }
 
 #[derive(Subcommand, Debug)]
@@ -155,6 +174,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Logs { cmd } => {
             run_logs(cmd).await
+        }
+        Commands::Config { cmd } => {
+            run_config(cmd).await
         }
     }
 }
@@ -232,12 +254,6 @@ fn keystore_path() -> anyhow::Result<PathBuf> {
     let dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("no HOME"))?.join(".truthctl");
     fs::create_dir_all(&dir)?;
     Ok(dir.join("keys.json"))
-}
-
-fn config_path() -> anyhow::Result<PathBuf> {
-    let dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("no HOME"))?.join(".truthctl");
-    fs::create_dir_all(&dir)?;
-    Ok(dir.join("config.json"))
 }
 
 fn peers_path() -> anyhow::Result<PathBuf> {
@@ -321,9 +337,6 @@ async fn run_keys(cmd: KeysCmd) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct NodeConfig { node_name: String, port: u16, db_path: String, public_key: String, private_key: String }
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct Peers { peers: Vec<PeerItem> }
 
@@ -340,9 +353,13 @@ async fn run_init_node(node_name: String, port: u16, db: PathBuf, auto_peer: boo
         db_path: db.display().to_string(),
         public_key: first.public_key_hex.clone(),
         private_key: first.private_key_hex.clone(),
+        auto_peer,
+        p2p_enabled: true,
     };
-    let cfg_path = config_path()?;
-    fs::write(&cfg_path, serde_json::to_string_pretty(&cfg)?)?;
+    save_config(&cfg)?;
+    // find path for user output
+    let dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("no HOME"))?.join(".truthctl");
+    let cfg_path = dir.join("config.json");
     println!("{} {}", "✅ Node config written:".green(), cfg_path.display());
 
     if auto_peer {
@@ -359,6 +376,64 @@ async fn run_init_node(node_name: String, port: u16, db: PathBuf, auto_peer: boo
         }
     }
     Ok(())
+}
+
+async fn run_config(cmd: ConfigCmd) -> anyhow::Result<()> {
+    match cmd {
+        ConfigCmd::Show => {
+            let cfg = load_config()?;
+            let json = serde_json::to_string_pretty(&cfg)?;
+            println!("{}", json);
+        }
+        ConfigCmd::Set { key, value } => {
+            let mut cfg = load_config()?;
+            let k = key.to_lowercase();
+            match k.as_str() {
+                "node_name" => cfg.node_name = value,
+                "port" => {
+                    let p: u16 = value.parse().map_err(|_| anyhow::anyhow!("port must be a number (u16)"))?;
+                    cfg.port = p;
+                }
+                "database" => {
+                    cfg.db_path = value;
+                }
+                "auto_peer" => {
+                    cfg.auto_peer = parse_bool(&value)?;
+                }
+                "p2p_enabled" => {
+                    cfg.p2p_enabled = parse_bool(&value)?;
+                }
+                _ => {
+                    anyhow::bail!(format!("Unsupported key: {}", key));
+                }
+            }
+            save_config(&cfg)?;
+            println!("{} {}", "✅ Updated".green(), key);
+        }
+        ConfigCmd::Reset { confirm } => {
+            if !confirm {
+                println!("{}", "This will overwrite ~/.truthctl/config.json. Rerun with --confirm to proceed.".yellow());
+                return Ok(());
+            }
+            // keep keys if present?
+            let existing = load_config().unwrap_or_else(|_| default_config());
+            let mut cfg = default_config();
+            // Preserve existing keys if they are set; otherwise leave empty defaults
+            cfg.public_key = existing.public_key;
+            cfg.private_key = existing.private_key;
+            save_config(&cfg)?;
+            println!("{}", "✅ Configuration reset".green());
+        }
+    }
+    Ok(())
+}
+
+fn parse_bool(s: &str) -> anyhow::Result<bool> {
+    match s.to_ascii_lowercase().as_str() {
+        "true" | "1" | "yes" | "y" => Ok(true),
+        "false" | "0" | "no" | "n" => Ok(false),
+        _ => Err(anyhow::anyhow!("expected boolean (true/false)")),
+    }
 }
 
 async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
