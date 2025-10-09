@@ -2,6 +2,9 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use colored::*;
 use core_lib::storage;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Parser, Debug)]
 #[command(name = "truthctl", version, about = "CLI для P2P синхронизации Truth Core")] 
@@ -51,6 +54,11 @@ enum Commands {
         #[arg(long)]
         recalc: bool,
     },
+    /// Управление ключами
+    Keys {
+        #[command(subcommand)]
+        cmd: KeysCmd,
+    },
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -58,6 +66,14 @@ enum Mode { Full, Incremental, Push, Pull }
 
 #[derive(serde::Deserialize)]
 struct KeyFile { private_key: String, public_key: String }
+
+#[derive(Subcommand, Debug)]
+enum KeysCmd {
+    /// Импорт пары ключей Ed25519 в локальное хранилище (~/.truthctl/keys.json)
+    Import { private_key_hex: String, public_key_hex: String },
+    /// Список импортированных ключей
+    List,
+}
 
 #[tokio::main(flavor = "multi_thread")] 
 async fn main() -> anyhow::Result<()> {
@@ -74,6 +90,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Ratings { db, recalc } => {
             run_ratings(db, recalc).await
+        }
+        Commands::Keys { cmd } => {
+            run_keys(cmd).await
         }
     }
 }
@@ -131,6 +150,74 @@ async fn run_verify(db_path: PathBuf) -> anyhow::Result<()> {
     }
     
     println!("{}", format!("✅ Verified {}/{} signed events", valid_signatures, total_signed).green());
+    // Используем первый ключ (если есть) для демонстрации from_keypair_hex и снятия предупреждений
+    if let Ok(store) = load_keys() {
+        if let Some(k) = store.keys.first() {
+            let _id = truth_core::p2p::encryption::CryptoIdentity::from_keypair_hex(&k.private_key_hex, &k.public_key_hex)
+                .map_err(|e| anyhow::anyhow!(e))?;
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct KeyPair { id: u64, private_key_hex: String, public_key_hex: String, created_at: String }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct KeyStore { keys: Vec<KeyPair> }
+
+fn keystore_path() -> anyhow::Result<PathBuf> {
+    let dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("no HOME"))?.join(".truthctl");
+    fs::create_dir_all(&dir)?;
+    Ok(dir.join("keys.json"))
+}
+
+fn load_keys() -> anyhow::Result<KeyStore> {
+    let path = keystore_path()?;
+    if !path.exists() { return Ok(KeyStore::default()); }
+    let data = fs::read_to_string(path)?;
+    Ok(serde_json::from_str(&data)?)
+}
+
+fn save_keys(store: &KeyStore) -> anyhow::Result<()> {
+    let path = keystore_path()?;
+    let json = serde_json::to_string_pretty(store)?;
+    fs::write(path, json)?;
+    Ok(())
+}
+
+fn print_keys_table(store: &KeyStore) {
+    println!("{}", "ID   PUBLIC(8)   CREATED_AT".blue());
+    for k in &store.keys {
+        let short = k.public_key_hex.get(0..8).unwrap_or("");
+        println!("{:<4} {:<11} {}", k.id, short, k.created_at);
+    }
+}
+
+async fn run_keys(cmd: KeysCmd) -> anyhow::Result<()> {
+    match cmd {
+        KeysCmd::Import { private_key_hex, public_key_hex } => {
+            // валидация ключей
+            truth_core::p2p::encryption::CryptoIdentity::from_keypair_hex(&private_key_hex, &public_key_hex)
+                .map_err(|e| anyhow::anyhow!(e))?;
+
+            let mut store = load_keys()?;
+            let next_id = store.keys.iter().map(|k| k.id).max().unwrap_or(0) + 1;
+            let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+            let created_at = chrono::DateTime::<chrono::Utc>::from(UNIX_EPOCH + std::time::Duration::from_secs(ts)).to_rfc3339();
+            store.keys.push(KeyPair { id: next_id, private_key_hex, public_key_hex, created_at });
+            save_keys(&store)?;
+            println!("{}", "✅ Key imported".green());
+        }
+        KeysCmd::List => {
+            let store = load_keys()?;
+            if store.keys.is_empty() {
+                println!("{}", "No keys found. Use 'truthctl keys import'".yellow());
+            } else {
+                print_keys_table(&store);
+            }
+        }
+    }
     Ok(())
 }
 
@@ -170,10 +257,18 @@ async fn run_sync(peer: String, identity_path: PathBuf, db_path: PathBuf, mode: 
     use truth_core::p2p::sync::{sync_with_peer, bidirectional_sync_with_peer, incremental_sync_with_peer, push_local_data, pull_remote_data};
     use rusqlite::Connection;
 
-    let data = std::fs::read_to_string(&identity_path)?;
-    let k: KeyFile = serde_json::from_str(&data)?;
-    let identity = CryptoIdentity::from_keypair_hex(&k.private_key, &k.public_key)
-        .map_err(|e| anyhow::anyhow!(e))?;
+    // Если указан файл ключа — используем его, иначе берём первый ключ из локального хранилища
+    let identity = if identity_path.as_os_str().is_empty() {
+        let store = load_keys()?;
+        let first = store.keys.first().ok_or_else(|| anyhow::anyhow!("No keys found. Import via: truthctl keys import <priv_hex> <pub_hex>"))?;
+        CryptoIdentity::from_keypair_hex(&first.private_key_hex, &first.public_key_hex)
+            .map_err(|e| anyhow::anyhow!(e))?
+    } else {
+        let data = std::fs::read_to_string(&identity_path)?;
+        let k: KeyFile = serde_json::from_str(&data)?;
+        CryptoIdentity::from_keypair_hex(&k.private_key, &k.public_key)
+            .map_err(|e| anyhow::anyhow!(e))?
+    };
 
     let conn = Connection::open(db_path)?;
 
