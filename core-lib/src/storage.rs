@@ -19,6 +19,7 @@ use uuid::Uuid;
 use chrono::Utc;
 use std::fs;
 use std::collections::{HashMap, HashSet, VecDeque};
+use crate::models::SyncLog;
 
 /// Создать соединение с базой данных и инициализировать схему
 pub fn create_db_connection(db_path: &str) -> Result<Connection, CoreError> {
@@ -220,6 +221,16 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
             signature    TEXT,
             public_key   TEXT,
             created_at   INTEGER NOT NULL
+        );
+
+        -- high-level synchronization logs
+        CREATE TABLE IF NOT EXISTS sync_logs (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp  INTEGER NOT NULL,
+            peer_url   TEXT NOT NULL,
+            mode       TEXT NOT NULL,
+            status     TEXT NOT NULL,
+            details    TEXT NOT NULL
         );
         "#,
     )?;
@@ -1540,6 +1551,49 @@ pub fn log_sync(
         params![op, table_name, record_id, signature, public_key, created_at],
     )?;
     Ok(conn.last_insert_rowid())
+}
+
+/// Добавить запись высокого уровня о попытке синхронизации
+pub fn log_sync_event(
+    conn: &Connection,
+    peer_url: &str,
+    mode: &str,
+    status: &str,
+    details: &str,
+) -> Result<i64, CoreError> {
+    let ts = Utc::now().timestamp();
+    conn.execute(
+        r#"INSERT INTO sync_logs (timestamp, peer_url, mode, status, details)
+           VALUES (?1, ?2, ?3, ?4, ?5)"#,
+        params![ts, peer_url, mode, status, details],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+/// Получить последние N записей sync_logs (DESC по id)
+pub fn get_recent_sync_logs(conn: &Connection, limit: usize) -> Result<Vec<SyncLog>, CoreError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, timestamp, peer_url, mode, status, details FROM sync_logs ORDER BY id DESC LIMIT ?1",
+    )?;
+    let rows = stmt.query_map(params![limit as i64], |row| {
+        Ok(SyncLog {
+            id: row.get(0)?,
+            timestamp: row.get(1)?,
+            peer_url: row.get(2)?,
+            mode: row.get(3)?,
+            status: row.get(4)?,
+            details: row.get(5)?,
+        })
+    })?;
+    let mut out = Vec::new();
+    for r in rows { out.push(r?); }
+    Ok(out)
+}
+
+/// Очистить журнал sync_logs
+pub fn clear_sync_logs(conn: &Connection) -> Result<(), CoreError> {
+    conn.execute("DELETE FROM sync_logs", [])?;
+    Ok(())
 }
 
 #[cfg(test)]

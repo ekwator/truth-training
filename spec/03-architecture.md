@@ -23,6 +23,7 @@ Modules
 - p2p/encryption: `CryptoIdentity` (Ed25519) with hex helpers and Result-based verify; header message patterns.
 - net: UDP beacon sender/listener in `src/net.rs` for LAN peer discovery.
 - app/truthctl: peer registry (`peers.json`), `peers add/list`, and `sync` orchestration (push or pull-only).
+- sync logs: persistent high-level sync logs in `core-lib/src/storage.rs` (table `sync_logs`), exposed via CLI `truthctl logs show|clear`.
 
 Non-goals (MVP)
 - Reputation/Sybil resistance; validator weighting; global propagation semantics.
