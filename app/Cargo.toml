@@ -28,3 +28,6 @@ name = "truthctl"
 path = "src/bin/truthctl.rs"
 
 [dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
