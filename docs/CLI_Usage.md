@@ -35,6 +35,7 @@ truthctl sync --peer http://127.0.0.1:8080 --identity keys/node1.json --mode pul
 ```bash
 truthctl status --db truth.db --identity keys/node1.json
 ```
+Вывод включает имя ноды и порт (из `~/.truthctl/config.json`), путь к БД, количество пиров (из `~/.truthctl/peers.json`) и последние 5 записей синхронизации из таблицы `sync_logs`. Для свежей БД выводит предупреждение: "No sync history yet.".
 
 ## Key Generation
 Генерация новой пары Ed25519 (hex):
