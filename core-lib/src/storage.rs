@@ -20,6 +20,7 @@ use chrono::Utc;
 use std::fs;
 use std::collections::{HashMap, HashSet, VecDeque};
 use crate::models::SyncLog;
+use crate::trust_propagation::{apply_time_decay, propagate_from_remote};
 
 /// Создать соединение с базой данных и инициализировать схему
 pub fn create_db_connection(db_path: &str) -> Result<Connection, CoreError> {
@@ -1038,36 +1039,15 @@ pub fn merge_ratings(
     conn: &Connection,
     incoming_nodes: &[NodeRating],
     incoming_groups: &[GroupRating],
-) -> Result<(), CoreError> {
-    // Узлы
-    let mut stmt_nodes = conn.prepare(
-        r#"
-        INSERT INTO node_ratings (node_id, events_true, events_false, validations, reused_events, trust_score, last_updated)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-        ON CONFLICT(node_id) DO UPDATE SET
-            events_true   = excluded.events_true,
-            events_false  = excluded.events_false,
-            validations   = excluded.validations,
-            reused_events = excluded.reused_events,
-            trust_score   = excluded.trust_score,
-            last_updated  = excluded.last_updated
-        WHERE excluded.trust_score > node_ratings.trust_score
-           OR (excluded.trust_score = node_ratings.trust_score AND excluded.last_updated > node_ratings.last_updated)
-        "#,
-    )?;
-    for nr in incoming_nodes {
-        stmt_nodes.execute(rusqlite::params![
-            nr.node_id,
-            nr.events_true as i64,
-            nr.events_false as i64,
-            nr.validations as i64,
-            nr.reused_events as i64,
-            nr.trust_score,
-            nr.last_updated,
-        ])?;
-    }
+) -> Result<Vec<(String, f32)>, CoreError> {
+    // 0) Перед смешиванием — мягкий временной спад для устаревших записей
+    let now_ts = chrono::Utc::now().timestamp();
+    let _ = apply_time_decay(conn, now_ts)?;
 
-    // Группы
+    // 1) Узлы: распространяем доверие через взвешенное смешивание
+    let trust_diffs = propagate_from_remote(conn, incoming_nodes, now_ts)?;
+
+    // 2) Группы: резолвим по last_updated, как и раньше
     let mut stmt_groups = conn.prepare(
         r#"
         INSERT INTO group_ratings (group_id, members, avg_score, coherence, last_updated)
@@ -1091,7 +1071,7 @@ pub fn merge_ratings(
         ])?;
     }
 
-    Ok(())
+    Ok(trust_diffs)
 }
 
 /// Сформировать данные графа доверия
@@ -1599,6 +1579,7 @@ pub fn clear_sync_logs(conn: &Connection) -> Result<(), CoreError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::trust_propagation::blend_trust;
 
     #[test]
     fn inserts_and_sync_log_work() {
@@ -1732,7 +1713,7 @@ mod tests {
             last_updated: 200,
         }];
         let incoming_groups: Vec<GroupRating> = vec![];
-        merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
+        let _ = merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
         let cur = load_node_ratings(&conn).unwrap();
         let nx = cur.iter().find(|r| r.node_id == "nodeX").unwrap();
         assert!((nx.trust_score - 0.5).abs() < 1e-6);
@@ -1748,7 +1729,7 @@ mod tests {
             trust_score: 0.9,
             last_updated: 150,
         }];
-        merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
+        let _ = merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
         let cur = load_node_ratings(&conn).unwrap();
         let nx = cur.iter().find(|r| r.node_id == "nodeX").unwrap();
         assert!((nx.trust_score - 0.9).abs() < 1e-6);
@@ -1766,11 +1747,41 @@ mod tests {
             coherence: 0.6,
             last_updated: 200,
         }];
-        merge_ratings(&conn, &[], &incoming_groups).unwrap();
+        let _ = merge_ratings(&conn, &[], &incoming_groups).unwrap();
         let groups = load_group_ratings(&conn).unwrap();
         let g = groups.iter().find(|g| g.group_id == "g").unwrap();
         assert!((g.avg_score - 0.2).abs() < 1e-6);
         assert!((g.coherence - 0.6).abs() < 1e-6);
         assert_eq!(g.last_updated, 200);
+    }
+
+    #[test]
+    fn trust_blend_and_decay_apply() {
+        let conn = open_db(":memory:").expect("open db");
+        // вставляем локальную запись
+        conn.execute(
+            "INSERT INTO node_ratings (node_id, events_true, events_false, validations, reused_events, trust_score, last_updated) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params!["nodeY", 1, 0, 0, 0, 0.5_f64, 100],
+        ).unwrap();
+
+        // входящая с более низким скором, blended должен быть 0.5*0.8 + 0.1*0.2 = 0.42
+        let incoming_nodes = vec![NodeRating {
+            node_id: "nodeY".into(),
+            events_true: 2,
+            events_false: 0,
+            validations: 0,
+            reused_events: 0,
+            trust_score: 0.1,
+            last_updated: 200,
+        }];
+        let diffs = merge_ratings(&conn, &incoming_nodes, &[]).unwrap();
+        let cur = load_node_ratings(&conn).unwrap();
+        let ny = cur.iter().find(|r| r.node_id == "nodeY").unwrap();
+        assert!((ny.trust_score - 0.42).abs() < 1e-6);
+        assert!(diffs.iter().any(|(id, _)| id == "nodeY"));
+
+        // Проверим clamp и саму функцию смешивания
+        assert!((blend_trust(1.0, 1.0) - 1.0).abs() < 1e-6);
+        assert!((blend_trust(-1.0, -1.0) - (-1.0)).abs() < 1e-6);
     }
 }

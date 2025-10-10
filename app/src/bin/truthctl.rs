@@ -17,6 +17,7 @@ use config_utils::{default_config, load_config, save_config, Config as NodeConfi
 #[path = "../status_utils.rs"]
 mod status_utils;
 use status_utils::{get_recent_sync_events, print_status_summary, Peers, PeerItem};
+use truth_core::p2p::sync::SyncResult;
 
 #[derive(Parser, Debug)]
 #[command(name = "truthctl", version, about = "CLI для P2P синхронизации Truth Core")] 
@@ -65,6 +66,9 @@ enum Commands {
         /// Пересчитать рейтинги
         #[arg(long)]
         recalc: bool,
+        /// Подкоманда: trust
+        #[command(subcommand)]
+        cmd: Option<RatingsCmd>,
     },
     /// Управление ключами
     Keys {
@@ -162,6 +166,12 @@ enum LogsCmd {
     Clear { #[arg(long, default_value = "truth.db")] db: PathBuf },
 }
 
+#[derive(Subcommand, Debug)]
+enum RatingsCmd {
+    /// Показать доверие: локальный уровень, средняя сеть, дельты
+    Trust { #[arg(long)] verbose: bool },
+}
+
 #[tokio::main(flavor = "multi_thread")] 
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -183,8 +193,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Verify { db } => {
             run_verify(db).await
         }
-        Commands::Ratings { db, recalc } => {
-            run_ratings(db, recalc).await
+        Commands::Ratings { db, recalc, cmd } => {
+            run_ratings(db, recalc, cmd).await
         }
         Commands::Keys { cmd } => {
             run_keys(cmd).await
@@ -536,12 +546,24 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
                 }
                 for p in &peers.peers {
                     if p.public_key == me.public_key_hex { continue; } // skip self
+                    // Фильтр по доверию: опционально можно пропускать пиров с низким рейтингом
+                    // пока простая проверка локального знания о peer (если есть запись)
+                    let skip_low_trust = false; // future: сделать флаг CLI
+                    if skip_low_trust {
+                        let nodes = core_lib::storage::load_node_ratings(&conn)?;
+                        if let Some(nr) = nodes.iter().find(|n| n.node_id == p.public_key) {
+                            if nr.trust_score < 0.2 {
+                                println!("{} {} (trust<{:.1})", "skip".yellow(), p.url, 0.2);
+                                continue;
+                            }
+                        }
+                    }
                     if dry_run {
                         println!("[dry-run] would sync with {}", p.url.blue());
                         let _ = core_lib::storage::log_sync_event(&conn, &p.url, &mode, "dry-run", "no network call");
                         continue;
                     }
-                    let res = if mode == "incremental" {
+            let res = if mode == "incremental" {
                         let last = chrono::Utc::now().timestamp() - 3600;
                         incremental_sync_with_peer(&p.url, &identity, &conn, last).await
                     } else {
@@ -549,10 +571,18 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
                     };
                     match res {
                         Ok(r) => {
-                            println!("{} {}: +E{} +S{} +I{} (conflicts {})",
-                                "✅ synced".green(), p.url, r.events_added, r.statements_added, r.impacts_added, r.conflicts_resolved);
+                            // Показать изменения доверия c цветами
+                            let trust_summary = if r.nodes_trust_changed == 0 {
+                                "⚪ =0".to_string()
+                            } else {
+                                let gains = r.trust_diff.iter().filter(|d| d.delta > 0.0).count();
+                                let losses = r.trust_diff.iter().filter(|d| d.delta < 0.0).count();
+                                format!("🟢 +{} 🔴 –{}", gains, losses)
+                            };
+                            println!("{} {}: +E{} +S{} +I{} (conflicts {}) [{}]",
+                                "✅ synced".green(), p.url, r.events_added, r.statements_added, r.impacts_added, r.conflicts_resolved, trust_summary);
                             let _ = core_lib::storage::log_sync_event(&conn, &p.url, &mode, "success",
-                                &format!("E{} S{} I{} C{}", r.events_added, r.statements_added, r.impacts_added, r.conflicts_resolved));
+                                &format!("E{} S{} I{} C{} trustΔ{}", r.events_added, r.statements_added, r.impacts_added, r.conflicts_resolved, r.nodes_trust_changed));
                         }
                         Err(e) => {
                             println!("{} {}: {}", "❌ failed".red(), p.url, e);
@@ -597,7 +627,7 @@ async fn run_logs(cmd: LogsCmd) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn run_ratings(db_path: PathBuf, recalc: bool) -> anyhow::Result<()> {
+async fn run_ratings(db_path: PathBuf, recalc: bool, cmd: Option<RatingsCmd>) -> anyhow::Result<()> {
     if !std::path::Path::new(&db_path).exists() {
         println!("{}", "❌ Database not found".red());
         return Ok(());
@@ -614,14 +644,57 @@ async fn run_ratings(db_path: PathBuf, recalc: bool) -> anyhow::Result<()> {
     let node_ratings = storage::load_node_ratings(&conn)?;
     let group_ratings = storage::load_group_ratings(&conn)?;
     
-    println!("{}", format!("Node Ratings: {}", node_ratings.len()).blue());
-    for rating in &node_ratings {
-        println!("  {}: {:.3}", rating.node_id, rating.trust_score);
-    }
-    
-    println!("{}", format!("Group Ratings: {}", group_ratings.len()).blue());
-    for rating in &group_ratings {
-        println!("  {}: {:.3} (coherence: {:.3})", rating.group_id, rating.avg_score, rating.coherence);
+    match cmd {
+        Some(RatingsCmd::Trust { verbose }) => {
+            // Локальный доверительный уровень (средний по узлам)
+            let avg_local: f64 = if node_ratings.is_empty() {
+                0.0
+            } else {
+                node_ratings.iter().map(|n| n.trust_score as f64).sum::<f64>() / node_ratings.len() as f64
+            };
+            // Средняя сеть — по глобальной группе
+            let avg_network: f64 = group_ratings
+                .iter()
+                .find(|g| g.group_id == "global")
+                .map(|g| g.avg_score as f64)
+                .unwrap_or_else(|| {
+                    if node_ratings.is_empty() { 0.0 } else { avg_local }
+                });
+
+            // Дельты доверия из последнего события синхронизации, если оно записано
+            let recent_logs = core_lib::storage::get_recent_sync_logs(&conn, 1)?;
+            let mut trust_deltas: Vec<(String, f32)> = Vec::new();
+            if let Some(last) = recent_logs.first() {
+                if last.details.contains("trust propagation") {
+                    // В этой версии детали не несут список дельт; покажем топ-3 изменения относительно медианы
+                    let mut sorted = node_ratings.clone();
+                    sorted.sort_by(|a, b| b.trust_score.partial_cmp(&a.trust_score).unwrap_or(std::cmp::Ordering::Equal));
+                    for nr in sorted.into_iter().take(3) {
+                        trust_deltas.push((nr.node_id, nr.trust_score));
+                    }
+                }
+            }
+
+            println!("{} {:.3}", "Local trust:".blue(), avg_local);
+            println!("{} {:.3}", "Network trust:".blue(), avg_network);
+            if verbose {
+                println!("{}", "Trust samples:".blue());
+                for (id, sc) in trust_deltas {
+                    let sign = if sc > 0.0 { "🟢 +" } else if sc < 0.0 { "🔴 –" } else { "⚪ =" };
+                    println!("  {} {:<8} {:.3}", sign, &id.get(0..8).unwrap_or(""), sc);
+                }
+            }
+        }
+        None => {
+            println!("{}", format!("Node Ratings: {}", node_ratings.len()).blue());
+            for rating in &node_ratings {
+                println!("  {}: {:.3}", rating.node_id, rating.trust_score);
+            }
+            println!("{}", format!("Group Ratings: {}", group_ratings.len()).blue());
+            for rating in &group_ratings {
+                println!("  {}: {:.3} (coherence: {:.3})", rating.group_id, rating.avg_score, rating.coherence);
+            }
+        }
     }
     
     Ok(())
@@ -677,7 +750,20 @@ async fn run_sync(_peer: String, _identity_path: PathBuf, _db_path: PathBuf, _mo
 }
 
 #[allow(dead_code)]
-fn print_sync_result(res: truth_core::p2p::sync::SyncResult) {
-    println!("{}", format!("✅ Sync successful:\n   - Events added: {}\n   - Statements added: {}\n   - Impacts added: {}\n   - Conflicts resolved: {}",
-        res.events_added, res.statements_added, res.impacts_added, res.conflicts_resolved).green());
+fn print_sync_result(res: SyncResult) {
+    let trust_summary = if res.nodes_trust_changed == 0 {
+        "⚪ =0".to_string()
+    } else {
+        let gains = res.trust_diff.iter().filter(|d| d.delta > 0.0).count();
+        let losses = res.trust_diff.iter().filter(|d| d.delta < 0.0).count();
+        format!("🟢 +{} 🔴 –{}", gains, losses)
+    };
+    println!(
+        "{}",
+        format!(
+            "✅ Sync successful:\n   - Events added: {}\n   - Statements added: {}\n   - Impacts added: {}\n   - Conflicts resolved: {}\n   - Trust changes: {}",
+            res.events_added, res.statements_added, res.impacts_added, res.conflicts_resolved, trust_summary
+        )
+        .green()
+    );
 }
