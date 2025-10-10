@@ -7,6 +7,7 @@ Administrative CLI over truth-core for synchronization, verification, and rating
 - sync — bidirectional/incremental/push/pull P2P sync
 - verify — verify local data integrity and signatures
 - ratings — show or recalc node/group ratings
+  - ratings trust [--verbose] — показать локальный/сетевой уровни доверия и дельты
 - status — summarizes node state (config, peers, recent sync logs)
 - diagnose — health checks and environment diagnostics
 - reset-data — clear local node data; optional reinit
@@ -140,6 +141,18 @@ The CLI invokes `truth_core::p2p::sync` functions:
 - `resolve_event_conflicts` (available for conflict inspection tooling)
 
 Feature-gated with `p2p-client-sync`.
+
+## Ratings Trust
+
+Command:
+```bash
+truthctl ratings trust [--verbose]
+```
+
+Behavior:
+- Prints local node trust (AVG of `node_ratings.trust_score`) and average network trust (`group_ratings.global.avg_score`).
+- In verbose mode, shows samples with symbols: 🟢 + (increase), 🔴 – (decrease), ⚪ = (no change).
+- Trust propagation is applied transparently during `/sync` and `/incremental_sync`.
 
 ## Sync Logs
 Schema (SQLite table `sync_logs`):
