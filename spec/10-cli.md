@@ -7,7 +7,34 @@ Administrative CLI over truth-core for synchronization, verification, and rating
 - sync — bidirectional/incremental/push/pull P2P sync
 - verify — verify local data integrity and signatures
 - ratings — show or recalc node/group ratings
-- status — DB status, identity and basic stats
+- status — summarizes node state (config, peers, recent sync logs)
+## Status & Monitoring
+
+Command:
+```bash
+truthctl status [--db PATH] [--identity FILE]
+```
+
+Behavior:
+- Reads `~/.truthctl/config.json` (node_name, port, db_path)
+- Reads `~/.truthctl/peers.json` (known peers)
+- Opens SQLite DB and fetches last 5 rows from `sync_logs` (if present)
+
+Output example:
+```
+Node: mynode (port 8080)
+Database: truth.db
+Peers: http://127.0.0.1:8080, http://10.0.0.2:8081 (+5 more)
+Last sync events:
+#42 2025-10-10T10:00:00Z http://127.0.0.1:8080 full ✅
+   details: E10 S7 I3 C0
+#41 2025-10-10T09:55:00Z http://10.0.0.2:8081 incremental ❌
+   details: timeout
+```
+
+Notes:
+- If DB or `sync_logs` is missing, print: `Sync: No sync history yet.` (yellow)
+- Use colors: green for success, red for errors, yellow for warnings.
 - keys — key management
 - init-node — initialize node config and optional auto-peer registration
 - peers — list/add peers; sync-all with known peers

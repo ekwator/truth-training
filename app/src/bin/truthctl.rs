@@ -10,6 +10,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 mod config_utils;
 use config_utils::{default_config, load_config, save_config, Config as NodeConfig};
 
+#[path = "../status_utils.rs"]
+mod status_utils;
+use status_utils::{get_recent_sync_events, print_status_summary, Peers, PeerItem};
+
 #[derive(Parser, Debug)]
 #[command(name = "truthctl", version, about = "CLI для P2P синхронизации Truth Core")] 
 struct Cli {
@@ -181,31 +185,51 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-async fn run_status(db_path: PathBuf, identity_path: Option<PathBuf>) -> anyhow::Result<()> {
-    let exists = std::path::Path::new(&db_path).exists();
-    println!("{}", format!("DB: {} ({})", db_path.display(), if exists { "exists" } else { "missing" }).blue());
-    
+async fn run_status(db_path_flag: PathBuf, identity_path: Option<PathBuf>) -> anyhow::Result<()> {
+    // 1) Конфиг узла
+    let cfg = load_config().unwrap_or_else(|_| default_config());
+
+    // Приоритет пути БД: флаг CLI > config.json
+    let db_path = if db_path_flag != PathBuf::from("truth.db") {
+        db_path_flag
+    } else {
+        PathBuf::from(cfg.db_path.clone())
+    };
+
+    // 2) Пиры из ~/.truthctl/peers.json
+    let peers = load_peers().unwrap_or_default();
+
+    // 3) Подключение к БД и чтение последних 5 логов синхронизации
+    let mut recent: Vec<core_lib::models::SyncLog> = Vec::new();
+    match storage::open_db(db_path.to_str().unwrap_or("truth.db")) {
+        Ok(conn) => {
+            // Таблица может отсутствовать в свежей БД — обрабатываем аккуратно
+            match get_recent_sync_events(&conn, 5) {
+                Ok(v) => {
+                    recent = v;
+                }
+                Err(_) => {
+                    // печатать будем ниже через print_status_summary
+                }
+            }
+        }
+        Err(_) => {
+            // нет БД — сводка обработает это как отсутствие истории
+        }
+    }
+
+    // 4) Вывод краткой сводки
+    print_status_summary(&cfg, &peers, &recent);
+
+    // 5) Дополнительно: показать публичный ключ, если указан identity
     if let Some(p) = identity_path {
         let data = std::fs::read_to_string(&p)?;
         let k: KeyFile = serde_json::from_str(&data)?;
         let id = truth_core::p2p::encryption::CryptoIdentity::from_keypair_hex(&k.private_key, &k.public_key)
             .map_err(|e| anyhow::anyhow!(e))?;
-        println!("{}", format!("Public Key: {}", id.public_key_hex()).green());
+        println!("{} {}", "Identity:".blue(), id.public_key_hex());
     }
-    
-    // базовая статистика
-    if exists {
-        let conn = storage::open_db(db_path.to_str().unwrap())?;
-        let events = storage::load_truth_events(&conn)?;
-        let statements = storage::load_statements(&conn)?;
-        let node_ratings = storage::load_node_ratings(&conn)?;
-        let group_ratings = storage::load_group_ratings(&conn)?;
-        
-        println!("{}", format!("Events: {}", events.len()).yellow());
-        println!("{}", format!("Statements: {}", statements.len()).yellow());
-        println!("{}", format!("Node Ratings: {}", node_ratings.len()).yellow());
-        println!("{}", format!("Group Ratings: {}", group_ratings.len()).yellow());
-    }
+
     Ok(())
 }
 
@@ -337,11 +361,7 @@ async fn run_keys(cmd: KeysCmd) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-struct Peers { peers: Vec<PeerItem> }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct PeerItem { url: String, public_key: String }
+// Типы Peers/PeerItem берём из status_utils
 
 async fn run_init_node(node_name: String, port: u16, db: PathBuf, auto_peer: bool) -> anyhow::Result<()> {
     // get a key
@@ -465,10 +485,12 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
 
                 let peers = load_peers().unwrap_or_default();
                 let store = load_keys()?;
+                let cfg = load_config().unwrap_or_else(|_| default_config());
                 let me = store.keys.first().ok_or_else(|| anyhow::anyhow!("No keys found"))?;
                 let identity = CryptoIdentity::from_keypair_hex(&me.private_key_hex, &me.public_key_hex)
                     .map_err(|e| anyhow::anyhow!(e))?;
-                let conn = storage::open_db("truth.db")?; // по умолчанию
+                // Используем путь к БД из конфигурации узла
+                let conn = storage::open_db(&cfg.db_path)?;
 
                 if peers.peers.is_empty() {
                     println!("{}", "No peers to sync".yellow());

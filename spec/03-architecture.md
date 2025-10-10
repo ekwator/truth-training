@@ -25,6 +25,7 @@ Modules
 - app/truthctl: peer registry (`peers.json`), `peers add/list`, and `sync` orchestration (push or pull-only).
 - sync logs: persistent high-level sync logs in `core-lib/src/storage.rs` (table `sync_logs`), exposed via CLI `truthctl logs show|clear`.
  - node configuration: user-editable `~/.truthctl/config.json` managed via `truthctl config` (show/set/reset).
+ - status summary: `truthctl status` aggregates configuration, peers, and recent `sync_logs` to report node health.
 
 Non-goals (MVP)
 - Reputation/Sybil resistance; validator weighting; global propagation semantics.
