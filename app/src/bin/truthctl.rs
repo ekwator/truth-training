@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "../diagnostics.rs"]
+mod diagnostics;
+use diagnostics::{run_diagnostics, print_diagnostic_summary, reset_local_data, DiagnosticResult};
+
 #[path = "../config_utils.rs"]
 mod config_utils;
 use config_utils::{default_config, load_config, save_config, Config as NodeConfig};
@@ -91,6 +95,21 @@ enum Commands {
     Logs {
         #[command(subcommand)]
         cmd: LogsCmd,
+    },
+    /// Диагностика узла и среды
+    Diagnose {
+        /// Подробный вывод JSON-конфигурации, пиров и ключей
+        #[arg(long)]
+        verbose: bool,
+    },
+    /// Сброс локальных данных узла (БД, журналы, peers)
+    ResetData {
+        /// Безопасное подтверждение удаления peers.json
+        #[arg(long)]
+        confirm: bool,
+        /// После очистки — переинициализировать узел (init-node) и управлять ключами
+        #[arg(long)]
+        reinit: bool,
     },
 }
 
@@ -178,6 +197,26 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Logs { cmd } => {
             run_logs(cmd).await
+        }
+        Commands::Diagnose { verbose } => {
+            let results: Vec<DiagnosticResult> = run_diagnostics(verbose).await;
+            print_diagnostic_summary(&results);
+            if verbose {
+                let cfg = load_config().unwrap_or_else(|_| default_config());
+                let peers = load_peers().unwrap_or_default();
+                let keys = load_keys().unwrap_or_default();
+                let value = serde_json::json!({
+                    "config": cfg,
+                    "peers": peers,
+                    "keys": keys,
+                });
+                println!("{}\n{}", "Verbose JSON:".blue(), serde_json::to_string_pretty(&value).unwrap_or_else(|_| "{}".to_string()));
+            }
+            Ok(())
+        }
+        Commands::ResetData { confirm, reinit } => {
+            reset_local_data(confirm, reinit)?;
+            Ok(())
         }
         Commands::Config { cmd } => {
             run_config(cmd).await

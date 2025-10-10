@@ -8,6 +8,10 @@ async fn truthctl_help_works() {
         .output()
         .expect("failed to run truthctl --help");
     assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for cmd in ["sync","status","verify","keys","init-node","peers","logs","config","diagnose","reset-data"] {
+        assert!(stdout.contains(cmd), "help missing cmd {cmd}: {}", stdout);
+    }
 }
 
 #[cfg(feature = "p2p-client-sync")]

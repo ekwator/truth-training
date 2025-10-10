@@ -26,6 +26,7 @@ Modules
 - sync logs: persistent high-level sync logs in `core-lib/src/storage.rs` (table `sync_logs`), exposed via CLI `truthctl logs show|clear`.
  - node configuration: user-editable `~/.truthctl/config.json` managed via `truthctl config` (show/set/reset).
  - status summary: `truthctl status` aggregates configuration, peers, and recent `sync_logs` to report node health.
+ - self-healing init: `truthctl reset-data [--reinit]` clears local state and can reinitialize node automatically, including key generation/replacement and `init-node` invocation.
 
 Non-goals (MVP)
 - Reputation/Sybil resistance; validator weighting; global propagation semantics.
