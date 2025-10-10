@@ -4,6 +4,7 @@ pub mod knowledge;
 pub mod models;
 pub mod storage;
 pub mod sync;
+pub mod trust_propagation;
 
 pub use crate::models::*;
 pub use crate::storage::*;

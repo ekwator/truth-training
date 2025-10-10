@@ -6,6 +6,7 @@ use std::time::Duration;
 use crate::p2p::encryption::CryptoIdentity;
 use core_lib::models::{TruthEvent, Statement, Impact, ProgressMetrics, NodeRating, GroupRating};
 use core_lib::storage;
+// trust_propagation используется внутри core-lib/storage::merge_ratings
 use rusqlite::{Connection, params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "p2p-client-sync"))]
@@ -34,6 +35,15 @@ pub struct SyncResult {
     pub statements_added: u32,
     pub impacts_added: u32,
     pub errors: Vec<String>,
+    // Новые поля для доверия
+    pub nodes_trust_changed: u32,
+    pub trust_diff: Vec<TrustDelta>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrustDelta {
+    pub node_id: String,
+    pub delta: f32,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -108,6 +118,8 @@ pub async fn sync_with_peer(peer_url: &str, identity: &CryptoIdentity) -> anyhow
         statements_added: sync_data.statements.len() as u32,
         impacts_added: sync_data.impacts.len() as u32,
         errors: Vec::new(),
+        nodes_trust_changed: 0,
+        trust_diff: Vec::new(),
     })
 }
 
@@ -170,8 +182,12 @@ pub async fn bidirectional_sync_with_peer(
     // Получаем ответ с результатами синхронизации
     let sync_result: SyncResult = response.json().await?;
 
-    log::info!("Bidirectional sync with {peer_url} completed: {} conflicts resolved, {} events added", 
-               sync_result.conflicts_resolved, sync_result.events_added);
+    log::info!(
+        "Bidirectional sync with {peer_url} completed: conflicts {}, events {}, trust changes {}",
+        sync_result.conflicts_resolved,
+        sync_result.events_added,
+        sync_result.nodes_trust_changed
+    );
 
     Ok(sync_result)
 }
@@ -277,6 +293,7 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
     let mut events_added = 0u32;
     let mut statements_added = 0u32;
     let mut impacts_added = 0u32;
+    // trust_changes будет заполнен после merge
 
     // Events
     for ev in &remote.events {
@@ -448,12 +465,57 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
         }
     }
 
-    // Ratings merge
-    core_lib::storage::merge_ratings(
+    // Ratings merge с распространением доверия и фильтром по минимальному скору
+    let min_trust = 0.2_f32; // TODO: сделать конфигурируемым при необходимости
+    let filtered_nodes: Vec<NodeRating> = remote
+        .node_ratings
+        .iter()
+        .filter(|n| n.trust_score >= min_trust)
+        .cloned()
+        .collect();
+    let diffs = core_lib::storage::merge_ratings(
         conn,
-        &remote.node_ratings,
+        &filtered_nodes,
         &remote.group_ratings,
     ).map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+    // Пересчёт агрегатов групп после обновления (для корректного avg_score)
+    core_lib::storage::recalc_ratings(conn, chrono::Utc::now().timestamp())
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+    let trust_changes: Vec<TrustDelta> = diffs
+        .into_iter()
+        .map(|(node_id, delta)| TrustDelta { node_id, delta })
+        .collect();
+
+    // Лог высокого уровня о доверии
+    let avg_trust: f64 = conn
+        .query_row("SELECT COALESCE(AVG(trust_score),0.0) FROM node_ratings", [], |r| r.get(0))
+        .unwrap_or(0.0);
+    let gains = trust_changes.iter().filter(|d| d.delta > 0.0).count();
+    let losses = trust_changes.iter().filter(|d| d.delta < 0.0).count();
+    let equals = trust_changes.len().saturating_sub(gains + losses);
+    let details = format!(
+        "trust propagation: avg={:.3}, changes={} (gains {}, losses {}, equal {}); sample={}",
+        avg_trust,
+        trust_changes.len(),
+        gains,
+        losses,
+        equals,
+        trust_changes
+            .iter()
+            .take(3)
+            .map(|d| format!("{}:{:+.3}", &d.node_id.get(0..8).unwrap_or(""), d.delta))
+            .collect::<Vec<String>>()
+            .join(",")
+    );
+    let _ = core_lib::storage::log_sync_event(
+        conn,
+        "peer",
+        "reconcile",
+        "success",
+        &details,
+    );
 
     Ok(SyncResult {
         conflicts_resolved,
@@ -461,6 +523,8 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
         statements_added,
         impacts_added,
         errors: vec![],
+        nodes_trust_changed: trust_changes.len() as u32,
+        trust_diff: trust_changes,
     })
 }
 
@@ -517,8 +581,11 @@ pub async fn incremental_sync_with_peer(
 
     let sync_result: SyncResult = response.json().await?;
 
-    log::info!("Incremental sync with {peer_url} completed: {} items synced", 
-               sync_result.events_added + sync_result.statements_added + sync_result.impacts_added);
+    log::info!(
+        "Incremental sync with {peer_url} completed: {} items synced; trust changes {}",
+        sync_result.events_added + sync_result.statements_added + sync_result.impacts_added,
+        sync_result.nodes_trust_changed
+    );
 
     Ok(sync_result)
 }
