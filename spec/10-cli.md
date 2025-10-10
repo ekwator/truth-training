@@ -8,6 +8,8 @@ Administrative CLI over truth-core for synchronization, verification, and rating
 - verify — verify local data integrity and signatures
 - ratings — show or recalc node/group ratings
 - status — summarizes node state (config, peers, recent sync logs)
+- diagnose — health checks and environment diagnostics
+- reset-data — clear local node data; optional reinit
 ## Status & Monitoring
 
 Command:
@@ -40,6 +42,39 @@ Notes:
 - peers — list/add peers; sync-all with known peers
 - logs — show/clear persistent synchronization logs
  - config — manage `~/.truthctl/config.json`
+
+## Diagnose
+
+Command:
+```bash
+truthctl diagnose [--verbose]
+```
+
+Checks:
+- Config — `~/.truthctl/config.json` exists and fields valid (`node_name`, `port`, `db_path`)
+- Keys — `~/.truthctl/keys.json` exists with at least one valid 64-hex pair
+- Peers — `~/.truthctl/peers.json` present and entries parsable
+- Database — `db_path` exists
+- P2P Feature — build flag `p2p-client-sync`
+
+`--verbose` prints JSON with `config`, `peers`, `keys`.
+
+## Reset Data and Reinit
+
+Command:
+```bash
+truthctl reset-data [--confirm] [--reinit]
+```
+
+Behavior:
+1. Deletes SQLite DB at `config.db_path` (if exists) and clears sync logs.
+2. Removes `~/.truthctl/peers.json` if `--confirm` or user confirms.
+3. Prints `🧹 Node data cleared successfully.`
+
+`--reinit` flow:
+1. If no keypair — generates new Ed25519, saves to `~/.truthctl/keys.json` (`🔑 New keypair generated.`).
+2. If exists — prompts to keep or replace; `[2]` overwrites (`🔁 Keypair replaced.`).
+3. Runs `truthctl init-node <node_name> --port <port> --db <db_path> --auto-peer` based on config; prints `🚀 Node reinitialized successfully.`
 
 ## Key Management
 
