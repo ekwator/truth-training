@@ -272,11 +272,18 @@ async fn run_status(db_path_flag: PathBuf, identity_path: Option<PathBuf>) -> an
 
     // 5) Дополнительно: показать публичный ключ, если указан identity
     if let Some(p) = identity_path {
-        let data = std::fs::read_to_string(&p)?;
-        let k: KeyFile = serde_json::from_str(&data)?;
-        let id = truth_core::p2p::encryption::CryptoIdentity::from_keypair_hex(&k.private_key, &k.public_key)
-            .map_err(|e| anyhow::anyhow!(e))?;
-        println!("{} {}", "Identity:".blue(), id.public_key_hex());
+        #[cfg(feature = "p2p-client-sync")]
+        {
+            let data = std::fs::read_to_string(&p)?;
+            let k: KeyFile = serde_json::from_str(&data)?;
+            let id = truth_core::p2p::encryption::CryptoIdentity::from_keypair_hex(&k.private_key, &k.public_key)
+                .map_err(|e: String| anyhow::anyhow!(e))?;
+            println!("{} {}", "Identity:".blue(), id.public_key_hex());
+        }
+        #[cfg(not(feature = "p2p-client-sync"))]
+        {
+            println!("{}", "Identity display requires p2p-client-sync feature".yellow());
+        }
     }
 
     Ok(())
@@ -308,10 +315,13 @@ async fn run_verify(db_path: PathBuf) -> anyhow::Result<()> {
     
     println!("{}", format!("✅ Verified {}/{} signed events", valid_signatures, total_signed).green());
     // Используем первый ключ (если есть) для демонстрации from_keypair_hex и снятия предупреждений
-    if let Ok(store) = load_keys() {
-        if let Some(k) = store.keys.first() {
-            let _id = truth_core::p2p::encryption::CryptoIdentity::from_keypair_hex(&k.private_key_hex, &k.public_key_hex)
-                .map_err(|e| anyhow::anyhow!(e))?;
+    #[cfg(feature = "p2p-client-sync")]
+    {
+        if let Ok(store) = load_keys() {
+            if let Some(k) = store.keys.first() {
+                let _id = truth_core::p2p::encryption::CryptoIdentity::from_keypair_hex(&k.private_key_hex, &k.public_key_hex)
+                    .map_err(|e: String| anyhow::anyhow!(e))?;
+            }
         }
     }
     Ok(())
@@ -367,9 +377,19 @@ fn print_keys_table(store: &KeyStore) {
 async fn run_keys(cmd: KeysCmd) -> anyhow::Result<()> {
     match cmd {
         KeysCmd::Import { private_key_hex, public_key_hex } => {
-            // валидация ключей
-            truth_core::p2p::encryption::CryptoIdentity::from_keypair_hex(&private_key_hex, &public_key_hex)
-                .map_err(|e| anyhow::anyhow!(e))?;
+            #[cfg(feature = "p2p-client-sync")]
+            {
+                // валидация ключей
+                truth_core::p2p::encryption::CryptoIdentity::from_keypair_hex(&private_key_hex, &public_key_hex)
+                    .map_err(|e: String| anyhow::anyhow!(e))?;
+            }
+            #[cfg(not(feature = "p2p-client-sync"))]
+            {
+                // Простая валидация длины hex строк
+                if private_key_hex.len() != 64 || public_key_hex.len() != 64 {
+                    anyhow::bail!("Invalid key length. Expected 64 hex characters for both keys");
+                }
+            }
 
             let mut store = load_keys()?;
             let next_id = store.keys.iter().map(|k| k.id).max().unwrap_or(0) + 1;
