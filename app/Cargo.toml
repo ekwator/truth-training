@@ -1,11 +1,11 @@
 [package]
 name = "app"
-version = "0.2.3-pre"
+version = "0.2.4-pre"
 edition = "2021"
 
 [dependencies]
-core_lib = { path = "../core-lib" }
-truth_core = { path = ".." }
+core_lib = { path = "../core-lib", version = "0.2.4-pre" }
+truth_core = { path = "..", version = "0.2.4-pre" }
 chrono = { version = "0.4", features = ["clock"] }
 clap = { version = "4", features = ["derive"] }
 rusqlite = { version = "0.31", features = ["bundled"] }

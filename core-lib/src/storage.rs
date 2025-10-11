@@ -21,6 +21,7 @@ use std::fs;
 use std::collections::{HashMap, HashSet, VecDeque};
 use crate::models::SyncLog;
 use crate::trust_propagation::{apply_time_decay, propagate_from_remote};
+use crate::models::RbacUser;
 
 /// Создать соединение с базой данных и инициализировать схему
 pub fn create_db_connection(db_path: &str) -> Result<Connection, CoreError> {
@@ -156,6 +157,26 @@ CREATE TABLE IF NOT EXISTS group_ratings (
     coherence     REAL    NOT NULL,
     last_updated  INTEGER NOT NULL
 );
+
+-- RBAC: users and roles
+CREATE TABLE IF NOT EXISTS users (
+    pubkey        TEXT PRIMARY KEY,
+    role          TEXT NOT NULL DEFAULT 'observer',
+    trust_score   REAL NOT NULL DEFAULT 0.0,
+    last_updated  INTEGER NOT NULL,
+    display_name  TEXT
+);
+
+-- Optional roles reference for future extension
+CREATE TABLE IF NOT EXISTS roles (
+    role          TEXT PRIMARY KEY,
+    level         INTEGER NOT NULL,
+    description   TEXT
+);
+INSERT OR IGNORE INTO roles(role, level, description) VALUES
+    ('observer', 1, 'Read-only observer'),
+    ('node',     2, 'Authenticated node with delegation rights'),
+    ('admin',    3, 'Administrator');
 "#;
 
 /// Открыть/инициализировать БД по пути
@@ -267,6 +288,28 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
         "#,
     )?;
 
+    // RBAC migrations: ensure users table has required columns and seed roles
+    conn.execute_batch(
+        r#"
+        CREATE TABLE IF NOT EXISTS users (
+            pubkey        TEXT PRIMARY KEY,
+            role          TEXT NOT NULL DEFAULT 'observer',
+            trust_score   REAL NOT NULL DEFAULT 0.0,
+            last_updated  INTEGER NOT NULL,
+            display_name  TEXT
+        );
+        CREATE TABLE IF NOT EXISTS roles (
+            role          TEXT PRIMARY KEY,
+            level         INTEGER NOT NULL,
+            description   TEXT
+        );
+        INSERT OR IGNORE INTO roles(role, level, description) VALUES
+            ('observer', 1, 'Read-only observer'),
+            ('node',     2, 'Authenticated node with delegation rights'),
+            ('admin',    3, 'Administrator');
+        "#,
+    )?;
+
     Ok(())
 }
 
@@ -314,7 +357,7 @@ pub fn cleanup_expired_tokens(conn: &Connection, now_ts: i64) -> Result<usize, C
         r#"DELETE FROM active_tokens WHERE expires_at <= ?1"#,
         params![now_ts],
     )?;
-    Ok(affected as usize)
+    Ok(affected)
 }
 
 /* =========================
@@ -1042,6 +1085,9 @@ pub fn recalc_ratings(conn: &Connection, ts: i64) -> Result<(), CoreError> {
         params![members_json, avg_score, coherence, ts],
     )?;
 
+    // RBAC: зеркалим trust_score узлов в таблицу users для JWT и API
+    let _ = sync_users_with_node_ratings(conn)?;
+
     Ok(())
 }
 
@@ -1087,6 +1133,117 @@ pub fn load_group_ratings(conn: &Connection) -> Result<Vec<GroupRating>, CoreErr
     Ok(out)
 }
 
+/* =========================
+RBAC: Users and Roles helpers
+========================= */
+
+/// Получить пользователя по публичному ключу
+pub fn get_user_by_pubkey(conn: &Connection, pubkey: &str) -> Result<Option<RbacUser>, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"SELECT pubkey, role, trust_score, last_updated, display_name FROM users WHERE pubkey = ?1"#,
+    )?;
+    let row = stmt
+        .query_row(params![pubkey], |r| {
+            Ok(RbacUser {
+                pubkey: r.get(0)?,
+                role: r.get(1)?,
+                trust_score: r.get::<_, f64>(2)? as f32,
+                last_updated: r.get(3)?,
+                display_name: r.get(4)?,
+            })
+        })
+        .optional()?;
+    Ok(row)
+}
+
+/// Обновить роль пользователя (создаст при отсутствии)
+pub fn update_user_role(conn: &Connection, pubkey: &str, role: &str) -> Result<(), CoreError> {
+    let now = chrono::Utc::now().timestamp();
+    conn.execute(
+        r#"
+        INSERT INTO users(pubkey, role, trust_score, last_updated)
+        VALUES (?1, ?2, 0.0, ?3)
+        ON CONFLICT(pubkey) DO UPDATE SET role=excluded.role, last_updated=excluded.last_updated
+        "#,
+        params![pubkey, role, now],
+    )?;
+    Ok(())
+}
+
+/// Список пользователей (сортировка по роли уровню и trust_score)
+pub fn list_users(conn: &Connection) -> Result<Vec<RbacUser>, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT u.pubkey, u.role, u.trust_score, u.last_updated, u.display_name
+        FROM users u
+        LEFT JOIN roles r ON r.role = u.role
+        ORDER BY COALESCE(r.level, 0) DESC, u.trust_score DESC, u.pubkey ASC
+        "#,
+    )?;
+    let rows = stmt.query_map([], |r| {
+        Ok(RbacUser {
+            pubkey: r.get(0)?,
+            role: r.get(1)?,
+            trust_score: r.get::<_, f64>(2)? as f32,
+            last_updated: r.get(3)?,
+            display_name: r.get(4)?,
+        })
+    })?;
+    let mut out = Vec::new();
+    for r in rows { out.push(r?); }
+    Ok(out)
+}
+
+/// Подкорректировать trust_score пользователя, с ограничением [-1,1]
+pub fn adjust_trust_score(conn: &Connection, pubkey: &str, delta: f32) -> Result<f32, CoreError> {
+    let now = chrono::Utc::now().timestamp();
+    // ensure record exists
+    conn.execute(
+        r#"INSERT OR IGNORE INTO users(pubkey, role, trust_score, last_updated) VALUES (?1, 'observer', 0.0, ?2)"#,
+        params![pubkey, now],
+    )?;
+    // update
+    conn.execute(
+        r#"
+        UPDATE users
+        SET trust_score = CASE
+            WHEN trust_score + ?2 > 1.0 THEN 1.0
+            WHEN trust_score + ?2 < -1.0 THEN -1.0
+            ELSE trust_score + ?2
+        END,
+        last_updated = ?3
+        WHERE pubkey = ?1
+        "#,
+        params![pubkey, delta as f64, now],
+    )?;
+    // read back
+    let updated: f64 = conn.query_row(
+        "SELECT trust_score FROM users WHERE pubkey = ?1",
+        params![pubkey],
+        |r| r.get(0),
+    )?;
+    Ok(updated as f32)
+}
+
+/// Синхронизировать таблицу users с node_ratings (зеркалирование trust_score)
+pub fn sync_users_with_node_ratings(conn: &Connection) -> Result<usize, CoreError> {
+    let now = chrono::Utc::now().timestamp();
+    // Создаём/обновляем записи пользователей из рейтингов
+    let affected = conn.execute(
+        r#"
+        INSERT INTO users(pubkey, role, trust_score, last_updated)
+        SELECT nr.node_id, COALESCE(u.role,'observer') as role, nr.trust_score, ?1
+        FROM node_ratings nr
+        LEFT JOIN users u ON u.pubkey = nr.node_id
+        ON CONFLICT(pubkey) DO UPDATE SET
+            trust_score = excluded.trust_score,
+            last_updated = excluded.last_updated
+        "#,
+        params![now],
+    )?;
+    Ok(affected)
+}
+
 /// Слияние входящих рейтингов узлов и групп по правилам конфликта
 /// - Узлы: берём запись с бОльшим trust_score, при равенстве — с более новым last_updated
 /// - Группы: берём запись с более новым last_updated
@@ -1125,6 +1282,12 @@ pub fn merge_ratings(
             gr.last_updated,
         ])?;
     }
+
+    // Зеркалим обновлённые trust_score в таблицу users для консистентности JWT/RBAC
+    let _ = sync_users_with_node_ratings(conn);
+
+    // Зеркалим обновлённые trust_score в таблицу users для согласованности JWT
+    let _ = sync_users_with_node_ratings(conn);
 
     Ok(trust_diffs)
 }
@@ -1845,5 +2008,33 @@ mod tests {
         // Проверим clamp и саму функцию смешивания
         assert!((blend_trust(1.0, 1.0) - 1.0).abs() < 1e-6);
         assert!((blend_trust(-1.0, -1.0) - (-1.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn rbac_users_basic_crud_and_sync() {
+        let conn = open_db(":memory:").expect("open db");
+        // initially empty
+        let u = get_user_by_pubkey(&conn, "nodeA").unwrap();
+        assert!(u.is_none());
+
+        // grant role
+        update_user_role(&conn, "nodeA", "admin").unwrap();
+        let u = get_user_by_pubkey(&conn, "nodeA").unwrap().unwrap();
+        assert_eq!(u.role, "admin");
+        assert!((u.trust_score - 0.0).abs() < 1e-6);
+
+        // adjust trust
+        let v = adjust_trust_score(&conn, "nodeA", 0.3).unwrap();
+        assert!((v - 0.3).abs() < 1e-6);
+
+        // mirror from node_ratings
+        conn.execute(
+            "INSERT INTO node_ratings (node_id, events_true, events_false, validations, reused_events, trust_score, last_updated) VALUES ('nodeA',0,0,0,0,0.8,1)",
+            [],
+        ).unwrap();
+        let n = sync_users_with_node_ratings(&conn).unwrap();
+        assert!(n >= 1);
+        let u = get_user_by_pubkey(&conn, "nodeA").unwrap().unwrap();
+        assert!((u.trust_score - 0.8).abs() < 1e-6);
     }
 }

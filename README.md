@@ -70,7 +70,7 @@ erDiagram
 
 ---
 
-## API (HTTP, signed endpoints + JWT)
+## API (HTTP, signed endpoints + JWT + RBAC)
 
 All sync-related endpoints require headers:
 - `X-Public-Key: <hex>`
@@ -103,6 +103,9 @@ Error format (401): `{ "error": "unauthorized", "code": 401 }`.
 | POST   | `/recalc_ratings` | Recalculate node/group ratings |
 | POST   | `/api/v1/auth` | Issue JWT/refresh via Ed25519 signed headers |
 | POST   | `/api/v1/refresh` | Rotate refresh, return new JWT pair |
+| GET    | `/api/v1/users` | List users (admin) |
+| POST   | `/api/v1/users/role` | Grant/revoke roles (admin) |
+| POST   | `/api/v1/trust/delegate` | Delegate trust (role ≥ node) |
 | POST   | `/api/v1/recalc` | Protected recalc via Bearer JWT |
 | POST   | `/api/v1/ratings/sync` | Protected broadcast ratings via Bearer JWT |
 | GET    | `/progress` | Get progress metrics |
