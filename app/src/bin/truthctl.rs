@@ -105,6 +105,9 @@ enum Commands {
         /// Подробный вывод JSON-конфигурации, пиров и ключей
         #[arg(long)]
         verbose: bool,
+        /// Диагностика серверной части (HTTP/API, БД, P2P)
+        #[arg(long)]
+        server: bool,
     },
     /// Сброс локальных данных узла (БД, журналы, peers)
     ResetData {
@@ -121,6 +124,7 @@ enum Commands {
 enum Mode { Full, Incremental, Push, Pull }
 
 #[derive(serde::Deserialize)]
+#[allow(dead_code)] // может быть неиспользован без фичи p2p-client-sync
 struct KeyFile { private_key: String, public_key: String }
 
 #[derive(Subcommand, Debug)]
@@ -208,7 +212,27 @@ async fn main() -> anyhow::Result<()> {
         Commands::Logs { cmd } => {
             run_logs(cmd).await
         }
-        Commands::Diagnose { verbose } => {
+        Commands::Diagnose { verbose, server } => {
+            if server {
+                let cfg = load_config().unwrap_or_else(|_| default_config());
+                let base_url = format!("http://127.0.0.1:{}", cfg.port);
+                let results = truth_core::server_diagnostics::run_diagnostics(&base_url, &cfg.db_path, cfg.p2p_enabled).await;
+                println!("{}", "Server diagnostics".blue());
+                for r in &results {
+                    let status_colored = match r.status.as_str() {
+                        s if s.contains("✅") => r.status.green(),
+                        s if s.contains("❌") => r.status.red(),
+                        _ => r.status.yellow(),
+                    };
+                    if r.message.is_empty() {
+                        println!("- {}: {}", r.check.blue(), status_colored);
+                    } else {
+                        println!("- {}: {} — {}", r.check.blue(), status_colored, r.message);
+                    }
+                }
+                return Ok(());
+            }
+
             let results: Vec<DiagnosticResult> = run_diagnostics(verbose).await;
             print_diagnostic_summary(&results);
             if verbose {
@@ -271,10 +295,10 @@ async fn run_status(db_path_flag: PathBuf, identity_path: Option<PathBuf>) -> an
     print_status_summary(&cfg, &peers, &recent);
 
     // 5) Дополнительно: показать публичный ключ, если указан identity
-    if let Some(p) = identity_path {
+    if let Some(_identity_path) = identity_path {
         #[cfg(feature = "p2p-client-sync")]
         {
-            let data = std::fs::read_to_string(&p)?;
+            let data = std::fs::read_to_string(&_identity_path)?;
             let k: KeyFile = serde_json::from_str(&data)?;
             let id = truth_core::p2p::encryption::CryptoIdentity::from_keypair_hex(&k.private_key, &k.public_key)
                 .map_err(|e: String| anyhow::anyhow!(e))?;
@@ -282,6 +306,7 @@ async fn run_status(db_path_flag: PathBuf, identity_path: Option<PathBuf>) -> an
         }
         #[cfg(not(feature = "p2p-client-sync"))]
         {
+            let _ = &_identity_path; // подавить предупреждение об неиспользуемой переменной
             println!("{}", "Identity display requires p2p-client-sync feature".yellow());
         }
     }
