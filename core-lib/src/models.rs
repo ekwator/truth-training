@@ -191,6 +191,7 @@ pub struct NodeRating {
     pub validations: u32,
     pub reused_events: u32,
     pub trust_score: f32, // -1.0 .. 1.0
+    pub propagation_priority: f32, // 0.0 .. 1.0 — скорость ретрансляции
     pub last_updated: i64,
 }
 
