@@ -27,6 +27,28 @@ Notes
 - Signed endpoints require Ed25519 signature of the message pattern above.
 - /get_data is unauthenticated (local/LAN debug). Avoid exposing publicly.
 
+### Authentication & Tokens
+
+- `POST /api/v1/auth`
+  - Headers: `X-Public-Key`, `X-Signature`, `X-Timestamp`
+  - Message to sign: `auth:{ts}`
+  - Response 200:
+    ```json
+    { "access_token": "<jwt>", "refresh_token": "<refresh>", "token_type": "Bearer", "expires_in": 3600 }
+    ```
+  - 401: `{ "error": "unauthorized", "code": 401 }`
+
+- `POST /api/v1/refresh`
+  - Body: `{ "refresh_token": "<refresh>" }`
+  - Response 200: same as auth (rotated refresh)
+  - 401 on invalid/expired refresh
+
+Protected endpoints (require header `Authorization: Bearer <jwt>`):
+- `POST /api/v1/recalc`
+- `POST /api/v1/ratings/sync`
+- `POST /api/v1/reset`
+- `POST /api/v1/reinit`
+
 Future alignment
 - Consider consolidating GET /events and GET /get_data, and adding pagination.
 - Add OpenAPI in a follow-up.
