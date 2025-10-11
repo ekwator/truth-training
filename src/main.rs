@@ -1,4 +1,7 @@
 use actix_web::{App, HttpServer};
+use actix_cors::Cors;
+use utoipa_swagger_ui::SwaggerUi;
+use utoipa::OpenApi;
 use clap::Parser;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
@@ -83,9 +86,20 @@ async fn main() -> std::io::Result<()> {
     // Запуск HTTP сервера
     HttpServer::new(move || {
         App::new()
+            // Wide-open CORS for Android debugging; lock down in production
+            .wrap(Cors::permissive())
             .app_data(actix_web::web::Data::new(conn_data.clone()))
             .app_data(actix_web::web::Data::new(node.clone()))
+            .app_data(actix_web::web::Data::new(crate::api::AppInfo {
+                db_path: args.db.clone(),
+                p2p_enabled: true,
+            }))
             .configure(api::routes)
+            // Serve Swagger UI and OpenAPI JSON
+            .service(
+                SwaggerUi::new("/api/docs/{_:.*}")
+                    .url("/api/docs/openapi.json", crate::api::ApiDoc::openapi()),
+            )
     })
     .bind(("0.0.0.0", args.port))?
     .run()

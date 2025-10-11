@@ -572,6 +572,22 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
             }
         }
         PeersCmd::SyncAll { mode, dry_run } => {
+            // Всегда поддерживаем dry-run: пишем записи в sync_logs без сетевых вызовов
+            if dry_run {
+                let peers = load_peers().unwrap_or_default();
+                let cfg = load_config().unwrap_or_else(|_| default_config());
+                let conn = storage::open_db(&cfg.db_path)?;
+                if peers.peers.is_empty() {
+                    println!("{}", "No peers to sync".yellow());
+                } else {
+                    for p in &peers.peers {
+                        let _ = core_lib::storage::log_sync_event(&conn, &p.url, &mode, "dry-run", "no network call");
+                    }
+                    println!("{} {}", "✅ Dry-run logs recorded for".green(), peers.peers.len());
+                }
+                return Ok(());
+            }
+
             #[cfg(feature = "p2p-client-sync")]
             {
                 use truth_core::p2p::encryption::CryptoIdentity;
@@ -586,9 +602,7 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
                 // Используем путь к БД из конфигурации узла
                 let conn = storage::open_db(&cfg.db_path)?;
 
-                if peers.peers.is_empty() {
-                    println!("{}", "No peers to sync".yellow());
-                }
+                if peers.peers.is_empty() { println!("{}", "No peers to sync".yellow()); }
                 for p in &peers.peers {
                     if p.public_key == me.public_key_hex { continue; } // skip self
                     // Фильтр по доверию: опционально можно пропускать пиров с низким рейтингом
@@ -603,11 +617,7 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
                             }
                         }
                     }
-                    if dry_run {
-                        println!("[dry-run] would sync with {}", p.url.blue());
-                        let _ = core_lib::storage::log_sync_event(&conn, &p.url, &mode, "dry-run", "no network call");
-                        continue;
-                    }
+                    // реальная синхронизация
             let res = if mode == "incremental" {
                         let last = chrono::Utc::now().timestamp() - 3600;
                         incremental_sync_with_peer(&p.url, &identity, &conn, last).await
@@ -638,9 +648,8 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
             }
             #[cfg(not(feature = "p2p-client-sync"))]
             {
-                // во избежание предупреждений о неиспользуемых переменных при отсутствии фичи
-                let _ = (mode, dry_run);
-                println!("Build with --features p2p-client-sync to use sync all");
+                // Без фичи доступны только dry-run (обработан выше) и сообщение
+                println!("Build with --features p2p-client-sync to perform network sync");
             }
         }
     }
