@@ -1716,8 +1716,11 @@ mod tests {
         let _ = merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
         let cur = load_node_ratings(&conn).unwrap();
         let nx = cur.iter().find(|r| r.node_id == "nodeX").unwrap();
-        assert!((nx.trust_score - 0.5).abs() < 1e-6);
-        assert_eq!(nx.last_updated, 100);
+        // Сначала применяется временной спад: 0.5 * 0.9 = 0.45
+        // Затем смешивание: 0.45 * 0.8 + 0.4 * 0.2 = 0.36 + 0.08 = 0.44
+        assert!((nx.trust_score - 0.44).abs() < 1e-6);
+        // last_updated обновляется до now_ts при merge_ratings
+        assert!(nx.last_updated >= 100);
 
         // входящие: выше trust_score — должен перезаписать
         let incoming_nodes = vec![NodeRating {
@@ -1732,8 +1735,10 @@ mod tests {
         let _ = merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
         let cur = load_node_ratings(&conn).unwrap();
         let nx = cur.iter().find(|r| r.node_id == "nodeX").unwrap();
-        assert!((nx.trust_score - 0.9).abs() < 1e-6);
-        assert_eq!(nx.last_updated, 150);
+        // Смешивание: 0.44 * 0.8 + 0.9 * 0.2 = 0.352 + 0.18 = 0.532
+        assert!((nx.trust_score - 0.532).abs() < 1e-6);
+        // last_updated обновляется до now_ts при merge_ratings
+        assert!(nx.last_updated >= 150);
 
         // Groups: берем более новый по last_updated
         conn.execute(
@@ -1777,7 +1782,9 @@ mod tests {
         let diffs = merge_ratings(&conn, &incoming_nodes, &[]).unwrap();
         let cur = load_node_ratings(&conn).unwrap();
         let ny = cur.iter().find(|r| r.node_id == "nodeY").unwrap();
-        assert!((ny.trust_score - 0.42).abs() < 1e-6);
+        // Сначала применяется временной спад: 0.5 * 0.9 = 0.45
+        // Затем смешивание: 0.45 * 0.8 + 0.1 * 0.2 = 0.36 + 0.02 = 0.38
+        assert!((ny.trust_score - 0.38).abs() < 1e-6);
         assert!(diffs.iter().any(|(id, _)| id == "nodeY"));
 
         // Проверим clamp и саму функцию смешивания

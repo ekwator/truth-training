@@ -88,14 +88,18 @@ All sync-related endpoints require headers:
 | POST   | `/impacts` | Add impact |
 | POST   | `/detect` | Mark detected / perform detection |
 | POST   | `/recalc` | Recalculate metrics |
+| POST   | `/recalc_ratings` | Recalculate node/group ratings |
 | GET    | `/progress` | Get progress metrics |
 | GET    | `/get_data` | Get all data (for sync) |
 | GET    | `/statements` | Get statements |
+| POST   | `/statements` | Add statement |
 | POST   | `/sync` | Push sync payload |
 | POST   | `/incremental_sync` | Incremental sync |
+| POST   | `/ratings/sync` | Broadcast ratings to peers |
 | GET    | `/ratings/nodes` | Node ratings |
 | GET    | `/ratings/groups` | Group ratings |
-| GET    | `/graph/json` | Graph JSON |
+| GET    | `/graph` | Graph data |
+| GET    | `/graph/json` | Graph JSON (filtered) |
 | GET    | `/graph/summary` | Graph summary |
 
 Detailed API schema and examples: **`spec/05-api.md`** and **`docs/CLI_Usage.md`**.

@@ -72,10 +72,8 @@ impl CryptoIdentity {
     }
 
     /// Создание CryptoIdentity из пары ключей в hex (для CLI)
-    #[allow(dead_code)]
-    // Эта функция используется из CLI (`truthctl`) и может не вызываться
-    // внутри самого крейта `truth_core` при сборке без соответствующих
-    // фич, поэтому локально подавляем предупреждение dead_code.
+    #[cfg(any(test, feature = "p2p-client-sync"))]
+    #[allow(dead_code)] // Используется в CLI, но не в самом крейте truth_core
     pub fn from_keypair_hex(private_key_hex: &str, public_key_hex: &str) -> Result<Self, String> {
         let sk_bytes = hex::decode(private_key_hex).map_err(|e| e.to_string())?;
         if sk_bytes.len() != 32 { return Err(format!("invalid private key length: {}", sk_bytes.len())); }
