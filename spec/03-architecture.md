@@ -36,7 +36,7 @@ This separation ensures modular testing, clean builds, and independent versionin
 ### Modules
 
 - **core-lib**: models, storage (schema + ops), expert heuristics.
-- **api**: HTTP routes in `src/api.rs` (health, init/seed, events/statements, impacts, progress, get_data, sync, incremental_sync, ratings, graph) with signature verification helpers.
+- **api**: HTTP routes in `src/api.rs` (health, init/seed, events/statements, impacts, progress, get_data, sync, incremental_sync, ratings, graph) with signature verification helpers. Server health checks for API/DB/P2P are exposed via `truth_core::server_diagnostics` and can be invoked from CLI.
 - **p2p**: sync flows and reconciliation in `src/p2p/sync.rs`, periodic node loop in `src/p2p/node.rs`.
 - **trust layer**: `core-lib/src/trust_propagation.rs` реализует смешивание доверия (local*0.8 + remote*0.2) и временной спад для устаревших записей; интеграция вызывается в процессе `reconcile` при слиянии рейтингов.
 - **p2p/encryption**: `CryptoIdentity` (Ed25519) with hex helpers and Result-based verify; header message patterns.
@@ -44,7 +44,7 @@ This separation ensures modular testing, clean builds, and independent versionin
 - **app/truthctl**: peer registry (`peers.json`), `peers add/list`, and `sync` orchestration (push or pull-only).
 - **sync logs**: persistent high-level sync logs in `core-lib/src/storage.rs` (table `sync_logs`), exposed via CLI `truthctl logs show|clear`.
 - **node configuration**: user-editable `~/.truthctl/config.json` managed via `truthctl config` (show/set/reset).
-- **status summary**: `truthctl status` aggregates configuration, peers, and recent `sync_logs` to report node health.
+- **status summary**: `truthctl status` aggregates configuration, peers, and recent `sync_logs` to report node health. For runtime checks, `truthctl diagnose --server` probes `/health`, opens SQLite, and inspects P2P listener status.
 - **self-healing init**: `truthctl reset-data [--reinit]` clears local state and can reinitialize node automatically, including key generation/replacement and `init-node` invocation.
 
 ### Non-goals (MVP)
