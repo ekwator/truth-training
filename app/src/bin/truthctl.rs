@@ -118,6 +118,21 @@ enum Commands {
         #[arg(long)]
         reinit: bool,
     },
+    /// Аутентификация на сервере и сохранение сессии
+    Auth {
+        /// Базовый URL сервера, напр. http://127.0.0.1:8080
+        #[arg(long, default_value = "http://127.0.0.1:8080")]
+        server: String,
+        /// Путь к JSON-файлу ключей (private/public hex)
+        #[arg(long)]
+        identity: Option<PathBuf>,
+    },
+    /// Обновление токена по refresh
+    Refresh {
+        /// Базовый URL сервера
+        #[arg(long, default_value = "http://127.0.0.1:8080")]
+        server: String,
+    },
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -255,6 +270,12 @@ async fn main() -> anyhow::Result<()> {
         Commands::Config { cmd } => {
             run_config(cmd).await
         }
+        Commands::Auth { server, identity } => {
+            auth_flow(server, identity).await
+        }
+        Commands::Refresh { server } => {
+            refresh_flow(server).await
+        }
     }
 }
 
@@ -362,6 +383,82 @@ fn keystore_path() -> anyhow::Result<PathBuf> {
     let dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("no HOME"))?.join(".truthctl");
     fs::create_dir_all(&dir)?;
     Ok(dir.join("keys.json"))
+}
+
+fn session_path() -> anyhow::Result<PathBuf> {
+    let dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("no HOME"))?.join(".truthctl");
+    fs::create_dir_all(&dir)?;
+    Ok(dir.join("session.json"))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct Session { access_token: String, refresh_token: String, expires_at: i64 }
+
+async fn auth_flow(server: String, identity_path: Option<PathBuf>) -> anyhow::Result<()> {
+    use reqwest::Client;
+    use truth_core::p2p::encryption::CryptoIdentity;
+    let identity = if let Some(p) = identity_path {
+        let data = fs::read_to_string(&p)?;
+        let k: crate::KeyFile = serde_json::from_str(&data)?;
+        CryptoIdentity::from_keypair_hex(&k.private_key, &k.public_key).map_err(|e| anyhow::anyhow!(e))?
+    } else {
+        // взять первый ключ из локального keystore
+        let ks = load_keys().unwrap_or_default();
+        let k = ks.keys.first().ok_or_else(|| anyhow::anyhow!("No keys found. Use 'truthctl keys generate --save' or 'truthctl keys import'"))?;
+        CryptoIdentity::from_keypair_hex(&k.private_key_hex, &k.public_key_hex).map_err(|e| anyhow::anyhow!(e))?
+    };
+    let ts = chrono::Utc::now().timestamp().to_string();
+    let message = format!("auth:{}", ts);
+    let sig = identity.sign(message.as_bytes());
+    let signature_hex = hex::encode(sig.to_bytes());
+    let public_key_hex = identity.public_key_hex();
+    let client = Client::new();
+    let resp = client
+        .post(format!("{}/api/v1/auth", server))
+        .header("X-Public-Key", public_key_hex)
+        .header("X-Signature", signature_hex)
+        .header("X-Timestamp", ts)
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        anyhow::bail!(format!("Auth failed: {}", resp.status()));
+    }
+    let v: serde_json::Value = resp.json().await?;
+    let access = v.get("access_token").and_then(|x| x.as_str()).unwrap_or_default().to_string();
+    let refresh = v.get("refresh_token").and_then(|x| x.as_str()).unwrap_or_default().to_string();
+    let expires_in = v.get("expires_in").and_then(|x| x.as_i64()).unwrap_or(3600);
+    let session = Session { access_token: access, refresh_token: refresh, expires_at: chrono::Utc::now().timestamp() + expires_in };
+    fs::write(session_path()?, serde_json::to_string_pretty(&session)?)?;
+    println!("{}", "✅ Authenticated and session stored".green());
+    Ok(())
+}
+
+async fn refresh_flow(server: String) -> anyhow::Result<()> {
+    use reqwest::Client;
+    let path = session_path()?;
+    if !path.exists() { anyhow::bail!("No session. Run 'truthctl auth' first"); }
+    let data = fs::read_to_string(&path)?;
+    let mut s: Session = serde_json::from_str(&data).unwrap_or_default();
+    // если токен ещё жив, выходим молча
+    if chrono::Utc::now().timestamp() < s.expires_at - 30 { // 30с запас
+        println!("{}", "Token still valid".yellow());
+        return Ok(());
+    }
+    let client = Client::new();
+    let resp = client
+        .post(format!("{}/api/v1/refresh", server))
+        .json(&serde_json::json!({"refresh_token": s.refresh_token}))
+        .send()
+        .await?;
+    if !resp.status().is_success() { anyhow::bail!(format!("Refresh failed: {}", resp.status())); }
+    let v: serde_json::Value = resp.json().await?;
+    s.access_token = v.get("access_token").and_then(|x| x.as_str()).unwrap_or_default().to_string();
+    s.refresh_token = v.get("refresh_token").and_then(|x| x.as_str()).unwrap_or_default().to_string();
+    let expires_in = v.get("expires_in").and_then(|x| x.as_i64()).unwrap_or(3600);
+    s.expires_at = chrono::Utc::now().timestamp() + expires_in;
+    fs::write(path, serde_json::to_string_pretty(&s)?)?;
+    println!("{}", "✅ Token refreshed".green());
+    Ok(())
 }
 
 fn peers_path() -> anyhow::Result<PathBuf> {

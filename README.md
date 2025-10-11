@@ -70,13 +70,25 @@ erDiagram
 
 ---
 
-## API (HTTP, signed endpoints)
+## API (HTTP, signed endpoints + JWT)
 
 All sync-related endpoints require headers:
 - `X-Public-Key: <hex>`
 - `X-Signature: <hex>`
 - `X-Timestamp: <unix>`  
 (See spec/05-api.md for canonical signing payloads.)
+
+### Authentication & Tokens
+
+- `POST /api/v1/auth` — verify signed headers (`X-Public-Key`, `X-Signature`, `X-Timestamp` with message `auth:<ts>`), returns short-lived JWT (1h) and refresh token (24h).
+- `POST /api/v1/refresh` — exchange valid refresh token for a new JWT pair (refresh rotates).
+- Protected routes (require `Authorization: Bearer <token>`):
+  - `POST /api/v1/recalc`
+  - `POST /api/v1/ratings/sync`
+  - `POST /api/v1/reset`
+  - `POST /api/v1/reinit`
+
+Error format (401): `{ "error": "unauthorized", "code": 401 }`.
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -89,6 +101,10 @@ All sync-related endpoints require headers:
 | POST   | `/detect` | Mark detected / perform detection |
 | POST   | `/recalc` | Recalculate metrics |
 | POST   | `/recalc_ratings` | Recalculate node/group ratings |
+| POST   | `/api/v1/auth` | Issue JWT/refresh via Ed25519 signed headers |
+| POST   | `/api/v1/refresh` | Rotate refresh, return new JWT pair |
+| POST   | `/api/v1/recalc` | Protected recalc via Bearer JWT |
+| POST   | `/api/v1/ratings/sync` | Protected broadcast ratings via Bearer JWT |
 | GET    | `/progress` | Get progress metrics |
 | GET    | `/get_data` | Get all data (for sync) |
 | GET    | `/statements` | Get statements |

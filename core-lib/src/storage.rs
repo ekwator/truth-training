@@ -256,10 +256,65 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
             coherence     REAL    NOT NULL,
             last_updated  INTEGER NOT NULL
         );
+
+        -- active JWT refresh tokens (per public key)
+        CREATE TABLE IF NOT EXISTS active_tokens (
+            public_key    TEXT    NOT NULL,
+            refresh_token TEXT    NOT NULL UNIQUE,
+            expires_at    INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_active_tokens_pub ON active_tokens(public_key);
         "#,
     )?;
 
     Ok(())
+}
+
+/// Register a refresh token for a given public key with expiration timestamp (unix seconds)
+pub fn register_refresh_token(
+    conn: &Connection,
+    public_key: &str,
+    refresh_token: &str,
+    expires_at: i64,
+) -> Result<(), CoreError> {
+    conn.execute(
+        r#"INSERT INTO active_tokens (public_key, refresh_token, expires_at)
+           VALUES (?1, ?2, ?3)"#,
+        params![public_key, refresh_token, expires_at],
+    )?;
+    Ok(())
+}
+
+/// Find a session by refresh token, returning (public_key, expires_at)
+pub fn find_session_by_refresh(
+    conn: &Connection,
+    refresh_token: &str,
+) -> Result<Option<(String, i64)>, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"SELECT public_key, expires_at FROM active_tokens WHERE refresh_token = ?1"#,
+    )?;
+    let row = stmt
+        .query_row(params![refresh_token], |r| Ok((r.get(0)?, r.get(1)?)))
+        .optional()?;
+    Ok(row)
+}
+
+/// Delete a refresh token (on rotation or logout)
+pub fn delete_refresh_token(conn: &Connection, refresh_token: &str) -> Result<(), CoreError> {
+    conn.execute(
+        r#"DELETE FROM active_tokens WHERE refresh_token = ?1"#,
+        params![refresh_token],
+    )?;
+    Ok(())
+}
+
+/// Cleanup expired tokens; returns number of rows removed
+pub fn cleanup_expired_tokens(conn: &Connection, now_ts: i64) -> Result<usize, CoreError> {
+    let affected = conn.execute(
+        r#"DELETE FROM active_tokens WHERE expires_at <= ?1"#,
+        params![now_ts],
+    )?;
+    Ok(affected as usize)
 }
 
 /* =========================
