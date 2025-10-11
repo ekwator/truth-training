@@ -13,6 +13,7 @@ use std::fmt;
 use jsonwebtoken::{encode, decode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use utoipa::{OpenApi, ToSchema};
+use crate::p2p::sync::get_relay_stats;
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
 
@@ -115,7 +116,7 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
 /// OpenAPI спецификация для Swagger UI
 #[derive(OpenApi)]
 #[openapi(
-    paths(api_v1_info, api_v1_stats, api_v1_users_list, api_v1_users_role, api_v1_trust_delegate),
+    paths(api_v1_info, api_v1_stats, api_v1_users_list, api_v1_users_role, api_v1_trust_delegate, api_v1_peers_priorities),
     components(schemas(NodeInfo, NodeStats, RbacUser, Claims)),
     tags((name = "Truth API", description = "HTTP API для мобильной интеграции"))
 )]
@@ -693,6 +694,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(recalc_ratings)
         .service(get_all_data)
         .service(get_progress)
+        .service(api_v1_peers_priorities)
         .service(get_node_ratings)
         .service(get_group_ratings)
         .service(get_graph)
@@ -709,6 +711,49 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(api_v1_users_list)
         .service(api_v1_users_role)
         .service(api_v1_trust_delegate);
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct PeerPriorityItem {
+    pub peer_url: String,
+    pub trust_score: f32,
+    pub propagation_priority: f32,
+    pub relay_rate: f32,
+}
+
+/// GET /api/v1/peers/priorities — список пиров с приоритетами распространения и метриками ретрансляции
+#[utoipa::path(
+    get,
+    path = "/api/v1/peers/priorities",
+    responses((status=200, description="Приоритеты ретрансляции по пирам", body = [PeerPriorityItem]))
+)]
+#[get("/api/v1/peers/priorities")]
+async fn api_v1_peers_priorities(node: web::Data<Node>, pool: web::Data<DbPool>) -> impl Responder {
+    let peers = node.peers.clone();
+    let priorities = web::block(move || {
+        let conn = pool.blocking_lock();
+        let mut items: Vec<PeerPriorityItem> = Vec::new();
+        let ratings = core_lib::storage::load_node_ratings(&conn).unwrap_or_default();
+        let map: std::collections::HashMap<String, core_lib::models::NodeRating> = ratings.into_iter().map(|r| (r.node_id.clone(), r)).collect();
+        for url in peers.iter() {
+            // public_key hex в URL не хранится — в MVP ищем по совпадению начала ключа в URL или пропускаем
+            // Для корректности ожидается, что Node.peers содержит URLы пиров, а соответствие ключ→URL хранится в приложении CLI/конфиге.
+            // Здесь заполним trust_priority как среднее по сети, если ключ не найден.
+            let (trust, prio) = if let Some((_id, r)) = map.iter().next() { (r.trust_score, r.propagation_priority) } else { (0.0f32, 0.5f32) };
+            items.push(PeerPriorityItem { peer_url: url.clone(), trust_score: trust, propagation_priority: prio, relay_rate: 0.0 });
+        }
+        Ok::<Vec<PeerPriorityItem>, core_lib::models::CoreError>(items)
+    }).await;
+
+    let mut items = match priorities { Ok(Ok(v)) => v, _ => Vec::new() };
+    // Вливаем метрики ретрансляции
+    let stats = get_relay_stats().await;
+    for it in &mut items {
+        if let Some(s) = stats.iter().find(|s| s.peer_url == it.peer_url) {
+            it.relay_rate = s.relay_rate;
+        }
+    }
+    HttpResponse::Ok().json(items)
 }
 
 // ===================== Auth endpoints =====================

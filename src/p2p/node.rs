@@ -126,8 +126,21 @@ impl Node {
         let public_key_hex = self.crypto.public_key_hex();
 
         // Отправка последовательно (избегаем зависимости от futures)
+        // Приоритетная очередь: сортируем по propagation_priority (DESC); низким приоритетам даём задержку
+        let mut peers_with_prio: Vec<(String, f32)> = Vec::new();
         for peer in &self.peers {
+            let prio = {
+                let conn = self.conn_data.lock().await;
+                core_lib::storage::get_propagation_priority(&conn, &self.crypto.public_key_hex()).unwrap_or(0.5)
+            };
+            peers_with_prio.push((peer.clone(), prio));
+        }
+        peers_with_prio.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        for (peer, prio) in peers_with_prio {
             let url = format!("{}/incremental_sync", peer.trim_end_matches('/'));
+            if prio < 0.3 { tokio::time::sleep(StdDuration::from_millis(1200)).await; }
+            else if prio < 0.6 { tokio::time::sleep(StdDuration::from_millis(600)).await; }
             let resp = client
                 .post(url)
                 .header("X-Public-Key", public_key_hex.clone())

@@ -10,10 +10,11 @@ use core_lib::storage;
 use rusqlite::{Connection, params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "p2p-client-sync"))]
-use std::collections::HashMap;
-#[cfg(any(test, feature = "p2p-client-sync"))]
 use chrono::Utc;
 use sha2::{Sha256, Digest};
+use once_cell::sync::Lazy;
+use tokio::sync::Mutex as TokioMutex;
+use std::collections::HashMap;
 
 /// Данные для синхронизации
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,6 +45,33 @@ pub struct SyncResult {
 pub struct TrustDelta {
     pub node_id: String,
     pub delta: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RelayStat {
+    pub peer_url: String,
+    pub relayed: u64,
+    pub dropped: u64,
+    pub relay_rate: f32,
+}
+
+static RELAY_METRICS: Lazy<TokioMutex<HashMap<String, (u64, u64)>>> = Lazy::new(|| TokioMutex::new(HashMap::new()));
+
+async fn record_relay_result(peer_url: &str, success: bool) {
+    let mut g = RELAY_METRICS.lock().await;
+    let entry = g.entry(peer_url.to_string()).or_insert((0, 0));
+    if success { entry.0 = entry.0.saturating_add(1); } else { entry.1 = entry.1.saturating_add(1); }
+}
+
+pub async fn get_relay_stats() -> Vec<RelayStat> {
+    let g = RELAY_METRICS.lock().await;
+    let mut out = Vec::new();
+    for (peer, (relayed, dropped)) in g.iter() {
+        let total = *relayed + *dropped;
+        let rate = if total == 0 { 0.0 } else { (*relayed as f32) / (total as f32) };
+        out.push(RelayStat { peer_url: peer.clone(), relayed: *relayed, dropped: *dropped, relay_rate: rate });
+    }
+    out
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -175,7 +203,9 @@ pub async fn bidirectional_sync_with_peer(
         .send()
         .await?;
 
-    if !response.status().is_success() {
+    let ok = response.status().is_success();
+    record_relay_result(peer_url, ok).await;
+    if !ok {
         anyhow::bail!("Peer sync push failed: {}", response.status());
     }
 
@@ -230,7 +260,9 @@ pub async fn push_local_data(
         .send()
         .await?;
 
-    if !resp.status().is_success() {
+    let ok = resp.status().is_success();
+    record_relay_result(peer_url, ok).await;
+    if !ok {
         anyhow::bail!("Peer sync push failed: {}", resp.status());
     }
     Ok(resp.json().await?)
@@ -465,17 +497,10 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
         }
     }
 
-    // Ratings merge с распространением доверия и фильтром по минимальному скору
-    let min_trust = 0.2_f32; // TODO: сделать конфигурируемым при необходимости
-    let filtered_nodes: Vec<NodeRating> = remote
-        .node_ratings
-        .iter()
-        .filter(|n| n.trust_score >= min_trust)
-        .cloned()
-        .collect();
+    // Ratings merge: принимаем все входящие записи без фильтра доверия
     let diffs = core_lib::storage::merge_ratings(
         conn,
-        &filtered_nodes,
+        &remote.node_ratings,
         &remote.group_ratings,
     ).map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
@@ -575,9 +600,9 @@ pub async fn incremental_sync_with_peer(
         .send()
         .await?;
 
-    if !response.status().is_success() {
-        anyhow::bail!("Incremental sync failed: {}", response.status());
-    }
+    let ok = response.status().is_success();
+    record_relay_result(peer_url, ok).await;
+    if !ok { anyhow::bail!("Incremental sync failed: {}", response.status()); }
 
     let sync_result: SyncResult = response.json().await?;
 

@@ -224,9 +224,17 @@ Full CLI reference: **`docs/CLI_Usage.md`** and **`spec/10-cli.md`**.
   - **Incremental sync**: only changes since `last_sync` (`/incremental_sync`).
 
 Trust & reputation:
-- `NodeRating` and `GroupRating` models exist in `core-lib`.
-- Trust propagation logic (weighted blend & decay) implemented in `core-lib::recalc_ratings` and `merge_ratings`.
+- `NodeRating` now includes `propagation_priority` (0.0–1.0). It is computed as: `priority = trust_norm*0.8 + recent_activity*0.2`, where `trust_norm = (trust_score+1)/2`.
+- Non-discriminatory mode: all nodes can sync; trust only affects propagation order and delays. Low-trust peers are delayed, never excluded.
+- Trust propagation (blend and decay) lives in `core-lib::recalc_ratings` and `merge_ratings`. Priority is refreshed automatically after merges and recalculations.
 - Sync records are stored in `sync_logs` for auditing and diagnostics.
+
+Relay priority (Mermaid):
+```mermaid
+flowchart LR
+    A[High trust (priority≥0.6)] ==> B[Medium (0.3–0.6)] --> C[Low (<0.3)]
+    note[All peers receive data; lower priority adds delay]
+```
 
 ---
 

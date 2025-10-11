@@ -141,13 +141,14 @@ CREATE TABLE IF NOT EXISTS progress_metrics (
 
 -- node and group ratings
 CREATE TABLE IF NOT EXISTS node_ratings (
-    node_id        TEXT PRIMARY KEY,
-    events_true    INTEGER NOT NULL DEFAULT 0,
-    events_false   INTEGER NOT NULL DEFAULT 0,
-    validations    INTEGER NOT NULL DEFAULT 0,
-    reused_events  INTEGER NOT NULL DEFAULT 0,
-    trust_score    REAL    NOT NULL DEFAULT 0.0,
-    last_updated   INTEGER NOT NULL
+    node_id                TEXT PRIMARY KEY,
+    events_true            INTEGER NOT NULL DEFAULT 0,
+    events_false           INTEGER NOT NULL DEFAULT 0,
+    validations            INTEGER NOT NULL DEFAULT 0,
+    reused_events          INTEGER NOT NULL DEFAULT 0,
+    trust_score            REAL    NOT NULL DEFAULT 0.0,
+    propagation_priority   REAL    NOT NULL DEFAULT 0.0,
+    last_updated           INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS group_ratings (
@@ -261,13 +262,14 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
     conn.execute_batch(
         r#"
         CREATE TABLE IF NOT EXISTS node_ratings (
-            node_id        TEXT PRIMARY KEY,
-            events_true    INTEGER NOT NULL DEFAULT 0,
-            events_false   INTEGER NOT NULL DEFAULT 0,
-            validations    INTEGER NOT NULL DEFAULT 0,
-            reused_events  INTEGER NOT NULL DEFAULT 0,
-            trust_score    REAL    NOT NULL DEFAULT 0.0,
-            last_updated   INTEGER NOT NULL
+            node_id                TEXT PRIMARY KEY,
+            events_true            INTEGER NOT NULL DEFAULT 0,
+            events_false           INTEGER NOT NULL DEFAULT 0,
+            validations            INTEGER NOT NULL DEFAULT 0,
+            reused_events          INTEGER NOT NULL DEFAULT 0,
+            trust_score            REAL    NOT NULL DEFAULT 0.0,
+            propagation_priority   REAL    NOT NULL DEFAULT 0.0,
+            last_updated           INTEGER NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS group_ratings (
@@ -310,7 +312,58 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
         "#,
     )?;
 
+    // Добавить колонку propagation_priority в node_ratings при обновлении схемы
+    if !has_column(conn, "node_ratings", "propagation_priority")? {
+        conn.execute(
+            "ALTER TABLE node_ratings ADD COLUMN propagation_priority REAL NOT NULL DEFAULT 0.0",
+            [],
+        )?;
+        // Пересчёт значений приоритета после добавления колонки
+        let _ = refresh_propagation_priority(conn);
+    }
+
     Ok(())
+}
+
+/// Вычислить недавнюю активность узла как долю нормализованной активности за последние 7 суток.
+/// На текущем этапе используется прокси: нормализация по сумме событий/валидаций/переиспользований.
+fn compute_recent_activity(events_true: i64, events_false: i64, validations: i64, reused_events: i64) -> f32 {
+    let total = events_true + events_false + validations + reused_events;
+    if total <= 0 { 0.0 } else { ((total as f32).log10() / 3.0).clamp(0.0, 1.0) }
+}
+
+/// Обновить колонку propagation_priority для всех записей node_ratings
+fn refresh_propagation_priority(conn: &Connection) -> Result<(), CoreError> {
+    // Пройдём по всем записям и обновим priority = trust_norm*0.8 + recent_activity*0.2
+    let mut sel = conn.prepare(
+        r#"SELECT node_id, events_true, events_false, validations, reused_events, trust_score FROM node_ratings"#,
+    )?;
+    let mut rows = sel.query([])?;
+    let mut upd = conn.prepare(
+        r#"UPDATE node_ratings SET propagation_priority=?2 WHERE node_id=?1"#,
+    )?;
+    while let Some(r) = rows.next()? {
+        let node_id: String = r.get(0)?;
+        let et: i64 = r.get(1)?;
+        let ef: i64 = r.get(2)?;
+        let val: i64 = r.get(3)?;
+        let re: i64 = r.get(4)?;
+        let trust: f32 = r.get::<_, f64>(5)? as f32;
+        let trust_norm = ((trust + 1.0) / 2.0).clamp(0.0, 1.0);
+        let recent_activity = compute_recent_activity(et, ef, val, re);
+        let prio = (trust_norm * 0.8) + (recent_activity * 0.2);
+        upd.execute(rusqlite::params![node_id, prio as f64])?;
+    }
+    Ok(())
+}
+
+/// Получить приоритет распространения по публичному ключу (node_id)
+pub fn get_propagation_priority(conn: &Connection, pubkey: &str) -> Result<f32, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"SELECT propagation_priority FROM node_ratings WHERE node_id = ?1"#,
+    )?;
+    let prio: Option<f64> = stmt.query_row(params![pubkey], |r| r.get(0)).optional()?;
+    Ok(prio.unwrap_or(0.5) as f32)
 }
 
 /// Register a refresh token for a given public key with expiration timestamp (unix seconds)
@@ -981,7 +1034,7 @@ pub fn recalc_ratings(conn: &Connection, ts: i64) -> Result<(), CoreError> {
             WHERE te.public_key IS NOT NULL AND im.public_key IS NOT NULL AND im.public_key <> te.public_key
             GROUP BY te.public_key
         )
-        INSERT INTO node_ratings (node_id, events_true, events_false, validations, reused_events, trust_score, last_updated)
+        INSERT INTO node_ratings (node_id, events_true, events_false, validations, reused_events, trust_score, propagation_priority, last_updated)
         SELECT
             n.node_id,
             COALESCE(et.cnt, 0) AS events_true,
@@ -1000,6 +1053,7 @@ pub fn recalc_ratings(conn: &Connection, ts: i64) -> Result<(), CoreError> {
                           CAST(CASE WHEN (COALESCE(et.cnt,0) + COALESCE(ef.cnt,0)) = 0 THEN 1 ELSE (COALESCE(et.cnt,0) + COALESCE(ef.cnt,0)) END AS REAL)
                 END
             ) AS trust_score_raw,
+            0.0 AS propagation_priority,
             ?1 AS last_updated
         FROM nodes n
         LEFT JOIN events_true et ON et.node_id = n.node_id
@@ -1023,6 +1077,9 @@ pub fn recalc_ratings(conn: &Connection, ts: i64) -> Result<(), CoreError> {
         "#,
         [],
     )?;
+
+    // Пересчитать propagation_priority после вставки и нормализации trust_score
+    refresh_propagation_priority(conn)?;
 
     // 3) Группы: пока формируем один глобальный кластер
     // Список участников
@@ -1094,7 +1151,7 @@ pub fn recalc_ratings(conn: &Connection, ts: i64) -> Result<(), CoreError> {
 /// Загрузить рейтинги узлов
 pub fn load_node_ratings(conn: &Connection) -> Result<Vec<NodeRating>, CoreError> {
     let mut stmt = conn.prepare(
-        "SELECT node_id, events_true, events_false, validations, reused_events, trust_score, last_updated FROM node_ratings ORDER BY trust_score DESC",
+        "SELECT node_id, events_true, events_false, validations, reused_events, trust_score, propagation_priority, last_updated FROM node_ratings ORDER BY trust_score DESC",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(NodeRating {
@@ -1104,7 +1161,8 @@ pub fn load_node_ratings(conn: &Connection) -> Result<Vec<NodeRating>, CoreError
             validations: row.get::<_, i64>(3)? as u32,
             reused_events: row.get::<_, i64>(4)? as u32,
             trust_score: row.get(5)?,
-            last_updated: row.get(6)?,
+            propagation_priority: row.get(6)?,
+            last_updated: row.get(7)?,
         })
     })?;
     let mut out = Vec::new();
@@ -1258,6 +1316,9 @@ pub fn merge_ratings(
 
     // 1) Узлы: распространяем доверие через взвешенное смешивание
     let trust_diffs = propagate_from_remote(conn, incoming_nodes, now_ts)?;
+
+    // После обновления trust_score — пересчитать propagation_priority
+    refresh_propagation_priority(conn)?;
 
     // 2) Группы: резолвим по last_updated, как и раньше
     let mut stmt_groups = conn.prepare(
@@ -1928,6 +1989,7 @@ mod tests {
             validations: 0,
             reused_events: 0,
             trust_score: 0.4,
+            propagation_priority: 0.0,
             last_updated: 200,
         }];
         let incoming_groups: Vec<GroupRating> = vec![];
@@ -1948,6 +2010,7 @@ mod tests {
             validations: 0,
             reused_events: 0,
             trust_score: 0.9,
+            propagation_priority: 0.0,
             last_updated: 150,
         }];
         let _ = merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
@@ -1995,6 +2058,7 @@ mod tests {
             validations: 0,
             reused_events: 0,
             trust_score: 0.1,
+            propagation_priority: 0.0,
             last_updated: 200,
         }];
         let diffs = merge_ratings(&conn, &incoming_nodes, &[]).unwrap();
