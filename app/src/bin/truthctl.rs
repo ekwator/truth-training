@@ -160,6 +160,8 @@ enum KeysCmd {
 enum PeersCmd {
     /// Список пиров из ~/.truthctl/peers.json
     List,
+    /// Приоритеты ретрансляции и метрики
+    Priorities { #[arg(long, default_value = "http://127.0.0.1:8080")] server: String, #[arg(long)] ascii_relay: bool },
     /// Добавить пира
     Add { url: String, public_key: String },
     /// Синхронизировать со всеми пирами
@@ -691,6 +693,43 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
             } else {
                 println!("{}", "Peers:".blue());
                 for p in peers.peers { println!("- {} ({})", p.url, &p.public_key.get(0..8).unwrap_or("")); }
+            }
+        }
+        PeersCmd::Priorities { server, ascii_relay } => {
+            use reqwest::Client;
+            let client = Client::new();
+            let resp = client.get(format!("{}/api/v1/peers/priorities", server)).send().await?;
+            if !resp.status().is_success() { anyhow::bail!(format!("HTTP {}", resp.status())); }
+            let v: serde_json::Value = resp.json().await?;
+            // Таблица: Peer | Trust | Priority | Relays | ΔDelay
+            println!("{}", "Peer            Trust  Priority  Relays  ΔDelay".blue());
+            if let Some(arr) = v.as_array() {
+                for it in arr {
+                    let peer = it.get("peer_url").and_then(|x| x.as_str()).unwrap_or("");
+                    let trust = it.get("trust_score").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                    let prio = it.get("propagation_priority").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                    let rate = it.get("relay_rate").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                    let delay = if prio < 0.3 { 1200 } else if prio < 0.6 { 600 } else { 0 };
+                    let colorized = if prio < 0.3 { format!("{:.2}", prio).red() } else if prio < 0.6 { format!("{:.2}", prio).yellow() } else { format!("{:.2}", prio).green() };
+                    println!("{:<15} {:>5.2}  {:>8}  {:>6.2}  {:>5}ms", peer, trust, colorized, rate, delay);
+                }
+                if ascii_relay && arr.len() >= 2 {
+                    // Простейшая ASCII схема по первым трём
+                    let mut nodes: Vec<(String, f64)> = arr.iter().take(3).map(|it| {
+                        (
+                            it.get("peer_url").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                            it.get("propagation_priority").and_then(|x| x.as_f64()).unwrap_or(0.0),
+                        )
+                    }).collect();
+                    // Формат: A(0.9) ==> B(0.7) -> C(0.5)
+                    let mut parts: Vec<String> = Vec::new();
+                    for (i,(name, p)) in nodes.iter().enumerate() {
+                        let glyph = if *p >= 0.6 { "==>" } else if *p >= 0.3 { "->" } else { "-" };
+                        let node = format!("{}({:.1})", name, p);
+                        if i == 0 { parts.push(node); } else { parts.push(format!(" {} {}", glyph, node)); }
+                    }
+                    println!("\n{}", parts.join(""));
+                }
             }
         }
         PeersCmd::Add { url, public_key } => {

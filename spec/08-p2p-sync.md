@@ -40,6 +40,20 @@
 - Optional `X-Ratings-Hash` header for trust verification
 
 ### Sync Modes
+### Trust-Based Propagation (Non-Discriminatory Mode)
+
+- All peers may sync at any time; there is no trust filter to deny access.
+- Trust affects only propagation priority via `propagation_priority ∈ [0,1]` stored in `node_ratings`.
+- Formula: `priority = trust_norm*0.8 + recent_activity*0.2`, where `trust_norm = (trust_score+1)/2`.
+- Relay scheduling: higher priority peers are broadcast first; peers with priority <0.6 get a small delay, <0.3 get a larger delay. Data still reaches everyone.
+
+Mermaid diagram:
+```mermaid
+flowchart LR
+    High[High priority ≥0.6] ==> Mid[0.3–0.6]
+    Mid --> Low[<0.3]
+    note[No exclusion. Low priority => delayed propagation only]
+```
 
 **Full Sync (`/sync`):**
 - Complete dataset exchange
