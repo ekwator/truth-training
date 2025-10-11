@@ -48,7 +48,7 @@ flowchart TD
     API -->|reads/writes| DB[SQLite]
     API --> Sync[Sync Engine]
     Sync --> Beacon[UDP Beacon Sender/Listener]
-    Sync --> P2P[P2P Node (HTTP signed sync)]
+    Sync --> P2P["P2P Node - HTTP signed sync"]
     P2P -->|sync| Peer[Remote Node]
 ```
 
