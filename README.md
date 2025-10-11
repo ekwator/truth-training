@@ -232,7 +232,7 @@ Trust & reputation:
 Relay priority (Mermaid):
 ```mermaid
 flowchart LR
-    A[High trust (priority≥0.6)] ==> B[Medium (0.3–0.6)] --> C[Low (<0.3)]
+    A[High trust priority≥0.6] --> B[Medium 0.3–0.6] --> C[Low <0.3]
     note[All peers receive data; lower priority adds delay]
 ```
 
