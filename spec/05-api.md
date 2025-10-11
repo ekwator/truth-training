@@ -34,7 +34,7 @@ Notes
   - Message to sign: `auth:{ts}`
   - Response 200:
     ```json
-    { "access_token": "<jwt>", "refresh_token": "<refresh>", "token_type": "Bearer", "expires_in": 3600 }
+  { "access_token": "<jwt>", "refresh_token": "<refresh>", "token_type": "Bearer", "expires_in": 3600 }
     ```
   - 401: `{ "error": "unauthorized", "code": 401 }`
 
@@ -48,6 +48,42 @@ Protected endpoints (require header `Authorization: Bearer <jwt>`):
 - `POST /api/v1/ratings/sync`
 - `POST /api/v1/reset`
 - `POST /api/v1/reinit`
+
+### RBAC and Trust Delegation
+
+- `GET /api/v1/users` (admin only)
+  - Returns: array of `RbacUser` with `pubkey`, `role` (`admin|node|observer`), `trust_score`
+
+- `POST /api/v1/users/role` (admin only)
+  - Body: `{ "pubkey": "<hex>", "role": "admin|node|observer" }`
+  - Sets role or creates user if absent.
+
+- `POST /api/v1/trust/delegate` (role >= node)
+  - Body: `{ "target_pubkey": "<hex>", "delta": 0.1 }` (|delta| ≤ 0.2, not self)
+  - Adjusts target trust score locally; propagated via ratings sync.
+
+Role hierarchy (implied permissions): `admin → node → observer`.
+
+Mermaid:
+
+```mermaid
+graph TD
+    A[Admin] --> B[Node]
+    B --> C[Observer]
+    B --> D[Peer Node]
+    A -->|delegates trust| D
+```
+
+JWT Claims include role and trust_score:
+```json
+{
+  "sub": "<pubkey>",
+  "exp": 1710003600,
+  "iat": 1710000000,
+  "role": "node",
+  "trust_score": 0.42
+}
+```
 
 Future alignment
 - Consider consolidating GET /events and GET /get_data, and adding pagination.

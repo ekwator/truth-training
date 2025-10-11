@@ -133,6 +133,10 @@ enum Commands {
         #[arg(long, default_value = "http://127.0.0.1:8080")]
         server: String,
     },
+    /// Пользователи и роли (RBAC)
+    Users { #[command(subcommand)] cmd: UsersCmd },
+    /// Делегирование доверия
+    Trust { #[command(subcommand)] cmd: TrustCmd },
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -186,10 +190,28 @@ enum LogsCmd {
 }
 
 #[derive(Subcommand, Debug)]
+enum UsersCmd {
+    /// Список пользователей (admin)
+    List { #[arg(long, default_value = "http://127.0.0.1:8080")] server: String },
+    /// Назначить роль пользователю (admin)
+    Grant { #[arg(long, default_value = "http://127.0.0.1:8080")] server: String, pubkey: String, role: String },
+    /// Отозвать роль (удалить запись пользователя)
+    Revoke { #[arg(long, default_value = "http://127.0.0.1:8080")] server: String, pubkey: String },
+}
+
+#[derive(Subcommand, Debug)]
+enum TrustCmd {
+    /// Делегировать доверие цели (role >= node)
+    Delegate { #[arg(long, default_value = "http://127.0.0.1:8080")] server: String, target_pubkey: String, delta: f32 },
+}
+
+#[derive(Subcommand, Debug)]
 enum RatingsCmd {
     /// Показать доверие: локальный уровень, средняя сеть, дельты
     Trust { #[arg(long)] verbose: bool },
 }
+
+// duplicated enums removed
 
 #[tokio::main(flavor = "multi_thread")] 
 async fn main() -> anyhow::Result<()> {
@@ -267,6 +289,8 @@ async fn main() -> anyhow::Result<()> {
             reset_local_data(confirm, reinit)?;
             Ok(())
         }
+        Commands::Users { cmd } => { run_users(cmd).await }
+        Commands::Trust { cmd } => { run_trust(cmd).await }
         Commands::Config { cmd } => {
             run_config(cmd).await
         }
@@ -276,6 +300,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Refresh { server } => {
             refresh_flow(server).await
         }
+        // duplicate unreachable arms removed
     }
 }
 
@@ -460,6 +485,16 @@ async fn refresh_flow(server: String) -> anyhow::Result<()> {
     println!("{}", "✅ Token refreshed".green());
     Ok(())
 }
+
+fn bearer_or_err() -> anyhow::Result<String> {
+    let path = session_path()?;
+    if !path.exists() { anyhow::bail!("No session. Run 'truthctl auth' first"); }
+    let data = fs::read_to_string(&path)?;
+    let s: Session = serde_json::from_str(&data).unwrap_or_default();
+    Ok(format!("Bearer {}", s.access_token))
+}
+
+// duplicate implementations removed; canonical versions defined earlier
 
 fn peers_path() -> anyhow::Result<PathBuf> {
     let dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("no HOME"))?.join(".truthctl");
@@ -917,4 +952,55 @@ fn print_sync_result(res: SyncResult) {
         )
         .green()
     );
+}
+
+async fn run_users(cmd: UsersCmd) -> anyhow::Result<()> {
+    use reqwest::Client;
+    let client = Client::new();
+    match cmd {
+        UsersCmd::List { server } => {
+            let auth = bearer_or_err()?;
+            let resp = client.get(format!("{}/api/v1/users", server)).header("Authorization", auth).send().await?;
+            if resp.status().is_success() {
+                let v: serde_json::Value = resp.json().await?;
+                println!("{}", "✅ Users".green());
+                println!("{}", serde_json::to_string_pretty(&v)?);
+            } else {
+                println!("{} {}", "❌ Access denied".red(), resp.status());
+            }
+        }
+        UsersCmd::Grant { server, pubkey, role } => {
+            let auth = bearer_or_err()?;
+            let resp = client.post(format!("{}/api/v1/users/role", server))
+                .header("Authorization", auth)
+                .json(&serde_json::json!({"pubkey": pubkey, "role": role}))
+                .send().await?;
+            if resp.status().is_success() { println!("{}", "✅ Role updated".green()); } else { println!("{} {}", "❌ Denied".red(), resp.status()); }
+        }
+        UsersCmd::Revoke { server, pubkey } => {
+            let auth = bearer_or_err()?;
+            let resp = client.post(format!("{}/api/v1/users/role", server))
+                .header("Authorization", auth)
+                .json(&serde_json::json!({"pubkey": pubkey, "role": "observer"}))
+                .send().await?;
+            if resp.status().is_success() { println!("{}", "✅ Role revoked".green()); } else { println!("{} {}", "❌ Denied".red(), resp.status()); }
+        }
+    }
+    Ok(())
+}
+
+async fn run_trust(cmd: TrustCmd) -> anyhow::Result<()> {
+    use reqwest::Client;
+    let client = Client::new();
+    match cmd {
+        TrustCmd::Delegate { server, target_pubkey, delta } => {
+            let auth = bearer_or_err()?;
+            let resp = client.post(format!("{}/api/v1/trust/delegate", server))
+                .header("Authorization", auth)
+                .json(&serde_json::json!({"target_pubkey": target_pubkey, "delta": delta}))
+                .send().await?;
+            if resp.status().is_success() { println!("{}", "✅ Delegation applied".green()); } else { println!("{} {}", "❌ Denied".red(), resp.status()); }
+        }
+    }
+    Ok(())
 }

@@ -129,6 +129,42 @@ truthctl refresh --server http://127.0.0.1:8080
 ```
 При успешном обновлении заменит пару токенов в `session.json`.
 
+## RBAC: пользователи и роли
+
+Список пользователей (роль admin):
+```bash
+truthctl users list --server http://127.0.0.1:8080
+```
+
+Назначение роли:
+```bash
+truthctl users grant <pubkey> <role> --server http://127.0.0.1:8080
+# role: admin | node | observer
+```
+
+Отзыв роли (перевод в observer):
+```bash
+truthctl users revoke <pubkey> --server http://127.0.0.1:8080
+```
+
+## Делегирование доверия
+
+Делегировать доверие цели (требуется роль не ниже node):
+```bash
+truthctl trust delegate <target_pubkey> <delta> --server http://127.0.0.1:8080
+# delta: небольшое значение в диапазоне [-0.2; 0.2], не на себя
+```
+
+Иерархия ролей и делегирование (Mermaid):
+
+```mermaid
+graph TD
+    A[Admin] --> B[Node]
+    B --> C[Observer]
+    B --> D[Peer Node]
+    A -->|delegates trust| D
+```
+
 ## Configuration Management
 
 Управление конфигурацией узла (`~/.truthctl/config.json`):
