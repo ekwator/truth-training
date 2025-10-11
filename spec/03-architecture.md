@@ -23,6 +23,17 @@ This document reflects the current `truth-core` implementation and the CLI utili
 - **app (truthctl)**: administrative CLI that uses truth-core as a dependency.
 - **server**: network node (HTTP + P2P) that provides API endpoints.
 
+### Mobile Client Integration
+
+- API versioning: public client-facing endpoints are namespaced under `/api/v1/...`.
+- Android apps can consume the node via Retrofit using the emulator loopback `http://10.0.2.2:8080/`.
+- OpenAPI documentation is exposed at `/api/docs` (Swagger UI) and `/api/docs/openapi.json` (JSON spec).
+- CORS: for development builds, CORS is wide open to simplify mobile debugging. In production, restrict origins and require HTTPS.
+
+New endpoints for v1:
+- `GET /api/v1/info` — basic node info: `node_name`, `version`, `p2p_enabled`, `db_path`, `peer_count`.
+- `GET /api/v1/stats` — database stats: counts for `events`, `statements`, `impacts`, `node_ratings`, `group_ratings`, and average `trust_score`.
+
 This separation ensures modular testing, clean builds, and independent versioning.
 
 ### Responsibilities
