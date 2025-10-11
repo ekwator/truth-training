@@ -1,470 +1,199 @@
 # 🧠 Truth Training
+
 **A peer-to-peer application for truth and context analysis**
 
-## 🧩 Concept 
+---
 
-**Core idea:**  
-Lies manifest their most destructive power through **fraud**. Fraud is the pinnacle of deception, as it directly exploits trust and the drive for progress, turning them into tools of manipulation.  
+## Concept
 
-**Problem:**  
-- A fraudster is inherently **isolated**. Even when banding together in small groups, they remain few in number and isolated in nature.  
-- In contrast, collective social action has far greater resilience and capacity for sustainable development.  
+**Core idea**  
+Truth Training is a decentralized, peer-to-peer system for collecting, verifying and contextualizing events and claims. It is inspired by the principles of FIDONet (store-and-forward, hub/leaf roles, trust propagation) and uses cryptographic signatures (Ed25519) to ensure author authenticity and data integrity.
 
-**Solution (role of the application):**  
-The **Truth Training** app creates conditions where:  
-- **Collective intelligence** of users forms an immune system against lies.  
-- It employs **information exchange technologies and algorithms** on par with those used by fraudsters.  
-- The system is built as a **decentralized peer-to-peer network**, capable of:  
-  - functioning without centralized control,  
-  - resisting censorship and suppression of information,  
-  - ensuring anonymity and security.  
-
-**Game theory foundation:**  
-A collective strategy in a distributed system always has a higher chance of sustainable development than the individual strategy of a fraudster.  
+**High-level goals**
+- Decentralized storage and verification of events.
+- Reproducible, auditable history with signed events.
+- Peer discovery, synchronization and local diagnostics via CLI.
 
 ---
 
-**P2P-приложение для анализа правды и контекста**
-## 🧩 Концепция 
+## Quick start
 
-**Основная идея:**  
-Ложь в своём разрушительном воздействии проявляет наибольшее влияние через **мошенничество**. Именно оно является вершиной проявлений лжи, так как напрямую эксплуатирует доверие и стремление к развитию, превращая их в инструмент эксплуатации.  
+### Requirements
+- Rust (recommended ≥ 1.75)
+- cargo
+- SQLite (libsqlite3-dev)
+- Git
 
-**Проблема:**  
-- Мошенник по своей сути **одинок**. Даже если он объединяется в малые группы для усиления эффективности, эти группы остаются малочисленными и изолированными.  
-- В отличие от этого, коллективные действия общества обладают значительно большей устойчивостью и способностью к саморазвитию.  
-
-**Решение (роль приложения):**  
-Приложение **Truth Training** создаёт условия, в которых:  
-- **Коллективный интеллект** пользователей формирует иммунитет против лжи.  
-- Используются **технологии и алгоритмы обмена информацией**, сопоставимые по силе с инструментами, применяемыми мошенниками.  
-- Система организована как **распределённая сеть** (peer-to-peer), способная:  
-  - работать без централизованного контроля,  
-  - противостоять запрету распространения информации,  
-  - обеспечивать анонимность и защищённость.  
-
-**Теория игр в основе:**  
-Коллективная стратегия в распределённой системе всегда имеет больше шансов на устойчивое развитие, чем индивидуальная стратегия мошенника.  
-
----
-
-## 📌 Цели
-Приложение предназначено для анализа событий, связанных с правдой и ложью, с учетом контекста. 
-Основная цель — фиксировать события, строить связи, оценивать влияние лжи и формировать систему знаний.
-**Truth Training** — экспериментальное приложение для **проверки истинности утверждений**, построения контекста и автоматической синхронизации данных между узлами сети **без центрального сервера**.
-
----
-
-### ✅ Основная идея:
-- **Истина** → усиливает доверие, укрепляет связи.
-- **Ложь** → ведёт к «недоразвитости» (снижение веса и доверия).
-- **Контекст** → корректная интерпретация утверждений, сохранение зависимости.
-
----
-
-## 📌 Описание проекта
-**Truth Training** — это распределённая система на основе P2P-сети, позволяющая узлам:
-- Обмениваться информацией о событиях;
-- Синхронизировать данные через **UDP-маяки (beacons)**;
-- Оценивать достоверность утверждений с помощью **встроенного эксперта (алгоритм анализа лжи)**;
-- Работать в оффлайн-режиме с последующей синхронизацией.
-
-Цель: создать децентрализованную базу событий с проверкой фактов на уровне каждого узла.
-
----
-
-## 🔍 Основные возможности
-✔ Обнаружение пиров в локальной сети (UDP Broadcast, порт `37020`);  
-✔ Репликация данных через HTTP API c подписями (Ed25519);  
-✔ Добавление и редактирование событий;  
-✔ Запрос достоверности утверждений (**детектор лжи**);  
-✔ Периодическая синхронизация данных между узлами.
-
-## 🔗 Логическая схема (Mermaid)
-```mermaid
-flowchart TD
-    A[Начало] --> B{Утверждение}
-    B --> |Правда| C[Укрепление сети]
-    B --> |Ложь| D[Недоразвитость]
-    C --> E[Сохранение в БД]
-    D --> E
-    E --> F[Синхронизация с узлами]
-    F --> B
-```
-📊 Архитектура данных
-```mermaid
-flowchart TD
-    A[Событие] --> B[Контекст]
-    B --> C[Экспертная оценка]
-    C --> D[Влияние лжи]
-```
-🌐 Архитектура сети
-```mermaid
-flowchart TD
-    A[HTTP API / Actix-web] --> B[SQLite DB]
-    A --> C[Sync Engine]
-    C --> D[UDP Beacon Sender]
-    C --> E[UDP Beacon Listener]
-    E -->|Новые пировые адреса| C
-    A --> F[Expert System Detector]
-```
-
-## ⚙️ Технологический стек
-- **Rust** (Actix-web + Tokio)
-- **SQLite** (через rusqlite)
-- **P2P-синхронизация** (UDP + HTTP)
-- **Serde** (JSON)
-- **Reqwest** (HTTP клиент)
-
----
-
-## 🧱 Модули (truth-core)
-
-- `core-lib` — модели и хранилище (SQLite), бизнес-логика, эксперты.
-- `api` — HTTP REST на базе Actix (`src/api.rs`), проверка подписей.
-- `p2p` — синхронизация узлов и обнаружение пиров (`src/p2p/*`).
-- `p2p/encryption` — Ed25519, подпись и верификация (`CryptoIdentity`).
-- `app/truthctl` — CLI для управления пирами и триггера синхронизации.
-
-### Требования:
-- **Rust** ≥ 1.75
-- **cargo**
-- **SQLite**
-- **actix-web**, **tokio**, **serde**, **reqwest**
-
----
-
-## 🔧 Установка и сборка
-
+### Build & run (development)
 ```bash
-# Установка зависимостей
-sudo apt update && sudo apt install -y libsqlite3-dev pkg-config
-
-# 1) Клонировать репозиторий
+# Clone
 git clone https://github.com/USERNAME/truth-training.git
 cd truth-training
 
-# 2) Проверка и сборка
-cargo check
-cargo build --release
+# Build
+cargo build --workspace
 
-# 3) Запуск (Actix HTTP + P2P)
-cargo run -- --port 8080 --db truth_training.db
-
-# Альтернатива: запуск собранного бинарника
-./target/release/truth_training --port 8080 --db truth_training.db
+# Run node (example)
+cargo run --bin truth_core -- --port 8080 --db truth_training.db --http-addr http://127.0.0.1:8080
 ```
 
 ---
 
-## 📜 Параметры запуска
+## Architecture (brief)
 
-```bash
---port <u16>          # Порт HTTP (по умолчанию 8080)
---db <PATH>           # Файл SQLite (по умолчанию truth_training.db)
---http-addr <STRING>  # Явный адрес (http://IP:port)
-```
-
----
-
-## ✅ API endpoints (signed sync)
-
-| Метод | Путь            | Описание                                    |
-|-------|-----------------|---------------------------------------------|
-| GET   | `/health`       | Проверка сервера                           |
-| POST  | `/init`         | Инициализация базы                        |
-| POST  | `/seed`         | Загрузка исходных данных                  |
-| GET   | `/events`       | Получение событий (требует подпись)       |
-| POST  | `/events`       | Добавление события                        |
-| POST  | `/detect`       | Анализ несоответствий                     |
-| POST  | `/impacts`      | Добавление воздействия                    |
-| POST  | `/recalc`       | Пересчёт метрик прогресса                 |
-| GET   | `/progress`     | Получение метрик прогресса                |
-| GET   | `/get_data`     | Получение всех данных (для отладки)       |
-| GET   | `/graph`        | Базовые данные графа доверия              |
-| GET   | `/graph/json`   | Детализированный граф с фильтрами (для UI)|
-| GET   | `/graph/summary`| Агрегированные метрики графа              |
-| GET   | `/statements`   | Получение утверждений                     |
-| POST  | `/statements`   | Добавление утверждения                    |
-| POST  | `/sync`         | Двунаправленная синхронизация (подпись)   |
-| POST  | `/incremental_sync` | Инкрементальная синхронизация (подпись) |
-Примеры использования:
-```bash
-# Проверка состояния
-curl http://127.0.0.1:8080/health
-
-# Добавление события
-curl -X POST http://127.0.0.1:8080/events   -H "Content-Type: application/json"   -d '{"description":"Пример события","context_id":2,"vector":false}'
-
-# Экспорт графа для визуализации (D3.js/Mermaid)
-curl "http://127.0.0.1:8080/graph/json?min_score=0.0&max_links=8&depth=2"
-
-# Сводка графа (для дашбордов)
-curl "http://127.0.0.1:8080/graph/summary?min_score=0.0&max_links=8&depth=2"
-```
----
-
-## 📡 Тестирование P2P на одном ПК
-
-Запускаем несколько узлов на разных портах:
-
-```bash
-cargo run -- --port 8080 --db node1.db --http-addr http://127.0.0.1:8080
-cargo run -- --port 8081 --db node2.db --http-addr http://127.0.0.1:8081
-cargo run -- --port 8082 --db node3.db --http-addr http://127.0.0.1:8082
-```
-
-Настройка пиров и запуск синхронизации (`truthctl`):
-
-```bash
-# Добавляем пиров (используется файл peers.json в рабочей директории)
-truthctl peers add http://127.0.0.1:8081 <pubkey_hex_peer2>
-truthctl peers add http://127.0.0.1:8082 <pubkey_hex_peer3>
-
-# Просмотр списка
-truthctl peers list
-
-# Запуск синхронизации (push) со всеми пирами
-truthctl sync
-
-# Только pull с верификацией подписи и слиянием
-truthctl sync --pull-only
-```
----
-
-## 🗄 Структура базы данных (ER-модель)
-
-**Основные таблицы:**
-- **events** — события (id, title, description, timestamp, trust_score)
-- **statements** — утверждения, связанные с событиями
-- **impacts** — влияние утверждений на достоверность
-
-```mermaid
-erDiagram
-    EVENTS ||--o{ STATEMENTS : contains
-    STATEMENTS ||--o{ IMPACTS : influences
-```
-
----
-
-## 🌐 API и команды
-
-### 1. **Проверка работоспособности**
-```bash
-curl http://localhost:8080/health
-```
-
-### 2. **Инициализация базы**
-```bash
-curl -X POST http://localhost:8080/init
-```
-
-### 3. **Добавить событие**
-```bash
-curl -X POST http://localhost:8080/events     -H "Content-Type: application/json"     -d '{"description":"Инцидент X","context_id":1,"vector":true}'
-```
-
-### 4. **Добавить утверждение**
-```bash
-curl -X POST http://localhost:8080/statements     -H "Content-Type: application/json"     -d '{"event_id":1,"text":"Это правда"}'
-```
-
-### 5. **Запустить детекцию лжи**
-```bash
-curl -X POST http://localhost:8080/detect     -H "Content-Type: application/json"     -d '{"statement_id":1}'
-```
-
-### 6. **Синхронизация с пирами**
-Подписанные запросы с заголовками:
-- `X-Public-Key`: hex публичного ключа
-- `X-Signature`: hex подписи сообщения
-- `X-Timestamp`: unix time в сообщении
-
-Сообщения для подписи:
-- `sync_request:{ts}` — для pull-запросов
-- `sync_push:{ts}` — для push (`/sync`)
-- `incremental_sync:{ts}` — для дельты
-
-Пример push-синхронизации:
-
-```bash
-TS=$(date +%s)
-PUB=<hex_pubkey>
-MSG="sync_push:${TS}"
-# Если в вашей сборке есть подпомощник, можно заменить SIG командой truthctl util sign
-SIG="<signature_hex>"
-curl -X POST http://localhost:8080/sync \
-  -H "Content-Type: application/json" \
-  -H "X-Public-Key: $PUB" \
-  -H "X-Signature: $SIG" \
-  -H "X-Timestamp: $TS" \
-  -d '{"events":[],"statements":[],"impacts":[],"metrics":[],"last_sync":0}'
-```
-
----
-
-## 🧠 Встроенный эксперт
-Алгоритм оценки достоверности использует:
-- Веса утверждений;
-- Связь событий и источников;
-- Сетевую согласованность данных.
-🎯Основные возможности:
-Универсальные вопросы для оценки правдивости:
-Независимые источники подтверждения
-Рассмотрение альтернативных объяснений
-Наличие мотивов для искажения
-Воспроизводимость явления
-Технические/документальные подтверждения
-Влияние убеждений/предрассудков
-Время на оценку (не "сгоряча")
-Умная система оценки:
-Взвешенный подсчет баллов (-1.0 до +1.0)
-Расчет уверенности (0.0 до 1.0)
-Автоматические подсказки для поля detected
-Объяснение решения на русском языке
-Интеграция с базой данных:
-Автоматическое обновление статуса события
-Связь с контекстами из knowledge base
-Поддержка русского и английского языков
-Команды для использования:
-# Показать вопросы для события
-cargo run -p app -- --db truth_db.sqlite assess --event 1
-
-# Оценить с ответами (поддерживает правду)
-cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}'
-
-# Автоматически применить результат
-cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes",...}' --apply
-
-Результаты тестирования:  
-✅ Положительные ответы → score=1.00, confidence=1.00, detected=true  
-✅ Отрицательные ответы → score=-1.00, confidence=1.00, detected=true  
-✅ Неопределенные ответы → score=0.00, confidence=0.40, detected=None  
-✅ Автоматическое применение работает корректно  
-
-Теперь протестируем экспертную систему:
-cargo run -p app -- --db truth_db.sqlite assess --event 1
-
-Отлично! Теперь протестируем экспертную систему с ответами:  
-cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}'
-
-Теперь протестируем с отрицательными ответами:  
-cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"no","alt_hypothesis":"no","incentives":"yes","reproducible":"no","logs_evidence":"no","belief_pressure":"yes","time_distance":"no"}'
-
-Теперь протестируем автоматическое применение результата:  
-cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"no","alt_hypothesis":"no","incentives":"yes","reproducible":"no","logs_evidence":"no","belief_pressure":"yes","time_distance":"no"}'
-
-Проверим, что событие было обновлено:  
-cargo run -p app -- --db truth_db.sqlite show --id 1
-
-Отлично! Экспертная система работает корректно. Давайте также протестируем случай с низкой уверенностью:  
-cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"unknown","alt_hypothesis":"unknown","incentives":"unknown","reproducible":"unknown","logs_evidence":"unknown","belief_pressure":"unknown","time_distance":"unknown"}'
-
----
-
-## 🧰 CLI (truthctl)
-Новый инструмент управления пирами и синхронизацией:
-
-```bash
-# Добавить пира
-truthctl peers add http://node2:8080 <pubkey_hex>
-
-# Показать список пиров
-truthctl peers list
-
-# Запустить синхронизацию (push)
-truthctl sync
-
-# Только pull
-truthctl sync --pull-only
-```
-
-Хранение пиров: `peers.json` в рабочей директории.
-
-Примечание: для работы `truthctl` локальная БД инициализируется автоматически; при `--verbose` выводится публичный ключ узла. Команды `peers add/list` и `sync` соответствуют потокам в `src/p2p/sync.rs`.
-
----
-
-## 📦 Исторические команды CLI (устаревший режим)
-На раннем этапе приложение работало через консоль с командами для управления базой данных.
-
-**Примеры:**
-```bash
-# Инициализация БД
-cargo run -p app -- --db truth_db.sqlite init
-
-# Добавление события
-cargo run -p app -- --db truth_db.sqlite add-event   --description "Сокрытие факта в разговоре" --context 2 --vector false
-
-# Запуск детектора лжи
-cargo run -p app -- --db truth_db.sqlite detect --id 1 --detected false
-```
-
-Полный список команд смотри [command.txt](command.txt).
-
----
-
-## 🔄 Текущий подход
-CLI-команды **заменены API-вызовами**, т.к. проект переходит в формат:
-- **библиотеки** для интеграции с Android-приложением;
-- управление выполняется через **HTTP API**.
-
-Для теста API можно использовать `curl` (см. раздел **API endpoints**).
-
-## 📱 Мобильные биндинги (FFI)
-Планируется FFI-слой (например, через `uniFFI`) для Android, позволяющий вызывать `truth-core` из Kotlin и использовать те же API/сущности. iOS рассматривается как следующий шаг.
-
-## 🔭 Диаграммы
-
-Диаграмма потоков данных синхронизации:
-
-```mermaid
-sequenceDiagram
-  participant A as Node A
-  participant B as Node B
-  A->>B: POST /sync (X-Public-Key, X-Signature, X-Timestamp)
-  B-->>A: 200 OK { SyncResult }
-  A->>B: POST /incremental_sync (delta)
-  B-->>A: 200 OK { SyncResult }
-```
-
-Диаграмма обнаружения пиров:
-
+Mermaid: data flow
 ```mermaid
 flowchart TD
-  A[Beacon Sender] -- UDP :37020 --> L[Local Network]
-  L --> B[Beacon Listener]
-  B -->|peer addr| P[Peer Registry peers.json]
-  P --> C[truthctl sync]
-  C -->|HTTP| S[Sync Engine]
+    Client[User/CLI] -->|HTTP API| API[Actix-web API]
+    API -->|reads/writes| DB[SQLite]
+    API --> Sync[Sync Engine]
+    Sync --> Beacon[UDP Beacon Sender/Listener]
+    Sync --> P2P[P2P Node (HTTP signed sync)]
+    P2P -->|sync| Peer[Remote Node]
 ```
 
----
+Mermaid: data model (ER)
+```mermaid
+erDiagram
+    TRUTH_EVENTS ||--o{ STATEMENTS : contains
+    STATEMENTS ||--o{ IMPACTS : influences
+    TRUTH_EVENTS ||--o{ IMPACTS : has
+    NODES ||--o{ NODE_RATINGS : rates
+    GROUPS ||--o{ GROUP_RATINGS : rates
+```
 
-## 🔄 Документация
-[Technical_Specification.md](docs/Technical_Specification.md) — Техническое задание
-
-[Data_Schema.doc](docs/Data_Schema.md) — Общая схема базы данных
-
-[architecture.md](docs/architecture.md) — общая архитектура
-
-[build_instructions.md](docs/build_instructions.md) — инструкции для сборки ядра и UI на Linux, Android, Windows и macOS
-
-[ui_guidelines.md](docs/ui_guidelines.md) — правила интеграции интерфейсов с ядром, API, FFI, требования к UX
-
-Спецификация (GitHub Spec Kit): см. каталог `spec/`
-- [spec/README.md](spec/README.md) — индекс спецификаций
-- [spec/05-api.md](spec/05-api.md) — текущий API
-- [spec/02-requirements.md](spec/02-requirements.md) — требования
-- [spec/07-event-rating-protocol.md](spec/07-event-rating-protocol.md) — протокол ранжирования событий (статус)
+### FIDONet-inspired network model
+- **Node roles**: *leaf* (edge node) or *hub* (relay/aggregator).
+- **Store-and-forward**: nodes store data locally, synchronize on schedule or on-demand.
+- **Trust & signatures**: events are signed with Ed25519; public keys identify nodes.
+- **Routing & replication**: leaf→hub→hub→leaf; hub nodes relay and aggregate.
 
 ---
 
-## 📌 План перехода:
-1. Вынести всю бизнес-логику в библиотеку `truth-core`;
-2. Добавить обёртку для Android через `ffi` (или `uniFFI`);
-3. API на Rust оставить для тестов и P2P-синхронизации.
-## 📥 Скачать этот README.md
+## API (HTTP, signed endpoints)
 
-После загрузки на GitHub:  
-[Скачать файл README.md](https://github.com/ekwator/truth-training/tree/master/README.md)
+All sync-related endpoints require headers:
+- `X-Public-Key: <hex>`
+- `X-Signature: <hex>`
+- `X-Timestamp: <unix>`  
+(See spec/05-api.md for canonical signing payloads.)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET    | `/health` | Health check |
+| POST   | `/init` | Initialize DB |
+| POST   | `/seed` | Load seed knowledge base |
+| GET    | `/events` | Get events (signed pull) |
+| POST   | `/events` | Add event |
+| POST   | `/impacts` | Add impact |
+| POST   | `/detect` | Mark detected / perform detection |
+| POST   | `/recalc` | Recalculate metrics |
+| GET    | `/progress` | Get progress metrics |
+| GET    | `/get_data` | Get all data (for sync) |
+| GET    | `/statements` | Get statements |
+| POST   | `/sync` | Push sync payload |
+| POST   | `/incremental_sync` | Incremental sync |
+| GET    | `/ratings/nodes` | Node ratings |
+| GET    | `/ratings/groups` | Group ratings |
+| GET    | `/graph/json` | Graph JSON |
+| GET    | `/graph/summary` | Graph summary |
+
+Detailed API schema and examples: **`spec/05-api.md`** and **`docs/CLI_Usage.md`**.
+
+---
+
+## CLI: `truthctl` (administration)
+
+Main capabilities:
+- `truthctl init-node [--port <port>] [--db <path>] [--auto-peer]` — initialize node, generate keys.
+- `truthctl keys generate [--save]` — generate an Ed25519 keypair (hex).
+- `truthctl keys import <priv_hex> <pub_hex>` — import a keypair.
+- `truthctl keys list` — list stored key ids.
+- `truthctl peers add <url> <pubkey>` — add a peer.
+- `truthctl peers list` — list peers.
+- `truthctl peers sync-all [--mode full|incremental] [--dry-run]` — sync with all peers.
+- `truthctl logs show [--limit N]` — show recent sync logs.
+- `truthctl logs clear` — clear sync logs.
+- `truthctl config show|set|reset` — manage node config (`~/.truthctl/config.json`).
+- `truthctl diagnose [--verbose]` — node diagnostics (config, keys, peers).
+- `truthctl reset-data [--confirm] [--reinit]` — wipe local data and optionally reinit (auto key generation/replace).
+
+Examples:
+```bash
+truthctl keys generate --save
+truthctl init-node mynode --port 8080 --db ./node.db --auto-peer
+truthctl peers add http://127.0.0.1:8081 <peer_pubkey_hex>
+truthctl peers sync-all --mode incremental
+truthctl logs show --limit 50
+```
+
+Full CLI reference: **`docs/CLI_Usage.md`** and **`spec/10-cli.md`**.
+
+---
+
+## Storage & Sync
+
+- Storage: SQLite via `rusqlite`.
+- Tables: `truth_events`, `statements`, `impact`, `node_ratings`, `group_ratings`, `sync_logs`, ...
+- Sync modes:
+  - **Full sync**: send and receive full datasets (`/sync`).
+  - **Incremental sync**: only changes since `last_sync` (`/incremental_sync`).
+
+Trust & reputation:
+- `NodeRating` and `GroupRating` models exist in `core-lib`.
+- Trust propagation logic (weighted blend & decay) implemented in `core-lib::recalc_ratings` and `merge_ratings`.
+- Sync records are stored in `sync_logs` for auditing and diagnostics.
+
+---
+
+## Testing
+
+- Unit & integration tests in `core-lib` and `app` crates.
+- Use `cargo test --workspace --features p2p-client-sync` to run with P2P client sync features.
+- CLI tests isolate `$HOME` using temporary directories.
+
+---
+
+## Docs & Spec (Spec-Kit)
+
+Primary spec files (in `spec/`):
+- `spec/01-product-vision.md`
+- `spec/02-requirements.md`
+- `spec/03-architecture.md` *(network roles, FIDONet-inspired rules)*
+- `spec/05-api.md` *(HTTP API schema)*
+- `spec/07-event-rating-protocol.md`
+- `spec/10-cli.md` *(CLI commands & config)*
+- `spec/14-quality-gates.md`
+- `spec/16-test-plan.md`
+
+User docs: `docs/CLI_Usage.md`, `docs/ARCHITECTURE.md`.
+
+---
+
+## Security & Responsible Disclosure
+
+See `SECURITY.md` for the policy. In short:
+- Use up-to-date dependencies.
+- Report vulnerabilities to the repository owner (see SECURITY.md).
+- Signed messages use Ed25519; private keys must be kept secret.
+
+---
+
+## Contributing
+
+See `CONTRIBUTING.md` (or `spec/14-quality-gates.md`) — standards require:
+- `cargo fmt` and `cargo clippy` clean runs.
+- Tests for new features.
+- Spec updates in `spec/` for any protocol or API changes.
+
+---
+
+## License
+
+MIT / Apache-2.0 (TBD — include the license files in repo).
+
+---
+
+## Download this README
+
+If you want the exact Markdown file, download: `sandbox:/mnt/data/README.md`
