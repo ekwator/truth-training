@@ -154,9 +154,15 @@ truthctl logs clear --db truth.db
 ### Проверка состояния узла
 ```bash
 truthctl diagnose [--verbose]
+truthctl diagnose --server [--verbose]
 ```
 
-Выводит цветной сводный отчёт по конфигу, ключам, пирам, базе данных и фиче `p2p-client-sync`. При `--verbose` печатает полный JSON (`config`, `peers`, `keys`).
+Выводит:
+- Локальные проверки (`diagnostics.rs`): конфиг, ключи, пиры, база и состояние фичи `p2p-client-sync`. При `--verbose` печатает JSON (`config`, `peers`, `keys`).
+- При `--server` запускает серверные проверки из `truth_core::server_diagnostics`:
+  - **API**: доступность HTTP маршрута `/health`
+  - **Database**: возможность открыть SQLite и выполнить чтение
+  - **P2P**: статус слушателя UDP 37020 (если включён)
 
 ### Сброс локальных данных
 ```bash
