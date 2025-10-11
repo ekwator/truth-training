@@ -20,6 +20,7 @@ auth = []
 [dependencies]
 core_lib = { version = "0.2.3-pre", path = "core-lib" }
 actix-web = "4"
+actix-cors = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.37", features = ["full"] }
@@ -41,3 +42,7 @@ env_logger = "0.11"
 base64ct = "=1.7.3"
 sha2 = "0.10"
 thiserror = "1.0"
+
+# OpenAPI / Swagger UI for actix-web
+utoipa = { version = "4", features = ["actix_extras"] }
+utoipa-swagger-ui = { version = "5", features = ["actix-web"] }

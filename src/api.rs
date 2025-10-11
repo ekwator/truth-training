@@ -1,5 +1,5 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -10,8 +10,114 @@ use crate::p2p::sync::SyncData;
 use crate::p2p::node::Node;
 use chrono::Utc;
 use std::fmt;
+use utoipa::{OpenApi, ToSchema};
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
+
+/// Параметры HTTP-сервера, необходимые для служебных эндпоинтов
+#[derive(Clone)]
+pub struct AppInfo {
+    pub db_path: String,
+    pub p2p_enabled: bool,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct NodeInfo {
+    pub node_name: String,
+    pub version: String,
+    pub p2p_enabled: bool,
+    pub db_path: String,
+    pub peer_count: i32,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct NodeStats {
+    pub events: i32,
+    pub statements: i32,
+    pub impacts: i32,
+    pub node_ratings: i32,
+    pub group_ratings: i32,
+    pub avg_trust_score: f32,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/info",
+    responses(
+        (status = 200, description = "Информация об узле", body = NodeInfo)
+    )
+)]
+#[get("/api/v1/info")]
+async fn api_v1_info(node: web::Data<Node>, meta: web::Data<AppInfo>) -> impl Responder {
+    // Имя узла формируем из публичного ключа (короткий вид)
+    let pub_hex = node.crypto.public_key_hex();
+    let short = pub_hex.get(0..8).unwrap_or("");
+    let node_name = format!("node-{}", short);
+
+    let version = env!("CARGO_PKG_VERSION").to_string();
+    let peer_count = node.peers.len() as i32;
+
+    let info = NodeInfo {
+        node_name,
+        version,
+        p2p_enabled: meta.p2p_enabled,
+        db_path: meta.db_path.clone(),
+        peer_count,
+    };
+    HttpResponse::Ok().json(info)
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/stats",
+    responses(
+        (status = 200, description = "Агрегированная статистика по БД", body = NodeStats)
+    )
+)]
+#[get("/api/v1/stats")]
+async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        let events = core_lib::storage::load_truth_events(&conn)?.len() as i32;
+        let statements = core_lib::storage::load_statements(&conn)?.len() as i32;
+        let impacts = core_lib::storage::load_impacts(&conn)?.len() as i32;
+        let node_rs = core_lib::storage::load_node_ratings(&conn)?;
+        let group_rs = core_lib::storage::load_group_ratings(&conn)?;
+        let node_ratings = node_rs.len() as i32;
+        let group_ratings = group_rs.len() as i32;
+        let avg_trust_score: f32 = if node_rs.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = node_rs.iter().map(|r| r.trust_score as f64).sum();
+            (sum / (node_rs.len() as f64)) as f32
+        };
+        Ok::<NodeStats, core_lib::models::CoreError>(NodeStats {
+            events,
+            statements,
+            impacts,
+            node_ratings,
+            group_ratings,
+            avg_trust_score,
+        })
+    })
+    .await;
+
+    match result {
+        Ok(Ok(st)) => HttpResponse::Ok().json(st),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// OpenAPI спецификация для Swagger UI
+#[derive(OpenApi)]
+#[openapi(
+    paths(api_v1_info, api_v1_stats),
+    components(schemas(NodeInfo, NodeStats)),
+    tags((name = "Truth API", description = "HTTP API для мобильной интеграции"))
+)]
+pub struct ApiDoc;
 
 /// Проверяет подпись сообщения, полученную от другого узла
 #[derive(Debug)]
@@ -457,6 +563,8 @@ async fn ratings_sync(node: web::Data<Node>) -> impl Responder {
 /// helper: зарегистрировать все маршруты
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(health)
+        .service(api_v1_info)
+        .service(api_v1_stats)
         .service(init_db)
         .service(seed_db)
         .service(detect_event)
