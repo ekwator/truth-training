@@ -108,6 +108,27 @@ truthctl peers sync-all --mode incremental
 truthctl peers sync-all --mode full --dry-run
 ```
 
+### Аутентификация и обновление токена
+
+Выпуск токенов (сервер должен слушать, по умолчанию `http://127.0.0.1:8080`):
+```bash
+truthctl auth --server http://127.0.0.1:8080 [--identity keys/node1.json]
+```
+Сохранит сессию в `~/.truthctl/session.json`:
+```json
+{
+  "access_token": "<jwt>",
+  "refresh_token": "<refresh>",
+  "expires_at": 1710003600
+}
+```
+
+Авто‑обновление при истёкшем токене:
+```bash
+truthctl refresh --server http://127.0.0.1:8080
+```
+При успешном обновлении заменит пару токенов в `session.json`.
+
 ## Configuration Management
 
 Управление конфигурацией узла (`~/.truthctl/config.json`):

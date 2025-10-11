@@ -10,6 +10,8 @@ use crate::p2p::sync::SyncData;
 use crate::p2p::node::Node;
 use chrono::Utc;
 use std::fmt;
+use jsonwebtoken::{encode, decode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use once_cell::sync::Lazy;
 use utoipa::{OpenApi, ToSchema};
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
@@ -118,6 +120,48 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
     tags((name = "Truth API", description = "HTTP API для мобильной интеграции"))
 )]
 pub struct ApiDoc;
+
+// ===================== JWT structures =====================
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    sub: String, // public key hex
+    exp: usize,
+    iat: usize,
+}
+
+static JWT_SECRET: Lazy<String> = Lazy::new(|| {
+    std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string())
+});
+
+fn jwt_encoding_key() -> EncodingKey {
+    EncodingKey::from_secret(JWT_SECRET.as_bytes())
+}
+
+fn jwt_decoding_key() -> DecodingKey {
+    DecodingKey::from_secret(JWT_SECRET.as_bytes())
+}
+
+fn issue_jwt_pair(public_key_hex: &str) -> anyhow::Result<(String, String, i64)> {
+    use chrono::Utc;
+    let now = Utc::now().timestamp() as usize;
+    let exp_access = (Utc::now() + chrono::Duration::hours(1)).timestamp() as usize;
+    let claims = Claims { sub: public_key_hex.to_string(), exp: exp_access, iat: now };
+    let header = Header::new(Algorithm::HS256);
+    let access = encode(&header, &claims, &jwt_encoding_key())?;
+    // refresh token как случайная строка (32 байта hex)
+    let mut rng = rand::rngs::OsRng;
+    use rand::RngCore;
+    let mut buf = [0u8; 32];
+    rng.fill_bytes(&mut buf);
+    let refresh = hex::encode(buf);
+    let exp_refresh = (Utc::now() + chrono::Duration::hours(24)).timestamp();
+    Ok((access, refresh, exp_refresh))
+}
+
+fn verify_jwt(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+    let mut validation = Validation::new(Algorithm::HS256);
+    decode::<Claims>(token, &jwt_decoding_key(), &validation).map(|d| d.claims)
+}
 
 /// Проверяет подпись сообщения, полученную от другого узла
 #[derive(Debug)]
@@ -388,7 +432,8 @@ async fn detect_event(pool: web::Data<DbPool>, payload: web::Json<serde_json::Va
 
 /// POST /recalc - Пересчет связей (метрики прогресса)
 #[post("/recalc")]
-async fn recalc_metrics(pool: web::Data<DbPool>) -> impl Responder {
+async fn recalc_metrics(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
     let pool = pool.clone();
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
@@ -553,11 +598,52 @@ async fn incremental_sync(req: HttpRequest, pool: web::Data<DbPool>, payload: we
 
 /// POST /ratings/sync — инициирует широковещательную отправку локальных рейтингов на пиров
 #[post("/ratings/sync")]
-async fn ratings_sync(node: web::Data<Node>) -> impl Responder {
+async fn ratings_sync(req: HttpRequest, node: web::Data<Node>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
     match node.broadcast_ratings().await {
         Ok(()) => HttpResponse::Ok().json(serde_json::json!({"status":"broadcasted"})),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
+}
+
+/// Secured variants under /api/v1/* requiring Bearer
+#[post("/api/v1/recalc")]
+async fn api_v1_recalc(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        let ts = chrono::Utc::now().timestamp();
+        let metric_id = storage::recalc_progress_metrics(&_conn, ts)?;
+        core_lib::storage::recalc_ratings(&_conn, ts)?;
+        Ok::<i64, core_lib::models::CoreError>(metric_id)
+    }).await;
+    match result {
+        Ok(Ok(_)) => HttpResponse::Ok().json(serde_json::json!({"status":"recalculated"})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[post("/api/v1/ratings/sync")]
+async fn api_v1_ratings_sync(req: HttpRequest, node: web::Data<Node>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    match node.broadcast_ratings().await {
+        Ok(()) => HttpResponse::Ok().json(serde_json::json!({"status":"broadcasted"})),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[post("/api/v1/reset")]
+async fn api_v1_reset(req: HttpRequest) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    HttpResponse::Ok().json(serde_json::json!({"status":"ok"}))
+}
+
+#[post("/api/v1/reinit")]
+async fn api_v1_reinit(req: HttpRequest) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    HttpResponse::Ok().json(serde_json::json!({"status":"ok"}))
 }
 
 /// helper: зарегистрировать все маршруты
@@ -565,6 +651,12 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(health)
         .service(api_v1_info)
         .service(api_v1_stats)
+        .service(api_v1_auth)
+        .service(api_v1_refresh)
+        .service(api_v1_recalc)
+        .service(api_v1_ratings_sync)
+        .service(api_v1_reset)
+        .service(api_v1_reinit)
         .service(init_db)
         .service(seed_db)
         .service(detect_event)
@@ -587,9 +679,118 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(ratings_sync);
 }
 
+// ===================== Auth endpoints =====================
+
+#[post("/api/v1/auth")]
+async fn api_v1_auth(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    let public_key = req.headers().get("X-Public-Key").and_then(|v| v.to_str().ok());
+    let signature = req.headers().get("X-Signature").and_then(|v| v.to_str().ok());
+    let ts = req.headers().get("X-Timestamp").and_then(|v| v.to_str().ok());
+    let Some(pk) = public_key else { return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401})); };
+    let Some(sig) = signature else { return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401})); };
+    let Some(ts) = ts else { return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401})); };
+    let message = format!("auth:{}", ts);
+    if let Err(e) = verify_signature(pk, sig, &message) {
+        log::warn!("Auth signature failed: {}", e);
+        return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401}));
+    }
+    // ok -> issue jwt and refresh, store refresh
+    let (access, refresh, exp_refresh) = match issue_jwt_pair(pk) {
+        Ok(v) => v,
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+    let pool = pool.clone();
+    let pk_owned = pk.to_string();
+    let refresh_owned = refresh.clone();
+    let res = web::block(move || {
+        let conn = pool.blocking_lock();
+        core_lib::storage::register_refresh_token(&conn, &pk_owned, &refresh_owned, exp_refresh)
+    }).await;
+    match res {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({
+            "access_token": access,
+            "refresh_token": refresh,
+            "token_type": "Bearer",
+            "expires_in": 3600
+        })),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+#[derive(Deserialize)]
+struct RefreshRequest { refresh_token: String }
+
+#[post("/api/v1/refresh")]
+async fn api_v1_refresh(pool: web::Data<DbPool>, body: web::Json<RefreshRequest>) -> impl Responder {
+    let refresh = body.refresh_token.clone();
+    let refresh_lookup = refresh.clone();
+    let pool1 = pool.clone();
+    let res = web::block(move || {
+        let conn = pool1.blocking_lock();
+        core_lib::storage::find_session_by_refresh(&conn, &refresh_lookup)
+    }).await;
+    let Ok(Ok(opt)) = res else { return HttpResponse::InternalServerError().finish(); };
+    let Some((public_key, expires_at)) = opt else {
+        return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401}));
+    };
+    if chrono::Utc::now().timestamp() >= expires_at {
+        // expired
+        let pool_del = pool.clone();
+        let _ = web::block(move || {
+            let conn = pool_del.blocking_lock();
+            core_lib::storage::delete_refresh_token(&conn, &refresh)
+        }).await;
+        return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401}));
+    }
+    // rotate refresh: delete old, issue new pair
+    let (access, new_refresh, exp_refresh) = match issue_jwt_pair(&public_key) { Ok(v) => v, Err(e) => return HttpResponse::InternalServerError().body(e.to_string()) };
+    let new_refresh_for_closure = new_refresh.clone();
+    let pool2 = pool.clone();
+    let refresh_old = refresh.clone();
+    let public_key2 = public_key.clone();
+    let res2 = web::block(move || {
+        let conn = pool2.blocking_lock();
+        core_lib::storage::delete_refresh_token(&conn, &refresh_old)?;
+        core_lib::storage::register_refresh_token(&conn, &public_key2, &new_refresh_for_closure, exp_refresh)
+    }).await;
+    match res2 {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({
+            "access_token": access,
+            "refresh_token": new_refresh,
+            "token_type": "Bearer",
+            "expires_in": 3600
+        })),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+// ===================== Middleware for Bearer auth =====================
+
+fn unauthorized_json() -> HttpResponse {
+    HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401}))
+}
+
+fn extract_bearer(req: &HttpRequest) -> Option<String> {
+    req.headers()
+        .get("Authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .map(|s| s.to_string())
+}
+
+async fn require_jwt(req: HttpRequest) -> Result<String, HttpResponse> {
+    let Some(token) = extract_bearer(&req) else { return Err(unauthorized_json()); };
+    match verify_jwt(&token) {
+        Ok(c) => Ok(c.sub),
+        Err(_) => Err(unauthorized_json()),
+    }
+}
+
+
 /// POST /recalc_ratings - Пересчет рейтингов узлов и групп
 #[post("/recalc_ratings")]
-async fn recalc_ratings(pool: web::Data<DbPool>) -> impl Responder {
+async fn recalc_ratings(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
     let pool = pool.clone();
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
@@ -609,8 +810,14 @@ async fn recalc_ratings(pool: web::Data<DbPool>) -> impl Responder {
 async fn get_node_ratings(pool: web::Data<DbPool>) -> impl Responder {
     let pool = pool.clone();
     let result = web::block(move || {
-        let _conn = pool.blocking_lock();
-        core_lib::storage::load_node_ratings(&_conn)
+        let mut conn = pool.blocking_lock();
+        let mut ratings = core_lib::storage::load_node_ratings(&conn)?;
+        if ratings.is_empty() {
+            // lazy recalc if empty
+            let _ = core_lib::storage::recalc_ratings(&conn, chrono::Utc::now().timestamp());
+            ratings = core_lib::storage::load_node_ratings(&conn)?;
+        }
+        Ok::<_, core_lib::models::CoreError>(ratings)
     })
     .await;
 
@@ -626,8 +833,13 @@ async fn get_node_ratings(pool: web::Data<DbPool>) -> impl Responder {
 async fn get_group_ratings(pool: web::Data<DbPool>) -> impl Responder {
     let pool = pool.clone();
     let result = web::block(move || {
-        let _conn = pool.blocking_lock();
-        core_lib::storage::load_group_ratings(&_conn)
+        let mut conn = pool.blocking_lock();
+        let mut ratings = core_lib::storage::load_group_ratings(&conn)?;
+        if ratings.is_empty() {
+            let _ = core_lib::storage::recalc_ratings(&conn, chrono::Utc::now().timestamp());
+            ratings = core_lib::storage::load_group_ratings(&conn)?;
+        }
+        Ok::<_, core_lib::models::CoreError>(ratings)
     })
     .await;
 
@@ -674,6 +886,8 @@ async fn get_graph_json(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) 
 
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
+        // ensure ratings up-to-date for graph queries
+        let _ = core_lib::storage::recalc_ratings(&_conn, chrono::Utc::now().timestamp());
         core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)
     })
     .await;
