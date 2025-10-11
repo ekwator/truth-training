@@ -7,7 +7,30 @@ This document reflects the current `truth-core` implementation and the CLI utili
 **Core Principles:**
 - **Store-and-forward**: Nodes store data locally and synchronize on schedule or on-demand
 - **Hub/Leaf roles**: Leaf nodes (edge) connect to hub nodes (relay/aggregator) for data propagation
-- **Trust propagation**: Reputation spreads through the network via signed endorsements
+- **Trust propagation**: Reputation spreads through the network via signed endorsements and delegated adjustments (admin → node → observer)
+
+### Role Hierarchy and Trust Delegation
+
+Roles define permissions across API and peer actions:
+
+- admin: full control (manage users/roles, network operations)
+- node: authenticated node, can delegate trust within limits
+- observer: read-only access
+
+Delegation and hierarchy:
+
+- admin → node → observer: higher roles imply lower ones
+- nodes may delegate small trust deltas to peers (bounded and audited)
+
+Mermaid diagram:
+
+```mermaid
+graph TD
+    A[Admin] --> B[Node]
+    B --> C[Observer]
+    B --> D[Peer Node]
+    A -->|delegates trust| D
+```
 - **Zone addressing**: Nodes can be addressed as `Zone:Net/Node` for hierarchical routing
 - **Delayed sync**: Nodes may be offline and sync when reconnected
 

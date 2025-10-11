@@ -165,6 +165,23 @@ pub struct User {
     pub last_sync: Option<i64>,
 }
 
+/// Запись пользователя в БД (таблица: users)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserRecord {
+    pub public_key: String,
+    pub role: String, // "admin" | "node" | "observer"
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+/// Представление пользователя с доверием (users × node_ratings)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserView {
+    pub public_key: String,
+    pub role: String,
+    pub trust_score: f32, // -1..1 (из node_ratings)
+}
+
 /// Рейтинг узла/ноды (node_id = публичный ключ в hex)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeRating {
@@ -254,4 +271,14 @@ pub struct SyncLog {
     pub mode: String,
     pub status: String,
     pub details: String,
+}
+
+/// Учетная запись пользователя с ролью и доверием (RBAC)
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct RbacUser {
+    pub pubkey: String,
+    pub role: String,        // observer | node | admin
+    pub trust_score: f32,    // -1.0 .. 1.0 (зеркалит node_ratings)
+    pub last_updated: i64,   // unix seconds
+    pub display_name: Option<String>,
 }

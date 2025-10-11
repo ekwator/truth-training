@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary};
+use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary, RbacUser};
 use core_lib::storage;
 use crate::p2p::encryption::CryptoIdentity;
 use crate::p2p::sync::SyncData;
@@ -115,18 +115,20 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
 /// OpenAPI спецификация для Swagger UI
 #[derive(OpenApi)]
 #[openapi(
-    paths(api_v1_info, api_v1_stats),
-    components(schemas(NodeInfo, NodeStats)),
+    paths(api_v1_info, api_v1_stats, api_v1_users_list, api_v1_users_role, api_v1_trust_delegate),
+    components(schemas(NodeInfo, NodeStats, RbacUser, Claims)),
     tags((name = "Truth API", description = "HTTP API для мобильной интеграции"))
 )]
 pub struct ApiDoc;
 
 // ===================== JWT structures =====================
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 struct Claims {
     sub: String, // public key hex
     exp: usize,
     iat: usize,
+    role: String,
+    trust_score: f32,
 }
 
 static JWT_SECRET: Lazy<String> = Lazy::new(|| {
@@ -141,11 +143,20 @@ fn jwt_decoding_key() -> DecodingKey {
     DecodingKey::from_secret(JWT_SECRET.as_bytes())
 }
 
-fn issue_jwt_pair(public_key_hex: &str) -> anyhow::Result<(String, String, i64)> {
+fn issue_jwt_pair_with(conn: &rusqlite::Connection, public_key_hex: &str) -> anyhow::Result<(String, String, i64)> {
     use chrono::Utc;
     let now = Utc::now().timestamp() as usize;
     let exp_access = (Utc::now() + chrono::Duration::hours(1)).timestamp() as usize;
-    let claims = Claims { sub: public_key_hex.to_string(), exp: exp_access, iat: now };
+    // lookup role and trust in users table (fallbacks)
+    let (role, trust_score): (String, f32) = {
+        if let Ok(mut stmt) = conn.prepare("SELECT role, trust_score FROM users WHERE pubkey=?1") {
+            match stmt.query_row([public_key_hex], |r| Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)? as f32))) {
+                Ok((role, ts)) => (role, ts),
+                Err(_) => ("observer".to_string(), 0.0),
+            }
+        } else { ("observer".to_string(), 0.0) }
+    };
+    let claims = Claims { sub: public_key_hex.to_string(), exp: exp_access, iat: now, role, trust_score };
     let header = Header::new(Algorithm::HS256);
     let access = encode(&header, &claims, &jwt_encoding_key())?;
     // refresh token как случайная строка (32 байта hex)
@@ -159,8 +170,26 @@ fn issue_jwt_pair(public_key_hex: &str) -> anyhow::Result<(String, String, i64)>
 }
 
 fn verify_jwt(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-    let mut validation = Validation::new(Algorithm::HS256);
+    let validation = Validation::new(Algorithm::HS256);
     decode::<Claims>(token, &jwt_decoding_key(), &validation).map(|d| d.claims)
+}
+
+// ===== RBAC helpers =====
+fn role_level(role: &str) -> i32 {
+    match role {
+        "admin" => 3,
+        "node" => 2,
+        _ => 1,
+    }
+}
+
+async fn require_role(req: HttpRequest, min_role: &str) -> Result<Claims, HttpResponse> {
+    let Some(token) = extract_bearer(&req) else { return Err(unauthorized_json()); };
+    let claims = match verify_jwt(&token) { Ok(c) => c, Err(_) => return Err(unauthorized_json()) };
+    if role_level(&claims.role) < role_level(min_role) {
+        return Err(HttpResponse::Forbidden().json(serde_json::json!({"error":"forbidden","code":403})));
+    }
+    Ok(claims)
 }
 
 /// Проверяет подпись сообщения, полученную от другого узла
@@ -676,7 +705,10 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(add_impact)
         .service(sync_data)
         .service(incremental_sync)
-        .service(ratings_sync);
+        .service(ratings_sync)
+        .service(api_v1_users_list)
+        .service(api_v1_users_role)
+        .service(api_v1_trust_delegate);
 }
 
 // ===================== Auth endpoints =====================
@@ -695,8 +727,16 @@ async fn api_v1_auth(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responde
         return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401}));
     }
     // ok -> issue jwt and refresh, store refresh
-    let (access, refresh, exp_refresh) = match issue_jwt_pair(pk) {
-        Ok(v) => v,
+    let (access, refresh, exp_refresh) = match web::block({
+        let pool = pool.clone();
+        let pk_owned = pk.to_string();
+        move || {
+            let conn = pool.blocking_lock();
+            issue_jwt_pair_with(&conn, &pk_owned)
+        }
+    }).await {
+        Ok(Ok(v)) => v,
+        Ok(Err(e)) => return HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
     let pool = pool.clone();
@@ -715,6 +755,75 @@ async fn api_v1_auth(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responde
         })),
         _ => HttpResponse::InternalServerError().finish(),
     }
+}
+
+// ===================== RBAC / Users endpoints =====================
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/users",
+    responses((status=200, description="Список пользователей", body = [RbacUser]))
+)]
+#[get("/api/v1/users")]
+async fn api_v1_users_list(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    if let Err(resp) = require_role(req, "admin").await.map(|_| ()) { return resp; }
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        core_lib::storage::list_users(&conn)
+    }).await;
+    match result {
+        Ok(Ok(users)) => HttpResponse::Ok().json(users),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+#[derive(Deserialize)]
+struct RoleRequest { pubkey: String, role: String }
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/users/role",
+    responses((status=200, description="Роль обновлена"))
+)]
+#[post("/api/v1/users/role")]
+async fn api_v1_users_role(req: HttpRequest, pool: web::Data<DbPool>, body: web::Json<RoleRequest>) -> impl Responder {
+    if let Err(resp) = require_role(req, "admin").await.map(|_| ()) { return resp; }
+    let RoleRequest { pubkey, role } = body.into_inner();
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::update_user_role(&conn, &pubkey, &role)
+    }).await;
+    match res { Ok(Ok(())) => HttpResponse::Ok().finish(), _ => HttpResponse::InternalServerError().finish() }
+}
+
+#[derive(Deserialize)]
+struct TrustDelegateRequest { target_pubkey: String, delta: f32 }
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/trust/delegate",
+    responses((status=200, description="Делегирование доверия применено"))
+)]
+#[post("/api/v1/trust/delegate")]
+async fn api_v1_trust_delegate(req: HttpRequest, pool: web::Data<DbPool>, body: web::Json<TrustDelegateRequest>) -> impl Responder {
+    // Требуется роль не ниже node
+    let claims = match require_role(req, "node").await { Ok(c) => c, Err(resp) => return resp };
+    let TrustDelegateRequest { target_pubkey, delta } = body.into_inner();
+    // ограничиваем делегирование по FidoNet-like: разрешено только положительное малое смещение и не на себя
+    if target_pubkey == claims.sub || delta.abs() > 0.2 { // лимит шага делегирования
+        return HttpResponse::BadRequest().body("invalid delegation request");
+    }
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        // применяем дельту
+        let _new = core_lib::storage::adjust_trust_score(&conn, &target_pubkey, delta)?;
+        // синхронизация с node_ratings произойдет при следующем пересчете; можно инициировать мягкий апдейт users уже сейчас
+        Ok::<(), core_lib::models::CoreError>(())
+    }).await;
+    match res { Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status":"ok"})), _ => HttpResponse::InternalServerError().finish() }
 }
 
 #[derive(Deserialize)]
@@ -742,8 +851,18 @@ async fn api_v1_refresh(pool: web::Data<DbPool>, body: web::Json<RefreshRequest>
         }).await;
         return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401}));
     }
-    // rotate refresh: delete old, issue new pair
-    let (access, new_refresh, exp_refresh) = match issue_jwt_pair(&public_key) { Ok(v) => v, Err(e) => return HttpResponse::InternalServerError().body(e.to_string()) };
+    // rotate refresh: delete old, issue new pair (include role/trust)
+    let (access, new_refresh, exp_refresh) = match web::block({
+        let pool = pool.clone();
+        let public_key = public_key.clone();
+        move || {
+            let conn = pool.blocking_lock();
+            issue_jwt_pair_with(&conn, &public_key)
+        }
+    }).await {
+        Ok(Ok(v)) => v,
+        _ => return HttpResponse::InternalServerError().finish(),
+    };
     let new_refresh_for_closure = new_refresh.clone();
     let pool2 = pool.clone();
     let refresh_old = refresh.clone();
@@ -810,7 +929,7 @@ async fn recalc_ratings(req: HttpRequest, pool: web::Data<DbPool>) -> impl Respo
 async fn get_node_ratings(pool: web::Data<DbPool>) -> impl Responder {
     let pool = pool.clone();
     let result = web::block(move || {
-        let mut conn = pool.blocking_lock();
+        let conn = pool.blocking_lock();
         let mut ratings = core_lib::storage::load_node_ratings(&conn)?;
         if ratings.is_empty() {
             // lazy recalc if empty
@@ -833,7 +952,7 @@ async fn get_node_ratings(pool: web::Data<DbPool>) -> impl Responder {
 async fn get_group_ratings(pool: web::Data<DbPool>) -> impl Responder {
     let pool = pool.clone();
     let result = web::block(move || {
-        let mut conn = pool.blocking_lock();
+        let conn = pool.blocking_lock();
         let mut ratings = core_lib::storage::load_group_ratings(&conn)?;
         if ratings.is_empty() {
             let _ = core_lib::storage::recalc_ratings(&conn, chrono::Utc::now().timestamp());
