@@ -1,4 +1,4 @@
-## Traceability Matrix (v0.2.1-pre)
+## Traceability Matrix (v0.2.7-pre)
 
 ### Requirements → Code Implementation
 
@@ -16,9 +16,15 @@
 - **P2P Sync** → `src/p2p/sync.rs` (bidirectional, incremental, conflict resolution)
 - **P2P Node** → `src/p2p/node.rs` (periodic sync loop)
 - **Crypto Identity** → `src/p2p/encryption.rs` (Ed25519 signing/verification)
+ - **Local Network Statistics** → `src/api.rs` (`/api/v1/network/local`), `app/src/bin/truthctl.rs` (peers stats), docs in `README.md`
 
 #### CLI & Management
 - **CLI Commands** → `app/src/bin/truthctl.rs` (all truthctl subcommands)
+| Feature                        | Spec File          | Module / File                | API / CLI Reference                   |
+|--------------------------------|--------------------|------------------------------|--------------------------------------|
+| Peer History Logging           | 08-p2p-sync.md     | core-lib/src/storage.rs      | truthctl peers history               |
+| Local Network Statistics       | 03-architecture.md | src/api.rs, app/bin/truthctl | /api/v1/network/local, peers stats   |
+| Quality & Trust Visualization  | 03-architecture.md | core-lib/src/models.rs       | /graph/json, truthctl graph show     |
 - **Key Management** → `app/src/bin/truthctl.rs` (generate, import, list)
 - **Peer Management** → `app/src/bin/truthctl.rs` (add, list, sync-all)
 - **Node Configuration** → `app/src/bin/truthctl.rs` (init-node, config)
