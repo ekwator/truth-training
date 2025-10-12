@@ -178,70 +178,81 @@ pub async fn bidirectional_sync_with_peer(
     identity: &CryptoIdentity,
     conn: &Connection,
 ) -> anyhow::Result<SyncResult> {
-    // Получаем локальные данные для отправки
-    let local_events = storage::load_truth_events(conn)?;
-    let local_statements = storage::load_statements(conn)?;
-    let local_impacts = storage::load_impacts(conn)?;
-    let local_metrics = storage::load_metrics(conn)?;
+    let result: anyhow::Result<SyncResult> = async {
+        // Получаем локальные данные для отправки
+        let local_events = storage::load_truth_events(conn)?;
+        let local_statements = storage::load_statements(conn)?;
+        let local_impacts = storage::load_impacts(conn)?;
+        let local_metrics = storage::load_metrics(conn)?;
 
-    let local_node_ratings = core_lib::storage::load_node_ratings(conn)?;
-    let local_group_ratings = core_lib::storage::load_group_ratings(conn)?;
-    let sync_data = SyncData {
-        events: local_events,
-        statements: local_statements,
-        impacts: local_impacts,
-        metrics: local_metrics,
-        node_ratings: local_node_ratings.clone(),
-        group_ratings: local_group_ratings.clone(),
-        last_sync: chrono::Utc::now().timestamp(),
-    };
+        let local_node_ratings = core_lib::storage::load_node_ratings(conn)?;
+        let local_group_ratings = core_lib::storage::load_group_ratings(conn)?;
+        let sync_data = SyncData {
+            events: local_events,
+            statements: local_statements,
+            impacts: local_impacts,
+            metrics: local_metrics,
+            node_ratings: local_node_ratings.clone(),
+            group_ratings: local_group_ratings.clone(),
+            last_sync: chrono::Utc::now().timestamp(),
+        };
 
-    // Создаём асинхронный HTTP клиент
-    let client = Client::builder()
-        .timeout(Duration::from_secs(30))
-        .build()?;
+        // Создаём асинхронный HTTP клиент
+        let client = Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?;
 
-    // Формируем сообщение для подписи
-    let ts = chrono::Utc::now().timestamp();
-    let ratings_hash = compute_ratings_hash(&sync_data.node_ratings, &sync_data.group_ratings)?;
-    let message = format!("sync_push:{}:{}", ts, ratings_hash);
+        // Формируем сообщение для подписи
+        let ts = chrono::Utc::now().timestamp();
+        let ratings_hash = compute_ratings_hash(&sync_data.node_ratings, &sync_data.group_ratings)?;
+        let message = format!("sync_push:{}:{}", ts, ratings_hash);
 
-    // Подписываем сообщение приватным ключом
-    let signature = identity.sign(message.as_bytes());
-    let public_key_hex = identity.public_key_hex();
-    let signature_hex = hex::encode(signature.to_bytes());
+        // Подписываем сообщение приватным ключом
+        let signature = identity.sign(message.as_bytes());
+        let public_key_hex = identity.public_key_hex();
+        let signature_hex = hex::encode(signature.to_bytes());
 
-    // Отправляем данные
-    let response = client
-        .post(format!("{peer_url}/sync"))
-        .header("X-Public-Key", public_key_hex)
-        .header("X-Signature", signature_hex)
-        .header("X-Timestamp", ts.to_string())
-        .header("X-Ratings-Hash", ratings_hash)
-        .json(&sync_data)
-        .send()
-        .await?;
+        // Отправляем данные
+        let response = client
+            .post(format!("{peer_url}/sync"))
+            .header("X-Public-Key", public_key_hex)
+            .header("X-Signature", signature_hex)
+            .header("X-Timestamp", ts.to_string())
+            .header("X-Ratings-Hash", ratings_hash)
+            .json(&sync_data)
+            .send()
+            .await?;
 
-    let ok = response.status().is_success();
-    record_relay_result(peer_url, ok).await;
-    if !ok {
-        anyhow::bail!("Peer sync push failed: {}", response.status());
+        if !response.status().is_success() {
+            anyhow::bail!("Peer sync push failed: {}", response.status());
+        }
+
+        // Получаем ответ с результатами синхронизации
+        let sync_result: SyncResult = response.json().await?;
+
+        log::info!(
+            "Bidirectional sync with {peer_url} completed: conflicts {}, events {}, trust changes {}",
+            sync_result.conflicts_resolved,
+            sync_result.events_added,
+            sync_result.nodes_trust_changed
+        );
+
+        Ok(sync_result)
+    }.await;
+
+    match result {
+        Ok(sync_result) => {
+            // Записываем успешный результат и сразу флешим, чтобы метрики попали в БД
+            record_relay_result(peer_url, true).await;
+            let _ = flush_relay_metrics_to_db(conn).await;
+            Ok(sync_result)
+        }
+        Err(e) => {
+            // Любая ошибка синхронизации учитывается как неуспешная ретрансляция
+            record_relay_result(peer_url, false).await;
+            Err(e)
+        }
     }
-
-    // Получаем ответ с результатами синхронизации
-    let sync_result: SyncResult = response.json().await?;
-    
-    // Обновляем метрики ретрансляции в базе данных
-    let _ = flush_relay_metrics_to_db(conn).await;
-
-    log::info!(
-        "Bidirectional sync with {peer_url} completed: conflicts {}, events {}, trust changes {}",
-        sync_result.conflicts_resolved,
-        sync_result.events_added,
-        sync_result.nodes_trust_changed
-    );
-
-    Ok(sync_result)
 }
 
 /// Push all local data to a peer's /sync endpoint with signing
@@ -584,60 +595,71 @@ pub async fn incremental_sync_with_peer(
     conn: &Connection,
     last_sync_timestamp: i64,
 ) -> anyhow::Result<SyncResult> {
-    // Получаем только изменения с последней синхронизации
-    let recent_events = get_events_since(conn, last_sync_timestamp)?;
-    let recent_statements = get_statements_since(conn, last_sync_timestamp)?;
-    let recent_impacts = get_impacts_since(conn, last_sync_timestamp)?;
+    let result: anyhow::Result<SyncResult> = async {
+        // Получаем только изменения с последней синхронизации
+        let recent_events = get_events_since(conn, last_sync_timestamp)?;
+        let recent_statements = get_statements_since(conn, last_sync_timestamp)?;
+        let recent_impacts = get_impacts_since(conn, last_sync_timestamp)?;
 
-    let node_ratings = core_lib::storage::load_node_ratings(conn)?;
-    let group_ratings = core_lib::storage::load_group_ratings(conn)?;
-    let sync_data = SyncData {
-        events: recent_events,
-        statements: recent_statements,
-        impacts: recent_impacts,
-        metrics: Vec::new(), // Метрики не инкрементальные
-        node_ratings: node_ratings.clone(),
-        group_ratings: group_ratings.clone(),
-        last_sync: last_sync_timestamp,
-    };
+        let node_ratings = core_lib::storage::load_node_ratings(conn)?;
+        let group_ratings = core_lib::storage::load_group_ratings(conn)?;
+        let sync_data = SyncData {
+            events: recent_events,
+            statements: recent_statements,
+            impacts: recent_impacts,
+            metrics: Vec::new(), // Метрики не инкрементальные
+            node_ratings: node_ratings.clone(),
+            group_ratings: group_ratings.clone(),
+            last_sync: last_sync_timestamp,
+        };
 
-    // Отправляем только изменения
-    let client = Client::builder()
-        .timeout(Duration::from_secs(30))
-        .build()?;
+        // Отправляем только изменения
+        let client = Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()?;
 
-    let now = chrono::Utc::now().timestamp();
-    let ratings_hash = compute_ratings_hash(&sync_data.node_ratings, &sync_data.group_ratings)?;
-    let message = format!("incremental_sync:{}:{}", now, ratings_hash);
-    let signature = identity.sign(message.as_bytes());
-    let public_key_hex = identity.public_key_hex();
-    let signature_hex = hex::encode(signature.to_bytes());
+        let now = chrono::Utc::now().timestamp();
+        let ratings_hash = compute_ratings_hash(&sync_data.node_ratings, &sync_data.group_ratings)?;
+        let message = format!("incremental_sync:{}:{}", now, ratings_hash);
+        let signature = identity.sign(message.as_bytes());
+        let public_key_hex = identity.public_key_hex();
+        let signature_hex = hex::encode(signature.to_bytes());
 
-    let response = client
-        .post(format!("{peer_url}/incremental_sync"))
-        .header("X-Public-Key", public_key_hex)
-        .header("X-Signature", signature_hex)
-        .header("X-Ratings-Hash", ratings_hash)
-        .json(&sync_data)
-        .send()
-        .await?;
+        let response = client
+            .post(format!("{peer_url}/incremental_sync"))
+            .header("X-Public-Key", public_key_hex)
+            .header("X-Signature", signature_hex)
+            .header("X-Ratings-Hash", ratings_hash)
+            .json(&sync_data)
+            .send()
+            .await?;
 
-    let ok = response.status().is_success();
-    record_relay_result(peer_url, ok).await;
-    if !ok { anyhow::bail!("Incremental sync failed: {}", response.status()); }
+        if !response.status().is_success() {
+            anyhow::bail!("Incremental sync failed: {}", response.status());
+        }
 
-    let sync_result: SyncResult = response.json().await?;
-    
-    // Обновляем метрики ретрансляции в базе данных
-    let _ = flush_relay_metrics_to_db(conn).await;
+        let sync_result: SyncResult = response.json().await?;
 
-    log::info!(
-        "Incremental sync with {peer_url} completed: {} items synced; trust changes {}",
-        sync_result.events_added + sync_result.statements_added + sync_result.impacts_added,
-        sync_result.nodes_trust_changed
-    );
+        log::info!(
+            "Incremental sync with {peer_url} completed: {} items synced; trust changes {}",
+            sync_result.events_added + sync_result.statements_added + sync_result.impacts_added,
+            sync_result.nodes_trust_changed
+        );
 
-    Ok(sync_result)
+        Ok(sync_result)
+    }.await;
+
+    match result {
+        Ok(sync_result) => {
+            record_relay_result(peer_url, true).await;
+            let _ = flush_relay_metrics_to_db(conn).await;
+            Ok(sync_result)
+        }
+        Err(e) => {
+            record_relay_result(peer_url, false).await;
+            Err(e)
+        }
+    }
 }
 
 /// Получить события с определенного времени
