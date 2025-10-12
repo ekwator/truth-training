@@ -14,6 +14,7 @@ use jsonwebtoken::{encode, decode, Algorithm, DecodingKey, EncodingKey, Header, 
 use once_cell::sync::Lazy;
 use utoipa::{OpenApi, ToSchema};
 use crate::p2p::sync::get_relay_stats;
+use core_lib::models::{PeerHistoryEntry, PeerSummary};
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
 
@@ -149,7 +150,15 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
 /// OpenAPI спецификация для Swagger UI
 #[derive(OpenApi)]
 #[openapi(
-    paths(api_v1_info, api_v1_stats, api_v1_users_list, api_v1_users_role, api_v1_trust_delegate, api_v1_peers_priorities),
+    paths(
+        api_v1_info,
+        api_v1_stats,
+        api_v1_users_list,
+        api_v1_users_role,
+        api_v1_trust_delegate,
+        api_v1_peers_priorities,
+        api_v1_network_local
+    ),
     components(schemas(NodeInfo, NodeStats, RbacUser, Claims)),
     tags((name = "Truth API", description = "HTTP API для мобильной интеграции"))
 )]
@@ -714,6 +723,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(health)
         .service(api_v1_info)
         .service(api_v1_stats)
+        .service(api_v1_network_local)
         .service(api_v1_auth)
         .service(api_v1_refresh)
         .service(api_v1_recalc)
@@ -753,6 +763,52 @@ pub struct PeerPriorityItem {
     pub propagation_priority: f32,
     pub relay_rate: f32,
     pub quality_index: f32,
+}
+
+/// GET /api/v1/network/local — локальная статистика по пирам и сводка
+#[utoipa::path(
+    get,
+    path = "/api/v1/network/local",
+    responses((status=200, description="Локальная статистика пиров", body = serde_json::Value))
+)]
+#[get("/api/v1/network/local")]
+async fn api_v1_network_local(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        // Грузим историю и сводку
+        let peers = core_lib::storage::load_peer_history(&conn, Some(200))?;
+        let summary = core_lib::storage::get_peer_summary(&conn)?;
+        Ok::<(Vec<PeerHistoryEntry>, PeerSummary), core_lib::models::CoreError>((peers, summary))
+    })
+    .await;
+
+    match result {
+        Ok(Ok((peers, summary))) => {
+            // Преобразуем last_sync в ISO8601 для совместимости с примером
+            let peers_json: Vec<serde_json::Value> = peers.into_iter().map(|p| {
+                let last_sync_str = p.last_sync.map(|ts| chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts as u64)).to_rfc3339());
+                serde_json::json!({
+                    "url": p.peer_url,
+                    "last_sync": last_sync_str,
+                    "success_count": p.success_count,
+                    "fail_count": p.fail_count,
+                    "last_quality_index": p.last_quality_index,
+                    "last_trust_score": p.last_trust_score,
+                })
+            }).collect();
+            HttpResponse::Ok().json(serde_json::json!({
+                "peers": peers_json,
+                "summary": {
+                    "total_peers": summary.total_peers,
+                    "avg_success_rate": summary.avg_success_rate,
+                    "avg_quality_index": summary.avg_quality_index,
+                }
+            }))
+        }
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
 }
 
 /// GET /api/v1/peers/priorities — список пиров с приоритетами распространения и метриками ретрансляции

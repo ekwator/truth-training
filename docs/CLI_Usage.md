@@ -97,6 +97,32 @@ truthctl peers list
 truthctl peers add http://127.0.0.1:8081 <pub_hex>
 ```
 
+### Локальная статистика и история пиров
+
+Статистика (API `/api/v1/network/local`):
+
+```bash
+truthctl peers stats --server http://127.0.0.1:8080 --format table
+truthctl peers stats --server http://127.0.0.1:8080 --format json
+```
+
+История из локальной БД (`peer_history`):
+
+```bash
+truthctl peers history --limit 50 --db truth.db
+```
+
+Пример таблицы:
+
+```text
+Peer                  Last Sync              Success  Fails  Quality  Trust
+───────────────────────────────────────────────────────────────────────
+http://peer-a:8080    2h ago                 12       1      0.88     0.92
+http://peer-b:8080    1d ago                 5        2      0.75     0.80
+───────────────────────────────────────────────────────────────────────
+Avg success rate: 0.86 | Avg quality: 0.83
+```
+
 ### Синхронизация со всеми пирами
 ```bash
 # Полная двунаправленная

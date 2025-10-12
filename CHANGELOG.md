@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.7-pre] — Local Peer Analytics & Sync History
+- Added peer_history table and metrics
+- Added /api/v1/network/local endpoint
+- Added CLI commands: peers stats, peers history
+- Updated Spec Kit traceability and documentation
+- Enables decentralized peer diagnostics without global scoring
+
 ## 0.2.3-pre
 - Distributed trust propagation in P2P sync:
   - Blend local/remote trust (0.8/0.2), time decay after 7 days
