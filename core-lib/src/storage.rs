@@ -280,6 +280,13 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
             last_updated  INTEGER NOT NULL
         );
 
+        -- node metrics for network monitoring
+        CREATE TABLE IF NOT EXISTS node_metrics (
+            pubkey              TEXT PRIMARY KEY,
+            last_seen           INTEGER NOT NULL,
+            relay_success_rate  REAL    NOT NULL DEFAULT 0.0
+        );
+
         -- active JWT refresh tokens (per public key)
         CREATE TABLE IF NOT EXISTS active_tokens (
             public_key    TEXT    NOT NULL,
@@ -1350,17 +1357,38 @@ pub fn merge_ratings(
     // Зеркалим обновлённые trust_score в таблицу users для согласованности JWT
     let _ = sync_users_with_node_ratings(conn);
 
+    // Обновляем метрики узлов после синхронизации
+    for node in incoming_nodes {
+        let relay_success_rate = if node.validations > 0 {
+            (node.validations as f32) / ((node.events_true + node.events_false) as f32).max(1.0)
+        } else {
+            0.0
+        };
+        let _ = upsert_node_metrics(conn, &node.node_id, node.last_updated, relay_success_rate);
+    }
+
     Ok(trust_diffs)
 }
 
 /// Сформировать данные графа доверия
 pub fn load_graph(conn: &Connection) -> Result<GraphData, CoreError> {
-    // Узлы (id + score)
+    // Узлы (id + score + propagation_priority + metrics)
     let mut stmt_nodes = conn.prepare(
-        "SELECT node_id, trust_score FROM node_ratings",
+        r#"
+        SELECT nr.node_id, nr.trust_score, nr.propagation_priority, 
+               nm.last_seen, nm.relay_success_rate
+        FROM node_ratings nr
+        LEFT JOIN node_metrics nm ON nr.node_id = nm.pubkey
+        "#,
     )?;
     let node_rows = stmt_nodes.query_map([], |row| {
-        Ok(GraphNode { id: row.get(0)?, score: row.get(1)? })
+        Ok(GraphNode { 
+            id: row.get(0)?, 
+            score: row.get(1)?,
+            propagation_priority: row.get(2)?,
+            last_seen: row.get(3)?,
+            relay_success_rate: row.get(4)?,
+        })
     })?;
     let mut nodes: Vec<GraphNode> = Vec::new();
     for r in node_rows { nodes.push(r?); }
@@ -1371,7 +1399,10 @@ pub fn load_graph(conn: &Connection) -> Result<GraphData, CoreError> {
         SELECT im.public_key AS source,
                te.public_key AS target,
                SUM(CASE WHEN im.value = 1 THEN 1 ELSE 0 END) AS pos,
-               SUM(CASE WHEN im.value = 0 THEN 1 ELSE 0 END) AS neg
+               SUM(CASE WHEN im.value = 0 THEN 1 ELSE 0 END) AS neg,
+               AVG(CASE WHEN im.created_at > te.timestamp_start 
+                        THEN (im.created_at - te.timestamp_start) * 1000 
+                        ELSE NULL END) AS avg_latency_ms
         FROM impact im
         JOIN truth_events te ON CAST(im.event_id AS INTEGER) = te.id
         WHERE im.public_key IS NOT NULL AND te.public_key IS NOT NULL AND im.public_key <> te.public_key
@@ -1383,10 +1414,16 @@ pub fn load_graph(conn: &Connection) -> Result<GraphData, CoreError> {
         let target: String = row.get(1)?;
         let pos: i64 = row.get(2)?;
         let neg: i64 = row.get(3)?;
+        let latency_ms: Option<f64> = row.get(4)?;
         let total = (pos + neg).max(1) as f32;
         let signed = (pos as f32 - neg as f32) / total; // -1..1
         let weight = (signed + 1.0) / 2.0; // 0..1
-        Ok(GraphLink { source, target, weight })
+        Ok(GraphLink { 
+            source, 
+            target, 
+            weight,
+            latency_ms: latency_ms.map(|l| l as u32),
+        })
     })?;
     let mut links: Vec<GraphLink> = Vec::new();
     for r in link_rows { links.push(r?); }
@@ -1405,12 +1442,25 @@ pub fn load_graph_filtered(
     max_links: usize,
     depth: Option<usize>,
 ) -> Result<GraphData, CoreError> {
-    // Узлы с порогом по trust_score
+    // Узлы с порогом по trust_score + метрики
     let mut stmt_nodes = conn.prepare(
-        "SELECT node_id, trust_score FROM node_ratings WHERE trust_score >= ?1 ORDER BY trust_score DESC",
+        r#"
+        SELECT nr.node_id, nr.trust_score, nr.propagation_priority, 
+               nm.last_seen, nm.relay_success_rate
+        FROM node_ratings nr
+        LEFT JOIN node_metrics nm ON nr.node_id = nm.pubkey
+        WHERE nr.trust_score >= ?1 
+        ORDER BY nr.trust_score DESC
+        "#,
     )?;
     let node_rows = stmt_nodes.query_map(params![min_score], |row| {
-        Ok(GraphNode { id: row.get(0)?, score: row.get(1)? })
+        Ok(GraphNode { 
+            id: row.get(0)?, 
+            score: row.get(1)?,
+            propagation_priority: row.get(2)?,
+            last_seen: row.get(3)?,
+            relay_success_rate: row.get(4)?,
+        })
     })?;
     let mut nodes: Vec<GraphNode> = Vec::new();
     for r in node_rows { nodes.push(r?); }
@@ -1423,13 +1473,16 @@ pub fn load_graph_filtered(
     // Множество допустимых узлов для фильтрации рёбер
     let allowed_nodes: HashSet<String> = nodes.iter().map(|n| n.id.clone()).collect();
 
-    // Рёбра между валидаторами и авторами (агрегация положительных/отрицательных влияний)
+    // Рёбра между валидаторами и авторами (агрегация + латентность)
     let mut stmt_links = conn.prepare(
         r#"
         SELECT im.public_key AS source,
                te.public_key AS target,
                SUM(CASE WHEN im.value = 1 THEN 1 ELSE 0 END) AS pos,
-               SUM(CASE WHEN im.value = 0 THEN 1 ELSE 0 END) AS neg
+               SUM(CASE WHEN im.value = 0 THEN 1 ELSE 0 END) AS neg,
+               AVG(CASE WHEN im.created_at > te.timestamp_start 
+                        THEN (im.created_at - te.timestamp_start) * 1000 
+                        ELSE NULL END) AS avg_latency_ms
         FROM impact im
         JOIN truth_events te ON CAST(im.event_id AS INTEGER) = te.id
         WHERE im.public_key IS NOT NULL AND te.public_key IS NOT NULL AND im.public_key <> te.public_key
@@ -1441,10 +1494,16 @@ pub fn load_graph_filtered(
         let target: String = row.get(1)?;
         let pos: i64 = row.get(2)?;
         let neg: i64 = row.get(3)?;
+        let latency_ms: Option<f64> = row.get(4)?;
         let total = (pos + neg).max(1) as f32;
         let signed = (pos as f32 - neg as f32) / total; // -1..1
         let weight = (signed + 1.0) / 2.0; // 0..1
-        Ok(GraphLink { source, target, weight })
+        Ok(GraphLink { 
+            source, 
+            target, 
+            weight,
+            latency_ms: latency_ms.map(|l| l as u32),
+        })
     })?;
     let mut all_links: Vec<GraphLink> = Vec::new();
     for r in link_rows { all_links.push(r?); }
@@ -2101,4 +2160,51 @@ mod tests {
         let u = get_user_by_pubkey(&conn, "nodeA").unwrap().unwrap();
         assert!((u.trust_score - 0.8).abs() < 1e-6);
     }
+}
+
+/// Upsert node metrics (last_seen, relay_success_rate)
+pub fn upsert_node_metrics(
+    conn: &Connection,
+    pubkey: &str,
+    last_seen: i64,
+    relay_success_rate: f32,
+) -> Result<(), CoreError> {
+    conn.execute(
+        "INSERT OR REPLACE INTO node_metrics (pubkey, last_seen, relay_success_rate) VALUES (?1, ?2, ?3)",
+        params![pubkey, last_seen, relay_success_rate],
+    )?;
+    Ok(())
+}
+
+/// Load node metrics by pubkey
+pub fn load_node_metrics(conn: &Connection, pubkey: &str) -> Result<Option<crate::NodeMetrics>, CoreError> {
+    let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate FROM node_metrics WHERE pubkey = ?1")?;
+    let mut rows = stmt.query(params![pubkey])?;
+    
+    if let Some(row) = rows.next()? {
+        Ok(Some(crate::NodeMetrics {
+            pubkey: row.get(0)?,
+            last_seen: row.get(1)?,
+            relay_success_rate: row.get(2)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Load all node metrics
+pub fn load_all_node_metrics(conn: &Connection) -> Result<Vec<crate::NodeMetrics>, CoreError> {
+    let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate FROM node_metrics ORDER BY last_seen DESC")?;
+    let mut rows = stmt.query([])?;
+    let mut metrics = Vec::new();
+    
+    while let Some(row) = rows.next()? {
+        metrics.push(crate::NodeMetrics {
+            pubkey: row.get(0)?,
+            last_seen: row.get(1)?,
+            relay_success_rate: row.get(2)?,
+        });
+    }
+    
+    Ok(metrics)
 }

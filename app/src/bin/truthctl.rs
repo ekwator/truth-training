@@ -137,6 +137,8 @@ enum Commands {
     Users { #[command(subcommand)] cmd: UsersCmd },
     /// Делегирование доверия
     Trust { #[command(subcommand)] cmd: TrustCmd },
+    /// Визуализация графа сети
+    Graph { #[command(subcommand)] cmd: GraphCmd },
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -205,6 +207,25 @@ enum UsersCmd {
 enum TrustCmd {
     /// Делегировать доверие цели (role >= node)
     Delegate { #[arg(long, default_value = "http://127.0.0.1:8080")] server: String, target_pubkey: String, delta: f32 },
+}
+
+#[derive(Subcommand, Debug)]
+enum GraphCmd {
+    /// Показать граф сети в JSON формате
+    Show {
+        /// Базовый URL сервера
+        #[arg(long, default_value = "http://127.0.0.1:8080")]
+        server: String,
+        /// Минимальный приоритет распространения (0.0-1.0)
+        #[arg(long, default_value = "0.0")]
+        min_priority: f32,
+        /// Максимальное количество узлов
+        #[arg(long, default_value = "50")]
+        limit: usize,
+        /// Формат вывода: json или ascii
+        #[arg(long, default_value = "json")]
+        format: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -293,6 +314,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Users { cmd } => { run_users(cmd).await }
         Commands::Trust { cmd } => { run_trust(cmd).await }
+        Commands::Graph { cmd } => { run_graph(cmd).await }
         Commands::Config { cmd } => {
             run_config(cmd).await
         }
@@ -341,6 +363,35 @@ async fn run_status(db_path_flag: PathBuf, identity_path: Option<PathBuf>) -> an
 
     // 4) Вывод краткой сводки
     print_status_summary(&cfg, &peers, &recent);
+
+    // 4.5) Показать метрики сети, если доступна БД
+    if let Ok(conn) = storage::open_db(db_path.to_str().unwrap_or("truth.db")) {
+        if let Ok(node_ratings) = core_lib::storage::load_node_ratings(&conn) {
+            if !node_ratings.is_empty() {
+                let avg_priority: f32 = node_ratings.iter()
+                    .map(|r| r.propagation_priority)
+                    .sum::<f32>() / node_ratings.len() as f32;
+                
+                let high_priority_count = node_ratings.iter()
+                    .filter(|r| r.propagation_priority > 0.7)
+                    .count();
+                
+                println!("{}", "\nNetwork Health:".blue());
+                println!("  Avg Priority: {:.2} | High Priority Nodes: {}", avg_priority, high_priority_count);
+                
+                // Показать топ-3 узла по приоритету
+                let mut top_nodes: Vec<_> = node_ratings.iter().collect();
+                top_nodes.sort_by(|a, b| b.propagation_priority.partial_cmp(&a.propagation_priority).unwrap_or(std::cmp::Ordering::Equal));
+                
+                for (i, node) in top_nodes.iter().take(3).enumerate() {
+                    let short_id = if node.node_id.len() > 8 { &node.node_id[0..8] } else { &node.node_id };
+                    let priority_color = if node.propagation_priority > 0.7 { "⚡" } else if node.propagation_priority > 0.3 { "🔶" } else { "⚪" };
+                    println!("  {}. {} {} (priority: {:.2}, trust: {:.2})", 
+                             i + 1, short_id, priority_color, node.propagation_priority, node.trust_score);
+                }
+            }
+        }
+    }
 
     // 5) Дополнительно: показать публичный ключ, если указан identity
     if let Some(_identity_path) = identity_path {
@@ -1041,5 +1092,91 @@ async fn run_trust(cmd: TrustCmd) -> anyhow::Result<()> {
             if resp.status().is_success() { println!("{}", "✅ Delegation applied".green()); } else { println!("{} {}", "❌ Denied".red(), resp.status()); }
         }
     }
+    Ok(())
+}
+
+async fn run_graph(cmd: GraphCmd) -> anyhow::Result<()> {
+    use reqwest::Client;
+    let client = Client::new();
+    match cmd {
+        GraphCmd::Show { server, min_priority, limit, format } => {
+            let url = format!("{}/graph/json?min_priority={}&limit={}", server, min_priority, limit);
+            let resp = client.get(&url).send().await?;
+            
+            if !resp.status().is_success() {
+                anyhow::bail!("HTTP {}: {}", resp.status(), resp.text().await?);
+            }
+            
+            let graph: serde_json::Value = resp.json().await?;
+            
+            match format.as_str() {
+                "json" => {
+                    println!("{}", serde_json::to_string_pretty(&graph)?);
+                }
+                "ascii" => {
+                    render_ascii_graph(&graph)?;
+                }
+                _ => {
+                    anyhow::bail!("Unsupported format: {}. Use 'json' or 'ascii'", format);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn render_ascii_graph(graph: &serde_json::Value) -> anyhow::Result<()> {
+    let empty_vec = vec![];
+    let nodes = graph.get("nodes").and_then(|n| n.as_array()).unwrap_or(&empty_vec);
+    let links = graph.get("links").and_then(|l| l.as_array()).unwrap_or(&empty_vec);
+    
+    if nodes.is_empty() {
+        println!("{}", "No nodes found".yellow());
+        return Ok(());
+    }
+    
+    println!("{}", "Network Graph:".blue());
+    println!("{}", "=".repeat(50));
+    
+    // Показываем топ-3 узла с их метриками
+    let mut sorted_nodes: Vec<_> = nodes.iter().collect();
+    sorted_nodes.sort_by(|a, b| {
+        let score_a = a.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0);
+        let score_b = b.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0);
+        score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+    });
+    
+    for (i, node) in sorted_nodes.iter().take(3).enumerate() {
+        let id = node.get("id").and_then(|i| i.as_str()).unwrap_or("unknown");
+        let score = node.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0);
+        let priority = node.get("propagation_priority").and_then(|p| p.as_f64()).unwrap_or(0.0);
+        let relay_rate = node.get("relay_success_rate").and_then(|r| r.as_f64()).unwrap_or(0.0);
+        
+        let short_id = if id.len() > 8 { &id[0..8] } else { id };
+        let score_color = if score > 0.5 { "🟢" } else if score > 0.0 { "🟡" } else { "🔴" };
+        let priority_color = if priority > 0.7 { "⚡" } else if priority > 0.3 { "🔶" } else { "⚪" };
+        
+        println!("{}. {} {} {} (trust: {:.2}, priority: {:.2}, relay: {:.1}%)", 
+                 i + 1, short_id, score_color, priority_color, score, priority, relay_rate * 100.0);
+    }
+    
+    // Показываем связи в ASCII формате
+    if !links.is_empty() {
+        println!("\n{}", "Connections:".blue());
+        for link in links.iter().take(5) {
+            let source = link.get("source").and_then(|s| s.as_str()).unwrap_or("unknown");
+            let target = link.get("target").and_then(|t| t.as_str()).unwrap_or("unknown");
+            let weight = link.get("weight").and_then(|w| w.as_f64()).unwrap_or(0.0);
+            let latency = link.get("latency_ms").and_then(|l| l.as_u64()).unwrap_or(0);
+            
+            let short_source = if source.len() > 6 { &source[0..6] } else { source };
+            let short_target = if target.len() > 6 { &target[0..6] } else { target };
+            let weight_color = if weight > 0.7 { "🟢" } else if weight > 0.3 { "🟡" } else { "🔴" };
+            
+            println!("[{}]--{}ms-->[{}] {} (weight: {:.2})", 
+                     short_source, latency, short_target, weight_color, weight);
+        }
+    }
+    
     Ok(())
 }

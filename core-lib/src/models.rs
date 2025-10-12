@@ -205,11 +205,22 @@ pub struct GroupRating {
     pub last_updated: i64,
 }
 
+/// Метрики узла для мониторинга сети
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NodeMetrics {
+    pub pubkey: String,
+    pub last_seen: i64,
+    pub relay_success_rate: f32,
+}
+
 /// Узел графа для визуализации
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphNode {
     pub id: String,
     pub score: f32,
+    pub propagation_priority: f32,
+    pub last_seen: Option<i64>,
+    pub relay_success_rate: Option<f32>,
 }
 
 /// Ребро графа между валидатором (source) и автором события (target)
@@ -218,6 +229,7 @@ pub struct GraphLink {
     pub source: String,
     pub target: String,
     pub weight: f32, // 0..1
+    pub latency_ms: Option<u32>,
 }
 
 /// Данные графа доверия

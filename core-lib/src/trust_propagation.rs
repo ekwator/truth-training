@@ -16,7 +16,6 @@ pub fn blend_trust(local_score: f32, remote_score: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn propagation_priority_blend_from_trust_and_activity() {

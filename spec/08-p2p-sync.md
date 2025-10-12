@@ -47,6 +47,20 @@
 - Formula: `priority = trust_norm*0.8 + recent_activity*0.2`, where `trust_norm = (trust_score+1)/2`.
 - Relay scheduling: higher priority peers are broadcast first; peers with priority <0.6 get a small delay, <0.3 get a larger delay. Data still reaches everyone.
 
+### Metrics Update and Propagation Feedback Loop
+
+**Node Metrics Tracking:**
+- **last_seen**: Timestamp of last successful sync with node
+- **relay_success_rate**: Percentage of successful message deliveries
+- **propagation_priority**: Real-time relay speed (0.0-1.0)
+- **latency_ms**: Average response time between nodes
+
+**Metrics Update Process:**
+- After each sync operation, `upsert_node_metrics()` updates node performance data
+- `merge_ratings()` automatically calls metrics update for incoming nodes
+- Graph visualization includes real-time propagation and relay metrics
+- CLI `truthctl status` shows network health with priority and success rates
+
 Mermaid diagram:
 ```mermaid
 flowchart LR
