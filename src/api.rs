@@ -122,6 +122,11 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
             let sum: f64 = node_metrics.iter().map(|m| m.quality_index as f64).sum();
             (sum / (node_metrics.len() as f64)) as f32
         };
+        // Средний приоритет распространения по node_metrics (для валидации и будущего использования)
+        let _avg_priority_metrics: f32 = if node_metrics.is_empty() { 0.0 } else {
+            let sum: f64 = node_metrics.iter().map(|m| m.propagation_priority as f64).sum();
+            (sum / (node_metrics.len() as f64)) as f32
+        };
         
         let active_nodes = node_metrics.len() as i32;
         

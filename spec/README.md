@@ -40,6 +40,7 @@ Purpose: a single source of truth for requirements, architecture, API, data, and
 
 ## Version History
 
+- **v0.2.8-pre**: Adaptive Propagation Priority (EMA), P2P exchange, API/CLI exposure
 - **v0.2.1-pre**: Introduced truthctl CLI, modular architecture, FidoNet-inspired P2P sync
 - **v0.2.0**: Stable sync and rating integration, filtered graph API
 - **v0.1.x**: Initial implementation and core features

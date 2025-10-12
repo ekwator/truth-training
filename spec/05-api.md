@@ -162,7 +162,7 @@ SyncData
   "metrics": [/* ProgressMetrics[] */],
   "node_ratings": [/* NodeRating[] */],
   "group_ratings": [/* GroupRating[] */],
-  "node_metrics": [/* NodeMetrics[]; includes relay_success_rate, quality_index */],
+  "node_metrics": [/* NodeMetrics[]; includes relay_success_rate, quality_index, propagation_priority */],
   "last_sync": 1710000000
 }
 ```
