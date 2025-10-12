@@ -381,7 +381,8 @@ async fn run_status(db_path_flag: PathBuf, identity_path: Option<PathBuf>) -> an
                     .count();
                 
                 println!("{}", "\nNetwork Health:".blue());
-                println!("  Avg Priority: {:.2} | High Priority Nodes: {}", avg_priority, high_priority_count);
+                let avg_prio_color = if avg_priority > 0.7 { "🔵" } else if avg_priority > 0.3 { "🟡" } else { "🔴" };
+                println!("  Avg Priority: {:.2} {} | High Priority Nodes: {}", avg_priority, avg_prio_color, high_priority_count);
                 
                 // Загружаем метрики ретрансляции
                 if let Ok(node_metrics) = core_lib::storage::load_all_node_metrics(&conn) {
@@ -404,7 +405,7 @@ async fn run_status(db_path_flag: PathBuf, identity_path: Option<PathBuf>) -> an
                 
                 for (i, node) in top_nodes.iter().take(3).enumerate() {
                     let short_id = if node.node_id.len() > 8 { &node.node_id[0..8] } else { &node.node_id };
-                    let priority_color = if node.propagation_priority > 0.7 { "⚡" } else if node.propagation_priority > 0.3 { "🔶" } else { "⚪" };
+                    let priority_color = if node.propagation_priority > 0.7 { "🔵" } else if node.propagation_priority > 0.3 { "🟡" } else { "🔴" };
                     
                     // Получаем метрики ретрансляции для этого узла
                     let (relay_rate, quality_index) = match core_lib::storage::load_node_metrics(&conn, &node.node_id) {
@@ -1238,7 +1239,7 @@ fn render_ascii_graph(graph: &serde_json::Value) -> anyhow::Result<()> {
         
         let short_id = if id.len() > 8 { &id[0..8] } else { id };
         let score_color = if score > 0.5 { "🟢" } else if score > 0.0 { "🟡" } else { "🔴" };
-        let priority_color = if priority > 0.7 { "⚡" } else if priority > 0.3 { "🔶" } else { "⚪" };
+        let priority_color = if priority > 0.7 { "🔵" } else if priority > 0.3 { "🟡" } else { "🔴" };
         let relay_color = if relay_rate > 0.8 { "🟢" } else if relay_rate > 0.5 { "🟡" } else { "🔴" };
         let quality_color = if quality > 0.8 { "🔵" } else if quality > 0.5 { "🟡" } else { "🔴" };
 

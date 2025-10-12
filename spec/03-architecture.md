@@ -49,7 +49,7 @@ graph TD
 ### Network Health Visualization
 
 **Real-time Metrics:**
-- **Propagation Priority**: Node's relay speed (0.0-1.0) based on trust and activity
+- **Propagation Priority**: Node's relay speed (0.0–1.0), EMA‑смешение доверия, качества и ретрансляции (0.4·trust_norm + 0.3·quality_index + 0.3·relay_success_rate)
 - **Relay Success Rate**: Percentage of successful message deliveries
 - **Latency Metrics**: Average response times between nodes
 - **Trust Scores**: Node reputation and validation history

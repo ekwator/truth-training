@@ -229,8 +229,8 @@ truthctl ratings trust [--verbose]
 - Локальный расчёт: `q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability`, затем EMA `q = 0.3·q_raw + 0.7·prev`.
 - Обмен по сети и слияние: `blend_quality(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)`.
 - Отображение в CLI:
-  - `truthctl status` печатает среднее качество сети и цветовую метку (🔵/🟡/🔴)
-  - `truthctl graph show --format ascii` показывает `quality_index` для топ‑узлов
+- `truthctl status` печатает средний приоритет распространения (🔵/🟡/🔴), средний relay и качество
+- `truthctl graph show --format ascii` показывает `propagation_priority` и `quality_index` для топ‑узлов
 
 ## Logs
 

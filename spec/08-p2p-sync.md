@@ -141,6 +141,14 @@ The system tracks relay success rates dynamically during sync operations:
 
 5. **Integration**: Relay metrics influence trust propagation and node prioritization in the network.
 
+## Propagation Priority Exchange
+
+- `propagation_priority` (0.0–1.0) — адаптивный приоритет распространения.
+- Локальный расчёт с EMA: p_raw = 0.4·trust_norm + 0.3·quality_index + 0.3·relay_success_rate,
+  где trust_norm = ((trust_score+1)/2) и p = α·p_raw + (1-α)·prev, α=0.3.
+- Обмен по сети и слияние: blend_priority(local, remote) = clamp(0.8·local + 0.2·remote, 0..1).
+- Значение хранится в `node_ratings.propagation_priority` и дублируется в `node_metrics.propagation_priority` для визуализации.
+
 ## Quality Index Exchange
 
 - quality_index — индикатор непрерывности доверия (0.0–1.0), не является штрафом за оффлайн.
