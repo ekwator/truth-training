@@ -1,4 +1,4 @@
-## Traceability Matrix (v0.2.7-pre)
+## Traceability Matrix (v0.2.8-pre)
 
 ### Requirements → Code Implementation
 
@@ -31,9 +31,10 @@
 - **Diagnostics** → `app/src/bin/truthctl.rs` (status, diagnose, reset-data)
 
 #### Trust & Ratings
-- **Trust Propagation** → `core-lib/src/trust_propagation.rs` (blend, decay)
+ - **Trust Propagation** → `core-lib/src/trust_propagation.rs` (blend, EMA helpers)
 - **Node Ratings** → `core-lib/src/storage.rs` (node_ratings table)
 - **Group Ratings** → `core-lib/src/storage.rs` (group_ratings table)
+ - **Adaptive Propagation Priority** → `core-lib/src/trust_propagation.rs::compute_propagation_priority`, `core-lib/src/storage.rs` (persist and recalc), `src/p2p/sync.rs` (blend_priority), CLI `app/src/bin/truthctl.rs` (status/graph), API `/api/v1/stats`, `/graph/json`
 - **Graph API** → `src/api.rs` (graph/json, graph/summary)
 
 ### Documentation → Specification Mapping

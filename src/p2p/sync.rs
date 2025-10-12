@@ -5,7 +5,7 @@ use std::time::Duration;
 #[cfg(any(test, feature = "p2p-client-sync"))]
 use crate::p2p::encryption::CryptoIdentity;
 use core_lib::models::{TruthEvent, Statement, Impact, ProgressMetrics, NodeRating, GroupRating, NodeMetrics as NodeMetricsModel};
-use core_lib::trust_propagation::blend_quality;
+use core_lib::trust_propagation::{blend_quality, blend_priority};
 use core_lib::storage;
 // trust_propagation используется внутри core-lib/storage::merge_ratings
 use rusqlite::{Connection, params, OptionalExtension};
@@ -194,14 +194,14 @@ pub async fn bidirectional_sync_with_peer(
         let local_node_ratings = core_lib::storage::load_node_ratings(conn)?;
         let local_group_ratings = core_lib::storage::load_group_ratings(conn)?;
         let local_node_metrics = core_lib::storage::load_all_node_metrics(conn)?;
-        let sync_data = SyncData {
+    let sync_data = SyncData {
             events: local_events,
             statements: local_statements,
             impacts: local_impacts,
             metrics: local_metrics,
-            node_ratings: local_node_ratings.clone(),
-            group_ratings: local_group_ratings.clone(),
-            node_metrics: local_node_metrics,
+        node_ratings: local_node_ratings.clone(),
+        group_ratings: local_group_ratings.clone(),
+        node_metrics: local_node_metrics,
             last_sync: chrono::Utc::now().timestamp(),
         };
 
@@ -579,12 +579,18 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
         .map(|(node_id, delta)| TrustDelta { node_id, delta })
         .collect();
 
-    // После слияния доверия — распространяем и качество: для каждого метрика из remote применяем правило смешивания
+    // После слияния доверия — распространяем качество и приоритет: для каждого метрика из remote применяем правило смешивания
     for m in &remote.node_metrics {
         let prev = core_lib::storage::load_node_metrics(conn, &m.pubkey)?;
         let local_q = prev.as_ref().map(|pm| pm.quality_index).unwrap_or(0.0);
         let blended_q = blend_quality(local_q, m.quality_index);
         core_lib::storage::update_node_quality(conn, &m.pubkey, blended_q)?;
+
+        // Приоритет распространения: смешиваем локальный и удалённый
+        let local_p = prev.as_ref().map(|pm| pm.propagation_priority).unwrap_or(0.0);
+        let remote_p = m.propagation_priority;
+        let blended_p = blend_priority(local_p, remote_p);
+        let _ = core_lib::storage::update_node_priority(conn, &m.pubkey, blended_p);
     }
 
     // Лог высокого уровня о доверии

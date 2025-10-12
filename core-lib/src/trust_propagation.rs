@@ -1,10 +1,11 @@
 use crate::{CoreError, NodeRating};
 use rusqlite::{Connection, OptionalExtension};
 
-// Константы распространения доверия и качества
+// Константы распространения доверия и качества/приоритета
 const BLEND_LOCAL_WEIGHT: f32 = 0.8;
 const BLEND_REMOTE_WEIGHT: f32 = 0.2;
 const QUALITY_EMA_ALPHA: f32 = 0.3; // сглаживание экспоненциальным средним
+const PRIORITY_EMA_ALPHA: f32 = 0.3; // EMA для propagation_priority
 
 /// Смешивает локальный и удалённый скор по формуле:
 /// new = local*0.8 + remote*0.2, с обрезкой в [-1, 1]
@@ -55,6 +56,31 @@ pub fn compute_quality_index(
     match prev_quality {
         Some(prev) => (QUALITY_EMA_ALPHA * q_raw + (1.0 - QUALITY_EMA_ALPHA) * prev).clamp(0.0, 1.0),
         None => q_raw,
+    }
+}
+
+/// Смешивание приоритета (0..1) между локальным и удалённым значениями
+pub fn blend_priority(local_priority: f32, remote_priority: f32) -> f32 {
+    let blended = local_priority * BLEND_LOCAL_WEIGHT + remote_priority * BLEND_REMOTE_WEIGHT;
+    blended.clamp(0.0, 1.0)
+}
+
+/// Рассчитать адаптивный propagation_priority по формуле с EMA-сглаживанием.
+/// p_raw = 0.4*trust_norm + 0.3*quality_index + 0.3*relay_success_rate,
+/// где trust_norm = clamp((trust_score+1)/2, 0..1)
+/// p = alpha*p_raw + (1-alpha)*prev, alpha = PRIORITY_EMA_ALPHA
+pub fn compute_propagation_priority(
+    trust_score: f32,          // -1..1
+    quality_index: f32,        // 0..1
+    relay_success_rate: f32,   // 0..1
+    prev_priority: Option<f32>,
+) -> f32 {
+    let trust_norm = ((trust_score + 1.0) / 2.0).clamp(0.0, 1.0);
+    let p_raw = (0.4 * trust_norm) + (0.3 * quality_index.clamp(0.0, 1.0)) + (0.3 * relay_success_rate.clamp(0.0, 1.0));
+    let p_raw = p_raw.clamp(0.0, 1.0);
+    match prev_priority {
+        Some(prev) => (PRIORITY_EMA_ALPHA * p_raw + (1.0 - PRIORITY_EMA_ALPHA) * prev).clamp(0.0, 1.0),
+        None => p_raw,
     }
 }
 
