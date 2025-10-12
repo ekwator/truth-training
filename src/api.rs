@@ -41,6 +41,9 @@ pub struct NodeStats {
     pub node_ratings: i32,
     pub group_ratings: i32,
     pub avg_trust_score: f32,
+    pub avg_propagation_priority: f32,
+    pub avg_relay_success_rate: f32,
+    pub active_nodes: i32,
 }
 
 #[utoipa::path(
@@ -95,6 +98,25 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
             let sum: f64 = node_rs.iter().map(|r| r.trust_score as f64).sum();
             (sum / (node_rs.len() as f64)) as f32
         };
+        
+        let avg_propagation_priority: f32 = if node_rs.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = node_rs.iter().map(|r| r.propagation_priority as f64).sum();
+            (sum / (node_rs.len() as f64)) as f32
+        };
+        
+        // Загружаем метрики узлов
+        let node_metrics = core_lib::storage::load_all_node_metrics(&conn)?;
+        let avg_relay_success_rate: f32 = if node_metrics.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = node_metrics.iter().map(|m| m.relay_success_rate as f64).sum();
+            (sum / (node_metrics.len() as f64)) as f32
+        };
+        
+        let active_nodes = node_metrics.len() as i32;
+        
         Ok::<NodeStats, core_lib::models::CoreError>(NodeStats {
             events,
             statements,
@@ -102,6 +124,9 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
             node_ratings,
             group_ratings,
             avg_trust_score,
+            avg_propagation_priority,
+            avg_relay_success_rate,
+            active_nodes,
         })
     })
     .await;
@@ -1036,23 +1061,42 @@ struct GraphQuery {
     min_score: Option<f64>,
     max_links: Option<usize>,
     depth: Option<usize>,
+    min_priority: Option<f32>,
+    limit: Option<usize>,
 }
 
 /// GET /graph/json — полный граф в JSON с параметрами фильтра
 #[get("/graph/json")]
 async fn get_graph_json(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) -> impl Responder {
     let pool = pool.clone();
-    let GraphQuery { min_score, max_links, depth } = query.into_inner();
+    let GraphQuery { min_score, max_links, depth, min_priority, limit } = query.into_inner();
 
     // Значения по умолчанию
     let min_score = min_score.unwrap_or(-1.0);
     let max_links = max_links.unwrap_or(10).max(0);
+    let min_priority = min_priority.unwrap_or(0.0);
+    let limit = limit.unwrap_or(50);
 
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
         // ensure ratings up-to-date for graph queries
         let _ = core_lib::storage::recalc_ratings(&_conn, chrono::Utc::now().timestamp());
-        core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)
+        let mut graph = core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)?;
+        
+        // Фильтр по propagation_priority
+        if min_priority > 0.0 {
+            graph.nodes.retain(|node| node.propagation_priority >= min_priority);
+        }
+        
+        // Ограничение количества узлов
+        if graph.nodes.len() > limit {
+            graph.nodes.truncate(limit);
+            // Также ограничиваем связи только для оставшихся узлов
+            let node_ids: std::collections::HashSet<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+            graph.links.retain(|link| node_ids.contains(&link.source) && node_ids.contains(&link.target));
+        }
+        
+        Ok::<core_lib::models::GraphData, core_lib::models::CoreError>(graph)
     })
     .await;
 
@@ -1067,7 +1111,7 @@ async fn get_graph_json(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) 
 #[get("/graph/summary")]
 async fn get_graph_summary(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) -> impl Responder {
     let pool = pool.clone();
-    let GraphQuery { min_score, max_links, depth } = query.into_inner();
+    let GraphQuery { min_score, max_links, depth, .. } = query.into_inner();
 
     let min_score = min_score.unwrap_or(-1.0);
     let max_links = max_links.unwrap_or(10).max(0);

@@ -118,8 +118,9 @@ Error format (401): `{ "error": "unauthorized", "code": 401 }`.
 | GET    | `/ratings/nodes` | Node ratings |
 | GET    | `/ratings/groups` | Group ratings |
 | GET    | `/graph` | Graph data |
-| GET    | `/graph/json` | Graph JSON (filtered) |
+| GET    | `/graph/json` | Graph JSON (filtered) with propagation metrics |
 | GET    | `/graph/summary` | Graph summary |
+| GET    | `/api/v1/stats` | Node stats with propagation & relay metrics |
 
 ### Android Integration
 
@@ -201,6 +202,7 @@ Main capabilities:
 - `truthctl config show|set|reset` — manage node config (`~/.truthctl/config.json`).
 - `truthctl diagnose [--verbose]` — node diagnostics (config, keys, peers).
 - `truthctl reset-data [--confirm] [--reinit]` — wipe local data and optionally reinit (auto key generation/replace).
+- `truthctl graph show [--format json|ascii] [--min-priority 0.3] [--limit 50]` — visualize network graph with propagation metrics.
 
 Examples:
 ```bash
@@ -209,6 +211,8 @@ truthctl init-node mynode --port 8080 --db ./node.db --auto-peer
 truthctl peers add http://127.0.0.1:8081 <peer_pubkey_hex>
 truthctl peers sync-all --mode incremental
 truthctl logs show --limit 50
+truthctl graph show --format ascii --min-priority 0.5
+truthctl status  # shows network health metrics
 ```
 
 Full CLI reference: **`docs/CLI_Usage.md`** and **`spec/10-cli.md`**.

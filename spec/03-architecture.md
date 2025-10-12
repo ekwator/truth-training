@@ -46,6 +46,24 @@ graph TD
 - **app (truthctl)**: administrative CLI that uses truth-core as a dependency.
 - **server**: network node (HTTP + P2P) that provides API endpoints.
 
+### Network Health Visualization
+
+**Real-time Metrics:**
+- **Propagation Priority**: Node's relay speed (0.0-1.0) based on trust and activity
+- **Relay Success Rate**: Percentage of successful message deliveries
+- **Latency Metrics**: Average response times between nodes
+- **Trust Scores**: Node reputation and validation history
+
+**Visualization Formats:**
+- **JSON API**: `/graph/json` with propagation_priority, relay_success_rate, latency_ms
+- **ASCII Graph**: CLI `truthctl graph show --format ascii` for terminal display
+- **Network Stats**: `/api/v1/stats` with aggregated trust, propagation, and relay metrics
+
+**Filtering Options:**
+- `min_priority`: Filter nodes by minimum propagation priority
+- `limit`: Maximum number of nodes to display
+- `min_score`: Filter by minimum trust score
+
 ### Mobile Client Integration
 
 - API versioning: public client-facing endpoints are namespaced under `/api/v1/...`.
