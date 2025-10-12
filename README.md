@@ -237,6 +237,13 @@ Trust & reputation:
 - Trust propagation (blend and decay) lives in `core-lib::recalc_ratings` and `merge_ratings`. Priority is refreshed automatically after merges and recalculations.
 - Sync records are stored in `sync_logs` for auditing and diagnostics.
 
+Adaptive Propagation Metrics:
+- propagation_priority (0.0–1.0) — EMA‑сглажённая смесь доверия и сетевых метрик:
+  - p_raw = 0.4·trust_norm + 0.3·quality_index + 0.3·relay_success_rate
+  - trust_norm = ((trust_score+1)/2), p = 0.3·p_raw + 0.7·prev
+- Распространение по сети: blend_priority(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)
+- Отображается в CLI: приоритет 🔵/🟡/🔴; среднее значение в `truthctl status`.
+
 Relay metrics & adaptive quality tracking:
 - Dynamic relay success rate tracking via `record_relay_result(peer_url, success)` in sync functions.
 - Real-time metrics stored in `node_metrics` table with `relay_success_rate` (0.0–1.0) and `quality_index` (0.0–1.0).

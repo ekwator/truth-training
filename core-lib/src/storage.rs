@@ -20,7 +20,7 @@ use chrono::Utc;
 use std::fs;
 use std::collections::{HashMap, HashSet, VecDeque};
 use crate::models::SyncLog;
-use crate::trust_propagation::{compute_quality_index, propagate_from_remote};
+use crate::trust_propagation::{compute_quality_index, compute_propagation_priority, propagate_from_remote};
 use crate::models::RbacUser;
 
 /// Создать соединение с базой данных и инициализировать схему
@@ -282,10 +282,11 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
 
         -- node metrics for network monitoring
         CREATE TABLE IF NOT EXISTS node_metrics (
-            pubkey              TEXT PRIMARY KEY,
-            last_seen           INTEGER NOT NULL,
-            relay_success_rate  REAL    NOT NULL DEFAULT 0.0,
-            quality_index       REAL    NOT NULL DEFAULT 0.0
+            pubkey                  TEXT PRIMARY KEY,
+            last_seen               INTEGER NOT NULL,
+            relay_success_rate      REAL    NOT NULL DEFAULT 0.0,
+            quality_index           REAL    NOT NULL DEFAULT 0.0,
+            propagation_priority    REAL    NOT NULL DEFAULT 0.0
         );
 
         -- active JWT refresh tokens (per public key)
@@ -302,6 +303,14 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
     if !has_column(conn, "node_metrics", "quality_index")? {
         conn.execute(
             "ALTER TABLE node_metrics ADD COLUMN quality_index REAL NOT NULL DEFAULT 0.0",
+            [],
+        )?;
+    }
+
+    // Add propagation_priority to node_metrics if missing
+    if !has_column(conn, "node_metrics", "propagation_priority")? {
+        conn.execute(
+            "ALTER TABLE node_metrics ADD COLUMN propagation_priority REAL NOT NULL DEFAULT 0.0",
             [],
         )?;
     }
@@ -354,6 +363,7 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
 
 /// Вычислить недавнюю активность узла как долю нормализованной активности за последние 7 суток.
 /// На текущем этапе используется прокси: нормализация по сумме событий/валидаций/переиспользований.
+#[allow(dead_code)]
 fn compute_recent_activity(events_true: i64, events_false: i64, validations: i64, reused_events: i64) -> f32 {
     let total = events_true + events_false + validations + reused_events;
     if total <= 0 { 0.0 } else { ((total as f32).log10() / 3.0).clamp(0.0, 1.0) }
@@ -361,25 +371,43 @@ fn compute_recent_activity(events_true: i64, events_false: i64, validations: i64
 
 /// Обновить колонку propagation_priority для всех записей node_ratings
 fn refresh_propagation_priority(conn: &Connection) -> Result<(), CoreError> {
-    // Пройдём по всем записям и обновим priority = trust_norm*0.8 + recent_activity*0.2
+    // Пересчитываем priority с EMA из trust_score, quality_index и relay_success_rate
+    let now = chrono::Utc::now().timestamp();
     let mut sel = conn.prepare(
-        r#"SELECT node_id, events_true, events_false, validations, reused_events, trust_score FROM node_ratings"#,
+        r#"
+        SELECT nr.node_id, nr.trust_score,
+               COALESCE(nm.quality_index, 0.0) AS q,
+               COALESCE(nm.relay_success_rate, 0.0) AS r,
+               COALESCE(nr.propagation_priority, 0.0) AS prev_p
+        FROM node_ratings nr
+        LEFT JOIN node_metrics nm ON nm.pubkey = nr.node_id
+        "#,
     )?;
     let mut rows = sel.query([])?;
-    let mut upd = conn.prepare(
+    let mut upd_ratings = conn.prepare(
         r#"UPDATE node_ratings SET propagation_priority=?2 WHERE node_id=?1"#,
     )?;
     while let Some(r) = rows.next()? {
         let node_id: String = r.get(0)?;
-        let et: i64 = r.get(1)?;
-        let ef: i64 = r.get(2)?;
-        let val: i64 = r.get(3)?;
-        let re: i64 = r.get(4)?;
-        let trust: f32 = r.get::<_, f64>(5)? as f32;
-        let trust_norm = ((trust + 1.0) / 2.0).clamp(0.0, 1.0);
-        let recent_activity = compute_recent_activity(et, ef, val, re);
-        let prio = (trust_norm * 0.8) + (recent_activity * 0.2);
-        upd.execute(rusqlite::params![node_id, prio as f64])?;
+        let trust: f32 = r.get::<_, f64>(1)? as f32;
+        let quality_index: f32 = r.get::<_, f64>(2)? as f32;
+        let relay_success_rate: f32 = r.get::<_, f64>(3)? as f32;
+        let prev_p: f32 = r.get::<_, f64>(4)? as f32;
+
+        let p = compute_propagation_priority(trust, quality_index, relay_success_rate, Some(prev_p));
+
+        // Обновляем в node_ratings
+        upd_ratings.execute(rusqlite::params![node_id, p as f64])?;
+
+        // И в node_metrics (upsert)
+        let _ = upsert_node_metrics_with_quality_and_priority(
+            conn,
+            &node_id,
+            now,
+            relay_success_rate,
+            quality_index,
+            p,
+        );
     }
     Ok(())
 }
@@ -1400,8 +1428,10 @@ pub fn merge_ratings(
             trust_score_stability.clamp(0.0, 1.0),
             prev_q,
         );
-        // Обновить/вставить метрики
-        let _ = upsert_node_metrics_with_quality(conn, &node.node_id, node.last_updated, relay_success_rate, q);
+        // Обновить/вставить метрики с пересчётом приоритета
+        let prev_p = load_node_metrics(conn, &node.node_id)?.map(|m| m.propagation_priority);
+        let p = compute_propagation_priority(node.trust_score, q, relay_success_rate, prev_p);
+        let _ = upsert_node_metrics_with_quality_and_priority(conn, &node.node_id, node.last_updated, relay_success_rate, q, p);
     }
 
     Ok(trust_diffs)
@@ -2205,17 +2235,30 @@ pub fn upsert_node_metrics(
     last_seen: i64,
     relay_success_rate: f32,
 ) -> Result<(), CoreError> {
+    // Вытащим прошлые quality и priority, а также текущий trust_score для вычисления EMA приоритета
+    let prev = load_node_metrics(conn, pubkey)?;
+    let prev_q = prev.as_ref().map(|m| m.quality_index).unwrap_or(0.0);
+    let prev_p = prev.as_ref().map(|m| m.propagation_priority);
+    let trust_score: f32 = conn
+        .query_row(
+            "SELECT COALESCE(trust_score, 0.0) FROM node_ratings WHERE node_id=?1",
+            params![pubkey],
+            |r| r.get::<_, f64>(0),
+        )
+        .unwrap_or(0.0) as f32;
+    let p = compute_propagation_priority(trust_score, prev_q, relay_success_rate.clamp(0.0, 1.0), prev_p);
+
     conn.execute(
-        "INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index) VALUES (?1, ?2, ?3, COALESCE((SELECT quality_index FROM node_metrics WHERE pubkey=?1), 0.0))
-         ON CONFLICT(pubkey) DO UPDATE SET last_seen=excluded.last_seen, relay_success_rate=excluded.relay_success_rate",
-        params![pubkey, last_seen, relay_success_rate],
+        "INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index, propagation_priority) VALUES (?1, ?2, ?3, COALESCE((SELECT quality_index FROM node_metrics WHERE pubkey=?1), 0.0), ?4)
+         ON CONFLICT(pubkey) DO UPDATE SET last_seen=excluded.last_seen, relay_success_rate=excluded.relay_success_rate, propagation_priority=excluded.propagation_priority",
+        params![pubkey, last_seen, relay_success_rate, p],
     )?;
     Ok(())
 }
 
 /// Load node metrics by pubkey
 pub fn load_node_metrics(conn: &Connection, pubkey: &str) -> Result<Option<crate::NodeMetrics>, CoreError> {
-    let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate, quality_index FROM node_metrics WHERE pubkey = ?1")?;
+    let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate, quality_index, propagation_priority FROM node_metrics WHERE pubkey = ?1")?;
     let mut rows = stmt.query(params![pubkey])?;
     
     if let Some(row) = rows.next()? {
@@ -2224,6 +2267,7 @@ pub fn load_node_metrics(conn: &Connection, pubkey: &str) -> Result<Option<crate
             last_seen: row.get(1)?,
             relay_success_rate: row.get(2)?,
             quality_index: row.get(3)?,
+            propagation_priority: row.get(4)?,
         }))
     } else {
         Ok(None)
@@ -2232,7 +2276,7 @@ pub fn load_node_metrics(conn: &Connection, pubkey: &str) -> Result<Option<crate
 
 /// Load all node metrics
 pub fn load_all_node_metrics(conn: &Connection) -> Result<Vec<crate::NodeMetrics>, CoreError> {
-    let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate, quality_index FROM node_metrics ORDER BY last_seen DESC")?;
+    let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate, quality_index, propagation_priority FROM node_metrics ORDER BY last_seen DESC")?;
     let mut rows = stmt.query([])?;
     let mut metrics = Vec::new();
     
@@ -2242,6 +2286,7 @@ pub fn load_all_node_metrics(conn: &Connection) -> Result<Vec<crate::NodeMetrics
             last_seen: row.get(1)?,
             relay_success_rate: row.get(2)?,
             quality_index: row.get(3)?,
+            propagation_priority: row.get(4)?,
         });
     }
     
@@ -2262,26 +2307,37 @@ pub fn flush_relay_metrics(conn: &Connection, relay_stats: &[(String, f32)]) -> 
     for (pubkey, success_rate) in relay_stats {
         // При обновлении ретрансляции — пересчитываем quality_index с учетом EMA
         let prev_q = load_node_metrics(conn, pubkey)?.map(|m| m.quality_index);
+        let prev_p = load_node_metrics(conn, pubkey)?.map(|m| m.propagation_priority);
         let conflict_free_ratio = 1.0; // не знаем конфликтность в этом пути → считаем отсутствие конфликтов
         let trust_score_stability = 1.0; // без истории оставим базовое значение
         let q = compute_quality_index((*success_rate).clamp(0.0, 1.0), conflict_free_ratio, trust_score_stability, prev_q);
-        upsert_node_metrics_with_quality(conn, pubkey, chrono::Utc::now().timestamp(), *success_rate, q)?;
+        // Для EMA приоритета требуется текущий trust_score
+        let trust_score: f32 = conn
+            .query_row(
+                "SELECT COALESCE(trust_score, 0.0) FROM node_ratings WHERE node_id=?1",
+                params![pubkey],
+                |r| r.get::<_, f64>(0),
+            )
+            .unwrap_or(0.0) as f32;
+        let p = compute_propagation_priority(trust_score, q, (*success_rate).clamp(0.0, 1.0), prev_p);
+        upsert_node_metrics_with_quality_and_priority(conn, pubkey, chrono::Utc::now().timestamp(), *success_rate, q, p)?;
     }
     Ok(())
 }
 
 /// Upsert с явным качеством (используется при EMA-обновлении)
-pub fn upsert_node_metrics_with_quality(
+pub fn upsert_node_metrics_with_quality_and_priority(
     conn: &Connection,
     pubkey: &str,
     last_seen: i64,
     relay_success_rate: f32,
     quality_index: f32,
+    propagation_priority: f32,
 ) -> Result<(), CoreError> {
     conn.execute(
-        "INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index) VALUES (?1, ?2, ?3, ?4)
-         ON CONFLICT(pubkey) DO UPDATE SET last_seen=excluded.last_seen, relay_success_rate=excluded.relay_success_rate, quality_index=excluded.quality_index",
-        params![pubkey, last_seen, relay_success_rate, quality_index],
+        "INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index, propagation_priority) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(pubkey) DO UPDATE SET last_seen=excluded.last_seen, relay_success_rate=excluded.relay_success_rate, quality_index=excluded.quality_index, propagation_priority=excluded.propagation_priority",
+        params![pubkey, last_seen, relay_success_rate, quality_index, propagation_priority],
     )?;
     Ok(())
 }
@@ -2293,6 +2349,24 @@ pub fn update_node_quality(conn: &Connection, peer_url_or_pubkey: &str, quality_
         "INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index) VALUES (?1, ?2, 0.0, ?3)
          ON CONFLICT(pubkey) DO UPDATE SET quality_index=excluded.quality_index, last_seen=excluded.last_seen",
         params![peer_url_or_pubkey, now, quality_index.clamp(0.0, 1.0)],
+    )?;
+    Ok(())
+}
+
+/// Обновить приоритет распространения (в обеих таблицах)
+pub fn update_node_priority(conn: &Connection, pubkey: &str, priority: f32) -> Result<(), CoreError> {
+    let p = priority.clamp(0.0, 1.0) as f64;
+    let now = chrono::Utc::now().timestamp();
+    conn.execute(
+        r#"UPDATE node_ratings SET propagation_priority=?2 WHERE node_id=?1"#,
+        params![pubkey, p],
+    )?;
+    // В node_metrics просто обновим поле (создадим запись при отсутствии)
+    conn.execute(
+        r#"INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index, propagation_priority)
+            VALUES (?1, ?2, 0.0, 0.0, ?3)
+            ON CONFLICT(pubkey) DO UPDATE SET propagation_priority=excluded.propagation_priority, last_seen=excluded.last_seen"#,
+        params![pubkey, now, p],
     )?;
     Ok(())
 }

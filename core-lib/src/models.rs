@@ -212,6 +212,7 @@ pub struct NodeMetrics {
     pub last_seen: i64,
     pub relay_success_rate: f32,
     pub quality_index: f32, // 0.0..1.0 — индикатор непрерывности доверия
+    pub propagation_priority: f32, // 0.0..1.0 — адаптивный приоритет распространения
 }
 
 /// Узел графа для визуализации
