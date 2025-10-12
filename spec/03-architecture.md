@@ -133,3 +133,23 @@ flowchart TD
   
   P2P -.->|connect| HUB
 ```
+
+### Relay Feedback Loop
+
+The system implements a dynamic relay feedback loop for network health monitoring:
+
+```mermaid
+flowchart LR
+  A[Sync Operation] --> B[record_relay_result]
+  B --> C[RELAY_METRICS Memory]
+  C --> D[flush_relay_metrics_to_db]
+  D --> E[node_metrics Table]
+  E --> F[API/CLI Display]
+  F --> G[Network Health Visualization]
+  G --> H[Trust Propagation Updates]
+  H --> A
+  
+  style A fill:#e1f5fe
+  style E fill:#f3e5f5
+  style G fill:#e8f5e8
+```
