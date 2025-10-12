@@ -51,9 +51,17 @@ impl Node {
                             .map_err(|e| SyncError::Other(e.to_string()));
                         let group_ratings = core_lib::storage::load_group_ratings(&conn)
                             .map_err(|e| SyncError::Other(e.to_string()));
-                        let (events, statements, impacts, metrics, node_ratings, group_ratings) = match (events, statements, impacts, metrics, node_ratings, group_ratings) {
-                            (Ok(a), Ok(b), Ok(c), Ok(d), Ok(e1), Ok(f)) => (a,b,c,d,e1,f),
-                            (Err(e), ..) | (_, Err(e), ..) | (_, _, Err(e), ..) | (_, _, _, Err(e), ..) | (_, _, _, _, Err(e), ..) | (_, _, _, _, _, Err(e)) => {
+                        let node_metrics = core_lib::storage::load_all_node_metrics(&conn)
+                            .map_err(|e| SyncError::Other(e.to_string()));
+                        let (events, statements, impacts, metrics, node_ratings, group_ratings, node_metrics) = match (events, statements, impacts, metrics, node_ratings, group_ratings, node_metrics) {
+                            (Ok(a), Ok(b), Ok(c), Ok(d), Ok(e1), Ok(f), Ok(g)) => (a,b,c,d,e1,f,g),
+                            (Err(e), ..)
+                            | (_, Err(e), ..)
+                            | (_, _, Err(e), ..)
+                            | (_, _, _, Err(e), ..)
+                            | (_, _, _, _, Err(e), ..)
+                            | (_, _, _, _, _, Err(e), _)
+                            | (_, _, _, _, _, _, Err(e)) => {
                                 error!("❌ DB read failed: {e}");
                                 return;
                             }
@@ -65,6 +73,7 @@ impl Node {
                             metrics,
                             node_ratings: node_ratings.clone(),
                             group_ratings: group_ratings.clone(),
+                            node_metrics,
                             last_sync: Utc::now().timestamp(),
                         };
                         let ts = Utc::now().timestamp();
@@ -104,8 +113,9 @@ impl Node {
             .map_err(|e| SyncError::Other(e.to_string()))?;
         let group_ratings = core_lib::storage::load_group_ratings(&conn)
             .map_err(|e| SyncError::Other(e.to_string()))?;
+        let node_metrics = core_lib::storage::load_all_node_metrics(&conn)
+            .map_err(|e| SyncError::Other(e.to_string()))?;
         drop(conn);
-
         let payload = SyncData {
             events: Vec::new(),
             statements: Vec::new(),
@@ -113,6 +123,7 @@ impl Node {
             metrics: Vec::new(),
             node_ratings: node_ratings.clone(),
             group_ratings: group_ratings.clone(),
+            node_metrics,
             last_sync: Utc::now().timestamp(),
         };
 

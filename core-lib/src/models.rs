@@ -211,6 +211,7 @@ pub struct NodeMetrics {
     pub pubkey: String,
     pub last_seen: i64,
     pub relay_success_rate: f32,
+    pub quality_index: f32, // 0.0..1.0 — индикатор непрерывности доверия
 }
 
 /// Узел графа для визуализации
@@ -221,6 +222,7 @@ pub struct GraphNode {
     pub propagation_priority: f32,
     pub last_seen: Option<i64>,
     pub relay_success_rate: Option<f32>,
+    pub quality_index: f32,
 }
 
 /// Ребро графа между валидатором (source) и автором события (target)
@@ -245,6 +247,9 @@ pub struct GraphSummary {
     pub total_nodes: usize,
     pub total_links: usize,
     pub avg_trust: f64,
+    // Среднее качество (0..1) — для обзора сети
+    // Не входит в расчёт avg_trust; это независимый индикатор континуальности
+    // Значение агрегируется на уровне API, но поле предусмотрено для потенциального расширения
     pub top_nodes: Vec<(String, f64)>,
 }
 
