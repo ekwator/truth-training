@@ -233,11 +233,14 @@ Trust & reputation:
 - Trust propagation (blend and decay) lives in `core-lib::recalc_ratings` and `merge_ratings`. Priority is refreshed automatically after merges and recalculations.
 - Sync records are stored in `sync_logs` for auditing and diagnostics.
 
-Relay metrics tracking:
+Relay metrics & adaptive quality tracking:
 - Dynamic relay success rate tracking via `record_relay_result(peer_url, success)` in sync functions.
-- Real-time metrics stored in `node_metrics` table with `relay_success_rate` (0.0–1.0).
-- CLI displays relay metrics with color coding: 🟢 >80%, 🟡 >50%, 🔴 <50%.
-- API endpoints include live relay success rates in `/api/v1/stats` and `/graph/json`.
+- Real-time metrics stored in `node_metrics` table with `relay_success_rate` (0.0–1.0) and `quality_index` (0.0–1.0).
+- `quality_index` — индикатор непрерывности доверия для мобильных/оффлайн узлов. Это не штрафная метрика.
+  - Локальный расчет: `q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability`, затем EMA: `q = 0.3·q_raw + 0.7·prev`.
+  - Распространение по сети: `blend_quality(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)`.
+- CLI displays relay and quality: relay 🟢🟡🔴, quality 🔵🟡🔴; shows average network quality.
+- API `/api/v1/stats` возвращает `avg_quality_index`; `/graph/json` включает `quality_index` на узлах.
 
 Relay priority (Mermaid):
 ```mermaid

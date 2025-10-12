@@ -20,7 +20,7 @@ use chrono::Utc;
 use std::fs;
 use std::collections::{HashMap, HashSet, VecDeque};
 use crate::models::SyncLog;
-use crate::trust_propagation::{apply_time_decay, propagate_from_remote};
+use crate::trust_propagation::{compute_quality_index, propagate_from_remote};
 use crate::models::RbacUser;
 
 /// Создать соединение с базой данных и инициализировать схему
@@ -284,7 +284,8 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
         CREATE TABLE IF NOT EXISTS node_metrics (
             pubkey              TEXT PRIMARY KEY,
             last_seen           INTEGER NOT NULL,
-            relay_success_rate  REAL    NOT NULL DEFAULT 0.0
+            relay_success_rate  REAL    NOT NULL DEFAULT 0.0,
+            quality_index       REAL    NOT NULL DEFAULT 0.0
         );
 
         -- active JWT refresh tokens (per public key)
@@ -296,6 +297,14 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
         CREATE INDEX IF NOT EXISTS idx_active_tokens_pub ON active_tokens(public_key);
         "#,
     )?;
+
+    // Add quality_index to node_metrics if missing
+    if !has_column(conn, "node_metrics", "quality_index")? {
+        conn.execute(
+            "ALTER TABLE node_metrics ADD COLUMN quality_index REAL NOT NULL DEFAULT 0.0",
+            [],
+        )?;
+    }
 
     // RBAC migrations: ensure users table has required columns and seed roles
     conn.execute_batch(
@@ -1317,9 +1326,8 @@ pub fn merge_ratings(
     incoming_nodes: &[NodeRating],
     incoming_groups: &[GroupRating],
 ) -> Result<Vec<(String, f32)>, CoreError> {
-    // 0) Перед смешиванием — мягкий временной спад для устаревших записей
+    // 0) Больше не используем временной спад — сохраняем справедливость для оффлайн-нод
     let now_ts = chrono::Utc::now().timestamp();
-    let _ = apply_time_decay(conn, now_ts)?;
 
     // 1) Узлы: распространяем доверие через взвешенное смешивание
     let trust_diffs = propagate_from_remote(conn, incoming_nodes, now_ts)?;
@@ -1357,14 +1365,32 @@ pub fn merge_ratings(
     // Зеркалим обновлённые trust_score в таблицу users для согласованности JWT
     let _ = sync_users_with_node_ratings(conn);
 
-    // Обновляем метрики узлов после синхронизации
+    // Обновляем метрики узлов после синхронизации (relay_success_rate уже рассчитывался выше)
     for node in incoming_nodes {
         let relay_success_rate = if node.validations > 0 {
             (node.validations as f32) / ((node.events_true + node.events_false) as f32).max(1.0)
         } else {
             0.0
         };
-        let _ = upsert_node_metrics(conn, &node.node_id, node.last_updated, relay_success_rate);
+        // Конфликт-free ratio: доля согласованных воздействий среди всех по этому автору
+        // Простейшая прокси: if events_true+events_false>0 => ratio = et / (et+ef), иначе 1.0 (нет конфликтов)
+        let total_events = (node.events_true + node.events_false) as f32;
+        let conflict_free_ratio = if total_events > 0.0 {
+            (node.events_true as f32) / total_events
+        } else { 1.0 };
+        // Стабильность trust: 1.0 как базовое значение (улучшим в будущем с хранением истории)
+        let trust_score_stability: f32 = 1.0;
+
+        // Загрузить предыдущее качество для EMA
+        let prev_q = load_node_metrics(conn, &node.node_id)?.map(|m| m.quality_index);
+        let q = compute_quality_index(
+            relay_success_rate.clamp(0.0, 1.0),
+            conflict_free_ratio.clamp(0.0, 1.0),
+            trust_score_stability.clamp(0.0, 1.0),
+            prev_q,
+        );
+        // Обновить/вставить метрики
+        let _ = upsert_node_metrics_with_quality(conn, &node.node_id, node.last_updated, relay_success_rate, q);
     }
 
     Ok(trust_diffs)
@@ -1376,7 +1402,7 @@ pub fn load_graph(conn: &Connection) -> Result<GraphData, CoreError> {
     let mut stmt_nodes = conn.prepare(
         r#"
         SELECT nr.node_id, nr.trust_score, nr.propagation_priority, 
-               nm.last_seen, nm.relay_success_rate
+               nm.last_seen, nm.relay_success_rate, nm.quality_index
         FROM node_ratings nr
         LEFT JOIN node_metrics nm ON nr.node_id = nm.pubkey
         "#,
@@ -1388,6 +1414,7 @@ pub fn load_graph(conn: &Connection) -> Result<GraphData, CoreError> {
             propagation_priority: row.get(2)?,
             last_seen: row.get(3)?,
             relay_success_rate: row.get(4)?,
+            quality_index: row.get::<_, Option<f64>>(5)?.unwrap_or(0.0) as f32,
         })
     })?;
     let mut nodes: Vec<GraphNode> = Vec::new();
@@ -1446,7 +1473,7 @@ pub fn load_graph_filtered(
     let mut stmt_nodes = conn.prepare(
         r#"
         SELECT nr.node_id, nr.trust_score, nr.propagation_priority, 
-               nm.last_seen, nm.relay_success_rate
+               nm.last_seen, nm.relay_success_rate, nm.quality_index
         FROM node_ratings nr
         LEFT JOIN node_metrics nm ON nr.node_id = nm.pubkey
         WHERE nr.trust_score >= ?1 
@@ -1460,6 +1487,7 @@ pub fn load_graph_filtered(
             propagation_priority: row.get(2)?,
             last_seen: row.get(3)?,
             relay_success_rate: row.get(4)?,
+            quality_index: row.get::<_, Option<f64>>(5)?.unwrap_or(0.0) as f32,
         })
     })?;
     let mut nodes: Vec<GraphNode> = Vec::new();
@@ -2055,9 +2083,8 @@ mod tests {
         let _ = merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
         let cur = load_node_ratings(&conn).unwrap();
         let nx = cur.iter().find(|r| r.node_id == "nodeX").unwrap();
-        // Сначала применяется временной спад: 0.5 * 0.9 = 0.45
-        // Затем смешивание: 0.45 * 0.8 + 0.4 * 0.2 = 0.36 + 0.08 = 0.44
-        assert!((nx.trust_score - 0.44).abs() < 1e-6);
+        // Без временного спада: смешивание 0.5*0.8 + 0.4*0.2 = 0.48
+        assert!((nx.trust_score - 0.48).abs() < 1e-6);
         // last_updated обновляется до now_ts при merge_ratings
         assert!(nx.last_updated >= 100);
 
@@ -2075,8 +2102,8 @@ mod tests {
         let _ = merge_ratings(&conn, &incoming_nodes, &incoming_groups).unwrap();
         let cur = load_node_ratings(&conn).unwrap();
         let nx = cur.iter().find(|r| r.node_id == "nodeX").unwrap();
-        // Смешивание: 0.44 * 0.8 + 0.9 * 0.2 = 0.352 + 0.18 = 0.532
-        assert!((nx.trust_score - 0.532).abs() < 1e-6);
+        // Следующее смешивание: 0.48 * 0.8 + 0.9 * 0.2 = 0.564
+        assert!((nx.trust_score - 0.564).abs() < 1e-6);
         // last_updated обновляется до now_ts при merge_ratings
         assert!(nx.last_updated >= 150);
 
@@ -2101,7 +2128,7 @@ mod tests {
     }
 
     #[test]
-    fn trust_blend_and_decay_apply() {
+    fn trust_blend_apply_without_decay() {
         let conn = open_db(":memory:").expect("open db");
         // вставляем локальную запись
         conn.execute(
@@ -2109,7 +2136,7 @@ mod tests {
             params!["nodeY", 1, 0, 0, 0, 0.5_f64, 100],
         ).unwrap();
 
-        // входящая с более низким скором, blended должен быть 0.5*0.8 + 0.1*0.2 = 0.42
+        // входящая с более низким скором, blended ожидается 0.5*0.8 + 0.1*0.2 = 0.42
         let incoming_nodes = vec![NodeRating {
             node_id: "nodeY".into(),
             events_true: 2,
@@ -2123,9 +2150,7 @@ mod tests {
         let diffs = merge_ratings(&conn, &incoming_nodes, &[]).unwrap();
         let cur = load_node_ratings(&conn).unwrap();
         let ny = cur.iter().find(|r| r.node_id == "nodeY").unwrap();
-        // Сначала применяется временной спад: 0.5 * 0.9 = 0.45
-        // Затем смешивание: 0.45 * 0.8 + 0.1 * 0.2 = 0.36 + 0.02 = 0.38
-        assert!((ny.trust_score - 0.38).abs() < 1e-6);
+        assert!((ny.trust_score - 0.42).abs() < 1e-6);
         assert!(diffs.iter().any(|(id, _)| id == "nodeY"));
 
         // Проверим clamp и саму функцию смешивания
@@ -2170,7 +2195,8 @@ pub fn upsert_node_metrics(
     relay_success_rate: f32,
 ) -> Result<(), CoreError> {
     conn.execute(
-        "INSERT OR REPLACE INTO node_metrics (pubkey, last_seen, relay_success_rate) VALUES (?1, ?2, ?3)",
+        "INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index) VALUES (?1, ?2, ?3, COALESCE((SELECT quality_index FROM node_metrics WHERE pubkey=?1), 0.0))
+         ON CONFLICT(pubkey) DO UPDATE SET last_seen=excluded.last_seen, relay_success_rate=excluded.relay_success_rate",
         params![pubkey, last_seen, relay_success_rate],
     )?;
     Ok(())
@@ -2178,7 +2204,7 @@ pub fn upsert_node_metrics(
 
 /// Load node metrics by pubkey
 pub fn load_node_metrics(conn: &Connection, pubkey: &str) -> Result<Option<crate::NodeMetrics>, CoreError> {
-    let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate FROM node_metrics WHERE pubkey = ?1")?;
+    let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate, quality_index FROM node_metrics WHERE pubkey = ?1")?;
     let mut rows = stmt.query(params![pubkey])?;
     
     if let Some(row) = rows.next()? {
@@ -2186,6 +2212,7 @@ pub fn load_node_metrics(conn: &Connection, pubkey: &str) -> Result<Option<crate
             pubkey: row.get(0)?,
             last_seen: row.get(1)?,
             relay_success_rate: row.get(2)?,
+            quality_index: row.get(3)?,
         }))
     } else {
         Ok(None)
@@ -2194,7 +2221,7 @@ pub fn load_node_metrics(conn: &Connection, pubkey: &str) -> Result<Option<crate
 
 /// Load all node metrics
 pub fn load_all_node_metrics(conn: &Connection) -> Result<Vec<crate::NodeMetrics>, CoreError> {
-    let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate FROM node_metrics ORDER BY last_seen DESC")?;
+    let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate, quality_index FROM node_metrics ORDER BY last_seen DESC")?;
     let mut rows = stmt.query([])?;
     let mut metrics = Vec::new();
     
@@ -2203,6 +2230,7 @@ pub fn load_all_node_metrics(conn: &Connection) -> Result<Vec<crate::NodeMetrics
             pubkey: row.get(0)?,
             last_seen: row.get(1)?,
             relay_success_rate: row.get(2)?,
+            quality_index: row.get(3)?,
         });
     }
     
@@ -2221,7 +2249,39 @@ pub fn update_relay_success_rate(conn: &Connection, pubkey: &str, rate: f32) -> 
 /// Flush relay metrics from memory to database
 pub fn flush_relay_metrics(conn: &Connection, relay_stats: &[(String, f32)]) -> Result<(), CoreError> {
     for (pubkey, success_rate) in relay_stats {
-        upsert_node_metrics(conn, pubkey, chrono::Utc::now().timestamp(), *success_rate)?;
+        // При обновлении ретрансляции — пересчитываем quality_index с учетом EMA
+        let prev_q = load_node_metrics(conn, pubkey)?.map(|m| m.quality_index);
+        let conflict_free_ratio = 1.0; // не знаем конфликтность в этом пути → считаем отсутствие конфликтов
+        let trust_score_stability = 1.0; // без истории оставим базовое значение
+        let q = compute_quality_index((*success_rate).clamp(0.0, 1.0), conflict_free_ratio, trust_score_stability, prev_q);
+        upsert_node_metrics_with_quality(conn, pubkey, chrono::Utc::now().timestamp(), *success_rate, q)?;
     }
+    Ok(())
+}
+
+/// Upsert с явным качеством (используется при EMA-обновлении)
+pub fn upsert_node_metrics_with_quality(
+    conn: &Connection,
+    pubkey: &str,
+    last_seen: i64,
+    relay_success_rate: f32,
+    quality_index: f32,
+) -> Result<(), CoreError> {
+    conn.execute(
+        "INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(pubkey) DO UPDATE SET last_seen=excluded.last_seen, relay_success_rate=excluded.relay_success_rate, quality_index=excluded.quality_index",
+        params![pubkey, last_seen, relay_success_rate, quality_index],
+    )?;
+    Ok(())
+}
+
+/// Обновить качество узла (идентификатором служит pubkey или peer_url)
+pub fn update_node_quality(conn: &Connection, peer_url_or_pubkey: &str, quality_index: f32) -> Result<(), CoreError> {
+    let now = chrono::Utc::now().timestamp();
+    conn.execute(
+        "INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index) VALUES (?1, ?2, 0.0, ?3)
+         ON CONFLICT(pubkey) DO UPDATE SET quality_index=excluded.quality_index, last_seen=excluded.last_seen",
+        params![peer_url_or_pubkey, now, quality_index.clamp(0.0, 1.0)],
+    )?;
     Ok(())
 }

@@ -4,7 +4,8 @@ use reqwest::Client;
 use std::time::Duration;
 #[cfg(any(test, feature = "p2p-client-sync"))]
 use crate::p2p::encryption::CryptoIdentity;
-use core_lib::models::{TruthEvent, Statement, Impact, ProgressMetrics, NodeRating, GroupRating};
+use core_lib::models::{TruthEvent, Statement, Impact, ProgressMetrics, NodeRating, GroupRating, NodeMetrics as NodeMetricsModel};
+use core_lib::trust_propagation::blend_quality;
 use core_lib::storage;
 // trust_propagation используется внутри core-lib/storage::merge_ratings
 use rusqlite::{Connection, params, OptionalExtension};
@@ -25,6 +26,7 @@ pub struct SyncData {
     pub metrics: Vec<ProgressMetrics>,
     pub node_ratings: Vec<NodeRating>,
     pub group_ratings: Vec<GroupRating>,
+    pub node_metrics: Vec<NodeMetricsModel>,
     pub last_sync: i64,
 }
 
@@ -39,6 +41,7 @@ pub struct SyncResult {
     // Новые поля для доверия
     pub nodes_trust_changed: u32,
     pub trust_diff: Vec<TrustDelta>,
+    pub avg_quality_index: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,6 +60,7 @@ pub struct RelayStat {
 
 static RELAY_METRICS: Lazy<TokioMutex<HashMap<String, (u64, u64)>>> = Lazy::new(|| TokioMutex::new(HashMap::new()));
 
+#[allow(dead_code)]
 async fn record_relay_result(peer_url: &str, success: bool) {
     let mut g = RELAY_METRICS.lock().await;
     let entry = g.entry(peer_url.to_string()).or_insert((0, 0));
@@ -75,6 +79,7 @@ pub async fn get_relay_stats() -> Vec<RelayStat> {
 }
 
 /// Flush relay metrics to database and update node_metrics table
+#[allow(dead_code)]
 pub async fn flush_relay_metrics_to_db(conn: &Connection) -> anyhow::Result<()> {
     let stats = get_relay_stats().await;
     let mut relay_data = Vec::new();
@@ -167,6 +172,7 @@ pub async fn sync_with_peer(peer_url: &str, identity: &CryptoIdentity) -> anyhow
         errors: Vec::new(),
         nodes_trust_changed: 0,
         trust_diff: Vec::new(),
+        avg_quality_index: 0.0,
     })
 }
 
@@ -187,6 +193,7 @@ pub async fn bidirectional_sync_with_peer(
 
         let local_node_ratings = core_lib::storage::load_node_ratings(conn)?;
         let local_group_ratings = core_lib::storage::load_group_ratings(conn)?;
+        let local_node_metrics = core_lib::storage::load_all_node_metrics(conn)?;
         let sync_data = SyncData {
             events: local_events,
             statements: local_statements,
@@ -194,6 +201,7 @@ pub async fn bidirectional_sync_with_peer(
             metrics: local_metrics,
             node_ratings: local_node_ratings.clone(),
             group_ratings: local_group_ratings.clone(),
+            node_metrics: local_node_metrics,
             last_sync: chrono::Utc::now().timestamp(),
         };
 
@@ -265,6 +273,7 @@ pub async fn push_local_data(
 ) -> anyhow::Result<SyncResult> {
     let node_ratings = core_lib::storage::load_node_ratings(conn)?;
     let group_ratings = core_lib::storage::load_group_ratings(conn)?;
+    let node_metrics = core_lib::storage::load_all_node_metrics(conn)?;
     let sync_data = SyncData {
         events: storage::load_truth_events(conn)?,
         statements: storage::load_statements(conn)?,
@@ -272,6 +281,7 @@ pub async fn push_local_data(
         metrics: storage::load_metrics(conn)?,
         node_ratings: node_ratings.clone(),
         group_ratings: group_ratings.clone(),
+        node_metrics: node_metrics,
         last_sync: Utc::now().timestamp(),
     };
 
@@ -348,6 +358,7 @@ pub async fn pull_remote_data(peer_url: &str, identity: &CryptoIdentity) -> anyh
         metrics,
         node_ratings: Vec::new(),
         group_ratings: Vec::new(),
+        node_metrics: Vec::new(),
         last_sync: ts,
     })
 }
@@ -546,6 +557,14 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
         .map(|(node_id, delta)| TrustDelta { node_id, delta })
         .collect();
 
+    // После слияния доверия — распространяем и качество: для каждого метрика из remote применяем правило смешивания
+    for m in &remote.node_metrics {
+        let prev = core_lib::storage::load_node_metrics(conn, &m.pubkey)?;
+        let local_q = prev.as_ref().map(|pm| pm.quality_index).unwrap_or(0.0);
+        let blended_q = blend_quality(local_q, m.quality_index);
+        core_lib::storage::update_node_quality(conn, &m.pubkey, blended_q)?;
+    }
+
     // Лог высокого уровня о доверии
     let avg_trust: f64 = conn
         .query_row("SELECT COALESCE(AVG(trust_score),0.0) FROM node_ratings", [], |r| r.get(0))
@@ -575,6 +594,12 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
         &details,
     );
 
+    // Среднее качество сети после обновления
+    let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(conn) {
+        Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
+        _ => 0.0,
+    };
+
     Ok(SyncResult {
         conflicts_resolved,
         events_added,
@@ -583,6 +608,7 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
         errors: vec![],
         nodes_trust_changed: trust_changes.len() as u32,
         trust_diff: trust_changes,
+        avg_quality_index,
     })
 }
 
@@ -603,6 +629,7 @@ pub async fn incremental_sync_with_peer(
 
         let node_ratings = core_lib::storage::load_node_ratings(conn)?;
         let group_ratings = core_lib::storage::load_group_ratings(conn)?;
+        let node_metrics = core_lib::storage::load_all_node_metrics(conn)?;
         let sync_data = SyncData {
             events: recent_events,
             statements: recent_statements,
@@ -610,6 +637,7 @@ pub async fn incremental_sync_with_peer(
             metrics: Vec::new(), // Метрики не инкрементальные
             node_ratings: node_ratings.clone(),
             group_ratings: group_ratings.clone(),
+            node_metrics,
             last_sync: last_sync_timestamp,
         };
 

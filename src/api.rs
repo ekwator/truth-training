@@ -43,6 +43,7 @@ pub struct NodeStats {
     pub avg_trust_score: f32,
     pub avg_propagation_priority: f32,
     pub avg_relay_success_rate: f32,
+    pub avg_quality_index: f32,
     pub active_nodes: i32,
 }
 
@@ -114,6 +115,12 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
             let sum: f64 = node_metrics.iter().map(|m| m.relay_success_rate as f64).sum();
             (sum / (node_metrics.len() as f64)) as f32
         };
+        let avg_quality_index: f32 = if node_metrics.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = node_metrics.iter().map(|m| m.quality_index as f64).sum();
+            (sum / (node_metrics.len() as f64)) as f32
+        };
         
         let active_nodes = node_metrics.len() as i32;
         
@@ -126,6 +133,7 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
             avg_trust_score,
             avg_propagation_priority,
             avg_relay_success_rate,
+            avg_quality_index,
             active_nodes,
         })
     })
@@ -744,6 +752,7 @@ pub struct PeerPriorityItem {
     pub trust_score: f32,
     pub propagation_priority: f32,
     pub relay_rate: f32,
+    pub quality_index: f32,
 }
 
 /// GET /api/v1/peers/priorities — список пиров с приоритетами распространения и метриками ретрансляции
@@ -755,8 +764,9 @@ pub struct PeerPriorityItem {
 #[get("/api/v1/peers/priorities")]
 async fn api_v1_peers_priorities(node: web::Data<Node>, pool: web::Data<DbPool>) -> impl Responder {
     let peers = node.peers.clone();
+    let pool_for_block = pool.clone();
     let priorities = web::block(move || {
-        let conn = pool.blocking_lock();
+        let conn = pool_for_block.blocking_lock();
         let mut items: Vec<PeerPriorityItem> = Vec::new();
         let ratings = core_lib::storage::load_node_ratings(&conn).unwrap_or_default();
         let map: std::collections::HashMap<String, core_lib::models::NodeRating> = ratings.into_iter().map(|r| (r.node_id.clone(), r)).collect();
@@ -765,7 +775,7 @@ async fn api_v1_peers_priorities(node: web::Data<Node>, pool: web::Data<DbPool>)
             // Для корректности ожидается, что Node.peers содержит URLы пиров, а соответствие ключ→URL хранится в приложении CLI/конфиге.
             // Здесь заполним trust_priority как среднее по сети, если ключ не найден.
             let (trust, prio) = if let Some((_id, r)) = map.iter().next() { (r.trust_score, r.propagation_priority) } else { (0.0f32, 0.5f32) };
-            items.push(PeerPriorityItem { peer_url: url.clone(), trust_score: trust, propagation_priority: prio, relay_rate: 0.0 });
+            items.push(PeerPriorityItem { peer_url: url.clone(), trust_score: trust, propagation_priority: prio, relay_rate: 0.0, quality_index: 0.0 });
         }
         Ok::<Vec<PeerPriorityItem>, core_lib::models::CoreError>(items)
     }).await;
@@ -773,9 +783,20 @@ async fn api_v1_peers_priorities(node: web::Data<Node>, pool: web::Data<DbPool>)
     let mut items = match priorities { Ok(Ok(v)) => v, _ => Vec::new() };
     // Вливаем метрики ретрансляции
     let stats = get_relay_stats().await;
+    // Обновим relay_rate и quality_index (без длительных блокировок)
     for it in &mut items {
-        if let Some(s) = stats.iter().find(|s| s.peer_url == it.peer_url) {
+        let key = it.peer_url.clone();
+        if let Some(s) = stats.iter().find(|s| s.peer_url == key) {
             it.relay_rate = s.relay_rate;
+        }
+        if let Ok(Ok(Some(mm))) = web::block({
+            let pool2 = pool.clone();
+            move || {
+                let conn = pool2.blocking_lock();
+                core_lib::storage::load_node_metrics(&conn, &key)
+            }
+        }).await {
+            it.quality_index = mm.quality_index;
         }
     }
     HttpResponse::Ok().json(items)
