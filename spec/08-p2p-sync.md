@@ -61,6 +61,18 @@
 - Graph visualization includes real-time propagation and relay metrics
 - CLI `truthctl status` shows network health with priority and success rates
 
+### Local Peer Tracking
+
+- A local SQLite table `peer_history` is maintained to record per-peer sync attempts:
+  - Columns: `peer_url`, `last_sync`, `success_count`, `fail_count`, `last_quality_index`, `last_trust_score`.
+  - Updated automatically after each sync attempt (success or failure).
+- API: `GET /api/v1/network/local` returns JSON with `peers` array and `summary` object:
+  - `peers[i]`: `{ url, last_sync (RFC3339), success_count, fail_count, last_quality_index, last_trust_score }`
+  - `summary`: `{ total_peers, avg_success_rate, avg_quality_index }`
+- CLI integration:
+  - `truthctl peers stats [--format json|table]` prints the endpoint result in a human‑readable table or JSON.
+  - `truthctl peers history [--limit N]` reads local DB table and prints recent rows for offline diagnostics.
+
 Mermaid diagram:
 ```mermaid
 flowchart LR

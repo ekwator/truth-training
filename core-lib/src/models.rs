@@ -280,6 +280,26 @@ pub fn summarize_graph(graph: &GraphData) -> GraphSummary {
     }
 }
 
+/// История по пиру (агрегированная запись)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PeerHistoryEntry {
+    pub id: i64,
+    pub peer_url: String,
+    pub last_sync: Option<i64>,
+    pub success_count: i64,
+    pub fail_count: i64,
+    pub last_quality_index: f32,
+    pub last_trust_score: f32,
+}
+
+/// Сводка по локальной сети/пирам
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PeerSummary {
+    pub total_peers: usize,
+    pub avg_success_rate: f32,
+    pub avg_quality_index: f32,
+}
+
 /// Запись журнала синхронизации высокого уровня
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncLog {

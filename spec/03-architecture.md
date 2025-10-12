@@ -58,6 +58,7 @@ graph TD
 - **JSON API**: `/graph/json` with propagation_priority, relay_success_rate, latency_ms
 - **ASCII Graph**: CLI `truthctl graph show --format ascii` for terminal display
 - **Network Stats**: `/api/v1/stats` with aggregated trust, propagation, and relay metrics
+- **Local Network**: `/api/v1/network/local` returns peer history and local summary for decentralized diagnostics
 
 **Filtering Options:**
 - `min_priority`: Filter nodes by minimum propagation priority
@@ -95,6 +96,7 @@ This separation ensures modular testing, clean builds, and independent versionin
 - **net**: UDP beacon sender/listener in `src/net.rs` for LAN peer discovery.
 - **app/truthctl**: peer registry (`peers.json`), `peers add/list`, and `sync` orchestration (push or pull-only).
 - **sync logs**: persistent high-level sync logs in `core-lib/src/storage.rs` (table `sync_logs`), exposed via CLI `truthctl logs show|clear`.
+- **peer history**: `peer_history` table and helpers in `core-lib/src/storage.rs` track per-peer sync attempts, with API `/api/v1/network/local` and CLI `truthctl peers stats|history`.
 - **node configuration**: user-editable `~/.truthctl/config.json` managed via `truthctl config` (show/set/reset).
 - **status summary**: `truthctl status` aggregates configuration, peers, and recent `sync_logs` to report node health. For runtime checks, `truthctl diagnose --server` probes `/health`, opens SQLite, and inspects P2P listener status.
 - **self-healing init**: `truthctl reset-data [--reinit]` clears local state and can reinitialize node automatically, including key generation/replacement and `init-node` invocation.

@@ -325,6 +325,17 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
             ('observer', 1, 'Read-only observer'),
             ('node',     2, 'Authenticated node with delegation rights'),
             ('admin',    3, 'Administrator');
+        
+        -- local peer sync history for decentralized diagnostics
+        CREATE TABLE IF NOT EXISTS peer_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            peer_url TEXT NOT NULL,
+            last_sync INTEGER,
+            success_count INTEGER DEFAULT 0,
+            fail_count INTEGER DEFAULT 0,
+            last_quality_index REAL DEFAULT 0.0,
+            last_trust_score REAL DEFAULT 0.0
+        );
         "#,
     )?;
 
@@ -2284,4 +2295,85 @@ pub fn update_node_quality(conn: &Connection, peer_url_or_pubkey: &str, quality_
         params![peer_url_or_pubkey, now, quality_index.clamp(0.0, 1.0)],
     )?;
     Ok(())
+}
+
+/// Log a peer sync attempt and update aggregated counters
+pub fn log_peer_sync(
+    conn: &Connection,
+    peer_url: &str,
+    success: bool,
+    trust: f32,
+    quality: f32,
+) -> Result<(), CoreError> {
+    let now = chrono::Utc::now().timestamp();
+    // Try find existing record for peer_url
+    let mut stmt = conn.prepare("SELECT id, success_count, fail_count FROM peer_history WHERE peer_url = ?1 LIMIT 1")?;
+    let row = stmt.query_row(params![peer_url], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?))).optional()?;
+    match row {
+        Some((id, succ, fail)) => {
+            let (succ2, fail2) = if success { (succ + 1, fail) } else { (succ, fail + 1) };
+            conn.execute(
+                r#"UPDATE peer_history
+                   SET last_sync=?2, success_count=?3, fail_count=?4, last_quality_index=?5, last_trust_score=?6
+                   WHERE id=?1"#,
+                params![id, now, succ2, fail2, quality as f64, trust as f64],
+            )?;
+        }
+        None => {
+            let (succ, fail) = if success { (1_i64, 0_i64) } else { (0_i64, 1_i64) };
+            conn.execute(
+                r#"INSERT INTO peer_history (peer_url, last_sync, success_count, fail_count, last_quality_index, last_trust_score)
+                   VALUES (?1, ?2, ?3, ?4, ?5, ?6)"#,
+                params![peer_url, now, succ, fail, quality as f64, trust as f64],
+            )?;
+        }
+    }
+    Ok(())
+}
+
+/// Load peer history list ordered by last_sync desc
+pub fn load_peer_history(conn: &Connection, limit: Option<usize>) -> Result<Vec<crate::models::PeerHistoryEntry>, CoreError> {
+    let sql = r#"SELECT id, peer_url, last_sync, success_count, fail_count, last_quality_index, last_trust_score
+                 FROM peer_history
+                 ORDER BY COALESCE(last_sync, 0) DESC
+                 LIMIT ?1"#;
+    let lim = limit.unwrap_or(100) as i64;
+    let mut stmt = conn.prepare(sql)?;
+    let rows = stmt.query_map(params![lim], |r| {
+        Ok(crate::models::PeerHistoryEntry {
+            id: r.get(0)?,
+            peer_url: r.get(1)?,
+            last_sync: r.get(2)?,
+            success_count: r.get(3)?,
+            fail_count: r.get(4)?,
+            last_quality_index: r.get::<_, f64>(5)? as f32,
+            last_trust_score: r.get::<_, f64>(6)? as f32,
+        })
+    })?;
+    let mut out = Vec::new();
+    for r in rows { out.push(r?); }
+    Ok(out)
+}
+
+/// Compute peer summary statistics across history table
+pub fn get_peer_summary(conn: &Connection) -> Result<crate::models::PeerSummary, CoreError> {
+    // Load minimal fields to compute averages in Rust for portability
+    let mut stmt = conn.prepare("SELECT success_count, fail_count, last_quality_index FROM peer_history")?;
+    let mut rows = stmt.query([])?;
+    let mut total_peers: usize = 0;
+    let mut sum_success_rate: f64 = 0.0;
+    let mut sum_quality: f64 = 0.0;
+    while let Some(row) = rows.next()? {
+        let succ: i64 = row.get(0)?;
+        let fail: i64 = row.get(1)?;
+        let q: f64 = row.get(2)?;
+        let total = (succ + fail) as f64;
+        let rate = if total <= 0.0 { 0.0 } else { (succ as f64) / total };
+        total_peers += 1;
+        sum_success_rate += rate;
+        sum_quality += q;
+    }
+    let avg_success_rate = if total_peers == 0 { 0.0 } else { (sum_success_rate / (total_peers as f64)) as f32 };
+    let avg_quality_index = if total_peers == 0 { 0.0 } else { (sum_quality / (total_peers as f64)) as f32 };
+    Ok(crate::models::PeerSummary { total_peers, avg_success_rate, avg_quality_index })
 }
