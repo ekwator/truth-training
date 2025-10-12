@@ -74,6 +74,25 @@ pub async fn get_relay_stats() -> Vec<RelayStat> {
     out
 }
 
+/// Flush relay metrics to database and update node_metrics table
+pub async fn flush_relay_metrics_to_db(conn: &Connection) -> anyhow::Result<()> {
+    let stats = get_relay_stats().await;
+    let mut relay_data = Vec::new();
+    
+    for stat in stats {
+        // Extract pubkey from peer_url (assuming it's in the URL or we need to map it)
+        // For now, we'll use the peer_url as the identifier
+        let pubkey = stat.peer_url.clone(); // This should be mapped to actual pubkey
+        relay_data.push((pubkey, stat.relay_rate));
+    }
+    
+    if !relay_data.is_empty() {
+        core_lib::storage::flush_relay_metrics(conn, &relay_data)?;
+    }
+    
+    Ok(())
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum SyncError {
     #[error("Network error: {0}")]
@@ -211,6 +230,9 @@ pub async fn bidirectional_sync_with_peer(
 
     // Получаем ответ с результатами синхронизации
     let sync_result: SyncResult = response.json().await?;
+    
+    // Обновляем метрики ретрансляции в базе данных
+    let _ = flush_relay_metrics_to_db(conn).await;
 
     log::info!(
         "Bidirectional sync with {peer_url} completed: conflicts {}, events {}, trust changes {}",
@@ -605,6 +627,9 @@ pub async fn incremental_sync_with_peer(
     if !ok { anyhow::bail!("Incremental sync failed: {}", response.status()); }
 
     let sync_result: SyncResult = response.json().await?;
+    
+    // Обновляем метрики ретрансляции в базе данных
+    let _ = flush_relay_metrics_to_db(conn).await;
 
     log::info!(
         "Incremental sync with {peer_url} completed: {} items synced; trust changes {}",

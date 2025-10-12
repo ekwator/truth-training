@@ -2208,3 +2208,20 @@ pub fn load_all_node_metrics(conn: &Connection) -> Result<Vec<crate::NodeMetrics
     
     Ok(metrics)
 }
+
+/// Update relay success rate for a specific node
+pub fn update_relay_success_rate(conn: &Connection, pubkey: &str, rate: f32) -> Result<(), CoreError> {
+    conn.execute(
+        "UPDATE node_metrics SET relay_success_rate = ?1 WHERE pubkey = ?2",
+        params![rate, pubkey],
+    )?;
+    Ok(())
+}
+
+/// Flush relay metrics from memory to database
+pub fn flush_relay_metrics(conn: &Connection, relay_stats: &[(String, f32)]) -> Result<(), CoreError> {
+    for (pubkey, success_rate) in relay_stats {
+        upsert_node_metrics(conn, pubkey, chrono::Utc::now().timestamp(), *success_rate)?;
+    }
+    Ok(())
+}

@@ -111,6 +111,23 @@ flowchart LR
 
 **POST /incremental_sync** — same headers; body contains only recent changes since `last_sync`.
 
+### Relay Metrics Propagation Logic
+
+The system tracks relay success rates dynamically during sync operations:
+
+1. **Metrics Collection**: Each sync operation calls `record_relay_result(peer_url, success)` to track success/failure rates.
+
+2. **Storage**: Relay metrics are stored in the `node_metrics` table with `relay_success_rate` (0.0–1.0).
+
+3. **Propagation**: Metrics are flushed to the database periodically via `flush_relay_metrics_to_db()`.
+
+4. **Visualization**: CLI and API endpoints display relay success rates with color coding:
+   - 🟢 Green: >80% success rate
+   - 🟡 Yellow: 50-80% success rate  
+   - 🔴 Red: <50% success rate
+
+5. **Integration**: Relay metrics influence trust propagation and node prioritization in the network.
+
 ### Roadmap
 
 - Integrate conflict resolution into API/service layer.

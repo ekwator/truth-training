@@ -233,6 +233,12 @@ Trust & reputation:
 - Trust propagation (blend and decay) lives in `core-lib::recalc_ratings` and `merge_ratings`. Priority is refreshed automatically after merges and recalculations.
 - Sync records are stored in `sync_logs` for auditing and diagnostics.
 
+Relay metrics tracking:
+- Dynamic relay success rate tracking via `record_relay_result(peer_url, success)` in sync functions.
+- Real-time metrics stored in `node_metrics` table with `relay_success_rate` (0.0–1.0).
+- CLI displays relay metrics with color coding: 🟢 >80%, 🟡 >50%, 🔴 <50%.
+- API endpoints include live relay success rates in `/api/v1/stats` and `/graph/json`.
+
 Relay priority (Mermaid):
 ```mermaid
 flowchart LR
