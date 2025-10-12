@@ -715,7 +715,7 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
                 }
                 if ascii_relay && arr.len() >= 2 {
                     // Простейшая ASCII схема по первым трём
-                    let mut nodes: Vec<(String, f64)> = arr.iter().take(3).map(|it| {
+                    let nodes: Vec<(String, f64)> = arr.iter().take(3).map(|it| {
                         (
                             it.get("peer_url").and_then(|x| x.as_str()).unwrap_or("").to_string(),
                             it.get("propagation_priority").and_then(|x| x.as_f64()).unwrap_or(0.0),
