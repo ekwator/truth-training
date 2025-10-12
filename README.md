@@ -203,6 +203,8 @@ Main capabilities:
 - `truthctl diagnose [--verbose]` — node diagnostics (config, keys, peers).
 - `truthctl reset-data [--confirm] [--reinit]` — wipe local data and optionally reinit (auto key generation/replace).
 - `truthctl graph show [--format json|ascii] [--min-priority 0.3] [--limit 50]` — visualize network graph with propagation metrics.
+- `truthctl peers stats [--server URL] [--format json|table]` — локальная статистика по пирам (успешность, качество, доверие).
+- `truthctl peers history [--limit N] [--db path]` — история синхронизаций по пирам из локальной БД.
 
 Examples:
 ```bash
@@ -213,6 +215,8 @@ truthctl peers sync-all --mode incremental
 truthctl logs show --limit 50
 truthctl graph show --format ascii --min-priority 0.5
 truthctl status  # shows network health metrics
+truthctl peers stats --format table
+truthctl peers history --limit 20 --db ./node.db
 ```
 
 Full CLI reference: **`docs/CLI_Usage.md`** and **`spec/10-cli.md`**.
@@ -241,6 +245,38 @@ Relay metrics & adaptive quality tracking:
   - Распространение по сети: `blend_quality(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)`.
 - CLI displays relay and quality: relay 🟢🟡🔴, quality 🔵🟡🔴; shows average network quality.
 - API `/api/v1/stats` возвращает `avg_quality_index`; `/graph/json` включает `quality_index` на узлах.
+
+### Local Network Statistics & Peer History
+
+- New SQLite table `peer_history` tracks per-peer sync attempts (success/fail counters, last sync timestamp, last observed `quality_index` and `trust_score`).
+- Automatic logging after each sync attempt updates `peer_history`.
+- API `GET /api/v1/network/local` returns:
+  - `peers`: list with `url`, `last_sync` (RFC3339), `success_count`, `fail_count`, `last_quality_index`, `last_trust_score`.
+  - `summary`: `total_peers`, `avg_success_rate`, `avg_quality_index`.
+- CLI:
+  - `truthctl peers stats [--format json|table]` — shows table and averages.
+  - `truthctl peers history [--limit N] [--db path]` — prints recent history rows.
+
+Example JSON for `/api/v1/network/local`:
+```json
+{
+  "peers": [
+    {
+      "url": "http://127.0.0.1:8080",
+      "last_sync": "2025-10-11T13:00:00Z",
+      "success_count": 24,
+      "fail_count": 3,
+      "last_quality_index": 0.85,
+      "last_trust_score": 0.91
+    }
+  ],
+  "summary": {
+    "total_peers": 12,
+    "avg_success_rate": 0.88,
+    "avg_quality_index": 0.83
+  }
+}
+```
 
 Relay priority (Mermaid):
 ```mermaid

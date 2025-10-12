@@ -253,11 +253,33 @@ pub async fn bidirectional_sync_with_peer(
             // Записываем успешный результат и сразу флешим, чтобы метрики попали в БД
             record_relay_result(peer_url, true).await;
             let _ = flush_relay_metrics_to_db(conn).await;
+            // Обновляем peer_history: используем средний quality_index сети как прокси качества пира
+            let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(conn) {
+                Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
+                _ => 0.0,
+            };
+            // Попробуем получить доверие к пиру, если public_key известен как peer_url (MVP)
+            let trust_score = {
+                let ratings = core_lib::storage::load_node_ratings(conn).unwrap_or_default();
+                // В MVP нет маппинга URL→pubkey: используем среднее как прокси
+                if ratings.is_empty() { 0.0 } else { (ratings.iter().map(|r| r.trust_score as f64).sum::<f64>() / ratings.len() as f64) as f32 }
+            };
+            let _ = core_lib::storage::log_peer_sync(conn, peer_url, true, trust_score, avg_quality_index);
             Ok(sync_result)
         }
         Err(e) => {
             // Любая ошибка синхронизации учитывается как неуспешная ретрансляция
             record_relay_result(peer_url, false).await;
+            // Логируем неуспех
+            let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(conn) {
+                Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
+                _ => 0.0,
+            };
+            let trust_score = {
+                let ratings = core_lib::storage::load_node_ratings(conn).unwrap_or_default();
+                if ratings.is_empty() { 0.0 } else { (ratings.iter().map(|r| r.trust_score as f64).sum::<f64>() / ratings.len() as f64) as f32 }
+            };
+            let _ = core_lib::storage::log_peer_sync(conn, peer_url, false, trust_score, avg_quality_index);
             Err(e)
         }
     }
@@ -281,7 +303,7 @@ pub async fn push_local_data(
         metrics: storage::load_metrics(conn)?,
         node_ratings: node_ratings.clone(),
         group_ratings: group_ratings.clone(),
-        node_metrics: node_metrics,
+        node_metrics,
         last_sync: Utc::now().timestamp(),
     };
 
@@ -681,10 +703,28 @@ pub async fn incremental_sync_with_peer(
         Ok(sync_result) => {
             record_relay_result(peer_url, true).await;
             let _ = flush_relay_metrics_to_db(conn).await;
+            let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(conn) {
+                Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
+                _ => 0.0,
+            };
+            let trust_score = {
+                let ratings = core_lib::storage::load_node_ratings(conn).unwrap_or_default();
+                if ratings.is_empty() { 0.0 } else { (ratings.iter().map(|r| r.trust_score as f64).sum::<f64>() / ratings.len() as f64) as f32 }
+            };
+            let _ = core_lib::storage::log_peer_sync(conn, peer_url, true, trust_score, avg_quality_index);
             Ok(sync_result)
         }
         Err(e) => {
             record_relay_result(peer_url, false).await;
+            let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(conn) {
+                Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
+                _ => 0.0,
+            };
+            let trust_score = {
+                let ratings = core_lib::storage::load_node_ratings(conn).unwrap_or_default();
+                if ratings.is_empty() { 0.0 } else { (ratings.iter().map(|r| r.trust_score as f64).sum::<f64>() / ratings.len() as f64) as f32 }
+            };
+            let _ = core_lib::storage::log_peer_sync(conn, peer_url, false, trust_score, avg_quality_index);
             Err(e)
         }
     }

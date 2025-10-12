@@ -164,6 +164,10 @@ enum PeersCmd {
     List,
     /// Приоритеты ретрансляции и метрики
     Priorities { #[arg(long, default_value = "http://127.0.0.1:8080")] server: String, #[arg(long)] ascii_relay: bool },
+    /// Статистика локальной сети (успехи/ошибки, качество)
+    Stats { #[arg(long, default_value = "http://127.0.0.1:8080")] server: String, #[arg(long, default_value = "table")] format: String },
+    /// История по пирам из локальной БД
+    History { #[arg(long, default_value_t = 50)] limit: usize, #[arg(long, default_value = "truth.db")] db: PathBuf },
     /// Добавить пира
     Add { url: String, public_key: String },
     /// Синхронизировать со всеми пирами
@@ -805,6 +809,61 @@ async fn run_peers(cmd: PeersCmd) -> anyhow::Result<()> {
                     }
                     println!("\n{}", parts.join(""));
                 }
+            }
+        }
+        PeersCmd::Stats { server, format } => {
+            use reqwest::Client;
+            let client = Client::new();
+            let resp = client.get(format!("{}/api/v1/network/local", server)).send().await?;
+            if !resp.status().is_success() { anyhow::bail!(format!("HTTP {}", resp.status())); }
+            let v: serde_json::Value = resp.json().await?;
+            match format.as_str() {
+                "json" => {
+                    println!("{}", serde_json::to_string_pretty(&v)?);
+                }
+                _ => {
+                    println!("Peer                  Last Sync              Success  Fails  Quality  Trust");
+                    println!("{}", "\u{2500}".repeat(70));
+                    if let Some(arr) = v.get("peers").and_then(|x| x.as_array()) {
+                        for it in arr {
+                            let url = it.get("url").and_then(|x| x.as_str()).unwrap_or("");
+                            let last = it.get("last_sync").and_then(|x| x.as_str()).unwrap_or("");
+                            let succ = it.get("success_count").and_then(|x| x.as_i64()).unwrap_or(0);
+                            let fail = it.get("fail_count").and_then(|x| x.as_i64()).unwrap_or(0);
+                            let qual = it.get("last_quality_index").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                            let trust = it.get("last_trust_score").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                            println!("{:<22} {:<20} {:>7} {:>6} {:>7.2} {:>6.2}", url, last, succ, fail, qual, trust);
+                        }
+                    }
+                    if let Some(summary) = v.get("summary") {
+                        let avg_sr = summary.get("avg_success_rate").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                        let avg_q = summary.get("avg_quality_index").and_then(|x| x.as_f64()).unwrap_or(0.0);
+                        println!("{}", "\u{2500}".repeat(70));
+                        println!("Avg success rate: {:.2} | Avg quality: {:.2}", avg_sr, avg_q);
+                    }
+                }
+            }
+        }
+        PeersCmd::History { limit, db } => {
+            if !std::path::Path::new(&db).exists() {
+                println!("{}", "❌ Database not found".red());
+                return Ok(());
+            }
+            let conn = storage::open_db(db.to_str().unwrap())?;
+            let hist = core_lib::storage::load_peer_history(&conn, Some(limit))?;
+            if hist.is_empty() {
+                println!("{}", "No peer history".yellow());
+            } else {
+                println!("Peer                  Last Sync        Success  Fails  Quality  Trust");
+                println!("{}", "\u{2500}".repeat(70));
+                for h in hist {
+                    let last = h.last_sync.map(|ts| chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts as u64)).to_rfc3339()).unwrap_or_else(|| "".into());
+                    println!("{:<22} {:<16} {:>7} {:>6} {:>7.2} {:>6.2}", h.peer_url, last, h.success_count, h.fail_count, h.last_quality_index, h.last_trust_score);
+                }
+                // Итоговая строка
+                let summary = core_lib::storage::get_peer_summary(&conn)?;
+                println!("{}", "\u{2500}".repeat(70));
+                println!("Avg success rate: {:.2} | Avg quality: {:.2}", summary.avg_success_rate, summary.avg_quality_index);
             }
         }
         PeersCmd::Add { url, public_key } => {
