@@ -104,6 +104,7 @@ flowchart LR
   "metrics": [ProgressMetrics...],
   "node_ratings": [NodeRating...],
   "group_ratings": [GroupRating...],
+  "node_metrics": [NodeMetrics...],
   "last_sync": 1710000000
 }
 ```
@@ -127,6 +128,16 @@ The system tracks relay success rates dynamically during sync operations:
    - 🔴 Red: <50% success rate
 
 5. **Integration**: Relay metrics influence trust propagation and node prioritization in the network.
+
+## Quality Index Exchange
+
+- quality_index — индикатор непрерывности доверия (0.0–1.0), не является штрафом за оффлайн.
+- Передается в составе `node_metrics` наряду с `relay_success_rate`.
+- Локальный расчёт: адаптивная смесь с EMA-сглаживанием:
+  - q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability
+  - q = α·q_raw + (1-α)·prev, α=0.3
+- При приеме удаленных метрик: `quality_index_local = clamp(0.8·local + 0.2·remote, 0..1)`.
+- Убраны любые временные штрафы/decay: качество и доверие не уменьшаются из-за неактивности; fairness для мобильных/оффлайн узлов.
 
 ### Roadmap
 

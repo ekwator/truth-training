@@ -90,7 +90,7 @@ This separation ensures modular testing, clean builds, and independent versionin
 - **core-lib**: models, storage (schema + ops), expert heuristics.
 - **api**: HTTP routes in `src/api.rs` (health, init/seed, events/statements, impacts, progress, get_data, sync, incremental_sync, ratings, graph) with signature verification helpers. Server health checks for API/DB/P2P are exposed via `truth_core::server_diagnostics` and can be invoked from CLI.
 - **p2p**: sync flows and reconciliation in `src/p2p/sync.rs`, periodic node loop in `src/p2p/node.rs`.
-- **trust layer**: `core-lib/src/trust_propagation.rs` реализует смешивание доверия (local*0.8 + remote*0.2) и временной спад для устаревших записей; интеграция вызывается в процессе `reconcile` при слиянии рейтингов.
+- **trust layer**: `core-lib/src/trust_propagation.rs` реализует смешивание доверия (local*0.8 + remote*0.2). Временной спад (time-based decay) удалён для справедливости мобильных/оффлайн узлов. Добавлен `quality_index` (0.0–1.0) как индикатор непрерывности: локально считается по адаптивной формуле с EMA, по сети распространяется через `blend_quality(local, remote)`.
 - **p2p/encryption**: `CryptoIdentity` (Ed25519) with hex helpers and Result-based verify; header message patterns.
 - **net**: UDP beacon sender/listener in `src/net.rs` for LAN peer discovery.
 - **app/truthctl**: peer registry (`peers.json`), `peers add/list`, and `sync` orchestration (push or pull-only).

@@ -1,11 +1,10 @@
 use crate::{CoreError, NodeRating};
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension};
 
-// Константы распространения доверия
+// Константы распространения доверия и качества
 const BLEND_LOCAL_WEIGHT: f32 = 0.8;
 const BLEND_REMOTE_WEIGHT: f32 = 0.2;
-const DECAY_FACTOR: f32 = 0.9; // 10% снижение при давности > 7 суток
-const DECAY_SECS: i64 = 7 * 24 * 60 * 60;
+const QUALITY_EMA_ALPHA: f32 = 0.3; // сглаживание экспоненциальным средним
 
 /// Смешивает локальный и удалённый скор по формуле:
 /// new = local*0.8 + remote*0.2, с обрезкой в [-1, 1]
@@ -34,34 +33,29 @@ mod tests {
     }
 }
 
-/// Применить временной спад доверия: если запись старше 7 дней — умножаем trust_score на 0.9
-/// Возвращает количество записей, к которым применился спад
-pub fn apply_time_decay(conn: &Connection, now_ts: i64) -> Result<usize, CoreError> {
-    let threshold = now_ts - DECAY_SECS;
-    // Умножаем на коэффициент
-    let affected: usize = conn.execute(
-        r#"
-        UPDATE node_ratings
-        SET trust_score = trust_score * ?1
-        WHERE last_updated < ?2
-        "#,
-        params![DECAY_FACTOR as f64, threshold],
-    )?;
+/// Смешивание качества между локальным и удалённым значениями (0..1)
+pub fn blend_quality(local_quality: f32, remote_quality: f32) -> f32 {
+    let blended = local_quality * BLEND_LOCAL_WEIGHT + remote_quality * BLEND_REMOTE_WEIGHT;
+    blended.clamp(0.0, 1.0)
+}
 
-    // Обрезаем в диапазон [-1, 1]
-    conn.execute(
-        r#"
-        UPDATE node_ratings
-        SET trust_score = CASE
-            WHEN trust_score > 1.0 THEN 1.0
-            WHEN trust_score < -1.0 THEN -1.0
-            ELSE trust_score
-        END
-        "#,
-        [],
-    )?;
-
-    Ok(affected)
+/// Рассчитать адаптивный quality_index по взвешенной формуле с EMA-сглаживанием
+/// q_raw = 0.5*relay_success_rate + 0.3*conflict_free_ratio + 0.2*trust_score_stability
+/// q = alpha*q_raw + (1-alpha)*prev, alpha = QUALITY_EMA_ALPHA
+pub fn compute_quality_index(
+    relay_success_rate: f32,
+    conflict_free_ratio: f32,
+    trust_score_stability: f32,
+    prev_quality: Option<f32>,
+) -> f32 {
+    let q_raw = (0.5 * relay_success_rate)
+        + (0.3 * conflict_free_ratio)
+        + (0.2 * trust_score_stability);
+    let q_raw = q_raw.clamp(0.0, 1.0);
+    match prev_quality {
+        Some(prev) => (QUALITY_EMA_ALPHA * q_raw + (1.0 - QUALITY_EMA_ALPHA) * prev).clamp(0.0, 1.0),
+        None => q_raw,
+    }
 }
 
 /// Выполнить распространение доверия по входящим оценкам: обновить/вставить blended trust.
@@ -131,7 +125,7 @@ pub fn propagate_from_remote(
                 ])?;
             }
             None => {
-                // Нет локальной записи: blended от 0.0 и удалённого
+                // Нет локальной записи: blended от 0.0 и удалённого (без штрафов за давность)
                 let new_trust = blend_trust(0.0, nr.trust_score);
                 let delta = new_trust; // от 0.0
                 if delta.abs() > 1e-6 {

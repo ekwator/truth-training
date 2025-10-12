@@ -17,7 +17,7 @@ Base URL: http://<host>:<port>/
 - POST /sync (signed) → SyncResult
   - Headers: X-Public-Key, X-Signature, X-Timestamp
   - Message signed: `sync_push:{ts}`
-  - Body: SyncData { events, statements, impacts, metrics, last_sync }
+  - Body: SyncData { events, statements, impacts, metrics, node_ratings, group_ratings, node_metrics, last_sync }
 - POST /incremental_sync (signed) → SyncResult
   - Headers: X-Public-Key, X-Signature, X-Timestamp
   - Message signed: `incremental_sync:{ts}`
@@ -160,6 +160,9 @@ SyncData
   "statements": [/* Statement[] */],
   "impacts": [/* Impact[] */],
   "metrics": [/* ProgressMetrics[] */],
+  "node_ratings": [/* NodeRating[] */],
+  "group_ratings": [/* GroupRating[] */],
+  "node_metrics": [/* NodeMetrics[]; includes relay_success_rate, quality_index */],
   "last_sync": 1710000000
 }
 ```
@@ -171,6 +174,9 @@ SyncResult
   "events_added": 0,
   "statements_added": 0,
   "impacts_added": 0,
-  "errors": ["string"]
+  "errors": ["string"],
+  "nodes_trust_changed": 0,
+  "trust_diff": [{"node_id":"hex","delta":0.1}],
+  "avg_quality_index": 0.82
 }
 ```
