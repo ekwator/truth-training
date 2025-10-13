@@ -1,0 +1,13 @@
+{
+  "events": 120,
+  "statements": 340,
+  "impacts": 21,
+  "node_ratings": 8,
+  "group_ratings": 2,
+  "avg_trust_score": 0.62,
+  "avg_propagation_priority": 0.71,
+  "avg_relay_success_rate": 0.84,
+  "active_nodes": 7
+}
+
+
