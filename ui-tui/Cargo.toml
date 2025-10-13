@@ -1,6 +1,7 @@
 [package]
 name = "ui-tui"
-version = "0.1.0"
+version = "0.3.0"
+description = "Stable foundation release with adaptive trust propagation, P2P analytics, and Android integration."
 edition = "2021"
 
 [dependencies]
