@@ -1,0 +1,13 @@
+{
+  "nodes": [
+    { "id": "nodeA", "score": 0.78, "propagation_priority": 0.82, "last_seen": 1710000500, "relay_success_rate": 0.93 },
+    { "id": "nodeB", "score": 0.64, "propagation_priority": 0.68, "last_seen": 1710000450, "relay_success_rate": 0.80 },
+    { "id": "nodeC", "score": 0.40, "propagation_priority": 0.35, "last_seen": 1710000400, "relay_success_rate": 0.55 }
+  ],
+  "links": [
+    { "source": "nodeA", "target": "nodeB", "weight": 0.72, "latency_ms": 42 },
+    { "source": "nodeB", "target": "nodeC", "weight": 0.55, "latency_ms": 120 }
+  ]
+}
+
+
