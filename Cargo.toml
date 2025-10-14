@@ -7,6 +7,7 @@ edition = "2021"
 [lib]
 name = "truth_core"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [workspace]
 members = ["app","core-lib","platform","ui-tui","ui-web"]

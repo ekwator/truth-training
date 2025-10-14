@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -e
+
+if [ -z "$NDK_HOME" ]; then
+  echo "Please set NDK_HOME to your Android NDK path"
+  exit 1
+fi
+
+TARGETS=("aarch64-linux-android" "x86_64-linux-android")
+
+for TARGET in "${TARGETS[@]}"; do
+  echo "Building for $TARGET..."
+  rustup target add $TARGET || true
+  cargo build --release --target $TARGET
+done
+
+mkdir -p ./android-libs/arm64-v8a ./android-libs/x86_64
+cp target/aarch64-linux-android/release/libtruthcore.so ./android-libs/arm64-v8a/
+cp target/x86_64-linux-android/release/libtruthcore.so ./android-libs/x86_64/
+
+echo "✅ Build complete. Libraries in ./android-libs/"
+
