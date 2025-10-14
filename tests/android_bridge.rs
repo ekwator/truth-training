@@ -38,6 +38,23 @@ fn process_json_request_logic(input: &str) -> String {
             "avg_relay_success_rate": 0.84,
             "active_nodes": 7
         }),
+        Some("sync_peers") => json!({
+            "status": "ok",
+            "peers": ["node1.local", "node2.local"]
+        }),
+        Some("submit_claim") => {
+            let claim = parsed["claim"].as_str().unwrap_or("").to_string();
+            json!({ "status": "received", "claim": claim })
+        }
+        Some("get_claims") => json!({
+            "status": "ok",
+            "claims": ["Earth is round", "Truth is distributed"]
+        }),
+        Some("analyze_text") => {
+            let text = parsed["text"].as_str().unwrap_or("");
+            let keywords = if text.is_empty() { vec![] } else { vec!["truth", "context"] };
+            json!({ "status": "ok", "sentiment": "neutral", "keywords": keywords })
+        }
         _ => json!({
             "error": "unknown_action",
             "received_action": parsed["action"]
@@ -45,6 +62,44 @@ fn process_json_request_logic(input: &str) -> String {
     };
 
     response.to_string()
+}
+
+#[test]
+fn test_sync_peers() {
+    let input = r#"{"action":"sync_peers"}"#;
+    let output = process_json_request_logic(input);
+    let parsed: Value = serde_json::from_str(&output).unwrap();
+    assert_eq!(parsed["status"], "ok");
+    assert!(parsed["peers"].is_array());
+    assert_eq!(parsed["peers"][0], "node1.local");
+}
+
+#[test]
+fn test_submit_claim() {
+    let input = r#"{"action":"submit_claim","claim":"Earth is round"}"#;
+    let output = process_json_request_logic(input);
+    let parsed: Value = serde_json::from_str(&output).unwrap();
+    assert_eq!(parsed["status"], "received");
+    assert_eq!(parsed["claim"], "Earth is round");
+}
+
+#[test]
+fn test_get_claims() {
+    let input = r#"{"action":"get_claims"}"#;
+    let output = process_json_request_logic(input);
+    let parsed: Value = serde_json::from_str(&output).unwrap();
+    assert_eq!(parsed["status"], "ok");
+    assert!(parsed["claims"].is_array());
+}
+
+#[test]
+fn test_analyze_text() {
+    let input = r#"{"action":"analyze_text","text":"truth requires context"}"#;
+    let output = process_json_request_logic(input);
+    let parsed: Value = serde_json::from_str(&output).unwrap();
+    assert_eq!(parsed["status"], "ok");
+    assert_eq!(parsed["sentiment"], "neutral");
+    assert!(parsed["keywords"].is_array());
 }
 
 #[test]

@@ -77,6 +77,45 @@ pub extern "system" fn Java_com_truth_training_client_TruthCore_processJsonReque
             "avg_relay_success_rate": 0.84,
             "active_nodes": 7
         }),
+        // P2P: trigger peer discovery/sync
+        Some("sync_peers") => {
+            // TODO: integrate with truth_core::p2p::sync to perform discovery/sync and fetch peers
+            json!({
+                "status": "ok",
+                "peers": ["node1.local", "node2.local"]
+            })
+        }
+        // Semantic: register a new claim
+        Some("submit_claim") => {
+            let claim = parsed["claim"].as_str().unwrap_or("").to_string();
+            // TODO: integrate with storage or semantic engine to persist claim
+            json!({
+                "status": "received",
+                "claim": claim
+            })
+        }
+        // Semantic: get existing claims (summary)
+        Some("get_claims") => {
+            // TODO: load claims from storage
+            json!({
+                "status": "ok",
+                "claims": [
+                    "Earth is round",
+                    "Truth is distributed"
+                ]
+            })
+        }
+        // Semantic: analyze a text snippet
+        Some("analyze_text") => {
+            let text = parsed["text"].as_str().unwrap_or("");
+            // TODO: call truth_core semantic analyzer when available
+            let keywords = if text.is_empty() { vec![] } else { vec!["truth", "context"] };
+            json!({
+                "status": "ok",
+                "sentiment": "neutral",
+                "keywords": keywords
+            })
+        }
         _ => json!({
             "error": "unknown_action",
             "received_action": parsed["action"]
