@@ -45,6 +45,7 @@ base64ct = "=1.7.3"
 sha2 = "0.10"
 thiserror = "1.0"
 jsonwebtoken = "9"
+jni = "0.21"
 
 # OpenAPI / Swagger UI for actix-web
 utoipa = { version = "4", features = ["actix_extras"] }

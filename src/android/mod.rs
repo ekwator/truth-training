@@ -2,26 +2,89 @@
 
 use std::os::raw::c_char;
 use std::ffi::CString;
+use jni::objects::{JClass, JString};
+use jni::sys::jstring;
+use jni::JNIEnv;
+use serde_json::{json, Value};
 
 /// Initialize the Truth Core runtime.
 #[no_mangle]
 pub extern "C" fn Java_com_truth_training_client_TruthCore_initNode() {
-+    // Initialize the Truth Core runtime here
-+    // truth_core::init_runtime();
-+}
-+
-+/// Get node info as a JSON string.
-+#[no_mangle]
-+pub extern "C" fn Java_com_truth_training_client_TruthCore_getInfo() -> *mut c_char {
-+    let info = r#"{"name":"truth-core","version":"0.3.0","uptime_sec":0,"started_at":0,"features":["p2p-client-sync","jwt"],"peer_count":0}"#;
-+    CString::new(info).unwrap().into_raw()
-+}
-+
-+/// Free a C string returned by the library.
-+#[no_mangle]
-+pub extern "C" fn Java_com_truth_training_client_TruthCore_freeString(s: *mut c_char) {
-+    if !s.is_null() {
-+        unsafe { let _ = CString::from_raw(s); }
-+    }
-+}
-+
+    // Initialize the Truth Core runtime here
+    // truth_core::init_runtime();
+}
+
+/// Get node info as a JSON string.
+#[no_mangle]
+pub extern "C" fn Java_com_truth_training_client_TruthCore_getInfo() -> *mut c_char {
+    let info = r#"{"name":"truth-core","version":"0.3.0","uptime_sec":0,"started_at":0,"features":["p2p-client-sync","jwt"],"peer_count":0}"#;
+    CString::new(info).unwrap().into_raw()
+}
+
+/// Free a C string returned by the library.
+#[no_mangle]
+pub extern "C" fn Java_com_truth_training_client_TruthCore_freeString(s: *mut c_char) {
+    if !s.is_null() {
+        unsafe { let _ = CString::from_raw(s); }
+    }
+}
+
+/// Process JSON requests from Android client.
+#[no_mangle]
+pub extern "system" fn Java_com_truth_training_client_TruthCore_processJsonRequest(
+    mut env: JNIEnv,
+    _class: JClass,
+    request: JString,
+) -> jstring {
+    let input: String = match env.get_string(&request) {
+        Ok(jstr) => jstr.into(),
+        Err(_) => return env.new_string(r#"{"error":"invalid_input"}"#).unwrap().into_raw(),
+    };
+
+    let parsed: Value = match serde_json::from_str(&input) {
+        Ok(v) => v,
+        Err(_) => return env.new_string(r#"{"error":"invalid_json"}"#).unwrap().into_raw(),
+    };
+
+    let response = match parsed["action"].as_str() {
+        Some("get_state") => json!({
+            "status": "ok",
+            "state": "connected",
+            "version": "0.3.0",
+            "uptime": 12345
+        }),
+        Some("ping") => json!({
+            "status": "ok",
+            "reply": "pong",
+            "timestamp": chrono::Utc::now().timestamp()
+        }),
+        Some("get_info") => json!({
+            "status": "ok",
+            "name": "truth-core",
+            "version": "0.3.0",
+            "features": ["p2p-client-sync", "jwt"],
+            "peer_count": 0
+        }),
+        Some("get_stats") => json!({
+            "status": "ok",
+            "events": 120,
+            "statements": 340,
+            "impacts": 21,
+            "node_ratings": 8,
+            "group_ratings": 2,
+            "avg_trust_score": 0.62,
+            "avg_propagation_priority": 0.71,
+            "avg_relay_success_rate": 0.84,
+            "active_nodes": 7
+        }),
+        _ => json!({
+            "error": "unknown_action",
+            "received_action": parsed["action"]
+        }),
+    };
+
+    match env.new_string(response.to_string()) {
+        Ok(jstr) => jstr.into_raw(),
+        Err(_) => env.new_string(r#"{"error":"response_creation_failed"}"#).unwrap().into_raw(),
+    }
+}
