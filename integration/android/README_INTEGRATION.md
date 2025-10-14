@@ -1,5 +1,37 @@
 ## Android Integration Guide (Truth Core v0.3.0)
 
+### Android JSON signature verification (Ed25519)
+
+Android-клиент подписывает детерминированную сериализацию поля `payload` (JSON) с помощью Ed25519 и передает вместе с ключом:
+
+```json
+{
+  "node_id": "device-1",
+  "payload": { "action": "ping", "n": 1 },
+  "signature": "<base64 Ed25519 signature>",
+  "public_key": "<base64 Ed25519 public key>"
+}
+```
+
+На стороне Rust ядра выполняется верификация до обработки:
+- Извлекаются `signature` и `public_key`.
+- Формируется каноническая JSON-строка из `payload` (`serde_json::to_vec`).
+- Подпись проверяется по публичному ключу Ed25519.
+
+Ответы:
+- Успех:
+```json
+{ "status": "ok", "verified": true }
+```
+- Ошибка подписи:
+```json
+{ "status": "error", "reason": "invalid_signature" }
+```
+
+Примечания:
+- И `signature`, и `public_key` — base64 от сырых байт Ed25519 (signature: 64 байта, public key: 32 байта).
+- Сериализация `payload` должна быть детерминированной и совпадать с тем, что подписал Android.
+
 This guide helps Android developers consume the Truth Core REST API using Retrofit and JWT authentication.
 
 ### Overview
