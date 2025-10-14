@@ -15,6 +15,7 @@ use once_cell::sync::Lazy;
 use utoipa::{OpenApi, ToSchema};
 use crate::p2p::sync::get_relay_stats;
 use core_lib::models::{PeerHistoryEntry, PeerSummary};
+use base64::{engine::general_purpose, Engine as _};
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
 
@@ -191,7 +192,7 @@ fn jwt_decoding_key() -> DecodingKey {
     DecodingKey::from_secret(JWT_SECRET.as_bytes())
 }
 
-fn issue_jwt_pair_with(conn: &rusqlite::Connection, public_key_hex: &str) -> anyhow::Result<(String, String, i64)> {
+pub fn issue_jwt_pair_with(conn: &rusqlite::Connection, public_key_hex: &str) -> anyhow::Result<(String, String, i64)> {
     use chrono::Utc;
     let now = Utc::now().timestamp() as usize;
     let exp_access = (Utc::now() + chrono::Duration::hours(1)).timestamp() as usize;
@@ -728,6 +729,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(health)
         .service(api_v1_info)
         .service(api_v1_stats)
+        .service(api_v1_push)
         .service(api_v1_network_local)
         .service(api_v1_auth)
         .service(api_v1_refresh)
@@ -1054,6 +1056,48 @@ async fn require_jwt(req: HttpRequest) -> Result<String, HttpResponse> {
     match verify_jwt(&token) {
         Ok(c) => Ok(c.sub),
         Err(_) => Err(unauthorized_json()),
+    }
+}
+
+// ===================== Android Push endpoint =====================
+
+#[derive(Debug, Deserialize)]
+struct PushRequest {
+    node_id: String,
+    payload: serde_json::Value,
+    signature: String,   // base64
+    public_key: String,  // base64
+}
+
+fn b64_to_hex(b64: &str) -> Result<String, String> {
+    let bytes = general_purpose::STANDARD
+        .decode(b64)
+        .map_err(|e| format!("base64 decode error: {}", e))?;
+    Ok(hex::encode(bytes))
+}
+
+#[post("/api/v1/push")]
+async fn api_v1_push(req: HttpRequest, body: web::Json<PushRequest>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+
+    let PushRequest { node_id, payload, signature, public_key } = body.into_inner();
+
+    let msg_bytes = match serde_json::to_vec(&payload) {
+        Ok(b) => b,
+        Err(_) => return HttpResponse::BadRequest().json(serde_json::json!({"status":"error","reason":"bad_payload"})),
+    };
+
+    // Convert base64 inputs to hex to reuse existing verifier
+    let pk_hex = match b64_to_hex(&public_key) { Ok(s) => s, Err(e) => return HttpResponse::BadRequest().json(serde_json::json!({"status":"error","reason":e})) };
+    let sig_hex = match b64_to_hex(&signature) { Ok(s) => s, Err(e) => return HttpResponse::BadRequest().json(serde_json::json!({"status":"error","reason":e})) };
+
+    match verify_signature(&pk_hex, &sig_hex, std::str::from_utf8(&msg_bytes).unwrap_or("")) {
+        Ok(()) => {
+            // Enqueue or log the payload for processing
+            log::info!("push from {} accepted: {}", node_id, payload);
+            HttpResponse::Ok().json(serde_json::json!({"status":"ok"}))
+        }
+        Err(_) => HttpResponse::Unauthorized().json(serde_json::json!({"status":"error","reason":"invalid_signature"})),
     }
 }
 
