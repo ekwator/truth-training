@@ -1,2 +1,4 @@
 /target
 android-libs/
+/minimal-build/target
+/android-build/target

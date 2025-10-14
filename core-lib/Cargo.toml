@@ -12,11 +12,21 @@ chrono = { version = "0.4", features = ["serde"] } # если используе
 rand = "0.8"
 blake3 = "1"
 argon2 = "0.5"
-ring = "0.17"
 ed25519-dalek = "2"
-zip = "0.6"
 serde_json = "1.0"
-automerge = "0.5"     # проверишь актуальную
 thiserror = "1.0"
 time = "0.3"
+
+# Exclude problematic dependencies for Android
+[target.'cfg(not(target_os = "android"))'.dependencies]
+ring = "0.17"
+zip = "0.6"
+automerge = "0.5"     # проверишь актуальную
+utoipa = { version = "4" }
+
+# Android-specific dependencies
+[target.'cfg(target_os = "android")'.dependencies]
+getrandom = { version = "0.2", features = ["std"] }
+
+# OpenAPI dependencies
 utoipa = { version = "4" }
