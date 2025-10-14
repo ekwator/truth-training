@@ -115,6 +115,68 @@ Responses are JSON objects with either:
 }
 ```
 
+## Extended JSON API for Android
+
+The following actions extend the JSON bridge to cover P2P and semantic workflows:
+
+- sync_peers: triggers peer discovery/synchronization and returns current peer list
+- submit_claim: registers a new claim for evaluation/storage
+- get_claims: returns stored claims (summary)
+- analyze_text: performs a basic semantic analysis on text
+
+### sync_peers
+Request:
+```json
+{"action": "sync_peers"}
+```
+Response:
+```json
+{
+  "status": "ok",
+  "peers": ["node1.local", "node2.local"]
+}
+```
+
+### submit_claim
+Request:
+```json
+{"action": "submit_claim", "claim": "Earth is round"}
+```
+Response:
+```json
+{
+  "status": "received",
+  "claim": "Earth is round"
+}
+```
+
+### get_claims
+Request:
+```json
+{"action": "get_claims"}
+```
+Response:
+```json
+{
+  "status": "ok",
+  "claims": ["Earth is round", "Truth is distributed"]
+}
+```
+
+### analyze_text
+Request:
+```json
+{"action": "analyze_text", "text": "truth requires context"}
+```
+Response:
+```json
+{
+  "status": "ok",
+  "sentiment": "neutral",
+  "keywords": ["truth", "context"]
+}
+```
+
 #### Error Responses
 **Invalid JSON:**
 ```json
