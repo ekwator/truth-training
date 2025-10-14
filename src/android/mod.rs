@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+pub mod verify_json;
+
 use std::os::raw::c_char;
 use std::ffi::CString;
 use jni::objects::{JClass, JString};
@@ -41,10 +43,29 @@ pub extern "system" fn Java_com_truth_training_client_TruthCore_processJsonReque
         Err(_) => return env.new_string(r#"{"error":"invalid_input"}"#).unwrap().into_raw(),
     };
 
+    // If Android envelope contains signed payload, verify first.
     let parsed: Value = match serde_json::from_str(&input) {
         Ok(v) => v,
         Err(_) => return env.new_string(r#"{"error":"invalid_json"}"#).unwrap().into_raw(),
     };
+
+    // Try verification path if envelope fields present
+    let verified_payload_opt = if parsed.get("signature").is_some() && parsed.get("public_key").is_some() && parsed.get("payload").is_some() {
+        match verify_json::verify_json_message(&input) {
+            Ok(trusted) => {
+                // replace parsed with verified payload
+                Some(trusted.payload)
+            }
+            Err(_) => {
+                let err = json!({"status":"error","reason":"invalid_signature"});
+                return env.new_string(err.to_string()).unwrap().into_raw();
+            }
+        }
+    } else {
+        None
+    };
+
+    let parsed = verified_payload_opt.unwrap_or(parsed);
 
     let response = match parsed["action"].as_str() {
         Some("get_state") => json!({
