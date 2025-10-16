@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS truth_events (
 timestamp_start INTEGER NOT NULL,
     timestamp_end   INTEGER,
     code            INTEGER NOT NULL DEFAULT 1,  -- 8-bit event code
+    collective_score REAL,
 FOREIGN KEY(context_id) REFERENCES context(id)
 );
 
@@ -215,6 +216,10 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
     }
     if !has_column(conn, "truth_events", "public_key")? {
         conn.execute("ALTER TABLE truth_events ADD COLUMN public_key TEXT", [])?;
+    }
+    // Добавить collective_score для truth_events
+    if !has_column(conn, "truth_events", "collective_score")? {
+        conn.execute("ALTER TABLE truth_events ADD COLUMN collective_score REAL", [])?;
     }
 
     // Добавить подписи/ключи для statements
@@ -906,9 +911,9 @@ pub fn add_truth_event(conn: &Connection, new_ev: NewTruthEvent) -> Result<i64, 
 
     conn.execute(
         r#"INSERT INTO truth_events
-            (description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code)
+            (description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, collective_score)
           VALUES
-            (?1, ?2, ?3, NULL, 0, ?4, NULL, ?5)"#,
+            (?1, ?2, ?3, NULL, 0, ?4, NULL, ?5, NULL)"#,
         params![
             new_ev.description,
             new_ev.context_id,
@@ -924,7 +929,7 @@ pub fn add_truth_event(conn: &Connection, new_ev: NewTruthEvent) -> Result<i64, 
 /// Получить событие по id
 pub fn get_truth_event(conn: &Connection, id: i64) -> Result<Option<TruthEvent>, CoreError> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key
+        r#"SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key, collective_score
            FROM truth_events WHERE id = ?1"#,
     )?;
 
@@ -942,6 +947,7 @@ pub fn get_truth_event(conn: &Connection, id: i64) -> Result<Option<TruthEvent>,
                 code: row.get(8)?,
                 signature: row.get(9)?,
                 public_key: row.get(10)?,
+                collective_score: row.get(11)?,
             })
         })
         .optional()?;
@@ -1200,6 +1206,30 @@ pub fn recalc_ratings(conn: &Connection, ts: i64) -> Result<(), CoreError> {
     // RBAC: зеркалим trust_score узлов в таблицу users для JWT и API
     let _ = sync_users_with_node_ratings(conn)?;
 
+    Ok(())
+}
+
+/// Пересчёт коллективной оценки истинности событий на основе оценок impact
+pub fn recalc_collective_truth(conn: &Connection) -> Result<(), CoreError> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT CAST(event_id AS INTEGER) AS event_id, AVG(CASE WHEN value=1 THEN 1.0 ELSE 0.0 END) as avg_score
+        FROM impact
+        GROUP BY event_id
+        "#,
+    )?;
+    let rows = stmt.query_map([], |row| {
+        let event_id: i64 = row.get(0)?;
+        let avg_score: f64 = row.get(1)?;
+        Ok((event_id, avg_score))
+    })?;
+    for r in rows {
+        let (event_id, avg_score) = r?;
+        conn.execute(
+            "UPDATE truth_events SET collective_score = ?1 WHERE id = ?2",
+            params![avg_score, event_id],
+        )?;
+    }
     Ok(())
 }
 
@@ -1844,7 +1874,7 @@ pub fn update_statement_score(conn: &Connection, id: i64, truth_score: f32) -> R
 /// Загружаем все события
 pub fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError> {
     let mut stmt = conn.prepare(
-        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key FROM truth_events",
+        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key, collective_score FROM truth_events",
     )?;
 
     let rows = stmt.query_map([], |row| {
@@ -1860,6 +1890,7 @@ pub fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError
             code: row.get(8)?,
             signature: row.get(9)?,
             public_key: row.get(10)?,
+            collective_score: row.get(11)?,
         })
     })?;
 

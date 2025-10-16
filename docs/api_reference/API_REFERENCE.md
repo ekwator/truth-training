@@ -178,6 +178,15 @@ Audience: Android, Web, and CLI clients. Responses are JSON. Unless noted, Conte
 { "status": "ok", "recalculated_at": 1710000600 }
 ```
 
+#### POST /api/v1/recalc_collective
+- **Description**: Recalculate `collective_score` for events from current `impact` votes.
+- **Headers**: none
+- **Request**: empty
+- **Response** 200:
+```json
+{ "status": "ok" }
+```
+
 ### P2P Sync (brief)
 
 - `POST /sync`: push local data; signed headers `X-Public-Key`, `X-Signature`, `X-Timestamp`.

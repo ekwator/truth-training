@@ -703,6 +703,20 @@ async fn api_v1_recalc(req: HttpRequest, pool: web::Data<DbPool>) -> impl Respon
     }
 }
 
+#[post("/api/v1/recalc_collective")]
+async fn recalc_collective(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        core_lib::recalc_collective_truth(&conn)
+    }).await;
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status":"ok"})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
 #[post("/api/v1/ratings/sync")]
 async fn api_v1_ratings_sync(req: HttpRequest, node: web::Data<Node>) -> impl Responder {
     if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
@@ -729,6 +743,7 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(health)
         .service(api_v1_info)
         .service(api_v1_stats)
+        .service(recalc_collective)
         .service(api_v1_push)
         .service(api_v1_network_local)
         .service(api_v1_auth)
@@ -1498,5 +1513,51 @@ mod tests {
         let avg: f64 = if graph.nodes.is_empty() { 0.0 } else { graph.nodes.iter().map(|n| n.score as f64).sum::<f64>() / (graph.nodes.len() as f64) };
         assert!((summary.avg_trust - avg).abs() < 1e-9);
         assert_eq!(summary.top_nodes.len(), std::cmp::min(10, graph.nodes.len()));
+    }
+
+    #[actix_web::test]
+    async fn recalc_collective_endpoint_works() {
+        // Prepare in-memory DB and app
+        let conn = core_lib::storage::open_db(":memory:").unwrap();
+        let conn_data = Arc::new(Mutex::new(conn));
+        {
+            let mut c = conn_data.lock().await;
+            core_lib::storage::seed_knowledge_base(&mut c, "en").unwrap();
+        }
+
+        let app = test::init_service(
+            App::new()
+                .app_data(actix_web::web::Data::new(conn_data.clone()))
+                .configure(crate::api::routes)
+        ).await;
+
+        // Add event
+        let add_event_req = serde_json::json!({
+            "description": "E-collective",
+            "context_id": 1,
+            "vector": true
+        });
+        let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let ev_id = resp.get("id").and_then(|v| v.as_i64()).unwrap();
+
+        // Insert a positive impact for this event
+        {
+            let c = conn_data.lock().await;
+            let _iid = core_lib::storage::add_impact(&c, ev_id, 1, true, None).unwrap();
+        }
+
+        // Call collective recalc endpoint
+        let req = test::TestRequest::post().uri("/api/v1/recalc_collective").to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        assert_eq!(resp.get("status").unwrap(), "ok");
+
+        // Verify value persisted in DB
+        {
+            let c = conn_data.lock().await;
+            let ev = core_lib::storage::get_truth_event(&c, ev_id).unwrap().unwrap();
+            assert!(ev.collective_score.is_some());
+            assert!(ev.collective_score.unwrap() > 0.0);
+        }
     }
 }
