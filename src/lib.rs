@@ -1,6 +1,11 @@
+#[cfg(not(target_os = "android"))]
 pub mod api;
+#[cfg(not(target_os = "android"))]
 pub mod net;
+#[cfg(not(target_os = "android"))]
 pub mod p2p;
+#[cfg(not(target_os = "android"))]
 pub mod sync;
+#[cfg(not(target_os = "android"))]
 pub mod server_diagnostics;
 pub mod android;
