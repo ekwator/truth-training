@@ -1,10 +1,13 @@
-name: Build and Test Android Library
+name: Build, Test, and Publish Android Library
 
 on:
   push:
     branches: [ main, master ]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-android:
@@ -14,85 +17,58 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Rust (stable)
+      - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Add Android target
-        run: rustup target add aarch64-linux-android
-
-      - name: Install cargo tools (cargo-ndk, cross)
+      - name: Install Android target and tools
         run: |
-          cargo install cargo-ndk --locked || true
-          cargo install cross --locked || true
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk
 
       - name: Set up Android SDK and NDK
         uses: android-actions/setup-android@v3
         with:
-          packages: |
-            ndk;26.1.10909125
+          ndk-version: 26.1.10909125
 
-      - name: Set NDK environment variables
-        run: |
-          echo "NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
-
-      - name: Add NDK toolchains to PATH
-        run: echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
-
-      - name: Verify toolchain
-        run: |
-          rustc --version
-          cargo --version
-          rustup target list --installed
-          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}"
-          echo "NDK_HOME=${NDK_HOME}"
-          echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}"
-          which aarch64-linux-android21-clang || true
-          aarch64-linux-android21-clang --version || true
-
-      - name: Make build script executable
-        run: chmod +x ./scripts/build-android.sh
-
-      - name: Build Android library
+      - name: Build library
         run: ./scripts/build-android.sh
 
-      - name: Run tests
+      - name: Run unit tests
         run: cargo test --test android_verify -- --nocapture
 
-      - name: Find compiled library path
-        id: find_so
-        shell: bash
-        run: |
-          set -euo pipefail
-          path="$(find target -name 'libtruth_core.so' -print -quit || true)"
-          if [ -n "$path" ]; then
-            echo "artifact=$path" >> "$GITHUB_OUTPUT"
-            echo "Found: $path"
-          else
-            echo "artifact=" >> "$GITHUB_OUTPUT"
-            echo "libtruth_core.so not found" >&2
-          fi
-
-      - name: Upload compiled library
-        id: upload_so
+      - name: Upload libtruth_core.so
         uses: actions/upload-artifact@v4
         with:
           name: libtruth_core.so
-          path: |
-            target/**/libtruth_core.so
-          if-no-files-found: error
+          path: target/**/libtruth_core.so
           retention-days: 7
 
-      - name: Post artifact link
-        if: always()
-        run: |
-          echo "Artifact: libtruth_core.so" >> "$GITHUB_STEP_SUMMARY"
-          if [ -n "${{ steps.find_so.outputs.artifact }}" ]; then
-            echo "Path: ${{ steps.find_so.outputs.artifact }}" >> "$GITHUB_STEP_SUMMARY"
-          fi
-          if [ -n "${{ steps.upload_so.outputs.artifact-url }}" ]; then
-            echo "Download: ${{ steps.upload_so.outputs.artifact-url }}" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Open the run to download the artifact:" >> "$GITHUB_STEP_SUMMARY"
-            echo "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
-          fi
+  publish-and-notify:
+    needs: build-android
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
+
+    steps:
+      - name: Download built library
+        uses: actions/download-artifact@v4
+        with:
+          name: libtruth_core.so
+          path: dist/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-lib-${{ github.run_number }}
+          name: Android Core Build ${{ github.run_number }}
+          files: dist/**/libtruth_core.so
+          body: |
+            ✅ Built and tested libtruth_core.so for Android.
+            Triggered from commit: ${{ github.sha }}
+
+      - name: Trigger client sync
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GH_PAT }}
+          repository: ekwator/truth-android-client
+          event-type: update-libtruth
+          client-payload: '{"artifact_url": "https://github.com/${{ github.repository }}/releases/download/android-lib-${{ github.run_number }}/libtruth_core.so"}'
