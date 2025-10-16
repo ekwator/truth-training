@@ -1,4 +1,4 @@
-#![allow(non_snake_case)]
+#![allow(non_snake_case, clippy::not_unsafe_ptr_arg_deref)]
 
 pub mod verify_json;
 

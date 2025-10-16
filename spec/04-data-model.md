@@ -4,7 +4,7 @@ Authoritative source: `docs/Data_Schema.md`.
 
 Implemented tables
 - knowledge_base: category, cause, develop, effect, forma, context, impact_type.
-- base: truth_events (with code u8), impact, progress_metrics, statements.
+- base: truth_events (with code u8, collective_score REAL NULL), impact, progress_metrics, statements.
 
 Notes
 - impact.id is UUID TEXT; created_at unix seconds.

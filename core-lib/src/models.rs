@@ -94,6 +94,7 @@ pub timestamp_end: Option<i64>, // INTEGER NULLABLE (UNIX secs)
     pub code: u8,                   // 8-bit event code (2 control bits + 6 counter bits)
     pub signature: Option<String>,  // Подпись события
     pub public_key: Option<String>, // Публичный ключ автора
+    pub collective_score: Option<f64>, // REAL NULLABLE — коллективная оценка (0..1)
 }
 
 /// Вспомогательная структура для вставки события

@@ -1,12 +1,12 @@
 [package]
 name = "app"
-version = "0.3.0"
+version = "0.4.0-pre"
 description = "Stable foundation release with adaptive trust propagation, P2P analytics, and Android integration."
 edition = "2021"
 
 [dependencies]
-core_lib = { path = "../core-lib", version = "0.3.0" }
-truth_core = { path = "..", version = "0.3.0" }
+core_lib = { path = "../core-lib", version = "0.4.0-pre" }
+truth_core = { path = "..", version = "0.4.0-pre" }
 chrono = { version = "0.4", features = ["clock"] }
 clap = { version = "4", features = ["derive"] }
 rusqlite = { version = "0.31", features = ["bundled"] }

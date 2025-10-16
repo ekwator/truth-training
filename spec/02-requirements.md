@@ -6,6 +6,7 @@
 - Impact Assessment: record impacts per event with type and polarity. [core-lib/storage.rs]
 - Expert Heuristics: provide questions, compute score (-1..1), confidence (0..1), suggested detection. [core-lib/expert_simple.rs]
 - Progress Metrics: aggregate totals and trend; recalculation endpoint. [core-lib/storage.rs]
+- Collective Intelligence: compute and store `collective_score` per event; expose `/api/v1/recalc_collective`. [core-lib/storage.rs, src/api.rs]
 - HTTP API: health, init, seed, events, impacts, statements, recalc, progress, data dump. [src/api.rs]
 - P2P Discovery & Sync: UDP beacons, signed endpoints, sync flows. [src/net.rs, src/p2p/*]
 

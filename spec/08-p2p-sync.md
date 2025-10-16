@@ -141,6 +141,11 @@ The system tracks relay success rates dynamically during sync operations:
 
 5. **Integration**: Relay metrics influence trust propagation and node prioritization in the network.
 
+### Collective Intelligence Propagation
+
+- `collective_score` — aggregated event score (0..1), recalculated locally from `impact` entries and shared among nodes as part of distributed consensus propagation.
+- Consensus converges iteratively: nodes recompute and exchange values; discrepancies diminish with subsequent recalculations and new evaluations.
+
 ## Propagation Priority Exchange
 
 - `propagation_priority` (0.0–1.0) — адаптивный приоритет распространения.

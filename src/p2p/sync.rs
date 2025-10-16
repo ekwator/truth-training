@@ -741,7 +741,7 @@ pub async fn incremental_sync_with_peer(
 #[allow(dead_code)]
 fn get_events_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<TruthEvent>> {
     let mut stmt = conn.prepare(
-        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key \
+        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key, collective_score \
          FROM truth_events WHERE timestamp_start > ?1 ORDER BY timestamp_start"
     )?;
 
@@ -758,6 +758,7 @@ fn get_events_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Tru
             code: row.get(8)?,
             signature: row.get(9)?,
             public_key: row.get(10)?,
+            collective_score: row.get(11)?,
         })
     })?;
 

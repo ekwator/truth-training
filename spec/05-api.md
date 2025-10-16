@@ -12,6 +12,7 @@ Base URL: http://<host>:<port>/
 - POST /statements { event_id, text, context?, truth_score? }
 - POST /detect { event_id, detected, corrected? }
 - POST /recalc → { status, metric_id }
+- POST /api/v1/recalc_collective → { status: "ok" }
 - GET /progress → list of progress_metrics rows
 - GET /get_data → { events, impacts, metrics }
 - POST /sync (signed) → SyncResult
@@ -104,7 +105,8 @@ TruthEvent
   "timestamp_end": null,
   "code": 1,
   "signature": "hex|null",
-  "public_key": "hex|null"
+  "public_key": "hex|null",
+  "collective_score": 0.75
 }
 ```
 
