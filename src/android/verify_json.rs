@@ -1,8 +1,6 @@
 use base64::{engine::general_purpose, Engine as _};
-use ed25519_dalek::Signature;
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde_json::Value;
-
-use crate::p2p::encryption::CryptoIdentity;
 
 #[derive(Debug)]
 pub enum VerifyError {
@@ -50,14 +48,17 @@ pub fn verify_json_message(raw_json: &str) -> Result<TrustedMessage, VerifyError
     };
     let signature = Signature::from_bytes(&sig_arr);
 
-    // Build CryptoIdentity using hex-based constructor to reuse existing verification path
-    let pk_hex = hex::encode(&pk_bytes);
-    let identity = match CryptoIdentity::from_public_key_hex(&pk_hex) {
-        Ok(id) => id,
+    // Directly construct verifying key and verify signature without p2p dependency
+    let pk_arr: [u8; 32] = match pk_bytes.as_slice().try_into() {
+        Ok(a) => a,
+        Err(_) => return Err(VerifyError::PublicKeyLength(pk_bytes.len())),
+    };
+    let verifying_key = match VerifyingKey::from_bytes(&pk_arr) {
+        Ok(vk) => vk,
         Err(e) => return Err(VerifyError::PublicKeyConstruct(e.to_string())),
     };
 
-    if let Err(e) = identity.verify(&data, &signature) {
+    if let Err(e) = verifying_key.verify(&data, &signature) {
         return Err(VerifyError::VerificationFailed(e.to_string()));
     }
 
