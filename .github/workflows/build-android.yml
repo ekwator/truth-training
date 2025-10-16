@@ -28,7 +28,8 @@ jobs:
       - name: Set up Android SDK and NDK
         uses: android-actions/setup-android@v3
         with:
-          ndk-version: 26.1.10909125
+          packages: |
+            ndk;26.1.10909125
 
       - name: Set NDK environment variables
         run: |
@@ -94,3 +95,4 @@ jobs:
           else
             echo "Open the run to download the artifact:" >> "$GITHUB_STEP_SUMMARY"
             echo "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
