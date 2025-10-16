@@ -70,6 +70,7 @@
 * **timestamp\_start** (INTEGER) — event start time (UNIX)
 * **timestamp\_end** (INTEGER) — event end time (UNIX)
 * **code** (INTEGER) — event classification code (default: 1)
+* **collective_score** (REAL, nullable) — Collective truth score (0–1), computed from independent user evaluations (impacts)
 
 ### **Table: impact**
 
