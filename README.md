@@ -121,6 +121,7 @@ Error format (401): `{ "error": "unauthorized", "code": 401 }`.
 | GET    | `/graph/json` | Graph JSON (filtered) with propagation metrics |
 | GET    | `/graph/summary` | Graph summary |
 | GET    | `/api/v1/stats` | Node stats with propagation & relay metrics |
+| POST   | `/api/v1/recalc_collective` | Recalculate collective truth score (Wisdom of the Crowd) |
 
 ### Android Integration
 

@@ -8,6 +8,7 @@ pub mod trust_propagation;
 
 pub use crate::models::*;
 pub use crate::storage::*;
+pub use crate::storage::recalc_collective_truth;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right

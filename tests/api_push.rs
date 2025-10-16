@@ -53,7 +53,7 @@ async fn push_valid_and_invalid() {
     let bad_req = test::TestRequest::post()
         .uri("/api/v1/push")
         .insert_header(("Authorization", format!("Bearer {}", token)))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "node_id": "android-abc123",
             "payload": { "event": "truth_claim", "value": 1 },
             "signature": bad_sig_b64,

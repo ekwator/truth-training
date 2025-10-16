@@ -1,6 +1,6 @@
 [package]
 name = "core_lib"
-version = "0.3.0"
+version = "0.4.0-pre"
 description = "Stable foundation release with adaptive trust propagation, P2P analytics, and Android integration."
 edition = "2021"
 

@@ -37,6 +37,14 @@
  - **Adaptive Propagation Priority** → `core-lib/src/trust_propagation.rs::compute_propagation_priority`, `core-lib/src/storage.rs` (persist and recalc), `src/p2p/sync.rs` (blend_priority), CLI `app/src/bin/truthctl.rs` (status/graph), API `/api/v1/stats`, `/graph/json`
 - **Graph API** → `src/api.rs` (graph/json, graph/summary)
 
+#### Collective Intelligence Layer
+- **Collective Score** → `core-lib/src/models.rs` (`TruthEvent.collective_score`), `core-lib/src/storage.rs` (`recalc_collective_truth`, schema migration)
+- **API Recalculation** → `src/api.rs` (`POST /api/v1/recalc_collective`)
+- **P2P Propagation** → `spec/08-p2p-sync.md` (shared among nodes)
+
+### New Requirements
+- R-CI-01: System must support collective evaluation and consensus recalculation per event.
+
 ### Documentation → Specification Mapping
 
 #### Legacy Docs → Spec Kit
