@@ -1,0 +1,96 @@
+name: Build and Test Android Library
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add Android target
+        run: rustup target add aarch64-linux-android
+
+      - name: Install cargo tools (cargo-ndk, cross)
+        run: |
+          cargo install cargo-ndk --locked || true
+          cargo install cross --locked || true
+
+      - name: Set up Android SDK and NDK
+        uses: android-actions/setup-android@v3
+        with:
+          ndk-version: 26.1.10909125
+
+      - name: Set NDK environment variables
+        run: |
+          echo "NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
+
+      - name: Add NDK toolchains to PATH
+        run: echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+
+      - name: Verify toolchain
+        run: |
+          rustc --version
+          cargo --version
+          rustup target list --installed
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}"
+          echo "NDK_HOME=${NDK_HOME}"
+          echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}"
+          which aarch64-linux-android21-clang || true
+          aarch64-linux-android21-clang --version || true
+
+      - name: Make build script executable
+        run: chmod +x ./scripts/build-android.sh
+
+      - name: Build Android library
+        run: ./scripts/build-android.sh
+
+      - name: Run tests
+        run: cargo test --test android_verify -- --nocapture
+
+      - name: Find compiled library path
+        id: find_so
+        shell: bash
+        run: |
+          set -euo pipefail
+          path="$(find target -name 'libtruth_core.so' -print -quit || true)"
+          if [ -n "$path" ]; then
+            echo "artifact=$path" >> "$GITHUB_OUTPUT"
+            echo "Found: $path"
+          else
+            echo "artifact=" >> "$GITHUB_OUTPUT"
+            echo "libtruth_core.so not found" >&2
+          fi
+
+      - name: Upload compiled library
+        id: upload_so
+        uses: actions/upload-artifact@v4
+        with:
+          name: libtruth_core.so
+          path: |
+            target/**/libtruth_core.so
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Post artifact link
+        if: always()
+        run: |
+          echo "Artifact: libtruth_core.so" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ steps.find_so.outputs.artifact }}" ]; then
+            echo "Path: ${{ steps.find_so.outputs.artifact }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -n "${{ steps.upload_so.outputs.artifact-url }}" ]; then
+            echo "Download: ${{ steps.upload_so.outputs.artifact-url }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Open the run to download the artifact:" >> "$GITHUB_STEP_SUMMARY"
+            echo "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
