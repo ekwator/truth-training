@@ -96,3 +96,16 @@ jobs:
             echo "Open the run to download the artifact:" >> "$GITHUB_STEP_SUMMARY"
             echo "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Trigger Android Client build
+        if: success()
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.REPO_TRIGGER_TOKEN != '' && secrets.REPO_TRIGGER_TOKEN || github.token }}
+          repository: ekwator/truth-android-client
+          event-type: build_core_completed
+          client-payload: |
+            {
+              "ref": "${{ github.ref_name }}",
+              "sha": "${{ github.sha }}",
+              "workflow": "build-android.yml"
+            }
