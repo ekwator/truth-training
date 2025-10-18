@@ -4,7 +4,6 @@ pub mod verify_json;
 
 use std::ffi::CString;
 use std::os::raw::c_char;
-use serde_json::json;
 
 #[cfg(target_os = "android")]
 use jni::objects::{JClass, JString};
