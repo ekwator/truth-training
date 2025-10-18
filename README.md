@@ -84,6 +84,14 @@ cargo build --release --target aarch64-apple-ios --features mobile
 ```
 
 See `spec/19-build-instructions.md` for detailed cross-platform build instructions.
+
+Mermaid: data flow
+```mermaid
+flowchart TD
+    Client[User/CLI] -->|HTTP API| API[Actix-web API]
+    API -->|reads/writes| DB[SQLite]
+    API --> Sync[Sync Engine]
+    Sync --> Beacon[UDP Beacon Sender/Listener]
     Sync --> P2P["P2P Node - HTTP signed sync"]
     P2P -->|sync| Peer[Remote Node]
 ```
@@ -97,9 +105,9 @@ flowchart TD
     ND[Nodes] --> NR[Node Ratings]
     GP[Groups] --> GR[Group Ratings]
     
-    TE -.->|collective_score| CI[Collective Intelligence]
-    IM -.->|votes| CI
-    CI -.->|consensus| TE
+    TE --> CI[Collective Intelligence]
+    IM --> CI
+    CI --> TE
 ```
 
 ### FIDONet-inspired network model
