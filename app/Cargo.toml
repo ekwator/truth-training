@@ -5,7 +5,7 @@ description = "Stable foundation release with adaptive trust propagation, P2P an
 edition = "2021"
 
 [dependencies]
-core_lib = { path = "../core-lib", version = "0.4.0-pre" }
+core_lib = { path = "../core", version = "0.4.0-pre" }
 truth_core = { path = "..", version = "0.4.0-pre" }
 chrono = { version = "0.4", features = ["clock"] }
 clap = { version = "4", features = ["derive"] }

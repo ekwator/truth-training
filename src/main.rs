@@ -1,19 +1,33 @@
+#[cfg(feature = "desktop")]
 use actix_web::{App, HttpServer};
+#[cfg(feature = "desktop")]
 use actix_cors::Cors;
+#[cfg(feature = "desktop")]
 use utoipa_swagger_ui::SwaggerUi;
+#[cfg(feature = "desktop")]
 use utoipa::OpenApi;
+#[cfg(feature = "desktop")]
 use clap::Parser;
+#[cfg(feature = "desktop")]
 use std::sync::Arc;
+#[cfg(feature = "desktop")]
 use tokio::sync::{Mutex, RwLock};
 
+#[cfg(feature = "desktop")]
 mod api;
+#[cfg(feature = "desktop")]
 mod net;
+#[cfg(feature = "desktop")]
 mod p2p;
 
+#[cfg(feature = "desktop")]
 use net::{run_beacon_listener, run_beacon_sender, run_peer_logger, PeerSet};
+#[cfg(feature = "desktop")]
 use crate::p2p::node::Node;
+#[cfg(feature = "desktop")]
 use crate::p2p::encryption::CryptoIdentity;
 
+#[cfg(feature = "desktop")]
 #[derive(Parser, Debug)]
 #[command(name = "truth_training")]
 struct Args {
@@ -27,6 +41,7 @@ struct Args {
     db: String,
 }
 
+#[cfg(feature = "desktop")]
 fn guess_local_ip() -> String {
     if let Ok(interfaces) = get_if_addrs::get_if_addrs() {
         for iface in interfaces {
@@ -40,6 +55,7 @@ fn guess_local_ip() -> String {
     "127.0.0.1".into()
 }
 
+#[cfg(feature = "desktop")]
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Включаем логирование (по умолчанию выводит в stdout)
@@ -104,4 +120,9 @@ async fn main() -> std::io::Result<()> {
     .bind(("0.0.0.0", args.port))?
     .run()
     .await
+}
+
+#[cfg(not(feature = "desktop"))]
+fn main() {
+    println!("truth_core built without desktop feature; no binary runtime");
 }

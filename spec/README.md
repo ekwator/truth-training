@@ -4,7 +4,7 @@ Purpose: A comprehensive guide for building cross-platform Truth Training applic
 
 ## Overview
 
-The `truth-training` repository contains a **cross-platform core library** (`truth-core`) that integrates with different UIs depending on the target platform:
+The `truth-training` repository contains a **cross-platform core library** (`truth_core`) that integrates with different UIs depending on the target platform:
 
 - **Mobile targets** (iOS + Android): Use a minimal subset of the core with FFI interfaces
 - **Desktop targets** (Linux, Windows, macOS): Retain the full feature set including HTTP server, CLI, and async runtime
@@ -247,7 +247,7 @@ smol = "1.3"
 
 # Shared dependencies (always included)
 [dependencies]
-core_lib = { path = "core-lib" }
+core_lib = { path = "core" }
 serde = { version = "1.0", features = ["derive"] }
 rusqlite = { version = "0.31", features = ["bundled"] }
 ed25519-dalek = "2.0"

@@ -6,12 +6,12 @@ Spec ID: 13
 ### Requirements → Code Implementation
 
 #### Core Functionality
-- **Knowledge Base** → `core-lib/src/storage.rs` (schema, seed_knowledge_base)
-- **Event Tracking** → `core-lib/src/storage.rs` (add_truth_event, set_event_detected)
-- **Statements** → `core-lib/src/storage.rs` (add_statement, getters)
-- **Impacts** → `core-lib/src/storage.rs` (add_impact)
-- **Expert Heuristics** → `core-lib/src/expert_simple.rs`; `app/src/main.rs` (assess)
-- **Progress Metrics** → `core-lib/src/storage.rs` (recalc_progress_metrics)
+- **Knowledge Base** → `core/src/storage.rs` (schema, seed_knowledge_base)
+- **Event Tracking** → `core/src/storage.rs` (add_truth_event, set_event_detected)
+- **Statements** → `core/src/storage.rs` (add_statement, getters)
+- **Impacts** → `core/src/storage.rs` (add_impact)
+- **Expert Heuristics** → `core/src/expert_simple.rs`; `app/src/main.rs` (assess)
+- **Progress Metrics** → `core/src/storage.rs` (recalc_progress_metrics)
 
 #### Network & API
 - **HTTP API** → `src/api.rs` (all REST endpoints)
@@ -29,10 +29,10 @@ Spec ID: 13
 - **Diagnostics** → `app/src/bin/truthctl.rs` (status, diagnose, reset-data)
 
 #### Trust & Ratings
-- **Trust Propagation** → `core-lib/src/trust_propagation.rs` (blend, EMA helpers)
-- **Node Ratings** → `core-lib/src/storage.rs` (node_ratings table)
-- **Group Ratings** → `core-lib/src/storage.rs` (group_ratings table)
-- **Adaptive Propagation Priority** → `core-lib/src/trust_propagation.rs::compute_propagation_priority`
+- **Trust Propagation** → `core/src/trust_propagation.rs` (blend, EMA helpers)
+- **Node Ratings** → `core/src/storage.rs` (node_ratings table)
+- **Group Ratings** → `core/src/storage.rs` (group_ratings table)
+- **Adaptive Propagation Priority** → `core/src/trust_propagation.rs::compute_propagation_priority`
 - **Graph API** → `src/api.rs` (graph/json, graph/summary)
 
 #### Collective Intelligence Layer
@@ -43,7 +43,7 @@ Spec ID: 13
 #### Android Integration
 - **JSON Signature Verification** → `src/android/verify_json.rs` (Ed25519 verification)
 - **JNI Bridge** → `src/android/mod.rs` (processJsonRequest)
-- **Cross-compilation** → `android-build/` (minimal Android build)
+- **Cross-compilation** → Android/iOS via Cargo targets with `--features mobile`
 
 ### Requirements Traceability
 

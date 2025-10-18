@@ -49,7 +49,7 @@ cargo run --bin truth_core -- --port 8080 --db truth_training.db --http-addr htt
 
 ## Cross-Platform Architecture
 
-Truth Training uses a **cross-platform core library** (`truth-core`) that adapts to different platforms:
+Truth Training uses a **cross-platform core library** (`truth_core`) that adapts to different platforms:
 
 - **Desktop** (Linux, Windows, macOS): Full feature set with HTTP server, CLI tools, and complete P2P networking
 - **Mobile** (iOS, Android): Minimal subset with FFI interfaces for native app integration
@@ -74,13 +74,13 @@ Truth Training uses a **cross-platform core library** (`truth-core`) that adapts
 
 ```bash
 # Desktop (full features)
-cargo build --release --features desktop
+cargo build --release --features desktop --bin truth_core
 
 # Android (minimal features)
-cargo build --release --target aarch64-linux-android --features mobile
+cargo build --release --target aarch64-linux-android --features mobile --lib -p truth_core
 
 # iOS (minimal features)
-cargo build --release --target aarch64-apple-ios --features mobile
+cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
 ```
 
 See `spec/19-build-instructions.md` for detailed cross-platform build instructions.
@@ -251,7 +251,7 @@ Full CLI reference: **`docs/CLI_Usage.md`** and **`spec/10-cli.md`**.
 Trust & reputation:
 - `NodeRating` now includes `propagation_priority` (0.0–1.0). It is computed as: `priority = trust_norm*0.8 + recent_activity*0.2`, where `trust_norm = (trust_score+1)/2`.
 - Non-discriminatory mode: all nodes can sync; trust only affects propagation order and delays. Low-trust peers are delayed, never excluded.
-- Trust propagation (blend and decay) lives in `core-lib::recalc_ratings` and `merge_ratings`. Priority is refreshed automatically after merges and recalculations.
+- Trust propagation (blend and decay) lives in `core::recalc_ratings` and `merge_ratings`. Priority is refreshed automatically after merges and recalculations.
 - Sync records are stored in `sync_logs` for auditing and diagnostics.
 
 Adaptive Propagation Metrics:
@@ -313,7 +313,7 @@ flowchart LR
 
 ## Testing
 
-- Unit & integration tests in `core-lib` and `app` crates.
+- Unit & integration tests in `core` and `app` crates.
 - Use `cargo test --workspace --features p2p-client-sync` to run with P2P client sync features.
 - CLI tests isolate `$HOME` using temporary directories.
 

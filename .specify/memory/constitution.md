@@ -4,11 +4,11 @@
 
 ### I. Separation of Concerns by Crate
 The system is organized into three crates with clear responsibilities and stable contracts:
-- `core-lib` — domain logic, SQLite persistence, and data models; self-contained, independently testable, and documented.
+- `core` — domain logic, SQLite persistence, and data models; self-contained, independently testable, and documented.
 - `server` — Actix Web HTTP API and P2P synchronization layer; exposes API and peer protocols.
 - `app` — CLI and future cross-platform UI for administration and monitoring.
 
-Each crate maintains its own tests and versioning; shared logic belongs in `core-lib`.
+Each crate maintains its own tests and versioning; shared logic belongs in `core`.
 
 ### II. API- and CLI-First Interfaces
 All capabilities are accessible via HTTP API (`server`) and command-line (`app`).
@@ -41,7 +41,7 @@ Coherence between API, storage, and P2P is enforced via integration tests.
 - SQL (SQLite) — local embedded data storage.
 
 ### Crates
-1. `core-lib` — domain logic, storage, and models.
+1. `core` — domain logic, storage, and models.
 2. `server` — Actix Web API and P2P synchronization.
 3. `app` — CLI and future cross-platform UI shell.
 
@@ -49,7 +49,7 @@ Coherence between API, storage, and P2P is enforced via integration tests.
 - `p2p/` — node synchronization, peer discovery, crypto identity (Node, Sync, Encryption).
 - `api.rs` — HTTP endpoints for TruthEvent, Impact, and signature validation.
 - `main.rs` — initializes database, spawns node, starts HTTP server.
-- `core-lib/storage.rs` — CRUD and data seeding for domain entities.
+- `core/storage.rs` — CRUD and data seeding for domain entities.
 
 ### Encryption and Identity
 - `ed25519_dalek` for signatures; nodes authenticate via public-key headers and signatures.
@@ -87,7 +87,7 @@ Ensure coherence between API, storage, and P2P layers; maintain cryptographic in
 - Reviews: PRs must verify compliance with this constitution and relevant specs.
 - Traceability: keep `spec/13-traceability.md` in sync; link commits/PRs to requirements.
 - Breaking changes: require updates to `spec/03-architecture.md`, `spec/04-data-model.md`, `spec/05-api.md`, `spec/08-p2p-sync.md` and a migration plan.
-- Storage migrations: provide forward/backward migrations and seed updates in `core-lib`.
+- Storage migrations: provide forward/backward migrations and seed updates in `core`.
 - API/P2P contracts: add/extend contract tests; bump versions; document in `spec/11-decision-log.md`.
 - Release process: per-crate semver bump, changelog entry, artifacts; maintain compatibility notes in specs.
 
