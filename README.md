@@ -47,15 +47,43 @@ cargo run --bin truth_core -- --port 8080 --db truth_training.db --http-addr htt
 
 ---
 
-## Architecture (brief)
+## Cross-Platform Architecture
 
-Mermaid: data flow
-```mermaid
-flowchart TD
-    Client[User/CLI] -->|HTTP API| API[Actix-web API]
-    API -->|reads/writes| DB[SQLite]
-    API --> Sync[Sync Engine]
-    Sync --> Beacon[UDP Beacon Sender/Listener]
+Truth Training uses a **cross-platform core library** (`truth-core`) that adapts to different platforms:
+
+- **Desktop** (Linux, Windows, macOS): Full feature set with HTTP server, CLI tools, and complete P2P networking
+- **Mobile** (iOS, Android): Minimal subset with FFI interfaces for native app integration
+
+### Platform-Specific Features
+
+**Desktop Features:**
+- HTTP REST API server
+- CLI management tools (`truthctl`)
+- Complete P2P synchronization
+- Web-based administration interface
+- Full async runtime (Tokio)
+
+**Mobile Features:**
+- Minimal P2P protocol
+- Ed25519 cryptographic operations
+- FFI interfaces for native apps
+- Lightweight async runtime (Smol)
+- JSON signature verification
+
+### Build Commands
+
+```bash
+# Desktop (full features)
+cargo build --release --features desktop
+
+# Android (minimal features)
+cargo build --release --target aarch64-linux-android --features mobile
+
+# iOS (minimal features)
+cargo build --release --target aarch64-apple-ios --features mobile
+```
+
+See `spec/19-build-instructions.md` for detailed cross-platform build instructions.
     Sync --> P2P["P2P Node - HTTP signed sync"]
     P2P -->|sync| Peer[Remote Node]
 ```
