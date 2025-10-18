@@ -173,66 +173,34 @@ Error format (401): `{ "error": "unauthorized", "code": 401 }`.
 
 ### Android Integration
 
-Ниже пример интеграции с Android через Retrofit. Для эмулятора Android используйте базовый URL `http://10.0.2.2:8080/`. Обратите внимание: CORS по умолчанию открыт только для разработки; в продакшене используйте HTTPS и ограничьте источники.
+Truth Core supports Android integration through FFI bindings and JSON signature verification. For detailed integration instructions, see `integration/android/README_INTEGRATION.md`.
 
-```kotlin
-// Retrofit interface for Truth Training node
-interface TruthApi {
-    @GET("/api/v1/info")
-    suspend fun getInfo(): Response<NodeInfo>
+**Key Features:**
+- Ed25519 JSON signature verification for secure communication
+- Minimal P2P protocol optimized for mobile
+- FFI interface for native Android apps
+- Cross-compilation support for aarch64-linux-android
 
-    @GET("/api/v1/stats")
-    suspend fun getStats(): Response<NodeStats>
-}
-
-data class NodeInfo(
-    val node_name: String,
-    val version: String,
-    val p2p_enabled: Boolean,
-    val db_path: String,
-    val peer_count: Int
-)
-
-data class NodeStats(
-    val events: Int,
-    val statements: Int,
-    val impacts: Int,
-    val node_ratings: Int,
-    val group_ratings: Int,
-    val avg_trust_score: Float
-)
-
-// Retrofit builder for Android emulator
-val retrofit = Retrofit.Builder()
-    .baseUrl("http://10.0.2.2:8080/")
-    .addConverterFactory(GsonConverterFactory.create())
-    .build()
-val api = retrofit.create(TruthApi::class.java)
-
-// Example ViewModel usage
-class NodeViewModel : ViewModel() {
-    private val _info = MutableLiveData<NodeInfo>()
-    val info: LiveData<NodeInfo> = _info
-
-    private val _stats = MutableLiveData<NodeStats>()
-    val stats: LiveData<NodeStats> = _stats
-
-    private val api = Retrofit.Builder()
-        .baseUrl("http://10.0.2.2:8080/")
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-        .create(TruthApi::class.java)
-
-    fun loadData() {
-        viewModelScope.launch {
-            _info.value = api.getInfo().body()
-            _stats.value = api.getStats().body()
-        }
-    }
-}
+**Build for Android:**
+```bash
+cargo build --release --target aarch64-linux-android --features mobile
 ```
 
-Detailed API schema and examples: **`spec/05-api.md`** and **`docs/CLI_Usage.md`**.
+**Example JNI Integration:**
+```kotlin
+// Native function call
+external fun processJsonRequest(json: String): String
+
+// Usage
+val response = processJsonRequest("""
+{
+    "action": "ping",
+    "timestamp": 1640995200
+}
+""")
+```
+
+Detailed integration guides: **`integration/android/README_INTEGRATION.md`**, **`integration/ios/README_INTEGRATION.md`**, and **`integration/desktop/README_INTEGRATION.md`**.
 
 ---
 
