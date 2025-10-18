@@ -2,7 +2,7 @@ use anyhow::Result;
 use colored::*;
 use rusqlite::Connection;
 
-// Переиспользуем структуру журнала из core-lib
+// Переиспользуем структуру журнала из core
 pub type SyncLogEntry = core_lib::models::SyncLog;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]

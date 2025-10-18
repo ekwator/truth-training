@@ -7,7 +7,7 @@ use core_lib::{
 };
 use std::collections::HashMap;
 
-/// Simple CLI over core-lib for local testing
+/// Simple CLI over core for local testing
 #[derive(Parser)]
 #[command(name = "truth-training")]
 #[command(about = "Truth Training CLI", long_about = None)]

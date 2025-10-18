@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 
-/// Test the JSON request processing logic without JNI dependencies
+/// Simple logic mirror for Android JSON processing without JNI; lives in integration layer spec.
 fn process_json_request_logic(input: &str) -> String {
     let parsed: Value = match serde_json::from_str(input) {
         Ok(v) => v,
@@ -107,7 +107,6 @@ fn test_get_state_request() {
     let input = r#"{"action":"get_state"}"#;
     let output = process_json_request_logic(input);
     let parsed: Value = serde_json::from_str(&output).unwrap();
-    
     assert_eq!(parsed["status"], "ok");
     assert_eq!(parsed["state"], "connected");
     assert_eq!(parsed["version"], "0.3.0");
@@ -119,7 +118,6 @@ fn test_ping_request() {
     let input = r#"{"action":"ping"}"#;
     let output = process_json_request_logic(input);
     let parsed: Value = serde_json::from_str(&output).unwrap();
-    
     assert_eq!(parsed["status"], "ok");
     assert_eq!(parsed["reply"], "pong");
     assert!(parsed["timestamp"].is_number());
@@ -130,7 +128,6 @@ fn test_get_info_request() {
     let input = r#"{"action":"get_info"}"#;
     let output = process_json_request_logic(input);
     let parsed: Value = serde_json::from_str(&output).unwrap();
-    
     assert_eq!(parsed["status"], "ok");
     assert_eq!(parsed["name"], "truth-core");
     assert_eq!(parsed["version"], "0.3.0");
@@ -143,7 +140,6 @@ fn test_get_stats_request() {
     let input = r#"{"action":"get_stats"}"#;
     let output = process_json_request_logic(input);
     let parsed: Value = serde_json::from_str(&output).unwrap();
-    
     assert_eq!(parsed["status"], "ok");
     assert_eq!(parsed["events"], 120);
     assert_eq!(parsed["statements"], 340);
@@ -161,7 +157,6 @@ fn test_unknown_action() {
     let input = r#"{"action":"unknown_action"}"#;
     let output = process_json_request_logic(input);
     let parsed: Value = serde_json::from_str(&output).unwrap();
-    
     assert_eq!(parsed["error"], "unknown_action");
     assert_eq!(parsed["received_action"], "unknown_action");
 }
@@ -171,7 +166,6 @@ fn test_invalid_json() {
     let input = r#"{"action":"get_state""#; // Missing closing brace
     let output = process_json_request_logic(input);
     let parsed: Value = serde_json::from_str(&output).unwrap();
-    
     assert_eq!(parsed["error"], "invalid_json");
 }
 
@@ -180,7 +174,6 @@ fn test_missing_action() {
     let input = r#"{"other_field":"value"}"#;
     let output = process_json_request_logic(input);
     let parsed: Value = serde_json::from_str(&output).unwrap();
-    
     assert_eq!(parsed["error"], "unknown_action");
     assert!(parsed["received_action"].is_null());
 }

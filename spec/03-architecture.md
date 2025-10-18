@@ -91,14 +91,14 @@ This separation ensures modular testing, clean builds, and independent versionin
 
 ### Modules
 
-- **core-lib**: models, storage (schema + ops), expert heuristics.
+- **core**: models, storage (schema + ops), expert heuristics.
 - **api**: HTTP routes in `src/api.rs` (health, init/seed, events/statements, impacts, progress, get_data, sync, incremental_sync, ratings, graph) with signature verification helpers. Server health checks for API/DB/P2P are exposed via `truth_core::server_diagnostics` and can be invoked from CLI.
 - **p2p**: sync flows and reconciliation in `src/p2p/sync.rs`, periodic node loop in `src/p2p/node.rs`.
-- **trust layer**: `core-lib/src/trust_propagation.rs` implements trust blending (local*0.8 + remote*0.2). Time-based decay removed for fairness to mobile/offline nodes. Added `quality_index` (0.0–1.0) as continuity indicator: calculated locally by adaptive formula with EMA, propagated through network via `blend_quality(local, remote)`.
+- **trust layer**: `core/src/trust_propagation.rs` implements trust blending (local*0.8 + remote*0.2). Time-based decay removed for fairness to mobile/offline nodes. Added `quality_index` (0.0–1.0) as continuity indicator: calculated locally by adaptive formula with EMA, propagated through network via `blend_quality(local, remote)`.
 - **p2p/encryption**: `CryptoIdentity` (Ed25519) with hex helpers and Result-based verify; header message patterns.
 - **net**: UDP beacon sender/listener in `src/net.rs` for LAN peer discovery.
 - **app/truthctl**: peer registry (`peers.json`), `peers add/list`, and `sync` orchestration (push or pull-only).
-- **sync logs**: persistent high-level sync logs in `core-lib/src/storage.rs` (table `sync_logs`), exposed via CLI `truthctl logs show|clear`.
+- **sync logs**: persistent high-level sync logs in `core/src/storage.rs` (table `sync_logs`), exposed via CLI `truthctl logs show|clear`.
 - **peer history**: `peer_history` table and helpers in `core-lib/src/storage.rs` track per-peer sync attempts, with API `/api/v1/network/local` and CLI `truthctl peers stats|history`.
 - **node configuration**: user-editable `~/.truthctl/config.json` managed via `truthctl config` (show/set/reset).
 - **status summary**: `truthctl status` aggregates configuration, peers, and recent `sync_logs` to report node health. For runtime checks, `truthctl diagnose --server` probes `/health`, opens SQLite, and inspects P2P listener status.
