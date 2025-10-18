@@ -1,4 +1,7 @@
-## Data Model
+# Data Model
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 04
 
 Authoritative source: `docs/Data_Schema.md`.
 

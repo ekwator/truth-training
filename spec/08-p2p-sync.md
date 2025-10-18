@@ -1,4 +1,7 @@
-## P2P & Sync
+# P2P & Sync
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 08
 
 ### FidoNet-Inspired Peer Etiquette
 
@@ -145,24 +148,25 @@ The system tracks relay success rates dynamically during sync operations:
 
 - `collective_score` — aggregated event score (0..1), recalculated locally from `impact` entries and shared among nodes as part of distributed consensus propagation.
 - Consensus converges iteratively: nodes recompute and exchange values; discrepancies diminish with subsequent recalculations and new evaluations.
+- See `docs/Concept_Collective_Intelligence.md` for detailed implementation.
 
 ## Propagation Priority Exchange
 
-- `propagation_priority` (0.0–1.0) — адаптивный приоритет распространения.
-- Локальный расчёт с EMA: p_raw = 0.4·trust_norm + 0.3·quality_index + 0.3·relay_success_rate,
-  где trust_norm = ((trust_score+1)/2) и p = α·p_raw + (1-α)·prev, α=0.3.
-- Обмен по сети и слияние: blend_priority(local, remote) = clamp(0.8·local + 0.2·remote, 0..1).
-- Значение хранится в `node_ratings.propagation_priority` и дублируется в `node_metrics.propagation_priority` для визуализации.
+- `propagation_priority` (0.0–1.0) — adaptive propagation priority.
+- Local calculation with EMA: p_raw = 0.4·trust_norm + 0.3·quality_index + 0.3·relay_success_rate,
+  where trust_norm = ((trust_score+1)/2) and p = α·p_raw + (1-α)·prev, α=0.3.
+- Network exchange and merging: blend_priority(local, remote) = clamp(0.8·local + 0.2·remote, 0..1).
+- Value stored in `node_ratings.propagation_priority` and duplicated in `node_metrics.propagation_priority` for visualization.
 
 ## Quality Index Exchange
 
-- quality_index — индикатор непрерывности доверия (0.0–1.0), не является штрафом за оффлайн.
-- Передается в составе `node_metrics` наряду с `relay_success_rate`.
-- Локальный расчёт: адаптивная смесь с EMA-сглаживанием:
+- quality_index — trust continuity indicator (0.0–1.0), not a penalty for offline status.
+- Transmitted as part of `node_metrics` along with `relay_success_rate`.
+- Local calculation: adaptive blend with EMA smoothing:
   - q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability
   - q = α·q_raw + (1-α)·prev, α=0.3
-- При приеме удаленных метрик: `quality_index_local = clamp(0.8·local + 0.2·remote, 0..1)`.
-- Убраны любые временные штрафы/decay: качество и доверие не уменьшаются из-за неактивности; fairness для мобильных/оффлайн узлов.
+- When receiving remote metrics: `quality_index_local = clamp(0.8·local + 0.2·remote, 0..1)`.
+- Removed any temporal penalties/decay: quality and trust do not decrease due to inactivity; fairness for mobile/offline nodes.
 
 ### Roadmap
 

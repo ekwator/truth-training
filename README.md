@@ -1,8 +1,16 @@
-# 🧠 Truth Training
+# 🧠 Truth Training v0.4.0
 
-**A peer-to-peer application for truth and context analysis**
+**A distributed collective intelligence system for evaluating truth through trust-weighted consensus**
 
 ---
+
+## What's New in v0.4.0
+
+- **Collective Intelligence Layer**: Wisdom of the Crowd consensus mechanism for event evaluation
+- **Offline Reliability Update**: Quality index without time-based decay for mobile/offline fairness
+- **Unified Documentation**: All documentation translated to English with complete Spec-Kit traceability
+- **Android JSON Verification**: Ed25519 signature verification for mobile clients
+- **Enhanced P2P Sync**: Improved trust propagation and conflict resolution
 
 ## Concept
 

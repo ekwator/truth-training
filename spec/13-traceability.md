@@ -1,4 +1,7 @@
-## Traceability Matrix (v0.2.8-pre)
+# Traceability Matrix
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 13
 
 ### Requirements → Code Implementation
 
@@ -16,34 +19,42 @@
 - **P2P Sync** → `src/p2p/sync.rs` (bidirectional, incremental, conflict resolution)
 - **P2P Node** → `src/p2p/node.rs` (periodic sync loop)
 - **Crypto Identity** → `src/p2p/encryption.rs` (Ed25519 signing/verification)
- - **Local Network Statistics** → `src/api.rs` (`/api/v1/network/local`), `app/src/bin/truthctl.rs` (peers stats), docs in `README.md`
+- **Local Network Statistics** → `src/api.rs` (`/api/v1/network/local`), `app/src/bin/truthctl.rs` (peers stats)
 
 #### CLI & Management
 - **CLI Commands** → `app/src/bin/truthctl.rs` (all truthctl subcommands)
-| Feature                        | Spec File          | Module / File                | API / CLI Reference                   |
-|--------------------------------|--------------------|------------------------------|--------------------------------------|
-| Peer History Logging           | 08-p2p-sync.md     | core-lib/src/storage.rs      | truthctl peers history               |
-| Local Network Statistics       | 03-architecture.md | src/api.rs, app/bin/truthctl | /api/v1/network/local, peers stats   |
-| Quality & Trust Visualization  | 03-architecture.md | core-lib/src/models.rs       | /graph/json, truthctl graph show     |
 - **Key Management** → `app/src/bin/truthctl.rs` (generate, import, list)
 - **Peer Management** → `app/src/bin/truthctl.rs` (add, list, sync-all)
 - **Node Configuration** → `app/src/bin/truthctl.rs` (init-node, config)
 - **Diagnostics** → `app/src/bin/truthctl.rs` (status, diagnose, reset-data)
 
 #### Trust & Ratings
- - **Trust Propagation** → `core-lib/src/trust_propagation.rs` (blend, EMA helpers)
+- **Trust Propagation** → `core-lib/src/trust_propagation.rs` (blend, EMA helpers)
 - **Node Ratings** → `core-lib/src/storage.rs` (node_ratings table)
 - **Group Ratings** → `core-lib/src/storage.rs` (group_ratings table)
- - **Adaptive Propagation Priority** → `core-lib/src/trust_propagation.rs::compute_propagation_priority`, `core-lib/src/storage.rs` (persist and recalc), `src/p2p/sync.rs` (blend_priority), CLI `app/src/bin/truthctl.rs` (status/graph), API `/api/v1/stats`, `/graph/json`
+- **Adaptive Propagation Priority** → `core-lib/src/trust_propagation.rs::compute_propagation_priority`
 - **Graph API** → `src/api.rs` (graph/json, graph/summary)
 
 #### Collective Intelligence Layer
-- **Collective Score** → `core-lib/src/models.rs` (`TruthEvent.collective_score`), `core-lib/src/storage.rs` (`recalc_collective_truth`, schema migration)
+- **Collective Score** → `core-lib/src/models.rs` (`TruthEvent.collective_score`), `core-lib/src/storage.rs` (`recalc_collective_truth`)
 - **API Recalculation** → `src/api.rs` (`POST /api/v1/recalc_collective`)
 - **P2P Propagation** → `spec/08-p2p-sync.md` (shared among nodes)
 
-### New Requirements
-- R-CI-01: System must support collective evaluation and consensus recalculation per event.
+#### Android Integration
+- **JSON Signature Verification** → `src/android/verify_json.rs` (Ed25519 verification)
+- **JNI Bridge** → `src/android/mod.rs` (processJsonRequest)
+- **Cross-compilation** → `android-build/` (minimal Android build)
+
+### Requirements Traceability
+
+| Requirement ID | Title | Module | Implementation | Status |
+|----------------|-------|--------|----------------|--------|
+| R-CI-01 | Collective Intelligence Layer | core-lib, api | `collective_score` field, `/api/v1/recalc_collective` | ✅ Implemented |
+| R-TR-02 | Trust Propagation Model | core-lib | `trust_propagation.rs`, blend algorithms | ✅ Implemented |
+| R-OF-03 | Offline Reliability Consistency | core-lib, p2p | Quality index, no time-based decay | ✅ Implemented |
+| R-AN-04 | Android JSON Verification | android | Ed25519 signature verification | ✅ Implemented |
+| R-P2P-05 | P2P Sync Protocol | p2p | Bidirectional sync, conflict resolution | ✅ Implemented |
+| R-CLI-06 | CLI Management Tools | app | truthctl commands, diagnostics | ✅ Implemented |
 
 ### Documentation → Specification Mapping
 
@@ -57,37 +68,41 @@
 #### New Documentation
 - `README.md` → `spec/03-architecture.md` (FidoNet principles)
 - `docs/CLI_Usage.md` → `spec/10-cli.md` (CLI specification)
-- `spec/README.md` → Updated Spec Kit index
-- `spec/11-decision-log.md` → Updated ADR log
+- `docs/Concept_Collective_Intelligence.md` → Collective Intelligence Layer
+- `docs/api_reference/API_REFERENCE.md` → API documentation
+- `integration/android/README_INTEGRATION.md` → Android integration guide
 
 ### Feature Implementation Status
 
-#### v0.2.1-pre Features
+#### v0.4.0 Features
+- ✅ **Collective Intelligence Layer**: Wisdom of the Crowd consensus mechanism
+- ✅ **Offline Reliability Model**: Quality index without time-based decay
+- ✅ **Android JSON Verification**: Ed25519 signature verification for mobile clients
+- ✅ **Unified Documentation**: All documentation translated to English
+- ✅ **Spec-Kit Traceability**: Complete requirements mapping
+
+#### v0.3.0 Features
 - ✅ **FidoNet-inspired P2P**: Store-and-forward, hub/leaf roles, peer etiquette
 - ✅ **CLI Enhancement**: Full peer management, key generation, node initialization
-- ✅ **Trust Propagation**: Weighted blend with temporal decay
+- ✅ **Trust Propagation**: Weighted blend with adaptive quality index
 - ✅ **Modular Architecture**: Clean separation between core and CLI
 - ✅ **Network Sync**: Bidirectional sync with all known peers
 - ✅ **Diagnostics**: Comprehensive node health checking
-
-#### v0.2.0 Features
-- ✅ **Stable Sync**: `/sync` and `/incremental_sync` endpoints
-- ✅ **Rating Integration**: Node and group rating system
-- ✅ **Graph API**: Filtered graph endpoints with summaries
-- ✅ **Conflict Resolution**: Timestamp-based with trust weighting
-- ✅ **Audit Logging**: Persistent sync logs for monitoring
 
 ### Test Coverage
 
 #### Unit Tests
 - `src/api.rs` → API endpoint tests
 - `src/p2p/encryption.rs` → Crypto identity tests
+- `src/android/verify_json.rs` → Android verification tests
 - `core-lib/src/storage.rs` → Database operation tests
 
 #### Integration Tests
 - `app/tests/truthctl_*.rs` → CLI command tests
+- `tests/android_verify.rs` → Android signature verification tests
 - `app/tests/truthctl_smoke.rs` → Basic functionality tests
 - `app/tests/truthctl_peers_test.rs` → Peer management tests
 
 #### Feature Tests
 - `cargo test --workspace --features p2p-client-sync` → Full feature testing
+- `cargo test --test android_verify` → Android verification testing

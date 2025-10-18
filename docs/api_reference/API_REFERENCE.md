@@ -12,9 +12,9 @@
 ```
 
 ### Verification rules
-- Подпись вычисляется строго над канонической сериализацией `payload` (`serde_json::to_vec` на стороне Rust).
-- `public_key` — base64 сырых 32 байт Ed25519.
-- `signature` — base64 сырых 64 байт Ed25519.
+- Signature is computed strictly over canonical serialization of `payload` (`serde_json::to_vec` on Rust side).
+- `public_key` — base64 of raw 32 bytes Ed25519.
+- `signature` — base64 of raw 64 bytes Ed25519.
 
 ### Server responses
 - Success (verified):
@@ -27,7 +27,7 @@
 ```
 
 ### Notes
-- Для корректной верификации важно, чтобы порядок ключей и формат чисел в `payload` совпадали с тем, что подписал Android.
+- For correct verification, it's important that key order and number format in `payload` match what Android signed.
 ## Truth Core API Reference (v0.3.0)
 
 Audience: Android, Web, and CLI clients. Responses are JSON. Unless noted, Content-Type: `application/json; charset=utf-8`.

@@ -8,6 +8,7 @@ Security updates are provided for the **latest stable release** and the **develo
 | Version          | Supported          | Notes |
 | ---------------- | ------------------ | ----- |
 | `main` (latest)  | ✅ Yes              | Active development, frequent commits |
+| `v0.4.x`         | ✅ Yes              | Collective Intelligence Layer & Offline Reliability |
 | `v0.3.x`         | ✅ Yes              | Core stabilization & crypto verification |
 | `v0.2.x`         | ⚠️ Limited         | Legacy P2P prototype |
 | `< v0.2`         | ❌ No               | Deprecated research builds |
@@ -18,6 +19,9 @@ Security updates are provided for the **latest stable release** and the **develo
 
 Truth Training is a **peer-to-peer knowledge network**, where every node:
 - Signs outgoing messages using **Ed25519 digital signatures**;  
+- Verifies incoming messages using **Ed25519 signature verification**;
+- **Android JSON Verification**: Mobile clients must sign JSON payloads with Ed25519 for authentication;
+- **P2P Message Verification**: All P2P sync messages include cryptographic signatures for authenticity;
 - Verifies incoming messages using **public keys from peers**;  
 - Does not rely on a centralized server or single point of trust.  
 

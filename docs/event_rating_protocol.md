@@ -1,236 +1,238 @@
-# Event Rating & Propagation Protocol  
-**Truth Training** — алгоритм оценки событий, расчёта репутации и поведения 8-битного кода сообщения.
+# Event Rating & Propagation Protocol
+Version: v0.4.0
+Updated: 2025-01-18  
+**Truth Training** — event evaluation algorithm, reputation calculation and 8-bit message code behavior.
 
-## Кратко
-- Каждое событие (`truth_events`) хранит 8-битное поле `code`:
-  - старшие 2 бита — служебный код (00/01/10/11)
-  - младшие 6 бит — счётчик/метаинформация (0..63)
-- Код `01` **одновременно**:
-  - означает «постоянное» событие, которое ретранслируется,
-  - и **исходно** присваивается автору при создании (author-assigned).
-- Оценки события хранятся в таблице `impact` (поле `value` — boolean; `type_id` определяет тип влияния: репутация, финансы, мораль и т.п.).
-- Алгоритмы вычисляют: **оценку события** (event_score) и **репутацию пользователя** (user_reputation) на основе истории `impact` и весов валидаторов.
-- Решения о переводе кодов (`00`→`01`, `01`→`00`, `01`→`11`) принимаются автоматически по метрикам (порогам).
+## Overview
+- Each event (`truth_events`) stores 8-bit `code` field:
+  - upper 2 bits — service code (00/01/10/11)
+  - lower 6 bits — counter/metadata (0..63)
+- Code `01` **simultaneously**:
+  - means "permanent" event that gets relayed,
+  - and is **originally** assigned by author on creation (author-assigned).
+- Event evaluations stored in `impact` table (`value` field — boolean; `type_id` defines impact type: reputation, financial, moral, etc.).
+- Algorithms compute: **event score** (event_score) and **user reputation** (user_reputation) based on `impact` history and validator weights.
+- Code transition decisions (`00`→`01`, `01`→`00`, `01`→`11`) made automatically by metrics (thresholds).
 
 ---
 
-## 1. Источники данных (используемые таблицы)
-- `truth_events` — поле `code: u8` (новое).
-- `impact` — строки фиксации субъективных оценок:
+## 1. Data Sources (used tables)
+- `truth_events` — `code: u8` field (new).
+- `impact` — subjective evaluation records:
   - `event_id` → `truth_events.id`
-  - `type_id` → контекст/тип влияния
-  - `value` → boolean (true = позитивно/подтверждение, false = негативно/опровержение)
-  - `notes`, `created_at`, `user_id` (идентификатор валидатора) — предполагается, `user_id` уже есть или валидатор идентифицируется криптографически при синхронизации.
-- `progress_metrics` и агрегаты — для хранения итоговой статистики на уровне пользователя и группы.
+  - `type_id` → context/impact type
+  - `value` → boolean (true = positive/confirmation, false = negative/refutation)
+  - `notes`, `created_at`, `user_id` (validator identifier) — assumed `user_id` exists or validator identified cryptographically during sync.
+- `progress_metrics` and aggregates — for storing final statistics at user and group level.
 
-> Примечание: если в `impact` ещё нет `user_id`/validator_id, нужно записывать идентификатор валидатора (псевдоним / публичный ключ) вместе с каждой оценкой.
-
----
-
-## 2. Цели расчёта
-1. Преобразовать набор оценок (`impact` записей) в компактную **оценку события** (`S_e`) в диапазоне `[-1, +1]` или `[0..1]`.
-2. На основе `S_e`:
-   - автоматический перевод кода (например, `S_e >= T_up` → `01`, `S_e <= T_down` → `11`);
-   - обновление репутации автора (`R_author`);
-   - начисление/списание кредитов валидаторам.
-3. Обеспечить устойчивость к манипуляциям (Sybil, координированный фэйк).
+> Note: if `impact` doesn't have `user_id`/validator_id yet, need to record validator identifier (alias / public key) with each evaluation.
 
 ---
 
-## 3. Основные понятия и диапазоны
-- `R_u` — репутация пользователя `u`, нормализованная в `[0, 1]`.  
-- `W_v` — вес оценки валидатора `v` (функция от `R_v` и активности `A_v`), `W_v >= 0`.  
-- `vote` — значение оценки: `+1` (подтверждает) или `-1` (опровергает).  
-- `S_e` — итоговый скор события: взвешенное среднее по валидаторам, нормализовано в `[-1,1]`.  
-- Пороги:
-  - `T_up` — для перехода в постоянные (01), например `0.75`.
-  - `T_down` — для удаления (11), например `-0.6`.
-  - `T_confirm` — для локального подтверждения / отметки (10), например `0.4`.
-
-(пороговые значения — рекомендованные стартовые, менять в тестах и по результатам эксплуатации)
+## 2. Calculation Goals
+1. Convert evaluation set (`impact` records) to compact **event score** (`S_e`) in range `[-1, +1]` or `[0..1]`.
+2. Based on `S_e`:
+   - automatic code transition (e.g., `S_e >= T_up` → `01`, `S_e <= T_down` → `11`);
+   - author reputation update (`R_author`);
+   - validator credit/debit.
+3. Ensure resistance to manipulation (Sybil, coordinated fake).
 
 ---
 
-## 4. Преобразование impact → event_score (S_e)
+## 3. Main Concepts and Ranges
+- `R_u` — user `u` reputation, normalized to `[0, 1]`.  
+- `W_v` — validator `v` evaluation weight (function of `R_v` and activity `A_v`), `W_v >= 0`.  
+- `vote` — evaluation value: `+1` (confirms) or `-1` (refutes).  
+- `S_e` — final event score: weighted average by validators, normalized to `[-1,1]`.  
+- Thresholds:
+  - `T_up` — for transition to permanent (01), e.g. `0.75`.
+  - `T_down` — for removal (11), e.g. `-0.6`.
+  - `T_confirm` — for local confirmation/marking (10), e.g. `0.4`.
 
-### 4.1. Вес валидатора
-Для валидатора `v` вычисляем вес `W_v` — комбинированная функция репутации и активности:
+(threshold values — recommended starting values, adjust in tests and based on operation results)
+
+---
+
+## 4. Impact → Event Score (S_e) Transformation
+
+### 4.1. Validator Weight
+For validator `v` compute weight `W_v` — combined function of reputation and activity:
 W_v = sigmoid( a * R_v + b * log(1 + A_v) )
-- `R_v` — текущее значение репутации (0..1).
-- `A_v` — активность (кол-во оценок за период), `log` сглаживает.
-- `a, b` — коэффициенты (например a=3, b=1).
-- `sigmoid(x) = 1 / (1 + e^{-x})` → даёт значение в (0,1).
+- `R_v` — current reputation value (0..1).
+- `A_v` — activity (number of evaluations per period), `log` smooths.
+- `a, b` — coefficients (e.g. a=3, b=1).
+- `sigmoid(x) = 1 / (1 + e^{-x})` → gives value in (0,1).
 
-Можно упростить: `W_v = R_v` (если активность не учитываем).
+Can simplify: `W_v = R_v` (if not considering activity).
 
-### 4.2. Вклад одного голоса
-Пусть `vote_v ∈ {+1, -1}`. Вклад валидатора:
+### 4.2. Single Vote Contribution
+Let `vote_v ∈ {+1, -1}`. Validator contribution:
 contrib_v = W_v * vote_v
 
-### 4.3. Суммарный скор
-Суммируем по всем валидаторам, нормируем на сумму весов:
+### 4.3. Total Score
+Sum over all validators, normalize by weight sum:
 S_raw = Σ_v contrib_v
 W_sum = Σ_v W_v
-S_e = S_raw / W_sum // в диапазоне [-1, +1]
-Если `W_sum == 0` — `S_e = 0`.
+S_e = S_raw / W_sum // in range [-1, +1]
+If `W_sum == 0` — `S_e = 0`.
 
-### 4.4. Учет типа влияния
-Если `impact.type_id` влияет на важность (репутация vs финансы), можно вводить `T_factor[type_id]` и умножать `contrib_v` на этот множитель.
+### 4.4. Impact Type Consideration
+If `impact.type_id` affects importance (reputation vs financial), can introduce `T_factor[type_id]` and multiply `contrib_v` by this factor.
 
 ---
 
-## 5. Обновление репутации автора и валидаторов
+## 5. Author and Validator Reputation Updates
 
-### 5.1. Обновление репутации автора `R_author`
-Идея — использовать подобие **Elo / градиентного обновления**:
+### 5.1. Author Reputation Update `R_author`
+Idea — use **Elo / gradient update** similarity:
 
-- Предположим, у автора `u` есть текущая репутация `R_u` (в [0,1]).  
-- Ожидаемый результат `E = f(R_u)` — например, `E = R_u` (ожидаем, что автор с высокой репутацией будет чаще подтверждён).  
-- Фактический результат `O` — нормализуем `S_e` в `[0,1]`: `O = (S_e + 1)/2`.
+- Assume author `u` has current reputation `R_u` (in [0,1]).  
+- Expected result `E = f(R_u)` — e.g., `E = R_u` (expect high reputation author to be confirmed more often).  
+- Actual result `O` — normalize `S_e` to `[0,1]`: `O = (S_e + 1)/2`.
 
-Обновление:
+Update:
 Δ = K * (O - E)
 R_u_new = clamp(R_u + Δ, 0.0, 1.0)
-- `K` — learning rate (напр., 0.05 или адаптивный в зависимости от важности события).
+- `K` — learning rate (e.g., 0.05 or adaptive depending on event importance).
 
-Пример: автор `R_u = 0.6`, `S_e = 0.8` → `O = 0.9`, `Δ = 0.05*(0.9-0.6)=0.015` → `R_u_new = 0.615`.
+Example: author `R_u = 0.6`, `S_e = 0.8` → `O = 0.9`, `Δ = 0.05*(0.9-0.6)=0.015` → `R_u_new = 0.615`.
 
-### 5.2. Вознаграждение/штраф валидаторов
-Каждый валидатор получает награду/штраф на основе того, насколько его голос совпал с итоговым `S_e` (или с долгосрочным результатом):
+### 5.2. Validator Reward/Penalty
+Each validator gets reward/penalty based on how their vote matched final `S_e` (or long-term result):
 
-Определение соответствия:
+Agreement definition:
 agree_v = (vote_v == sign(S_e)) ? 1 : -1
-Где `sign(+0.2)=+1`, `sign(-0.4)=-1`, `sign(0)=0`. Можно более плавно — использовать косинусное расстояние:
+Where `sign(+0.2)=+1`, `sign(-0.4)=-1`, `sign(0)=0`. Can be smoother — use cosine distance:
 score_v = 1 - abs( vote_v - S_e ) / 2
-А затем:
+Then:
 ΔR_v = K_v * W_global * (score_v - baseline)
-где `K_v` — маленький коэффициент (например 0.01), `W_global` может учитывать размер дела.
+where `K_v` — small coefficient (e.g. 0.01), `W_global` can consider case size.
 
-Можно начислять «кредиты» (внутренний счёт) вместо прямого изменения репутации, и затем конвертировать кредиты в репутацию при достижении порогов.
-
----
-
-## 6. Пороговые правила и перевод кодов
-
-### 6.1. Переходы (автоматические)
-- На регулярном `recalc` (локально или на сервере) вычисляем `S_e`.
-- Если `S_e >= T_up` и сообщение было `00` → пометить `01` (постоянное).  
-  - Также пометь `author` за выверенность (наблюдаем прирост `R_author`).
-- Если `S_e < T_up` но `code == 01` и с момента назначения прошло N дней без поддержки → можно понизить обратно в `00` (soft rollback).
-- Если `S_e <= T_down` → пометить `11` (удалено).  
-  - При попадании в `11` — валидаторы, голосовавшие за ложь, получают штрафы (с учётом веса).
-- `10` используется как локальная пометка проверки:  
-  - При приёме узлом: если есть такой же `01` в локальной БД — помечаем и пересылаем как `11` (см. исходный протокол).
-
-### 6.2. Поведение при пересылке
-- При пересылке уменьшать младшие 6 бит счётчика (если код 00 и счётчик>0) — когда 0 → перестать пересылать.  
-- При пересылке `01` — при отправке можно временно поменять на `00` (как в твоём протоколе), чтобы контролировать распространение (или не менять — решение архитектурное).
+Can award "credits" (internal score) instead of direct reputation change, then convert credits to reputation when reaching thresholds.
 
 ---
 
-## 7. Защита от атак (Sybil, координированная ложь)
-- **Идентификация валидатора**: каждый узел имеет ключевую пару (публичный ключ = псевдоним). Каждая оценка подписывается (signature) — при синхронизации можно проверить подлинность.
-- **Ограничение силы новых нод**: стартовый вес `W_v` для новых пользователей низкий; рост веса только через длительное позитивное поведение (длительная верификация).
-- **Аномалия/детектор сходимости**: если группа малочисленна, а все голоса одинаковы и резко меняют `S_e`, метрики подозрительности растут — система снижает вес этих голосов, требует больше подтверждений.
-- **Краудсорсинговая проверка**: комбинировать автоматические метрики с возможностью ручной проверки (trusted validators / experts).
-- **Коэффициент сдерживания**: штрафы за частые противоречивые голосования, особенно от аккаунтов с одинаковыми IP/поведенческими паттернами (локально можно отслеживать).
+## 6. Threshold Rules and Code Transitions
+
+### 6.1. Transitions (automatic)
+- On regular `recalc` (locally or server) compute `S_e`.
+- If `S_e >= T_up` and message was `00` → mark `01` (permanent).  
+  - Also mark `author` for accuracy (observe `R_author` increase).
+- If `S_e < T_up` but `code == 01` and N days passed since assignment without support → can downgrade back to `00` (soft rollback).
+- If `S_e <= T_down` → mark `11` (removed).  
+  - On hitting `11` — validators who voted for lies get penalties (considering weight).
+- `10` used as local verification mark:  
+  - On node receipt: if same `01` exists in local DB — mark and forward as `11` (see original protocol).
+
+### 6.2. Forwarding Behavior
+- When forwarding decrease lower 6 bits counter (if code 00 and counter>0) — when 0 → stop forwarding.  
+- When forwarding `01` — on send can temporarily change to `00` (as in your protocol) to control propagation (or don't change — architectural decision).
 
 ---
 
-## 8. Хранение агрегатов и частота пересчёта
-- **Реализовать периодическую задачу `recalc`** (локально и/или на сервере при синхронизации), которая:
-  1. Для каждого `truth_event` собирает `impact` (за заданный window).
-  2. Вычисляет `S_e`.
-  3. Применяет правила кодов (переводы).
-  4. Вычисляет `ΔR` для автора и валидаторов.
-  5. Записывает агрегаты в `progress_metrics` (и, опционально, в `truth_events.event_score`).
-- Частота `recalc`: при малой сети — чаще (каждые несколько минут). При большой — реже (час/сутки) + триггер по новым голосам.
+## 7. Attack Protection (Sybil, coordinated lies)
+- **Validator identification**: each node has key pair (public key = alias). Each evaluation signed (signature) — can verify authenticity during sync.
+- **New node strength limitation**: starting weight `W_v` for new users low; weight growth only through long positive behavior (long verification).
+- **Anomaly/convergence detector**: if group small and all votes same and sharply change `S_e`, suspicion metrics grow — system reduces these vote weights, requires more confirmations.
+- **Crowdsourced verification**: combine automatic metrics with manual verification capability (trusted validators / experts).
+- **Deterrence coefficient**: penalties for frequent contradictory voting, especially from accounts with same IP/behavioral patterns (can track locally).
 
 ---
 
-## 9. Пример (числовой)
-- Валидаторы: `v1 (R=0.8)`, `v2 (R=0.3)`, `v3 (R=0.6)`.
-- Голоса: `v1:+1`, `v2:+1`, `v3:-1`.
-- Пусть `W_v = R_v` (упрощённо).  
+## 8. Aggregate Storage and Recalc Frequency
+- **Implement periodic `recalc` task** (locally and/or server during sync) that:
+  1. For each `truth_event` collects `impact` (for given window).
+  2. Computes `S_e`.
+  3. Applies code rules (transitions).
+  4. Computes `ΔR` for author and validators.
+  5. Writes aggregates to `progress_metrics` (and optionally to `truth_events.event_score`).
+- `recalc` frequency: in small network — more often (every few minutes). In large — less often (hour/day) + trigger on new votes.
+
+---
+
+## 9. Example (numerical)
+- Validators: `v1 (R=0.8)`, `v2 (R=0.3)`, `v3 (R=0.6)`.
+- Votes: `v1:+1`, `v2:+1`, `v3:-1`.
+- Let `W_v = R_v` (simplified).  
   - `S_raw = 0.8*1 + 0.3*1 + 0.6*(-1) = 0.5`
   - `W_sum = 0.8 + 0.3 + 0.6 = 1.7`
-  - `S_e = 0.5 / 1.7 ≈ 0.294` → слабая поддержка.
-- Если `T_up=0.75`, событие остаётся `00`.  
-- Автор получает `O = (S_e+1)/2 ≈ 0.647`, ожидание `E=R_author` → обновляем `R_author`.
+  - `S_e = 0.5 / 1.7 ≈ 0.294` → weak support.
+- If `T_up=0.75`, event remains `00`.  
+- Author gets `O = (S_e+1)/2 ≈ 0.647`, expectation `E=R_author` → update `R_author`.
 
 ---
 
-## 10. Практическое встраивание в текущую схему
-- **Минимальные изменения DB**:
-  - добавить поле `code INTEGER` (1 байт) в `truth_events`.
-  - добавить/уточнить `impact.user_id` (validator id) при вставке голосов.
-- **Вычисления**:
-  - `recalc` использует `SELECT impact.* WHERE event_id = X` → агрегирует.
-  - результаты записывать в `progress_metrics` (user & group aggregates) и при желании в `truth_events.event_score`.
-- **В P2P-синхронизации**:
-  - при получении нового `impact` от пира — начислить временные очки, но окончательное изменение репутации применять только после локального `recalc` (чтобы избежать гонок).
-  - при синхронизации узлы передают агрегаты (event_score) и подписи, что помогает быстро конвергировать.
-  - распространение доверия узлов выполняется прозрачно: `trust_score_new = trust_local*0.8 + trust_remote*0.2` с ограничением в [-1,1]; при давности `last_updated > 7 дней` применяется спад ×0.9.
+## 10. Practical Integration into Current Schema
+- **Minimal DB changes**:
+  - add `code INTEGER` (1 byte) field to `truth_events`.
+  - add/clarify `impact.user_id` (validator id) when inserting votes.
+- **Computations**:
+  - `recalc` uses `SELECT impact.* WHERE event_id = X` → aggregates.
+  - results write to `progress_metrics` (user & group aggregates) and optionally to `truth_events.event_score`.
+- **In P2P sync**:
+  - on receiving new `impact` from peer — award temporary points, but final reputation change apply only after local `recalc` (to avoid races).
+  - during sync nodes exchange aggregates (event_score) and signatures, helps quick convergence.
+  - node trust propagation executed transparently: `trust_score_new = trust_local*0.8 + trust_remote*0.2` clamped to [-1,1]; when `last_updated > 7 days` apply decay ×0.9.
 
 ---
 
-## 11. Рекомендации по параметрам и начальной настройке
-- `a=3, b=1` в `W_v` (веса), `K=0.03` для обновления `R_author`, `K_v=0.01` для валидаторов.
+## 11. Parameter Recommendations and Initial Setup
+- `a=3, b=1` in `W_v` (weights), `K=0.03` for `R_author` update, `K_v=0.01` for validators.
 - `T_up = 0.75`, `T_down = -0.6`, `T_confirm = 0.4`.
-- Тестировать в симуляциях сети для корректировки.
+- Test in network simulations for adjustment.
 
 ---
 
-## 12. Заключение
-Алгоритм:
-- легко встраивается в текущую структуру (добавляем `code: u8` и `impact.user_id` если необходимо);
-- комбинирует децентрализованную ретрансляцию с локальным расчётом доверия;
-- даёт механизмы стимулов и наказаний, что помогает снижать ценность мошенничества;
-- требует защиты от Sybil-атак — через постепенный рост веса новых узлов, подписи и аномал-детект.
+## 12. Conclusion
+Algorithm:
+- easily integrates into current structure (add `code: u8` and `impact.user_id` if needed);
+- combines decentralized relay with local trust calculation;
+- provides incentive and punishment mechanisms, helps reduce fraud value;
+- requires Sybil attack protection — through gradual new node weight growth, signatures and anomaly detection.
 
-## 13. Очистка базы пользователем (reset событий)
-Пользователь может отметить собственные проверенные события как непроверенные, переводя их код `01 → 00`.  
-Это позволяет пересматривать старые утверждения, инициировать повторную проверку или очистку локальной базы.  
+## 13. User Database Cleanup (event reset)
+User can mark own verified events as unverified, transitioning their code `01 → 00`.  
+This allows reviewing old claims, initiating re-verification or local database cleanup.  
 
-- Доступно только автору события (подтверждается подписью).  
-- Распространяется как отдельное «reset-сообщение».  
-- Все узлы, получившие сообщение, меняют у указанного события код `01` на `00`.  
-- Ограничение по частоте защищает сеть от злоупотреблений.  
+- Available only to event author (confirmed by signature).  
+- Propagated as separate "reset-message".  
+- All nodes receiving message change specified event code `01` to `00`.  
+- Frequency limitation protects network from abuse.  
 
-## 14. Схема работы процесса
+## 14. Process Workflow Diagram
 
 ```mermaid
 flowchart TD
-    A[Создание события] --> B{Код 01?}
-    B -->|Да| C[code=01]
-    B -->|Нет| D[code=00]
+    A[Event Creation] --> B{Code 01?}
+    B -->|Yes| C[code=01]
+    B -->|No| D[code=00]
     
-    C --> E[P2P ретрансляция]
+    C --> E[P2P Relay]
     D --> E
     
-    E --> F[Пиры получают]
-    F --> G{Дубликат 01?}
-    G -->|Да| H[code=11]
-    G -->|Нет| I[Сбор голосов]
+    E --> F[Peers Receive]
+    F --> G{Duplicate 01?}
+    G -->|Yes| H[code=11]
+    G -->|No| I[Collect Votes]
     
-    I --> J[Запись в impact]
-    J --> K[Пересчёт recalc]
+    I --> J[Write to impact]
+    J --> K[Recalc]
     
     K --> L{S_e ≥ T_up?}
-    L -->|Да| M[code=01]
-    L -->|Нет| N{S_e ≤ T_down?}
-    N -->|Да| O[code=11]
-    N -->|Нет| P[code=00]
+    L -->|Yes| M[code=01]
+    L -->|No| N{S_e ≤ T_down?}
+    N -->|Yes| O[code=11]
+    N -->|No| P[code=00]
     
-    M --> Q[Обновление репутаций]
+    M --> Q[Update Reputations]
     O --> Q
     P --> Q
     
-    Q --> R[Отображение результатов]
- X[Пользователь хочет очистить базу] --> Y[Выбирает свои события code=01]
-    Y --> Z[Отправка reset-сообщения в P2P]
-    Z --> AA[Пиры проверяют подпись автора]
-    AA -->|OK| BB[Событие изменяется 01 → 00]
-    AA -->|Fail| CC[Событие игнорируется]
-    BB --> DD[Событие снова участвует в recalc]
+    Q --> R[Display Results]
+    X[User Wants DB Cleanup] --> Y[Selects Own Events code=01]
+    Y --> Z[Send Reset-Message to P2P]
+    Z --> AA[Peers Verify Author Signature]
+    AA -->|OK| BB[Event Changes 01 → 00]
+    AA -->|Fail| CC[Event Ignored]
+    BB --> DD[Event Participates in Recalc Again]
 ```

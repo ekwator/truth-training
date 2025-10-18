@@ -1,4 +1,7 @@
-## Product Vision
+# Product Vision
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 01
 
 Truth Training fosters a resilient, decentralized information space where collective intelligence evaluates events, combats fraud, and tracks progress over time.
 

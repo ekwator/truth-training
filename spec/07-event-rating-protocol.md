@@ -1,4 +1,7 @@
-## Event Rating Protocol
+# Event Rating Protocol
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 07
 Source: docs/event_rating_protocol.md
 
 Status: MVP logic in place; full protocol pending.
@@ -11,15 +14,6 @@ Status: MVP logic in place; full protocol pending.
   - Reputation model (R_u, W_v) and threshold-based code transitions (T_up, T_down, T_confirm).
   - Propagation counter semantics for 8-bit code; author-signed reset 01→00.
   - Persisted `event_score` and periodic recalc integration.
-
-### Trust propagation
-
-- Узловое доверие `trust_score` смешивается при синхронизации с удалёнными рейтингами:
-
-  \[ new\_trust = local\_trust \cdot 0.8 + remote\_trust \cdot 0.2 \]
-
-- Корректировка по времени: если `last_updated` старше 7 суток на момент применения, к значению применяется спад `×0.9`. Значение затем ограничивается в диапазоне [-1, 1].
-- Распространение и спад выполняются прозрачно во время `/sync` и `/incremental_sync`.
 
 Action items
 - Extend schema: impact.user_id TEXT, optional truth_events.event_score REAL.

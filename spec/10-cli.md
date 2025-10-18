@@ -1,4 +1,7 @@
 # CLI Specification (truthctl)
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 10
 
 ## Overview
 Administrative CLI over truth-core for synchronization, verification, and ratings.
@@ -7,7 +10,7 @@ Administrative CLI over truth-core for synchronization, verification, and rating
 - sync — bidirectional/incremental/push/pull P2P sync
 - verify — verify local data integrity and signatures
 - ratings — show or recalc node/group ratings
-  - ratings trust [--verbose] — показать локальный/сетевой уровни доверия и дельты
+  - ratings trust [--verbose] — show local/network trust levels and deltas
 - status — summarizes node state (config, peers, recent sync logs)
 - diagnose — health checks and environment diagnostics
 - reset-data — clear local node data; optional reinit

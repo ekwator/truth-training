@@ -1,8 +1,8 @@
-## Android Integration Guide (Truth Core v0.3.0)
+## Android Integration Guide (Truth Core v0.4.0)
 
 ### Android JSON signature verification (Ed25519)
 
-Android-клиент подписывает детерминированную сериализацию поля `payload` (JSON) с помощью Ed25519 и передает вместе с ключом:
+Android client signs deterministic serialization of `payload` field (JSON) using Ed25519 and sends together with key:
 
 ```json
 {
@@ -13,24 +13,24 @@ Android-клиент подписывает детерминированную �
 }
 ```
 
-На стороне Rust ядра выполняется верификация до обработки:
-- Извлекаются `signature` и `public_key`.
-- Формируется каноническая JSON-строка из `payload` (`serde_json::to_vec`).
-- Подпись проверяется по публичному ключу Ed25519.
+On Rust core side verification is performed before processing:
+- Extract `signature` and `public_key`.
+- Form canonical JSON string from `payload` (`serde_json::to_vec`).
+- Verify signature against Ed25519 public key.
 
-Ответы:
-- Успех:
+Responses:
+- Success:
 ```json
 { "status": "ok", "verified": true }
 ```
-- Ошибка подписи:
+- Signature error:
 ```json
 { "status": "error", "reason": "invalid_signature" }
 ```
 
-Примечания:
-- И `signature`, и `public_key` — base64 от сырых байт Ed25519 (signature: 64 байта, public key: 32 байта).
-- Сериализация `payload` должна быть детерминированной и совпадать с тем, что подписал Android.
+Notes:
+- Both `signature` and `public_key` are base64 of raw Ed25519 bytes (signature: 64 bytes, public key: 32 bytes).
+- `payload` serialization must be deterministic and match what Android signed.
 
 This guide helps Android developers consume the Truth Core REST API using Retrofit and JWT authentication.
 
@@ -40,6 +40,7 @@ This guide helps Android developers consume the Truth Core REST API using Retrof
 - Content-Type: `application/json; charset=utf-8`
 - Authentication: JWT (`Authorization: Bearer <jwt>`) for protected endpoints
 - Full API reference: see `docs/api_reference/API_REFERENCE.md`
+- Collective Intelligence API: `POST /api/v1/recalc_collective` for consensus recalculation
 
 ### Retrofit Setup (Kotlin)
 

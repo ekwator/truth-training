@@ -1,62 +1,64 @@
 # truthctl CLI
+Version: v0.4.0
+Updated: 2025-01-18
 
-Командная утилита для P2P‑синхронизации и обслуживания узла Truth Training.
+Command-line utility for P2P synchronization and Truth Training node maintenance.
 
-## Установка и запуск
+## Installation and Running
 
-Сборка с клиентскими p2p‑функциями:
+Build with client p2p functions:
 ```bash
 cargo build --bin truthctl --features p2p-client-sync
 ```
 
-## Основные команды
+## Main Commands
 
-### Синхронизация
+### Synchronization
 
-Полная синхронизация с конкретным пиром:
+Full synchronization with specific peer:
 ```bash
 truthctl sync --peer http://127.0.0.1:8080 --identity keys/node1.json --mode full
 ```
 
-Инкрементальная синхронизация:
+Incremental synchronization:
 ```bash
 truthctl sync --peer http://127.0.0.1:8080 --identity keys/node1.json --mode incremental
 ```
 
-Синхронизация со всеми известными пирами:
+Synchronization with all known peers:
 ```bash
 truthctl peers sync-all --mode full
 truthctl peers sync-all --mode incremental --dry-run
 ```
 
-### Статус узла
+### Node Status
 
 ```bash
 truthctl status --db truth.db --identity keys/node1.json
 ```
 
-Вывод включает:
-- Имя ноды и порт (из `~/.truthctl/config.json`)
-- Путь к БД
-- Количество пиров (из `~/.truthctl/peers.json`)
-- Последние 5 записей синхронизации из таблицы `sync_logs`
-- Для свежей БД выводит предупреждение: "No sync history yet."
- - Показатели сети: средний `propagation_priority`, средний `relay_success_rate`, средний `quality_index` с цветовой индикацией (качество: 🔵 высокое, 🟡 среднее, 🔴 низкое)
+Output includes:
+- Node name and port (from `~/.truthctl/config.json`)
+- Database path
+- Number of peers (from `~/.truthctl/peers.json`)
+- Last 5 sync records from `sync_logs` table
+- For fresh database shows warning: "No sync history yet."
+- Network metrics: average `propagation_priority`, average `relay_success_rate`, average `quality_index` with color coding (quality: 🔵 high, 🟡 medium, 🔴 low)
 
 ## Key Management
 
-### Генерация ключей
+### Key Generation
 ```bash
 truthctl keys generate
-# вывод:
+# output:
 # private: <64-hex>
 # public:  <64-hex>
 
-# сохранить в локальное хранилище (~/.truthctl/keys.json)
+# save to local storage (~/.truthctl/keys.json)
 truthctl keys generate --save
 ```
 
-### Импорт ключей
+### Key Import
 ```bash
 truthctl keys import <priv_hex> <pub_hex>
 truthctl keys list
@@ -64,12 +66,12 @@ truthctl keys list
 
 ## Node Initialization
 
-Создание конфигурации узла:
+Creating node configuration:
 ```bash
 truthctl init-node <node_name> --port 8080 --db truth.db --auto-peer
 ```
 
-Создаваемые файлы:
+Created files:
 - `~/.truthctl/config.json`:
 ```json
 {
@@ -80,7 +82,7 @@ truthctl init-node <node_name> --port 8080 --db truth.db --auto-peer
   "private_key": "<hex>"
 }
 ```
-- `~/.truthctl/peers.json` (при `--auto-peer`):
+- `~/.truthctl/peers.json` (with `--auto-peer`):
 ```json
 {
   "peers": [
@@ -91,28 +93,28 @@ truthctl init-node <node_name> --port 8080 --db truth.db --auto-peer
 
 ## Peer Management
 
-### Добавление и просмотр пиров
+### Adding and Viewing Peers
 ```bash
 truthctl peers list
 truthctl peers add http://127.0.0.1:8081 <pub_hex>
 ```
 
-### Локальная статистика и история пиров
+### Local Peer Statistics and History
 
-Статистика (API `/api/v1/network/local`):
+Statistics (API `/api/v1/network/local`):
 
 ```bash
 truthctl peers stats --server http://127.0.0.1:8080 --format table
 truthctl peers stats --server http://127.0.0.1:8080 --format json
 ```
 
-История из локальной БД (`peer_history`):
+History from local DB (`peer_history`):
 
 ```bash
 truthctl peers history --limit 50 --db truth.db
 ```
 
-Пример таблицы:
+Example table:
 
 ```text
 Peer                  Last Sync              Success  Fails  Quality  Trust
@@ -123,25 +125,25 @@ http://peer-b:8080    1d ago                 5        2      0.75     0.80
 Avg success rate: 0.86 | Avg quality: 0.83
 ```
 
-### Синхронизация со всеми пирами
+### Synchronization with All Peers
 ```bash
-# Полная двунаправленная
+# Full bidirectional
 truthctl peers sync-all --mode full
 
-# Инкрементальная
+# Incremental
 truthctl peers sync-all --mode incremental
 
-# Сухой прогон
+# Dry run
 truthctl peers sync-all --mode full --dry-run
 ```
 
-### Аутентификация и обновление токена
+### Authentication and Token Refresh
 
-Выпуск токенов (сервер должен слушать, по умолчанию `http://127.0.0.1:8080`):
+Token issuance (server should be listening, default `http://127.0.0.1:8080`):
 ```bash
 truthctl auth --server http://127.0.0.1:8080 [--identity keys/node1.json]
 ```
-Сохранит сессию в `~/.truthctl/session.json`:
+Saves session to `~/.truthctl/session.json`:
 ```json
 {
   "access_token": "<jwt>",
@@ -150,39 +152,39 @@ truthctl auth --server http://127.0.0.1:8080 [--identity keys/node1.json]
 }
 ```
 
-Авто‑обновление при истёкшем токене:
+Auto-refresh on expired token:
 ```bash
 truthctl refresh --server http://127.0.0.1:8080
 ```
-При успешном обновлении заменит пару токенов в `session.json`.
+On successful refresh replaces token pair in `session.json`.
 
-## RBAC: пользователи и роли
+## RBAC: Users and Roles
 
-Список пользователей (роль admin):
+List users (admin role):
 ```bash
 truthctl users list --server http://127.0.0.1:8080
 ```
 
-Назначение роли:
+Role assignment:
 ```bash
 truthctl users grant <pubkey> <role> --server http://127.0.0.1:8080
 # role: admin | node | observer
 ```
 
-Отзыв роли (перевод в observer):
+Role revocation (convert to observer):
 ```bash
 truthctl users revoke <pubkey> --server http://127.0.0.1:8080
 ```
 
-## Делегирование доверия
+## Trust Delegation
 
-Делегировать доверие цели (требуется роль не ниже node):
+Delegate trust to target (requires role not lower than node):
 ```bash
 truthctl trust delegate <target_pubkey> <delta> --server http://127.0.0.1:8080
-# delta: небольшое значение в диапазоне [-0.2; 0.2], не на себя
+# delta: small value in range [-0.2; 0.2], not to self
 ```
 
-Иерархия ролей и делегирование (Mermaid):
+Role hierarchy and delegation (Mermaid):
 
 ```mermaid
 graph TD
@@ -194,82 +196,82 @@ graph TD
 
 ## Configuration Management
 
-Управление конфигурацией узла (`~/.truthctl/config.json`):
+Node configuration management (`~/.truthctl/config.json`):
 ```bash
 truthctl config show
 truthctl config set <key> <value>
 truthctl config reset [--confirm]
 ```
 
-Поддерживаемые ключи:
+Supported keys:
 - `node_name`
 - `port` (u16)
-- `database` (путь к БД)
+- `database` (DB path)
 - `auto_peer` (boolean)
 - `p2p_enabled` (boolean)
 
 ## Trust Propagation & Ratings
 
-Просмотр доверия и изменений:
+Viewing trust and changes:
 ```bash
 truthctl ratings trust [--verbose]
 ```
 
-- Локальный уровень доверия — среднее значение `trust_score` по `node_ratings`
-- Средняя сеть — `group_ratings.global.avg_score`
-- В подробном режиме показывает образцы изменений с цветовой индикацией: 🟢 + (рост), 🔴 – (падение), ⚪ = (без изменений)
+- Local trust level — average `trust_score` from `node_ratings`
+- Average network — `group_ratings.global.avg_score`
+- In verbose mode shows change samples with color coding: 🟢 + (increase), 🔴 – (decrease), ⚪ = (no change)
 
-Механика распространения доверия (выполняется прозрачно при `/sync` и `/incremental_sync`):
-- Формула смешивания: `new = local*0.8 + remote*0.2` (с обрезкой в диапазон [-1, 1])
-- Временной спад удалён: нет штрафов за неактивность. Честность для мобильных/оффлайн узлов обеспечивается через `quality_index`.
+Trust propagation mechanics (executed transparently during `/sync` and `/incremental_sync`):
+- Blending formula: `new = local*0.8 + remote*0.2` (clamped to range [-1, 1])
+- Time-based decay removed: no penalties for inactivity. Fairness for mobile/offline nodes ensured through `quality_index`.
 
 ## Adaptive Quality Evaluation & Propagation
 
-- `quality_index` (0.0–1.0) — индикатор непрерывности доверия; не штрафует за оффлайн.
-- Локальный расчёт: `q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability`, затем EMA `q = 0.3·q_raw + 0.7·prev`.
-- Обмен по сети и слияние: `blend_quality(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)`.
-- Отображение в CLI:
-- `truthctl status` печатает средний приоритет распространения (🔵/🟡/🔴), средний relay и качество
-- `truthctl graph show --format ascii` показывает `propagation_priority` и `quality_index` для топ‑узлов
+- `quality_index` (0.0–1.0) — trust continuity indicator; doesn't penalize for offline.
+- Local calculation: `q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability`, then EMA `q = 0.3·q_raw + 0.7·prev`.
+- Network exchange and merging: `blend_quality(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)`.
+- CLI display:
+- `truthctl status` prints average propagation priority (🔵/🟡/🔴), average relay and quality
+- `truthctl graph show --format ascii` shows `propagation_priority` and `quality_index` for top nodes
 
 ## Logs
 
-Просмотр и очистка журнала синхронизации:
+View and clear sync log:
 ```bash
 truthctl logs show --limit 100 --db truth.db
 truthctl logs clear --db truth.db
 ```
 
-Столбцы: id, timestamp, peer_url, mode, status, details. Записи создаются автоматически после каждой попытки `peers sync-all`.
+Columns: id, timestamp, peer_url, mode, status, details. Records created automatically after each `peers sync-all` attempt.
 
 ## Diagnostics and Reset
 
-### Проверка состояния узла
+### Node State Check
 ```bash
 truthctl diagnose [--verbose]
 truthctl diagnose --server [--verbose]
 ```
 
-Выводит:
-- Локальные проверки (`diagnostics.rs`): конфиг, ключи, пиры, база и состояние фичи `p2p-client-sync`. При `--verbose` печатает JSON (`config`, `peers`, `keys`).
-- При `--server` запускает серверные проверки из `truth_core::server_diagnostics`:
-  - **API**: доступность HTTP маршрута `/health`
-  - **Database**: возможность открыть SQLite и выполнить чтение
-  - **P2P**: статус слушателя UDP 37020 (если включён)
+Outputs:
+- Local checks (`diagnostics.rs`): config, keys, peers, database and `p2p-client-sync` feature state. With `--verbose` prints JSON (`config`, `peers`, `keys`).
+- With `--server` runs server checks from `truth_core::server_diagnostics`:
+  - **API**: HTTP route `/health` availability
+  - **Database**: ability to open SQLite and perform reads
+  - **P2P**: UDP listener 37020 status (if enabled)
 
-### Сброс локальных данных
+### Local Data Reset
 ```bash
 truthctl reset-data [--confirm] [--reinit]
 ```
 
-Шагает по очистке: удаляет SQLite БД, вызывает очистку журналов синхронизации, и при подтверждении удаляет `~/.truthctl/peers.json`. Печатает: `🧹 Node data cleared successfully.`
+Steps through cleanup: removes SQLite DB, calls sync log cleanup, and on confirmation removes `~/.truthctl/peers.json`. Prints: `🧹 Node data cleared successfully.`
 
 ### Interactive Reinitialization
 
-Флаг `--reinit` после очистки:
-- Проверяет наличие ключевой пары в `~/.truthctl/keys.json`
-- Если нет — генерирует Ed25519 и сохраняет, выводя `🔑 New keypair generated.`
-- Если есть — предлагает:
+`--reinit` flag after cleanup:
+- Checks for keypair in `~/.truthctl/keys.json`
+- If none — generates Ed25519 and saves, outputting `🔑 New keypair generated.`
+- If exists — prompts:
 ```
 A keypair already exists.
 Do you want to:
@@ -277,28 +279,27 @@ Do you want to:
 [2] Generate new key and replace old one
 Enter choice [1/2]:
 ```
-При выборе `[2]` генерирует и заменяет пару (`🔁 Keypair replaced.`).
+On choosing `[2]` generates and replaces pair (`🔁 Keypair replaced.`).
 
-Далее автоматически выполняет:
+Then automatically executes:
 ```bash
 truthctl init-node <node_name> --port <port> --db <db_path> --auto-peer
 ```
-и печатает `🚀 Node reinitialized successfully.`
+and prints `🚀 Node reinitialized successfully.`
 
-## Примечания
-## HTTP API: новые эндпоинты для мобильной интеграции
+## Notes
+## HTTP API: New Endpoints for Mobile Integration
 
-- GET `/api/v1/info` — возвращает информацию об узле:
+- GET `/api/v1/info` — returns node information:
   - `node_name`, `version`, `p2p_enabled`, `db_path`, `peer_count`
 
-- GET `/api/v1/stats` — агрегированная статистика БД:
+- GET `/api/v1/stats` — aggregated database statistics:
   - `events`, `statements`, `impacts`, `node_ratings`, `group_ratings`, `avg_trust_score`
 
-Документация OpenAPI доступна на `/api/docs` (Swagger UI) и `/api/docs/openapi.json` (JSON).
+OpenAPI documentation available at `/api/docs` (Swagger UI) and `/api/docs/openapi.json` (JSON).
 
-Примечание по безопасности: CORS включён для отладки (разрешены все источники, методы и заголовки). В продакшене обязательно включайте HTTPS и ограничивайте CORS до доверенных доменов.
+Security note: CORS enabled for debugging (all origins, methods and headers allowed). In production, enable HTTPS and restrict CORS to trusted domains.
 
-- Команды `sync` и `verify` по умолчанию используют первый доступный ключ из локального хранилища, если явный файл не указан флагом `--identity`
-- Формат ключей — hex (32 байта для приватного и публичного ключа Ed25519)
-- Все команды поддерживают цветной вывод для лучшей читаемости
-
+- `sync` and `verify` commands use first available key from local storage by default if explicit file not specified with `--identity` flag
+- Key format — hex (32 bytes for private and public Ed25519 key)
+- All commands support colored output for better readability

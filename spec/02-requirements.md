@@ -1,4 +1,7 @@
-## Requirements
+# Requirements
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 02
 
 ### Functional
 - Knowledge Base: seed RU/EN contexts, causes, forms, effects, impact types. [docs/Data_Schema.md]
