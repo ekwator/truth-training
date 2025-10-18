@@ -1,11 +1,12 @@
-#[cfg(not(target_os = "android"))]
+#[cfg(feature = "desktop")]
 pub mod api;
-#[cfg(not(target_os = "android"))]
+#[cfg(feature = "desktop")]
 pub mod net;
-#[cfg(not(target_os = "android"))]
+#[cfg(feature = "desktop")]
 pub mod p2p;
-#[cfg(not(target_os = "android"))]
+#[cfg(feature = "desktop")]
 pub mod sync;
-#[cfg(not(target_os = "android"))]
+#[cfg(feature = "desktop")]
 pub mod server_diagnostics;
+#[path = "../integration/android/mod.rs"]
 pub mod android;

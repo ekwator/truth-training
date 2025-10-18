@@ -7,7 +7,7 @@ use crate::p2p::encryption::CryptoIdentity;
 use core_lib::models::{TruthEvent, Statement, Impact, ProgressMetrics, NodeRating, GroupRating, NodeMetrics as NodeMetricsModel};
 use core_lib::trust_propagation::{blend_quality, blend_priority};
 use core_lib::storage;
-// trust_propagation используется внутри core-lib/storage::merge_ratings
+// trust_propagation используется внутри core/storage::merge_ratings
 use rusqlite::{Connection, params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "p2p-client-sync"))]

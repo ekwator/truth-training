@@ -27,7 +27,7 @@ path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
 [workspace]
-members = ["app", "core-lib", "platform", "ui-tui", "ui-web"]
+members = ["app", "core", "ui-tui", "ui-web"]
 resolver = "2"
 
 [features]
@@ -54,7 +54,7 @@ testing = []
 
 [dependencies]
 # Core shared dependencies (always included)
-core_lib = { version = "0.4.0", path = "core-lib" }
+core_lib = { version = "0.4.0", path = "core" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rusqlite = { version = "0.31", features = ["bundled"] }

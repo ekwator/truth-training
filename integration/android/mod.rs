@@ -2,12 +2,16 @@
 
 pub mod verify_json;
 
-use std::os::raw::c_char;
 use std::ffi::CString;
+use std::os::raw::c_char;
+use serde_json::json;
+
+#[cfg(target_os = "android")]
 use jni::objects::{JClass, JString};
+#[cfg(target_os = "android")]
 use jni::sys::jstring;
+#[cfg(target_os = "android")]
 use jni::JNIEnv;
-use serde_json::{json, Value};
 
 /// Initialize the Truth Core runtime.
 #[no_mangle]
@@ -27,11 +31,14 @@ pub extern "C" fn Java_com_truth_training_client_TruthCore_getInfo() -> *mut c_c
 #[no_mangle]
 pub extern "C" fn Java_com_truth_training_client_TruthCore_freeString(s: *mut c_char) {
     if !s.is_null() {
-        unsafe { let _ = CString::from_raw(s); }
+        unsafe {
+            let _ = CString::from_raw(s);
+        }
     }
 }
 
-/// Process JSON requests from Android client.
+/// Process JSON requests from Android client. Available only on Android builds.
+#[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "system" fn Java_com_truth_training_client_TruthCore_processJsonRequest(
     mut env: JNIEnv,
@@ -44,13 +51,16 @@ pub extern "system" fn Java_com_truth_training_client_TruthCore_processJsonReque
     };
 
     // If Android envelope contains signed payload, verify first.
-    let parsed: Value = match serde_json::from_str(&input) {
+    let parsed: serde_json::Value = match serde_json::from_str(&input) {
         Ok(v) => v,
         Err(_) => return env.new_string(r#"{"error":"invalid_json"}"#).unwrap().into_raw(),
     };
 
     // Try verification path if envelope fields present
-    let verified_payload_opt = if parsed.get("signature").is_some() && parsed.get("public_key").is_some() && parsed.get("payload").is_some() {
+    let verified_payload_opt = if parsed.get("signature").is_some()
+        && parsed.get("public_key").is_some()
+        && parsed.get("payload").is_some()
+    {
         match verify_json::verify_json_message(&input) {
             Ok(trusted) => {
                 // replace parsed with verified payload
@@ -145,6 +155,9 @@ pub extern "system" fn Java_com_truth_training_client_TruthCore_processJsonReque
 
     match env.new_string(response.to_string()) {
         Ok(jstr) => jstr.into_raw(),
-        Err(_) => env.new_string(r#"{"error":"response_creation_failed"}"#).unwrap().into_raw(),
+        Err(_) => env
+            .new_string(r#"{"error":"response_creation_failed"}"#)
+            .unwrap()
+            .into_raw(),
     }
 }

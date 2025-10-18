@@ -17,7 +17,7 @@
 
 ## 0.2.1-pre
 - New CLI tool: `truthctl` (subcommands: sync, verify, ratings, status)
-- Clean separation: `core-lib` ↔ `app` ↔ P2P node; `truthctl` moved to `app/`
+- Clean separation: `core` ↔ `app` ↔ P2P node; `truthctl` moved to `app/`
 - Architecture docs updated (`docs/ARCHITECTURE.md`, `spec/03-architecture.md`, `spec/11-decision-log.md`)
 - Feature-gated P2P sync (`p2p-client-sync`)
 

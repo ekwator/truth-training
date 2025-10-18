@@ -1,0 +1,78 @@
+name: Cross-Platform Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  desktop:
+    name: Desktop (Linux/Windows/macOS)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build desktop
+        run: cargo build --release --features desktop
+      - name: Test desktop
+        run: cargo test --features desktop
+
+  android:
+    name: Android (ARM64 + x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Add Android targets
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add x86_64-linux-android
+      - name: Set up Android SDK and NDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            ndk;26.1.10909125
+      - name: Export NDK toolchain
+        run: |
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
+          echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+      - name: Build Android libs
+        run: |
+          cargo build --release --target aarch64-linux-android --features mobile --lib -p truth_core
+          cargo build --release --target x86_64-linux-android --features mobile --lib -p truth_core
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: libtruth_core-android
+          path: |
+            target/aarch64-linux-android/release/libtruth_core.so
+            target/x86_64-linux-android/release/libtruth_core.so
+          if-no-files-found: error
+
+  ios:
+    name: iOS (ARM64 + Simulator)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Add iOS targets
+        run: |
+          rustup target add aarch64-apple-ios
+          rustup target add aarch64-apple-ios-sim
+      - name: Build iOS static libraries
+        run: |
+          cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
+          cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p truth_core
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: libtruth_core-ios
+          path: |
+            target/aarch64-apple-ios/release/libtruth_core.a
+            target/aarch64-apple-ios-sim/release/libtruth_core.a
+          if-no-files-found: error
