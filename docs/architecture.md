@@ -1,100 +1,102 @@
 # Truth Training Architecture
+Version: v0.4.0
+Updated: 2025-01-18
 
 ---
 
-## 🔄 Общая концепция
+## 🔄 General Concept
 
-**Truth Training** — это кроссплатформенная платформа, ядро которой реализовано на **Rust**. Ядро отвечает за:
+**Truth Training** is a cross-platform platform whose core is implemented in **Rust**. The core handles:
 
-* Логику обработки данных (события, контексты, экспертная система).
-* Локальное хранение (SQLite).
-* API (REST/HTTP) для взаимодействия с UI и другими узлами.
-* Модуль синхронизации (P2P через UDP + HTTP).
+* Data processing logic (events, contexts, expert system).
+* Local storage (SQLite).
+* API (REST/HTTP) for interaction with UI and other nodes.
+* Synchronization module (P2P via UDP + HTTP).
 
-UI-оболочки для разных платформ интегрируются с ядром через FFI или HTTP API.
+UI shells for different platforms integrate with the core through FFI or HTTP API.
 
 ---
 
-## 🔋 Структура репозиториев
+## 🔋 Repository Structure
 
 ```
-truth-training/             # Ядро: Rust + Actix-web + Sync Engine
-truth-training-unix/        # UI для Linux (GTK или Tauri)
-truth-training-windows/     # UI для Windows (WinUI или Tauri)
-truth-training-android/     # UI для Android (Kotlin + JNI)
-truth-training-apple/       # UI для macOS и iOS (SwiftUI + FFI)
+truth-training/             # Core: Rust + Actix-web + Sync Engine
+truth-training-unix/        # UI for Linux (GTK or Tauri)
+truth-training-windows/     # UI for Windows (WinUI or Tauri)
+truth-training-android/     # UI for Android (Kotlin + JNI)
+truth-training-apple/       # UI for macOS and iOS (SwiftUI + FFI)
 ```
 
 ---
 
-## 🔧 Ядро (Rust)
+## 🔧 Core (Rust)
 
-* **Язык:** Rust
-* **Фреймворки:** Actix-web, Tokio
-* **База данных:** SQLite (через `rusqlite`)
-* **Функции:**
+* **Language:** Rust
+* **Frameworks:** Actix-web, Tokio
+* **Database:** SQLite (via `rusqlite`)
+* **Functions:**
 
-  * Управление базой знаний.
-  * Создание и обработка событий (`truth_events`).
-  * Экспертная система (детектор лжи).
-  * Синхронизация данных через P2P.
+  * Knowledge base management.
+  * Event creation and processing (`truth_events`).
+  * Expert system (lie detector).
+  * Data synchronization via P2P.
 
 ---
 
-## 🌐 UI-платформы
+## 🌐 UI Platforms
 
 ### **Linux (truth-training-unix)**
 
-* **Опции:** GTK (через `gtk-rs`) или Tauri (HTML + Rust backend).
-* **Связь с ядром:**
+* **Options:** GTK (via `gtk-rs`) or Tauri (HTML + Rust backend).
+* **Core connection:**
 
-  * Через HTTP API (Actix).
-  * Либо прямой вызов функций через crate (если установлен локально).
+  * Via HTTP API (Actix).
+  * Or direct function calls via crate (if installed locally).
 
 ### **Windows (truth-training-windows)**
 
-* **Опции:**
+* **Options:**
 
-  * **WinUI 3** (C# + Rust DLL через FFI).
-  * **Tauri** (универсальный подход).
-* **Связь:**
+  * **WinUI 3** (C# + Rust DLL via FFI).
+  * **Tauri** (universal approach).
+* **Connection:**
 
-  * Через HTTP API.
-  * Или через DLL + FFI.
+  * Via HTTP API.
+  * Or via DLL + FFI.
 
 ### **Android (truth-training-android)**
 
-* **Язык:** Kotlin + JNI.
-* **Связь с ядром:**
+* **Language:** Kotlin + JNI.
+* **Core connection:**
 
-  * Rust собирается в `.so` (через cargo-ndk).
-  * JNI обертка для вызова функций ядра.
+  * Rust compiled to `.so` (via cargo-ndk).
+  * JNI wrapper for calling core functions.
 
 ### **Apple (macOS/iOS) (truth-training-apple)**
 
-* **Опции:**
+* **Options:**
 
-  * SwiftUI + Rust через FFI (`dylib`).
-  * Или Tauri для macOS.
-* **Связь:**
+  * SwiftUI + Rust via FFI (`dylib`).
+  * Or Tauri for macOS.
+* **Connection:**
 
-  * Через FFI (вызовы Rust функций из Swift).
-  * Для iOS нужен Rust cross-compilation.
-
----
-
-## 📂 Интеграция и обновления
-
-* Все UI-проекты подключают ядро как **Git submodule** или как **crate с crates.io**.
-* Общие документы (`docs/`) хранятся в `truth-training`.
+  * Via FFI (calling Rust functions from Swift).
+  * For iOS need Rust cross-compilation.
 
 ---
 
-## 🖌 Mermaid-схема архитектуры
+## 📂 Integration and Updates
+
+* All UI projects connect core as **Git submodule** or as **crate from crates.io**.
+* Common documents (`docs/`) stored in `truth-training`.
+
+---
+
+## 🖌 Mermaid Architecture Diagram
 
 ```mermaid
 flowchart TB
-    subgraph Core [Ядро (Rust)]
+    subgraph Core [Core (Rust)]
         DB[(SQLite)]
         API[REST API (Actix-web)]
         Sync[P2P Sync Engine]
@@ -124,8 +126,8 @@ flowchart TB
 
 ---
 
-## 📄 Документы
+## 📄 Documents
 
-* **architecture.md** (текущий файл) — схема модулей и связи.
-* **ui\_guidelines.md** — правила интеграции UI с ядром.
-* **build\_instructions.md** — инструкции по сборке ядра и UI.
+* **architecture.md** (current file) — module diagram and connections.
+* **ui\_guidelines.md** — UI integration rules with core.
+* **build\_instructions.md** — core and UI build instructions.

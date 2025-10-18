@@ -1,72 +1,88 @@
-# 1) Инициализация
+# Truth Training Commands
+
+## Build and Test
+```bash
+cargo check && cargo test
+./gradlew assembleDebug
+./gradlew connectedAndroidTest
+```
+
+Note: Ensure truth-core backend is running before Android integration tests.
+
+## Legacy Commands (Deprecated)
+The following commands are from older versions and may not work with current v0.4.0:
+
+```bash
+# 1) Initialization
 cargo run -p app -- --db truth_db.sqlite init
 
-# 2) Сид базы знаний (RU) Инициализировать справочники:
+# 2) Knowledge base seeding (RU) Initialize directories:
 cargo run -p app -- --db truth_db.sqlite seed --locale ru
-# (или EN)
+# (or EN)
 # cargo run -p app -- --db truth_db.sqlite seed --locale en
 
-# 3) Добавить событие (используем готовый контекст, например id=2 "Межличностные: сокрытие")
+# 3) Add event (using ready context, e.g. id=2 "Interpersonal: concealment")
 cargo run -p app -- --db truth_db.sqlite add-event \
-  --description "Сокрытие факта в разговоре" --context 2 --vector false
+  --description "Concealing fact in conversation" --context 2 --vector false
 
-# 4) Отметить распознавание
+# 4) Mark detection
 cargo run -p app -- --db truth_db.sqlite detect --id 1 --detected false --corrected false
 
-# 5) Добавить влияние (репутационное, негативное)
-cargo run -p app -- --db truth_db.sqlite impact --event 1 --type-id 1 --positive false --notes "Потеря доверия"
+# 5) Add impact (reputational, negative)
+cargo run -p app -- --db truth_db.sqlite impact --event 1 --type-id 1 --positive false --notes "Loss of trust"
 
-# 6) Пересчёт метрик
+# 6) Recalculate metrics
 cargo run -p app -- --db truth_db.sqlite recalc
 
-# 7) Добавить контекст
-cargo run -p app -- --db truth_db.sqlite insert-context --name "Приватность в социальных сетях"
+# 7) Add context
+cargo run -p app -- --db truth_db.sqlite insert-context --name "Privacy in social networks"
 
-# 8) Добавить источник
-cargo run -p app -- --db truth_db.sqlite insert-source --name "Журнал кибербезопасности"
+# 8) Add source
+cargo run -p app -- --db truth_db.sqlite insert-source --name "Cybersecurity journal"
 
-# 9) Добавить утверждение (statement)
-cargo run -p app -- --db truth_db.sqlite insert-statement --context 1 --text "Социальная сеть X передает данные третьим лицам"
+# 9) Add statement
+cargo run -p app -- --db truth_db.sqlite insert-statement --context 1 --text "Social network X transfers data to third parties"
 
-# 10) Добавить событие (event)
-cargo run -p app -- --db truth_db.sqlite insert-event --statement 1 --description "Рассмотрение факта утечки"
+# 10) Add event
+cargo run -p app -- --db truth_db.sqlite insert-event --statement 1 --description "Consideration of leak fact"
 
-# 11) Добавить связь с источником (event_sources)
+# 11) Link event to source (event_sources)
 cargo run -p app -- --db truth_db.sqlite link-event-source --event 1 --source 1
 
-# 12) Загрузить все контексты
+# 12) Load all contexts
 cargo run -p app -- --db truth_db.sqlite load-contexts
 
-# 13) Загрузить утверждения по контексту
+# 13) Load statements by context
 cargo run -p app -- --db truth_db.sqlite load-statements --context 1
 
-# 14) Загрузить события по утверждению
+# 14) Load events by statement
 cargo run -p app -- --db truth_db.sqlite load-events --statement 1
 
-# 15) Загрузить источники по событию
+# 15) Load sources by event
 cargo run -p app -- --db truth_db.sqlite load-sources --event 1
 
-# 16) Показать вопросы для события (без ответов)
+# 16) Show questions for event (without answers)
 cargo run -p app -- --db truth_db.sqlite assess --event 1
 
-# 17) Оценить ответы и получить подсказку
+# 17) Evaluate answers and get hint
 cargo run -p app -- --db truth_db.sqlite assess --event 1 \
   --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}'
 
-# 18) Применить подсказку (обновить detected=true)
+# 18) Apply hint (update detected=true)
 cargo run -p app -- --db truth_db.sqlite assess --event 1 \
   --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}' \
   --apply
 
-
-# Оценить с ответами (поддерживает правду)
+# Evaluate with answers (supports truth)
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes","alt_hypothesis":"yes","incentives":"no","reproducible":"yes","logs_evidence":"yes","belief_pressure":"no","time_distance":"yes"}'
 
-# Автоматически применить результат
+# Automatically apply result
 cargo run -p app -- --db truth_db.sqlite assess --event 1 --answers '{"src_independent":"yes",...}' --apply
 
-Пересчитать метрики: cargo run -p app -- recalc
-Показать событие: cargo run -p app -- show --id 1
+# Recalculate metrics: cargo run -p app -- recalc
+# Show event: cargo run -p app -- show --id 1
+```
 
-https://chatgpt.com/s/t_68b5da774f048191825b5868903b9ad1
-https://chatgpt.com/share/68b08235-da78-8007-a352-0f410a0a1269
+## External References
+- https://chatgpt.com/s/t_68b5da774f048191825b5868903b9ad1
+- https://chatgpt.com/share/68b08235-da78-8007-a352-0f410a0a1269

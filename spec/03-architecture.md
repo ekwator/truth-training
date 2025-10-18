@@ -1,4 +1,7 @@
-## Architecture Overview
+# Architecture Overview
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 03
 
 This document reflects the current `truth-core` implementation and the CLI utilities, inspired by FidoNet principles for decentralized peer-to-peer communication.
 
@@ -49,7 +52,7 @@ graph TD
 ### Network Health Visualization
 
 **Real-time Metrics:**
-- **Propagation Priority**: Node's relay speed (0.0–1.0), EMA‑смешение доверия, качества и ретрансляции (0.4·trust_norm + 0.3·quality_index + 0.3·relay_success_rate)
+- **Propagation Priority**: Node's relay speed (0.0–1.0), EMA blending of trust, quality and relay (0.4·trust_norm + 0.3·quality_index + 0.3·relay_success_rate)
 - **Relay Success Rate**: Percentage of successful message deliveries
 - **Latency Metrics**: Average response times between nodes
 - **Trust Scores**: Node reputation and validation history
@@ -91,7 +94,7 @@ This separation ensures modular testing, clean builds, and independent versionin
 - **core-lib**: models, storage (schema + ops), expert heuristics.
 - **api**: HTTP routes in `src/api.rs` (health, init/seed, events/statements, impacts, progress, get_data, sync, incremental_sync, ratings, graph) with signature verification helpers. Server health checks for API/DB/P2P are exposed via `truth_core::server_diagnostics` and can be invoked from CLI.
 - **p2p**: sync flows and reconciliation in `src/p2p/sync.rs`, periodic node loop in `src/p2p/node.rs`.
-- **trust layer**: `core-lib/src/trust_propagation.rs` реализует смешивание доверия (local*0.8 + remote*0.2). Временной спад (time-based decay) удалён для справедливости мобильных/оффлайн узлов. Добавлен `quality_index` (0.0–1.0) как индикатор непрерывности: локально считается по адаптивной формуле с EMA, по сети распространяется через `blend_quality(local, remote)`.
+- **trust layer**: `core-lib/src/trust_propagation.rs` implements trust blending (local*0.8 + remote*0.2). Time-based decay removed for fairness to mobile/offline nodes. Added `quality_index` (0.0–1.0) as continuity indicator: calculated locally by adaptive formula with EMA, propagated through network via `blend_quality(local, remote)`.
 - **p2p/encryption**: `CryptoIdentity` (Ed25519) with hex helpers and Result-based verify; header message patterns.
 - **net**: UDP beacon sender/listener in `src/net.rs` for LAN peer discovery.
 - **app/truthctl**: peer registry (`peers.json`), `peers add/list`, and `sync` orchestration (push or pull-only).
