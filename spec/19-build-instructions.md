@@ -1,0 +1,359 @@
+# Cross-Platform Build Instructions
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 19
+
+## Overview
+
+This document provides step-by-step instructions for building Truth Training core library for different platforms using Cargo features and cross-compilation toolchains.
+
+## Prerequisites
+
+### Desktop Development
+- Rust toolchain (≥ 1.75)
+- Platform-specific build tools:
+  - **Linux**: `build-essential`, `libsqlite3-dev`
+  - **Windows**: Visual Studio Build Tools
+  - **macOS**: Xcode Command Line Tools
+
+### Mobile Development
+- Rust toolchain (≥ 1.75)
+- Cross-compilation targets:
+  - **Android**: `aarch64-linux-android`, `x86_64-linux-android`
+  - **iOS**: `aarch64-apple-ios`, `aarch64-apple-ios-sim`
+
+### Android NDK Setup
+```bash
+# Install Android NDK
+export ANDROID_NDK_HOME=/path/to/android-ndk
+export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
+
+# Add Rust targets
+rustup target add aarch64-linux-android
+rustup target add x86_64-linux-android
+```
+
+### iOS Toolchain Setup
+```bash
+# Install iOS targets
+rustup target add aarch64-apple-ios
+rustup target add aarch64-apple-ios-sim
+
+# Install cargo-lipo for universal binaries
+cargo install cargo-lipo
+```
+
+## Build Commands
+
+### Desktop Builds
+
+#### Linux Desktop
+```bash
+# Build with full desktop features
+cargo build --release --features desktop
+
+# Output: target/release/truth_core (executable)
+#         target/release/libtruth_core.so (shared library)
+```
+
+#### Windows Desktop
+```bash
+# Build Windows executable
+cargo build --release --target x86_64-pc-windows-gnu --features desktop
+
+# Output: target/x86_64-pc-windows-gnu/release/truth_core.exe
+```
+
+#### macOS Desktop
+```bash
+# Build macOS application
+cargo build --release --target x86_64-apple-darwin --features desktop
+
+# Output: target/x86_64-apple-darwin/release/truth_core
+```
+
+### Mobile Builds
+
+#### Android ARM64
+```bash
+# Build Android shared library
+cargo build --release --target aarch64-linux-android --features mobile
+
+# Output: target/aarch64-linux-android/release/libtruth_core.so
+```
+
+#### Android x86_64
+```bash
+# Build Android x86_64 library
+cargo build --release --target x86_64-linux-android --features mobile
+
+# Output: target/x86_64-linux-android/release/libtruth_core.so
+```
+
+#### iOS ARM64
+```bash
+# Build iOS static library
+cargo build --release --target aarch64-apple-ios --features mobile
+
+# Output: target/aarch64-apple-ios/release/libtruth_core.a
+```
+
+#### iOS Simulator
+```bash
+# Build iOS simulator library
+cargo build --release --target aarch64-apple-ios-sim --features mobile
+
+# Output: target/aarch64-apple-ios-sim/release/libtruth_core.a
+```
+
+## Feature-Specific Builds
+
+### Desktop Features
+```bash
+# Build with HTTP server
+cargo build --release --features desktop
+
+# Build with CLI tools only
+cargo build --release --features desktop --no-default-features
+
+# Build with authentication
+cargo build --release --features desktop,auth
+```
+
+### Mobile Features
+```bash
+# Build minimal mobile version
+cargo build --release --features mobile
+
+# Build with Android JNI
+cargo build --release --target aarch64-linux-android --features mobile
+
+# Build with iOS FFI
+cargo build --release --target aarch64-apple-ios --features mobile
+```
+
+## FFI Generation
+
+### Android JNI Bindings
+```bash
+# Install cbindgen
+cargo install cbindgen
+
+# Generate JNI headers
+cbindgen --config cbindgen.toml --crate truth_core --output android/truth_core.h
+
+# Build with JNI support
+cargo build --release --target aarch64-linux-android --features mobile
+```
+
+### iOS Swift Bindings
+```bash
+# Generate Swift bindings
+cbindgen --config cbindgen.toml --crate truth_core --output ios/truth_core.h
+
+# Build iOS framework
+cargo build --release --target aarch64-apple-ios --features mobile
+```
+
+## Build Scripts
+
+### Desktop Build Script
+```bash
+#!/bin/bash
+# build-desktop.sh
+
+echo "Building Truth Core for Desktop..."
+
+# Build for current platform
+cargo build --release --features desktop
+
+# Run tests
+cargo test --features desktop
+
+echo "Desktop build complete!"
+```
+
+### Android Build Script
+```bash
+#!/bin/bash
+# build-android.sh
+
+echo "Building Truth Core for Android..."
+
+# Set Android NDK environment
+export ANDROID_NDK_HOME=/path/to/android-ndk
+export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
+
+# Build ARM64
+cargo build --release --target aarch64-linux-android --features mobile
+
+# Build x86_64
+cargo build --release --target x86_64-linux-android --features mobile
+
+# Generate JNI headers
+cbindgen --config cbindgen.toml --crate truth_core --output android/truth_core.h
+
+echo "Android build complete!"
+```
+
+### iOS Build Script
+```bash
+#!/bin/bash
+# build-ios.sh
+
+echo "Building Truth Core for iOS..."
+
+# Build device library
+cargo build --release --target aarch64-apple-ios --features mobile
+
+# Build simulator library
+cargo build --release --target aarch64-apple-ios-sim --features mobile
+
+# Generate Swift bindings
+cbindgen --config cbindgen.toml --crate truth_core --output ios/truth_core.h
+
+# Create universal binary (optional)
+cargo lipo --release --targets aarch64-apple-ios,aarch64-apple-ios-sim
+
+echo "iOS build complete!"
+```
+
+## Testing Commands
+
+### Platform-Specific Testing
+```bash
+# Test desktop features
+cargo test --features desktop
+
+# Test mobile features
+cargo test --features mobile
+
+# Test shared core logic
+cargo test --no-default-features
+```
+
+### Cross-Platform Testing
+```bash
+# Test Android build
+cargo test --target aarch64-linux-android --features mobile
+
+# Test iOS build
+cargo test --target aarch64-apple-ios --features mobile
+
+# Test desktop build
+cargo test --features desktop
+```
+
+## CI/CD Integration
+
+### GitHub Actions Example
+```yaml
+name: Cross-Platform Build
+
+on: [push, pull_request]
+
+jobs:
+  desktop:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: cargo build --release --features desktop
+      - run: cargo test --features desktop
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android,x86_64-linux-android
+      - run: cargo build --release --target aarch64-linux-android --features mobile
+      - run: cargo build --release --target x86_64-linux-android --features mobile
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - run: cargo build --release --target aarch64-apple-ios --features mobile
+      - run: cargo build --release --target aarch64-apple-ios-sim --features mobile
+```
+
+## Troubleshooting
+
+### Common Build Issues
+
+#### Android NDK Issues
+```bash
+# Error: NDK not found
+export ANDROID_NDK_HOME=/path/to/android-ndk
+export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
+
+# Error: Target not installed
+rustup target add aarch64-linux-android
+rustup target add x86_64-linux-android
+```
+
+#### iOS Toolchain Issues
+```bash
+# Error: iOS target not installed
+rustup target add aarch64-apple-ios
+rustup target add aarch64-apple-ios-sim
+
+# Error: Xcode not found
+xcode-select --install
+```
+
+#### Feature Compilation Issues
+```bash
+# Error: Feature not found
+# Check Cargo.toml features section
+
+# Error: Conditional compilation failed
+# Verify #[cfg(feature = "...")] attributes
+```
+
+### Performance Optimization
+
+#### Desktop Optimization
+```bash
+# Optimize for performance
+cargo build --release --features desktop
+
+# Enable LTO
+RUSTFLAGS="-C lto=fat" cargo build --release --features desktop
+```
+
+#### Mobile Optimization
+```bash
+# Optimize for size
+cargo build --release --target aarch64-linux-android --features mobile
+
+# Enable size optimization
+RUSTFLAGS="-C opt-level=z" cargo build --release --target aarch64-linux-android --features mobile
+```
+
+## Output Artifacts
+
+### Desktop Outputs
+- **Executable**: `target/release/truth_core`
+- **Shared Library**: `target/release/libtruth_core.so` (Linux)
+- **Dynamic Library**: `target/release/libtruth_core.dylib` (macOS)
+- **DLL**: `target/release/truth_core.dll` (Windows)
+
+### Mobile Outputs
+- **Android**: `target/aarch64-linux-android/release/libtruth_core.so`
+- **iOS**: `target/aarch64-apple-ios/release/libtruth_core.a`
+- **Headers**: `android/truth_core.h`, `ios/truth_core.h`
+
+This build system ensures consistent cross-platform development while maintaining optimal performance and minimal resource usage for each target platform.
