@@ -88,14 +88,18 @@ See `spec/19-build-instructions.md` for detailed cross-platform build instructio
     P2P -->|sync| Peer[Remote Node]
 ```
 
-Mermaid: data model (ER)
+Mermaid: data model relationships
 ```mermaid
-erDiagram
-    TRUTH_EVENTS ||--o{ STATEMENTS : contains
-    STATEMENTS ||--o{ IMPACTS : influences
-    TRUTH_EVENTS ||--o{ IMPACTS : has
-    NODES ||--o{ NODE_RATINGS : rates
-    GROUPS ||--o{ GROUP_RATINGS : rates
+flowchart TD
+    TE[Truth Events] --> ST[Statements]
+    ST --> IM[Impacts]
+    TE --> IM
+    ND[Nodes] --> NR[Node Ratings]
+    GP[Groups] --> GR[Group Ratings]
+    
+    TE -.->|collective_score| CI[Collective Intelligence]
+    IM -.->|votes| CI
+    CI -.->|consensus| TE
 ```
 
 ### FIDONet-inspired network model
