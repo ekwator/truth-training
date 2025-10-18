@@ -64,10 +64,13 @@ jobs:
         run: |
           rustup target add aarch64-apple-ios
           rustup target add aarch64-apple-ios-sim
+      - name: Install cbindgen (optional)
+        run: cargo install cbindgen --locked || true
       - name: Build iOS static libraries
         run: |
           cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
           cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p truth_core
+          ls -R target | sed -n '1,200p'
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -75,4 +78,8 @@ jobs:
           path: |
             target/aarch64-apple-ios/release/libtruth_core.a
             target/aarch64-apple-ios-sim/release/libtruth_core.a
+            target/aarch64-apple-ios/release/libtruth_core.dylib
+            target/aarch64-apple-ios-sim/release/libtruth_core.dylib
+            target/aarch64-apple-ios/release/libtruth_core.framework/**
+            target/aarch64-apple-ios-sim/release/libtruth_core.framework/**
           if-no-files-found: error
