@@ -34,6 +34,22 @@ Notes:
 
 This guide helps Android developers consume the Truth Core REST API using Retrofit and JWT authentication.
 
+### Building the Android JNI library (cargo)
+
+```bash
+rustup target add aarch64-linux-android x86_64-linux-android
+
+# Build shared libraries
+cargo build --release --target aarch64-linux-android --features mobile --lib -p truth_core
+cargo build --release --target x86_64-linux-android --features mobile --lib -p truth_core
+
+# Outputs:
+# target/aarch64-linux-android/release/libtruth_core.so
+# target/x86_64-linux-android/release/libtruth_core.so
+```
+
+Copy the resulting libraries into your Android client's `app/src/main/jniLibs/<abi>/` folders.
+
 ### Overview
 
 - Base URL: your node (e.g., `http://10.0.2.2:8080` for Android emulator)
@@ -152,7 +168,7 @@ interface TruthCoreApi {
 
 ### Version
 
-- This document targets truth_core v0.3.0.
+- This document targets truth_core v0.4.0.
 
 ### Samples
 

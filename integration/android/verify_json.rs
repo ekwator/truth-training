@@ -15,9 +15,15 @@ pub enum VerifyError {
     VerificationFailed(String),
 }
 
-impl From<serde_json::Error> for VerifyError { fn from(e: serde_json::Error) -> Self { Self::InvalidJson(e) } }
-impl From<base64::DecodeError> for VerifyError { fn from(e: base64::DecodeError) -> Self { Self::Base64(e) } }
-impl From<ed25519_dalek::SignatureError> for VerifyError { fn from(e: ed25519_dalek::SignatureError) -> Self { Self::SignatureParse(e) } }
+impl From<serde_json::Error> for VerifyError {
+    fn from(e: serde_json::Error) -> Self { Self::InvalidJson(e) }
+}
+impl From<base64::DecodeError> for VerifyError {
+    fn from(e: base64::DecodeError) -> Self { Self::Base64(e) }
+}
+impl From<ed25519_dalek::SignatureError> for VerifyError {
+    fn from(e: ed25519_dalek::SignatureError) -> Self { Self::SignatureParse(e) }
+}
 
 pub struct TrustedMessage {
     pub verified: bool,
@@ -64,5 +70,3 @@ pub fn verify_json_message(raw_json: &str) -> Result<TrustedMessage, VerifyError
 
     Ok(TrustedMessage { verified: true, payload, sender_key_b64: pubkey_b64.to_string() })
 }
-
-

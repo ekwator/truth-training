@@ -5,20 +5,20 @@
 - Android NDK (r25+)
 - Set `NDK_HOME` in your shell environment
 
-## Build steps
+## Build steps (cargo)
 ```bash
-chmod +x scripts/build-android.sh
-./scripts/build-android.sh
+rustup target add aarch64-linux-android x86_64-linux-android
+
+# Build shared libraries for Android
+cargo build --release --target aarch64-linux-android --features mobile --lib -p truth_core
+cargo build --release --target x86_64-linux-android --features mobile --lib -p truth_core
+
+# Outputs:
+# target/aarch64-linux-android/release/libtruth_core.so
+# target/x86_64-linux-android/release/libtruth_core.so
 ```
 
-Output .so files will appear in:
-
-android-libs/arm64-v8a/libtruthcore.so
-android-libs/x86_64/libtruthcore.so
-
-These can be copied into the Android client's:
-
-truth-android-client/app/src/main/jniLibs/
+You can copy the produced `.so` files into the Android client's `app/src/main/jniLibs/<abi>/` folders.
 
 ## JSON Bridge
 

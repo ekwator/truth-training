@@ -320,7 +320,7 @@ jni = "0.21"
 
 # Shared dependencies (always included)
 [dependencies]
-core_lib = { path = "core-lib" }
+core_lib = { path = "core" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rusqlite = { version = "0.31", features = ["bundled"] }
