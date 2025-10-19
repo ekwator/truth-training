@@ -21,12 +21,9 @@ time = "0.3"
 [target.'cfg(not(target_os = "android"))'.dependencies]
 ring = "0.17"
 zip = "0.6"
-automerge = "0.5"     # проверишь актуальную
+automerge = "0.5"
 utoipa = { version = "4" }
 
 # Android-specific dependencies
 [target.'cfg(target_os = "android")'.dependencies]
 getrandom = { version = "0.2", features = ["std"] }
-
-# OpenAPI dependencies
-utoipa = { version = "4" }

@@ -113,30 +113,30 @@ This separation ensures modular testing, clean builds, and independent versionin
 
 ```mermaid
 flowchart TD
-  UI[User Interface] -->|HTTP API| API[Actix-web API]
-  API --> DB[(SQLite Database)]
-  API --> P2P[P2P Sync Engine]
-  P2P --> ENC[CryptoIdentity<br/>Ed25519]
-  P2P --> NET[UDP Discovery]
-  ENC -->|sign/verify| P2P
-  CLI[truthctl CLI] -->|peers.json| P2P
-  CLI -->|config.json| API
+  UI["User Interface"] -->|"HTTP API"| API["Actix-web API"]
+  API --> DB[("SQLite Database")]
+  API --> P2P["P2P Sync Engine"]
+  P2P --> ENC["CryptoIdentity<br/>Ed25519"]
+  P2P --> NET["UDP Discovery"]
+  ENC -->|"sign/verify"| P2P
+  CLI["truthctl CLI"] -->|"peers.json"| P2P
+  CLI -->|"config.json"| API
   
-  subgraph "FidoNet-inspired Network"
-    HUB[Hub Node<br/>Relay/Aggregator]
-    LEAF1[Leaf Node A]
-    LEAF2[Leaf Node B]
-    LEAF3[Leaf Node C]
+  subgraph Network ["FidoNet-inspired Network"]
+    HUB["Hub Node<br/>Relay/Aggregator"]
+    LEAF1["Leaf Node A"]
+    LEAF2["Leaf Node B"]
+    LEAF3["Leaf Node C"]
     
-    LEAF1 -->|sync| HUB
-    LEAF2 -->|sync| HUB
-    LEAF3 -->|sync| HUB
-    HUB -->|forward| LEAF1
-    HUB -->|forward| LEAF2
-    HUB -->|forward| LEAF3
+    LEAF1 -->|"sync"| HUB
+    LEAF2 -->|"sync"| HUB
+    LEAF3 -->|"sync"| HUB
+    HUB -->|"forward"| LEAF1
+    HUB -->|"forward"| LEAF2
+    HUB -->|"forward"| LEAF3
   end
   
-  P2P -.->|connect| HUB
+  P2P -.->|"connect"| HUB
 ```
 
 ### Relay Feedback Loop

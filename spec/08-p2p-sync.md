@@ -79,9 +79,9 @@ Spec ID: 08
 Mermaid diagram:
 ```mermaid
 flowchart LR
-    High[High priority ≥0.6] ==> Mid[0.3–0.6]
-    Mid --> Low[<0.3]
-    note[No exclusion. Low priority => delayed propagation only]
+    High["High priority ≥0.6"] ==> Mid["0.3–0.6"]
+    Mid --> Low["<0.3"]
+    note["No exclusion. Low priority => delayed propagation only"]
 ```
 
 **Full Sync (`/sync`):**

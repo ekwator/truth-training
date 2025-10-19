@@ -69,10 +69,10 @@ Mermaid:
 
 ```mermaid
 graph TD
-    A[Admin] --> B[Node]
-    B --> C[Observer]
-    B --> D[Peer Node]
-    A -->|delegates trust| D
+    A["Admin"] --> B["Node"]
+    B --> C["Observer"]
+    B --> D["Peer Node"]
+    A -->|"delegates trust"| D
 ```
 
 JWT Claims include role and trust_score:
