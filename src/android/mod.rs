@@ -1,6 +1,6 @@
 #![allow(non_snake_case, clippy::not_unsafe_ptr_arg_deref)]
 
-mod verify_json;
+pub mod verify_json;
 
 use std::ffi::CString;
 use std::os::raw::c_char;

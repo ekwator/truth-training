@@ -1,9 +1,8 @@
-use base64::{engine::general_purpose, Engine as _};
-use ed25519_dalek::{Signer, SigningKey};
-use serde_json::json;
 
+#[cfg(feature = "mobile")]
 use truth_core::android::verify_json::verify_json_message;
 
+#[cfg(feature = "mobile")]
 #[test]
 fn verify_android_envelope_ok_and_tamper() {
     // Generate ed25519 keypair

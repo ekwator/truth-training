@@ -1,8 +1,13 @@
+#[cfg(feature = "desktop")]
 use actix_web::{test, App};
+#[cfg(feature = "desktop")]
 use base64::{engine::general_purpose, Engine as _};
+#[cfg(feature = "desktop")]
 use truth_core::api;
+#[cfg(feature = "desktop")]
 use truth_core::p2p::encryption::CryptoIdentity;
 
+#[cfg(feature = "desktop")]
 #[actix_web::test]
 async fn push_valid_and_invalid() {
     // Init in-memory DB & app
