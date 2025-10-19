@@ -96,26 +96,26 @@ truth-training-apple/       # UI for macOS and iOS (SwiftUI + FFI)
 
 ```mermaid
 flowchart TB
-    subgraph Core [Core (Rust)]
-        DB[(SQLite)]
-        API[REST API (Actix-web)]
-        Sync[P2P Sync Engine]
+    subgraph Core ["Core (Rust)"]
+        DB[("SQLite")]
+        API["REST API (Actix-web)"]
+        Sync["P2P Sync Engine"]
     end
 
-    subgraph LinuxUI [Linux UI]
-        GTK[GTK / Tauri]
+    subgraph LinuxUI ["Linux UI"]
+        GTK["GTK / Tauri"]
     end
 
-    subgraph WindowsUI [Windows UI]
-        WIN[WinUI 3 / Tauri]
+    subgraph WindowsUI ["Windows UI"]
+        WIN["WinUI 3 / Tauri"]
     end
 
-    subgraph AndroidUI [Android UI]
-        AND[Kotlin + JNI]
+    subgraph AndroidUI ["Android UI"]
+        AND["Kotlin + JNI"]
     end
 
-    subgraph AppleUI [macOS / iOS]
-        APP[SwiftUI + FFI]
+    subgraph AppleUI ["macOS / iOS"]
+        APP["SwiftUI + FFI"]
     end
 
     API <--> GTK

@@ -203,9 +203,9 @@ This allows reviewing old claims, initiating re-verification or local database c
 
 ```mermaid
 flowchart TD
-    A[Event Creation] --> B{Code 01?}
-    B -->|Yes| C[code=01]
-    B -->|No| D[code=00]
+    A["Event Creation"] --> B{"Code 01?"}
+    B -->|"Yes"| C["code=01"]
+    B -->|"No"| D["code=00"]
     
     C --> E[P2P Relay]
     D --> E

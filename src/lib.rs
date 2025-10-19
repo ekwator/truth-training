@@ -8,5 +8,5 @@ pub mod p2p;
 pub mod sync;
 #[cfg(feature = "desktop")]
 pub mod server_diagnostics;
-#[path = "../integration/android/mod.rs"]
+#[cfg(feature = "mobile")]
 pub mod android;
