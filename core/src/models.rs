@@ -314,7 +314,8 @@ pub struct SyncLog {
 }
 
 /// Учетная запись пользователя с ролью и доверием (RBAC)
-#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(not(target_os = "android"), derive(utoipa::ToSchema))]
 pub struct RbacUser {
     pub pubkey: String,
     pub role: String,        // observer | node | admin
