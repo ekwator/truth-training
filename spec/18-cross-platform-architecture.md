@@ -79,39 +79,51 @@ mod crypto;            // Cryptographic operations
 ## Directory Structure
 
 ```
-truth-core/
-├── src/
-│   ├── core/                    # Shared core logic
-│   │   ├── p2p/
-│   │   │   ├── mod.rs           # P2P module exports
-│   │   │   ├── encryption.rs    # Ed25519 crypto operations
-│   │   │   ├── node.rs          # P2P node implementation
-│   │   │   └── sync.rs          # Synchronization protocol
-│   │   ├── expert/
-│   │   │   ├── mod.rs           # Expert system exports
-│   │   │   └── simple.rs        # Truth assessment algorithms
-│   │   ├── models/
-│   │   │   ├── mod.rs           # Data model exports
-│   │   │   └── events.rs        # Event and statement models
-│   │   └── storage/
-│   │       ├── mod.rs           # Storage exports
-│   │       └── operations.rs    # Database operations
-│   ├── desktop/                 # Desktop-only modules
-│   │   ├── mod.rs               # Desktop module exports
-│   │   ├── api.rs               # HTTP REST API implementation
-│   │   ├── cli.rs               # CLI command handling
-│   │   ├── server.rs            # HTTP server implementation
-│   │   └── diagnostics.rs       # Server health checks
-│   ├── mobile/                  # Mobile-only modules
-│   │   ├── mod.rs               # Mobile module exports
-│   │   ├── android.rs           # Android JNI bindings
-│   │   ├── ios.rs               # iOS FFI bindings
-│   │   ├── ffi.rs               # Cross-platform FFI interface
-│   │   └── async.rs             # Mobile async runtime
-│   └── lib.rs                   # Main library entry point
-├── Cargo.toml                   # Feature definitions
-├── build.rs                     # Build script for FFI generation
-└── cbindgen.toml                # FFI binding configuration
+truth-training/
+├── src/                         # Main library source
+│   ├── lib.rs                   # Main library entry point with feature gates
+│   ├── api.rs                   # HTTP REST API (desktop only)
+│   ├── expert.rs                # Expert system implementation
+│   ├── net.rs                   # Network utilities (desktop only)
+│   ├── server_diagnostics.rs   # Server health checks (desktop only)
+│   ├── sync.rs                  # Synchronization logic (desktop only)
+│   ├── p2p/                     # P2P networking (desktop only)
+│   │   ├── mod.rs               # P2P module exports
+│   │   ├── encryption.rs        # Ed25519 crypto operations
+│   │   ├── node.rs              # P2P node implementation
+│   │   └── sync.rs              # P2P synchronization protocol
+│   └── android/                 # Android-specific modules (mobile only)
+│       ├── mod.rs               # Android JNI bindings
+│       └── verify_json.rs       # JSON signature verification
+├── core/                        # Core library (shared)
+│   ├── src/
+│   │   ├── lib.rs               # Core library exports
+│   │   ├── auth.rs              # Authentication logic
+│   │   ├── expert_simple.rs     # Truth assessment algorithms
+│   │   ├── knowledge.rs         # Knowledge management
+│   │   ├── models.rs            # Data models
+│   │   ├── storage.rs           # Database operations
+│   │   ├── sync.rs              # Core synchronization
+│   │   └── trust_propagation.rs # Trust propagation logic
+│   └── Cargo.toml               # Core dependencies
+├── app/                         # Desktop application
+│   ├── src/
+│   │   ├── main.rs              # Desktop app entry point
+│   │   ├── cli.rs                # CLI command handling
+│   │   ├── config_utils.rs      # Configuration utilities
+│   │   ├── diagnostics.rs       # Diagnostic tools
+│   │   └── status_utils.rs      # Status utilities
+│   └── Cargo.toml               # Desktop app dependencies
+├── integration/                 # Platform integration guides
+│   ├── android/                 # Android integration
+│   ├── ios/                     # iOS integration
+│   └── desktop/                 # Desktop integration
+├── tests/                       # Integration tests
+│   ├── android_verify.rs        # Android signature verification tests
+│   ├── api_push.rs              # API push tests
+│   └── cli_sync.rs              # CLI synchronization tests
+├── Cargo.toml                   # Root workspace configuration
+└── README.md                    # Project documentation
 ```
 
 ## Platform-Specific Implementations
