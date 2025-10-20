@@ -1,0 +1,203 @@
+openapi: 3.0.3
+info:
+  title: Collective Intelligence Judgments API
+  description: API endpoints for submitting and retrieving judgments in the collective intelligence system
+  version: 1.0.0
+  contact:
+    name: Truth Training Platform
+    url: https://github.com/truth-training/truth-training
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+
+paths:
+  /judgments:
+    post:
+      summary: Submit a judgment for an event
+      description: Allows a participant to submit their judgment about an event with confidence level and reasoning
+      operationId: submitJudgment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JudgmentSubmission'
+            example:
+              event_id: "550e8400-e29b-41d4-a716-446655440000"
+              assessment: "true"
+              confidence_level: 0.8
+              reasoning: "Based on multiple reliable sources and expert analysis"
+      responses:
+        '201':
+          description: Judgment submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JudgmentResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - participant has already judged this event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Get judgments for an event
+      description: Retrieves all judgments submitted for a specific event
+      operationId: getEventJudgments
+      parameters:
+        - name: event_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the event
+        - name: include_participant_info
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to include participant reputation information
+      responses:
+        '200':
+          description: List of judgments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  judgments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JudgmentResponse'
+                  total_count:
+                    type: integer
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /judgments/{judgment_id}:
+    get:
+      summary: Get a specific judgment
+      description: Retrieves details of a specific judgment by ID
+      operationId: getJudgment
+      parameters:
+        - name: judgment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the judgment
+      responses:
+        '200':
+          description: Judgment retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JudgmentResponse'
+        '404':
+          description: Judgment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    JudgmentSubmission:
+      type: object
+      required:
+        - event_id
+        - assessment
+        - confidence_level
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: UUID of the event being judged
+        assessment:
+          type: string
+          enum: ["true", "false", "uncertain", "partially_true", "partially_false"]
+          description: Participant's assessment of the event
+        confidence_level:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Participant's confidence in their assessment
+        reasoning:
+          type: string
+          maxLength: 2000
+          description: Optional explanation of the judgment
+
+    JudgmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the judgment
+        participant_id:
+          type: string
+          format: uuid
+          description: UUID of the participant who submitted the judgment
+        event_id:
+          type: string
+          format: uuid
+          description: UUID of the event being judged
+        assessment:
+          type: string
+          description: Participant's assessment of the event
+        confidence_level:
+          type: number
+          description: Participant's confidence in their assessment
+        reasoning:
+          type: string
+          description: Explanation of the judgment
+        submitted_at:
+          type: string
+          format: date-time
+          description: Timestamp when the judgment was submitted
+        participant_reputation:
+          type: number
+          description: Participant's reputation score at time of submission
+          minimum: 0.0
+          maximum: 1.0
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type identifier
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details

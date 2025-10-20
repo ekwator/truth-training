@@ -1,0 +1,24 @@
+# truth-training Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2025-10-20
+
+## Active Technologies
+- Rust 1.75+ (existing project) + Actix-web, SQLite, ed25519_dalek, serde, tokio (001-collective-intelligence-layer)
+
+## Project Structure
+```
+src/
+tests/
+```
+
+## Commands
+cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] cargo clippy
+
+## Code Style
+Rust 1.75+ (existing project): Follow standard conventions
+
+## Recent Changes
+- 001-collective-intelligence-layer: Added Rust 1.75+ (existing project) + Actix-web, SQLite, ed25519_dalek, serde, tokio
+
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->
