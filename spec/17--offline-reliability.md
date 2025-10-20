@@ -103,7 +103,8 @@ The system converges toward the same truth consensus, even after offline operati
 
 ✅ Ensures semantic reliability under full decentralization — no central validator needed.
 
-📊 6. Network Architecture (Mermaid)
+📊 6. Network Architecture
+```mermaid
 flowchart LR
     subgraph A[Truth Training Node]
         cacheA[Local Cache]
@@ -120,8 +121,9 @@ flowchart LR
 
     style A fill:#a3e4d7,stroke:#1abc9c
     style B fill:#f9e79f,stroke:#f1c40f
-
+```
 🔄 7. Comparative Diagram: Trust Graph vs Ledger
+```mermaid
 flowchart TD
     subgraph TruthTraining["Truth Training: Distributed Trust Graph"]
         nodeA(User A)
@@ -147,7 +149,7 @@ flowchart TD
     end
 
     TruthTraining -->|P2P Sync| DigitalMoney
-
+```
 🧩 8. Summary
 
 Both systems ensure offline data transmission reliability but with distinct resilience principles:
