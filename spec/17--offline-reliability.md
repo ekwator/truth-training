@@ -8,14 +8,22 @@ Spec ID: 09
 ⚙️ 1. Conceptual Overview
 
 This specification compares Truth Training’s decentralized semantic reliability model with the offline transaction integrity model used in digital money systems (e.g., CBDC or hardware wallets).
+
 The comparison highlights how Truth Core v0.4.0 preserves semantic truth and collective consensus even under offline conditions.
 
 Parameter	Truth Training (v0.4.0)	Digital Money (Offline)
+
 Data Type	Semantic statements, trust ratings, events	Financial transactions
+
 Network	Local P2P mesh (Wi-Fi / LAN / Bluetooth bridge)	P2P between wallets or NFC devices
+
 Node State	May be offline; synchronizes later	May be offline until reconnected
+
 Data Protection	Ed25519 signatures, trust propagation, collective verification	RSA/ECC signatures, secure enclave validation
-Verification	Distributed trust graph + collective intelligence	Central validator (upon sync) or TEE hardware trust
+
+Verification	Distributed trust graph + collective intelligence
+
+Central validator (upon sync) or TEE hardware trust
 
 🔁 2. Data Transmission Reliability
 
