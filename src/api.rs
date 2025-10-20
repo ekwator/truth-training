@@ -16,6 +16,7 @@ use utoipa::{OpenApi, ToSchema};
 use crate::p2p::sync::get_relay_stats;
 use core_lib::models::{PeerHistoryEntry, PeerSummary};
 use base64::{engine::general_purpose, Engine as _};
+// rusqlite::OptionalExtension is used in storage functions // for query_row(...).optional()
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
 
@@ -775,7 +776,13 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(ratings_sync)
         .service(api_v1_users_list)
         .service(api_v1_users_role)
-        .service(api_v1_trust_delegate);
+        .service(api_v1_trust_delegate)
+        .service(api_v1_judgments_post)
+        .service(api_v1_judgments_get)
+        .service(api_v1_consensus_get)
+        .service(api_v1_consensus_calculate)
+        .service(api_v1_reputation_get)
+        .service(api_v1_reputation_leaderboard);
 }
 
 #[derive(Serialize, ToSchema)]
@@ -1559,5 +1566,154 @@ mod tests {
             assert!(ev.collective_score.is_some());
             assert!(ev.collective_score.unwrap() > 0.0);
         }
+    }
+}
+
+#[derive(Deserialize)]
+struct JudgmentPostRequest {
+    event_id: String,
+    assessment: String,
+    confidence_level: f32,
+    reasoning: Option<String>,
+    signature: String,   // base64
+    public_key: String,  // base64
+}
+
+#[post("/api/v1/judgments")]
+async fn api_v1_judgments_post(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json<JudgmentPostRequest>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    let body = payload.into_inner();
+    // Build canonical message to verify: assessment+confidence+reasoning+event_id JSON
+    let msg = match serde_json::to_string(&serde_json::json!({
+        "event_id": body.event_id,
+        "assessment": body.assessment,
+        "confidence_level": body.confidence_level,
+        "reasoning": body.reasoning,
+    })) { Ok(s) => s, Err(_) => return HttpResponse::BadRequest().body("bad payload") };
+    // Convert base64 inputs to hex and verify
+    let pk_hex = match b64_to_hex(&body.public_key) { Ok(s) => s, Err(e) => return HttpResponse::BadRequest().body(e) };
+    let sig_hex = match b64_to_hex(&body.signature) { Ok(s) => s, Err(e) => return HttpResponse::BadRequest().body(e) };
+    if let Err(_e) = verify_signature(&pk_hex, &sig_hex, &msg) {
+        return HttpResponse::Unauthorized().json(serde_json::json!({"status":"error","reason":"invalid_signature"}));
+    }
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        // Ensure participant using provided public key
+        let participant_id = core_lib::storage::ci_ensure_participant(&conn, &pk_hex)?;
+        let j = core_lib::collective_intelligence::models::Judgment {
+            id: uuid::Uuid::new_v4(),
+            participant_id,
+            event_id: uuid::Uuid::parse_str(&msg_json::get_event_id(&msg)).unwrap_or_else(|_| uuid::Uuid::new_v4()),
+            assessment: msg_json::get_assessment(&msg),
+            confidence_level: msg_json::get_confidence(&msg),
+            reasoning: msg_json::get_reasoning(&msg),
+            submitted_at: chrono::Utc::now(),
+            signature: sig_hex,
+        };
+        core_lib::storage::ci_insert_judgment(&conn, &j)?;
+        // Recalculate consensus
+        let _c = core_lib::storage::ci_calculate_and_upsert_consensus(&conn, &j.event_id)?;
+        Ok::<uuid::Uuid, core_lib::models::CoreError>(j.id)
+    }).await;
+    match res {
+        Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+mod msg_json {
+    use serde_json::Value;
+    pub fn parse(msg: &str) -> Value { serde_json::from_str(msg).unwrap_or(serde_json::json!({})) }
+    pub fn get_event_id(msg: &str) -> String { parse(msg).get("event_id").and_then(|v| v.as_str()).unwrap_or("").to_string() }
+    pub fn get_assessment(msg: &str) -> String { parse(msg).get("assessment").and_then(|v| v.as_str()).unwrap_or("").to_string() }
+    pub fn get_confidence(msg: &str) -> f32 { parse(msg).get("confidence_level").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32 }
+    pub fn get_reasoning(msg: &str) -> Option<String> { parse(msg).get("reasoning").and_then(|v| v.as_str()).map(|s| s.to_string()) }
+}
+
+#[get("/api/v1/judgments")]
+async fn api_v1_judgments_get(req: HttpRequest, pool: web::Data<DbPool>, q: web::Query<std::collections::HashMap<String, String>>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    let event_id = match q.get("event_id").cloned() { Some(v) => v, None => return HttpResponse::BadRequest().body("event_id required") };
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        let ev = uuid::Uuid::parse_str(&event_id).map_err(|_| core_lib::models::CoreError::InvalidArg("bad event_id".into()))?;
+        let js = core_lib::storage::ci_get_judgments_by_event(&conn, &ev)?;
+        Ok::<Vec<core_lib::collective_intelligence::models::Judgment>, core_lib::models::CoreError>(js)
+    }).await;
+    match res {
+        Ok(Ok(list)) => HttpResponse::Ok().json(serde_json::json!({"judgments": list, "total_count": list.len()})),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[get("/api/v1/consensus/{event_id}")]
+async fn api_v1_consensus_get(req: HttpRequest, pool: web::Data<DbPool>, path: web::Path<String>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    let event_id = match uuid::Uuid::parse_str(&path.into_inner()) { Ok(v) => v, Err(_) => return HttpResponse::BadRequest().finish() };
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::ci_get_consensus_by_event(&conn, &event_id)
+    }).await;
+    match res {
+        Ok(Ok(Some(c))) => HttpResponse::Ok().json(c),
+        Ok(Ok(None)) => HttpResponse::NotFound().finish(),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[post("/api/v1/consensus/{event_id}/calculate")]
+async fn api_v1_consensus_calculate(req: HttpRequest, pool: web::Data<DbPool>, path: web::Path<String>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    let event_id = match uuid::Uuid::parse_str(&path.into_inner()) { Ok(v) => v, Err(_) => return HttpResponse::BadRequest().finish() };
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::ci_calculate_and_upsert_consensus(&conn, &event_id)
+    }).await;
+    match res {
+        Ok(Ok(c)) => HttpResponse::Ok().json(c),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[get("/api/v1/reputation/{participant_id}")]
+async fn api_v1_reputation_get(req: HttpRequest, pool: web::Data<DbPool>, path: web::Path<String>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    let pid = path.into_inner();
+    let poolc = pool.clone();
+    let pid_out = pid.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::ci_get_reputation_by_participant(&conn, &pid)
+    }).await;
+    match res {
+        Ok(Ok(Some(v))) => HttpResponse::Ok().json(serde_json::json!({"participant_id": pid_out, "reputation_score": v["reputation_score"], "total_judgments": v["total_judgments"], "accurate_judgments": v["accurate_judgments"], "last_activity": v["last_activity"]})),
+        Ok(Ok(None)) => HttpResponse::NotFound().finish(),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[get("/api/v1/reputation/leaderboard")]
+async fn api_v1_reputation_leaderboard(req: HttpRequest, pool: web::Data<DbPool>, q: web::Query<std::collections::HashMap<String, String>>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    let limit: i64 = q.get("limit").and_then(|v| v.parse().ok()).unwrap_or(10);
+    let min_j: i64 = q.get("min_judgments").and_then(|v| v.parse().ok()).unwrap_or(0);
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::ci_get_reputation_leaderboard(&conn, min_j, limit)
+    }).await;
+    match res {
+        Ok(Ok(lb)) => HttpResponse::Ok().json(serde_json::json!({"leaderboard": lb, "total_participants": lb.len()})),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }

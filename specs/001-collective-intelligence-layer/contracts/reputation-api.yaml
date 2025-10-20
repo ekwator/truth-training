@@ -1,0 +1,311 @@
+openapi: 3.0.3
+info:
+  title: Collective Intelligence Reputation API
+  description: API endpoints for retrieving and managing participant reputation in the collective intelligence system
+  version: 1.0.0
+  contact:
+    name: Truth Training Platform
+    url: https://github.com/truth-training/truth-training
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+
+paths:
+  /reputation/{participant_id}:
+    get:
+      summary: Get participant reputation
+      description: Retrieves the current reputation score and statistics for a participant
+      operationId: getParticipantReputation
+      parameters:
+        - name: participant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the participant
+        - name: include_history
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to include reputation change history
+      responses:
+        '200':
+          description: Reputation information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReputationResponse'
+        '404':
+          description: Participant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reputation/{participant_id}/history:
+    get:
+      summary: Get participant reputation history
+      description: Retrieves the historical reputation changes for a participant
+      operationId: getReputationHistory
+      parameters:
+        - name: participant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the participant
+        - name: from_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Start date for history data
+        - name: to_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: End date for history data
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+          description: Maximum number of history entries to return
+      responses:
+        '200':
+          description: Reputation history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReputationHistoryResponse'
+        '404':
+          description: Participant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reputation/leaderboard:
+    get:
+      summary: Get reputation leaderboard
+      description: Retrieves a leaderboard of participants ranked by reputation score
+      operationId: getReputationLeaderboard
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of participants to return
+        - name: min_judgments
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 5
+          description: Minimum number of judgments required to appear on leaderboard
+      responses:
+        '200':
+          description: Leaderboard retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reputation/update:
+    post:
+      summary: Update participant reputation
+      description: Manually triggers reputation update for a participant (typically done automatically)
+      operationId: updateParticipantReputation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReputationUpdateRequest'
+      responses:
+        '200':
+          description: Reputation updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReputationResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ReputationResponse:
+      type: object
+      properties:
+        participant_id:
+          type: string
+          format: uuid
+          description: UUID of the participant
+        reputation_score:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Current reputation score
+        total_judgments:
+          type: integer
+          minimum: 0
+          description: Total number of judgments submitted
+        accurate_judgments:
+          type: integer
+          minimum: 0
+          description: Number of judgments that proved accurate
+        accuracy_rate:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Ratio of accurate judgments to total judgments
+        last_activity:
+          type: string
+          format: date-time
+          description: Timestamp of last judgment submission
+        reputation_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReputationHistoryEntry'
+          description: Recent reputation changes (if requested)
+
+    ReputationHistoryEntry:
+      type: object
+      properties:
+        old_reputation:
+          type: number
+          description: Previous reputation score
+        new_reputation:
+          type: number
+          description: Updated reputation score
+        change_reason:
+          type: string
+          description: Reason for reputation change
+        event_id:
+          type: string
+          format: uuid
+          description: UUID of event that triggered change
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of reputation update
+
+    ReputationHistoryResponse:
+      type: object
+      properties:
+        participant_id:
+          type: string
+          format: uuid
+          description: UUID of the participant
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReputationHistoryEntry'
+          description: Historical reputation changes
+        total_entries:
+          type: integer
+          description: Total number of reputation changes in the time period
+
+    LeaderboardResponse:
+      type: object
+      properties:
+        leaderboard:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeaderboardEntry'
+          description: Ranked list of participants
+        total_participants:
+          type: integer
+          description: Total number of participants meeting criteria
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        participant_id:
+          type: string
+          format: uuid
+          description: UUID of the participant
+        reputation_score:
+          type: number
+          description: Current reputation score
+        total_judgments:
+          type: integer
+          description: Total number of judgments submitted
+        accuracy_rate:
+          type: number
+          description: Ratio of accurate judgments to total judgments
+        rank:
+          type: integer
+          description: Position in leaderboard
+
+    ReputationUpdateRequest:
+      type: object
+      required:
+        - participant_id
+        - event_id
+        - judgment_accuracy
+      properties:
+        participant_id:
+          type: string
+          format: uuid
+          description: UUID of the participant
+        event_id:
+          type: string
+          format: uuid
+          description: UUID of the event that was judged
+        judgment_accuracy:
+          type: boolean
+          description: Whether the participant's judgment was accurate
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type identifier
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details

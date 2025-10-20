@@ -1,0 +1,213 @@
+openapi: 3.0.3
+info:
+  title: Collective Intelligence Consensus API
+  description: API endpoints for retrieving consensus information and triggering consensus calculations
+  version: 1.0.0
+  contact:
+    name: Truth Training Platform
+    url: https://github.com/truth-training/truth-training
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+
+paths:
+  /consensus/{event_id}:
+    get:
+      summary: Get consensus for an event
+      description: Retrieves the current consensus for a specific event, including confidence score and participant count
+      operationId: getEventConsensus
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the event
+        - name: include_history
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to include consensus history
+      responses:
+        '200':
+          description: Consensus retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsensusResponse'
+        '404':
+          description: Event not found or no consensus available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /consensus/{event_id}/calculate:
+    post:
+      summary: Trigger consensus calculation
+      description: Manually triggers consensus calculation for an event (typically done automatically)
+      operationId: calculateConsensus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the event
+      responses:
+        '200':
+          description: Consensus calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsensusResponse'
+        '400':
+          description: Insufficient judgments for consensus calculation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /consensus/events/{event_id}/evolution:
+    get:
+      summary: Get consensus evolution over time
+      description: Retrieves the historical evolution of consensus for an event
+      operationId: getConsensusEvolution
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the event
+        - name: from_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Start date for evolution data
+        - name: to_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: End date for evolution data
+      responses:
+        '200':
+          description: Consensus evolution retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsensusEvolutionResponse'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ConsensusResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the consensus
+        event_id:
+          type: string
+          format: uuid
+          description: UUID of the event
+        consensus_value:
+          type: string
+          description: The consensus assessment value
+        confidence_score:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Overall confidence in the consensus
+        participant_count:
+          type: integer
+          minimum: 1
+          description: Number of participants who contributed to consensus
+        calculated_at:
+          type: string
+          format: date-time
+          description: Timestamp when consensus was calculated
+        algorithm_version:
+          type: string
+          description: Version of consensus algorithm used
+        consensus_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsensusHistoryEntry'
+          description: Historical consensus data (if requested)
+
+    ConsensusHistoryEntry:
+      type: object
+      properties:
+        consensus_value:
+          type: string
+          description: Consensus value at this point in time
+        confidence_score:
+          type: number
+          description: Confidence score at this point in time
+        participant_count:
+          type: integer
+          description: Number of participants at this point in time
+        calculated_at:
+          type: string
+          format: date-time
+          description: Timestamp of this consensus calculation
+
+    ConsensusEvolutionResponse:
+      type: object
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: UUID of the event
+        evolution_data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsensusHistoryEntry'
+          description: Historical consensus data points
+        total_data_points:
+          type: integer
+          description: Total number of consensus calculations in the time period
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type identifier
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details

@@ -1,8 +1,8 @@
 
-# Implementation Plan: [FEATURE]
+# Implementation Plan: Collective Intelligence Layer (Wisdom of the Crowd)
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+**Branch**: `001-collective-intelligence-layer` | **Date**: 2025-10-20 | **Spec**: `/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/spec.md`
+**Input**: Feature specification from `/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/spec.md`
 
 ## Execution Flow (/plan command scope)
 ```
@@ -32,23 +32,27 @@
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-[Extract from feature spec: primary requirement + technical approach from research]
+Enable weighted collective judgment with dynamic reputation to converge on truth over time. Judgments are fully anonymous (aggregate-only visibility). Consensus is computed for any N ≥ 1. Non-functional targets from research: <100ms update for 1000 participants; scale to 10k–100k events/day with 100–1000 concurrent participants; outlier filtering preserves minority signals.
 
 ## Technical Context
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Language/Version**: Rust (edition 2021)  
+**Primary Dependencies**: serde/serde_json, rusqlite, ed25519-dalek, uuid, chrono, base64  
+**Storage**: SQLite (via rusqlite)  
+**Testing**: cargo test (unit + integration)  
+**Target Platform**: Desktop + Mobile (feature-gated: `desktop`, `mobile`)  
+**Project Type**: single (library/crate with CLI/app)  
+**Performance Goals**: <100ms update latency for 1000 participants; consensus recompute within 200ms p95  
+**Constraints**: Deterministic signed payloads; anonymity for judgments; reproducible consensus  
+**Scale/Scope**: 100–1000 concurrent participants; 10k–100k events/day
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Separation of concerns: integrate with `core` domain and API without UI leakage — PASS
+- Cryptographic integrity (ed25519; deterministic serialization; signature validation) — PASS
+- Observability/versioning simplicity (structured logging, semver adherence) — PASS
+- Collective intelligence principles (emergent consensus, dynamic reputation, self-correction) — PASS
+- Privacy/anonymity policy (aggregate-only visibility for judgments) — PASS
 
 ## Project Structure
 
@@ -64,50 +68,24 @@ specs/[###-feature]/
 ```
 
 ### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
 ```
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
 src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+├── api.rs
+├── p2p/
+├── expert.rs
+├── lib.rs
+└── sync.rs
 
 tests/
-├── contract/
-├── integration/
-└── unit/
+├── api_push.rs
+└── android_verify.rs
 
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+app/
+└── src/
+    └── main.rs
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: Single project with core library plus CLI; platform-specific behaviors are feature-gated (`desktop`, `mobile`).
 
 ## Phase 0: Outline & Research
 1. **Extract unknowns from Technical Context** above:
@@ -129,6 +107,7 @@ directories captured above]
    - Alternatives considered: [what else evaluated]
 
 **Output**: research.md with all NEEDS CLARIFICATION resolved
+Status: COMPLETE → `/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/research.md`
 
 ## Phase 1: Design & Contracts
 *Prerequisites: research.md complete*
@@ -162,6 +141,7 @@ directories captured above]
    - Output to repository root
 
 **Output**: data-model.md, /contracts/*, failing tests, quickstart.md, agent-specific file
+Status: COMPLETE → data model at `/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/data-model.md`, contracts at `/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/contracts/*.yaml`, quickstart at `/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/quickstart.md`
 
 ## Phase 2: Task Planning Approach
 *This section describes what the /tasks command will do - DO NOT execute during /plan*
@@ -180,8 +160,7 @@ directories captured above]
 - Mark [P] for parallel execution (independent files)
 
 **Estimated Output**: 25-30 numbered, ordered tasks in tasks.md
-
-**IMPORTANT**: This phase is executed by the /tasks command, NOT by /plan
+Note: Executed separately; generated at `/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/tasks.md`.
 
 ## Phase 3+: Future Implementation
 *These phases are beyond the scope of the /plan command*
@@ -203,17 +182,17 @@ directories captured above]
 *This checklist is updated during execution flow*
 
 **Phase Status**:
-- [ ] Phase 0: Research complete (/plan command)
-- [ ] Phase 1: Design complete (/plan command)
-- [ ] Phase 2: Task planning complete (/plan command - describe approach only)
-- [ ] Phase 3: Tasks generated (/tasks command)
+- [x] Phase 0: Research complete (/plan command)
+- [x] Phase 1: Design complete (/plan command)
+- [x] Phase 2: Task planning complete (/plan command - describe approach only)
+- [x] Phase 3: Tasks generated (/tasks command)
 - [ ] Phase 4: Implementation complete
 - [ ] Phase 5: Validation passed
 
 **Gate Status**:
-- [ ] Initial Constitution Check: PASS
-- [ ] Post-Design Constitution Check: PASS
-- [ ] All NEEDS CLARIFICATION resolved
+- [x] Initial Constitution Check: PASS
+- [x] Post-Design Constitution Check: PASS
+- [x] All NEEDS CLARIFICATION resolved
 - [ ] Complexity deviations documented
 
 ---

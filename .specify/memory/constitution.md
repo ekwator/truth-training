@@ -1,6 +1,43 @@
-# Truth-Evaluation Platform Constitution
+<!--
+Sync Impact Report:
+Version change: 1.0.0 → 2.0.0
+Modified principles: 
+- Added philosophical foundation section
+- Enhanced core principles with collective intelligence concepts
+- Updated governance to reflect truth training methodology
+Added sections:
+- Philosophical Foundation
+- Collective Intelligence Principles
+- Truth Training Methodology
+Removed sections: None
+Templates requiring updates:
+- ✅ plan-template.md (constitution check references updated)
+- ✅ spec-template.md (philosophical alignment added)
+- ✅ tasks-template.md (collective intelligence principles integrated)
+Follow-up TODOs: None
+-->
 
-## Core Principles
+# Truth Training Platform Constitution
+
+## Philosophical Foundation
+
+The "Truth Training" concept emerged as a response to the crisis of trust and evolved into a philosophical model of collective human self-learning through shared cognition. Its foundation lies at the intersection of science, ethics, and philosophy — from probability theory and behavioral psychology to ancient ideas of harmony and the relativity of observation.
+
+In this view, truth is not declared — it is born through collaboration, correction, and convergence among many minds. Truth is a process, not an object, emerging from continuous interaction among many observers — like rhythm arising from multiple beats.
+
+### Core Philosophical Principles
+
+**Collective Intelligence as a Neural System of Society**: Each participant acts as a neuron — transmitting, receiving, and adapting — while the network learns through feedback.
+
+**Trust as a Quantifiable Parameter**: Reputation becomes a measurable property, similar to energy or density, integrating ethics with information theory.
+
+**The Wisdom of the Crowd as Natural Selection of Information**: Averaging independent inputs filters out extremes, leaving stable and reproducible approximations of truth.
+
+**Ethics as Algorithm**: Instead of moral judgment or punishment, the system relies on adaptive feedback loops — reducing influence for error, rewarding correction.
+
+**Harmony of Perception as the Goal**: Truth is not an absolute endpoint but a state of dynamic balance achieved through constant exchange and recalibration.
+
+## Core Technical Principles
 
 ### I. Separation of Concerns by Crate
 The system is organized into three crates with clear responsibilities and stable contracts:
@@ -32,6 +69,20 @@ Coherence between API, storage, and P2P is enforced via integration tests.
 - Structured logging and trace IDs; text I/O ensures debuggability.
 - Semantic versioning per crate (MAJOR.MINOR.PATCH); document breaking changes.
 - Prefer simple designs and SQLite; evolve via explicit migrations (YAGNI).
+
+## Collective Intelligence Principles
+
+### VI. Truth as Emergent Consensus
+Truth is not stored but converged upon through continuous exchanges. The system should not "store truth" but converge toward it over time. Repeated confirmations strengthen an event; repeated rejections weaken it.
+
+### VII. Dynamic Reputation and Weighted Consensus
+Each validator's influence (weight) depends on the accuracy of their past judgments. The collective judgment becomes a weighted consensus of experience rather than a mere vote count.
+
+### VIII. Self-Correcting Information Ecosystem
+The system promotes learning and correction rather than punishment — turning truth verification into a form of cognitive training. Each transmission or confirmation has semantic meaning — a signal of trust, correction, or decay.
+
+### IX. Cross-Platform Collective Intelligence
+The system maintains platform parity between desktop and mobile implementations, ensuring that collective intelligence can emerge across all access points while respecting platform-specific constraints and capabilities.
 
 ## Architecture and Technology Stack
 
@@ -76,9 +127,12 @@ Coherence between API, storage, and P2P is enforced via integration tests.
 - `spec/14-quality-gates.md`
 - `spec/15-prompts-and-automation.md`
 - `spec/16-test-plan.md`
+- `spec/18-cross-platform-architecture.md`
+- `spec/19-build-instructions.md`
+- `spec/20-cargo-configuration.md`
 
 ### Primary Goal
-Ensure coherence between API, storage, and P2P layers; maintain cryptographic integrity of communications; provide a foundation for a portable, extensible truth‑evaluation platform.
+Ensure coherence between API, storage, and P2P layers; maintain cryptographic integrity of communications; provide a foundation for a portable, extensible truth‑evaluation platform that enables collective intelligence through distributed consensus.
 
 ## Development Workflow and Quality Gates
 
@@ -98,5 +152,7 @@ This constitution supersedes other practices. Amendments require documentation, 
 - Complexity must be justified; prefer simple, observable solutions.
 - Cryptographic/protocol changes require security review and test evidence.
 - Use `spec/15-prompts-and-automation.md` for automation and agent guidance.
+- Collective intelligence principles must be preserved in all architectural decisions.
+- Truth training methodology must be reflected in all user-facing interfaces and data flows.
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-06 | **Last Amended**: 2025-10-06
+**Version**: 2.0.0 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-27
