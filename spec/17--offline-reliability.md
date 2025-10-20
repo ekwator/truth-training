@@ -11,19 +11,13 @@ This specification compares Truth Training’s decentralized semantic reliabilit
 
 The comparison highlights how Truth Core v0.4.0 preserves semantic truth and collective consensus even under offline conditions.
 
-Parameter	Truth Training (v0.4.0)	Digital Money (Offline)
-
-Data Type	Semantic statements, trust ratings, events	Financial transactions
-
-Network	Local P2P mesh (Wi-Fi / LAN / Bluetooth bridge)	P2P between wallets or NFC devices
-
-Node State	May be offline; synchronizes later	May be offline until reconnected
-
-Data Protection	Ed25519 signatures, trust propagation, collective verification	RSA/ECC signatures, secure enclave validation
-
-Verification	Distributed trust graph + collective intelligence
-
-Central validator (upon sync) or TEE hardware trust
+| Parameter | Truth Training (v0.4.0) | Digital Money (Offline) |
+|-----------|-------------------------|-------------------------|
+| **Data Type** | Semantic statements, trust ratings, events, collective judgments | Financial transactions |
+| **Network** | Local P2P mesh (Wi-Fi / LAN / Bluetooth bridge) | P2P between wallets or NFC devices |
+| **Node State** | May be offline; synchronizes later with consensus recalculation | May be offline until reconnected |
+| **Data Protection** | Ed25519 signatures, trust propagation, collective verification | RSA/ECC signatures, secure enclave validation |
+| **Verification** | Distributed trust graph + collective intelligence + weighted consensus | Central validator (upon sync) or TEE hardware trust |
 
 🔁 2. Data Transmission Reliability
 
@@ -82,18 +76,22 @@ Offline integrity partially depends on hardware trust.
 Full reconciliation occurs only after online synchronization.
 
 🧩 3. Integrity Model Comparison
-Criterion	Truth Training	Digital Money
-Consensus Type	Distributed trust graph + collective evaluation	Central validator or blockchain ledger
-Duplication Level	High (redundant P2P copies)	Minimal (single issuer record)
-Data Loss Offline	≈ 0 (recovered via sync merge)	Possible if device is lost
-“Double Send” Risk	None (idempotent events)	Possible before reconciliation
-Forgery Resistance	High (Ed25519 + trust chain)	Very high (RSA/ECC + hardware trust)
-Integrity Without Internet	High (semantic continuity)	Moderate (depends on hardware)
+
+| Criterion | Truth Training | Digital Money |
+|-----------|----------------|---------------|
+| **Consensus Type** | Distributed trust graph + collective evaluation | Central validator or blockchain ledger |
+| **Duplication Level** | High (redundant P2P copies) | Minimal (single issuer record) |
+| **Data Loss Offline** | ≈ 0 (recovered via sync merge) | Possible if device is lost |
+| **"Double Send" Risk** | None (idempotent events) | Possible before reconciliation |
+| **Forgery Resistance** | High (Ed25519 + trust chain) | Very high (RSA/ECC + hardware trust) |
+| **Integrity Without Internet** | High (semantic continuity) | Moderate (depends on hardware) |
 
 🧠 4. Philosophical Difference in Reliability
-Truth Training	Digital Money
-Reliability = ability to preserve and restore semantic information without a central authority	Reliability = ability to prevent double spending during offline operation
-Goal → Semantic Consistency (truth persists)	Goal → Monetary Consistency (value doesn’t duplicate)
+
+| Aspect | Truth Training | Digital Money |
+|--------|----------------|---------------|
+| **Reliability Definition** | Ability to preserve and restore semantic information without a central authority | Ability to prevent double spending during offline operation |
+| **Primary Goal** | Semantic Consistency (truth persists) | Monetary Consistency (value doesn't duplicate) |
 
     💬 Truth Training protects the meaning and authenticity of distributed facts.
 
@@ -103,17 +101,22 @@ Goal → Semantic Consistency (truth persists)	Goal → Monetary Consistency (va
 
 Version 0.4.0 introduces the Collective Intelligence Layer, enabling truth reconstruction through distributed consensus:
 
-Each node contributes independent evaluations (impact).
-
-The collective truth score (collective_score) is recalculated locally.
+- **Judgment Submission**: Each node contributes independent evaluations with confidence levels
+- **Reputation System**: Dynamic scoring based on judgment accuracy using EMA (Exponential Moving Average)
+- **Consensus Calculation**: Weighted consensus algorithms aggregate judgments into collective truth scores
+- **Outlier Filtering**: Statistical methods handle extreme judgments while preserving valuable minority perspectives
 
 When nodes resynchronize:
 
-Collective averages are merged (trust-weighted).
+- Collective averages are merged using trust-weighted algorithms
+- Reputation scores are updated based on historical accuracy
+- The system converges toward the same truth consensus, even after offline operation
 
-The system converges toward the same truth consensus, even after offline operation.
-
-✅ Ensures semantic reliability under full decentralization — no central validator needed.
+✅ **Key Features:**
+- Unlimited participation (no minimum participant count)
+- Fully anonymous individual judgments (only aggregate consensus visible)
+- Performance target: <100ms consensus calculation for 1000 participants
+- No central validator needed — fully decentralized semantic reliability
 
 📊 6. Network Architecture
 ```mermaid
@@ -166,9 +169,10 @@ flowchart TD
 
 Both systems ensure offline data transmission reliability but with distinct resilience principles:
 
-Focus	Reliability Source	Offline Consistency Type
-Truth Training	Trust propagation, P2P redundancy, collective consensus	Semantic consistency (truth convergence)
-Digital Money	Hardware trust, issuer reconciliation	Monetary consistency (non-duplication)
+| Focus | Reliability Source | Offline Consistency Type |
+|-------|-------------------|-------------------------|
+| **Truth Training** | Trust propagation, P2P redundancy, collective consensus | Semantic consistency (truth convergence) |
+| **Digital Money** | Hardware trust, issuer reconciliation | Monetary consistency (non-duplication) |
 
 Truth Training — more resilient for knowledge exchange.
 Digital Money — stricter for value preservation.
