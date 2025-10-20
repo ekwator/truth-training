@@ -16,8 +16,10 @@ Network	Local P2P mesh (Wi-Fi / LAN / Bluetooth bridge)	P2P between wallets or N
 Node State	May be offline; synchronizes later	May be offline until reconnected
 Data Protection	Ed25519 signatures, trust propagation, collective verification	RSA/ECC signatures, secure enclave validation
 Verification	Distributed trust graph + collective intelligence	Central validator (upon sync) or TEE hardware trust
+
 🔁 2. Data Transmission Reliability
-📡 Truth Training (Decentralized Semantic Exchange)
+
+    📡 Truth Training (Decentralized Semantic Exchange)
 
 Nodes exchange signed JSON messages (signature, public_key).
 
@@ -45,7 +47,7 @@ Loss of connectivity ≠ loss of data.
 
 Achieves eventual semantic consistency.
 
-💳 Digital Money (Offline Transactions)
+    💳 Digital Money (Offline Transactions)
 
 Typical use cases: CBDC tokens, hardware wallets, NFC payments.
 
@@ -79,13 +81,15 @@ Data Loss Offline	≈ 0 (recovered via sync merge)	Possible if device is lost
 “Double Send” Risk	None (idempotent events)	Possible before reconciliation
 Forgery Resistance	High (Ed25519 + trust chain)	Very high (RSA/ECC + hardware trust)
 Integrity Without Internet	High (semantic continuity)	Moderate (depends on hardware)
+
 🧠 4. Philosophical Difference in Reliability
 Truth Training	Digital Money
 Reliability = ability to preserve and restore semantic information without a central authority	Reliability = ability to prevent double spending during offline operation
 Goal → Semantic Consistency (truth persists)	Goal → Monetary Consistency (value doesn’t duplicate)
 
-💬 Truth Training protects the meaning and authenticity of distributed facts.
-💰 Digital Money protects the uniqueness of value transfers.
+    💬 Truth Training protects the meaning and authenticity of distributed facts.
+
+    💰 Digital Money protects the uniqueness of value transfers.
 
 🧮 5. Collective Reliability Layer (v0.4.0 Addition)
 
