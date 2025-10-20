@@ -5,22 +5,23 @@ pub mod models;
 pub mod storage;
 pub mod sync;
 pub mod trust_propagation;
+pub mod collective_intelligence;
 
 pub use crate::models::*;
 pub use crate::storage::*;
 pub use crate::storage::recalc_collective_truth;
 
 pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+	left + right
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+	use super::*;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+	#[test]
+	fn it_works() {
+		let result = add(2, 2);
+		assert_eq!(result, 4);
+	}
 }

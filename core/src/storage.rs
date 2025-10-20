@@ -12,6 +12,7 @@ use crate::{
     GraphNode,
     GraphLink,
 };
+use crate::collective_intelligence::models as ci_models;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 // serde_json используется через полные пути
@@ -179,6 +180,60 @@ INSERT OR IGNORE INTO roles(role, level, description) VALUES
     ('observer', 1, 'Read-only observer'),
     ('node',     2, 'Authenticated node with delegation rights'),
     ('admin',    3, 'Administrator');
+
+-- CI tables
+CREATE TABLE IF NOT EXISTS participants (
+    id TEXT PRIMARY KEY,
+    public_key TEXT UNIQUE NOT NULL,
+    reputation_score REAL NOT NULL DEFAULT 0.5,
+    total_judgments INTEGER NOT NULL DEFAULT 0,
+    accurate_judgments INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    last_activity INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS events_ci (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    event_type TEXT NOT NULL,
+    created_by TEXT NOT NULL REFERENCES participants(id),
+    created_at INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    resolution_data TEXT
+);
+
+CREATE TABLE IF NOT EXISTS judgments (
+    id TEXT PRIMARY KEY,
+    participant_id TEXT NOT NULL REFERENCES participants(id),
+    event_id TEXT NOT NULL REFERENCES events_ci(id),
+    assessment TEXT NOT NULL,
+    confidence_level REAL NOT NULL,
+    reasoning TEXT,
+    submitted_at INTEGER NOT NULL,
+    signature TEXT NOT NULL,
+    UNIQUE(participant_id, event_id)
+);
+
+CREATE TABLE IF NOT EXISTS consensus_ci (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events_ci(id),
+    consensus_value TEXT NOT NULL,
+    confidence_score REAL NOT NULL,
+    participant_count INTEGER NOT NULL,
+    calculated_at INTEGER NOT NULL,
+    algorithm_version TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reputation_history (
+    id TEXT PRIMARY KEY,
+    participant_id TEXT NOT NULL REFERENCES participants(id),
+    old_reputation REAL NOT NULL,
+    new_reputation REAL NOT NULL,
+    change_reason TEXT NOT NULL,
+    event_id TEXT,
+    updated_at INTEGER NOT NULL
+);
 "#;
 
 /// Открыть/инициализировать БД по пути
@@ -733,7 +788,7 @@ fn seed_knowledge_base_en(conn: &mut Connection) -> Result<(), CoreError> {
         (5, "Duty", 1, "Obligation, responsibility"),
         (6, "Curiosity", 1, "Search for truth, inquiry"),
         (7, "Pressure", 0, "Coercion, conformism"),
-        (8, "Care", 1, "Protecting another’s good"),
+        (8, "Care", 1, "Protecting another's good"),
     ];
     for (id, name, q, desc) in causes {
         tx.execute(
@@ -1385,6 +1440,158 @@ pub fn sync_users_with_node_ratings(conn: &Connection) -> Result<usize, CoreErro
         params![now],
     )?;
     Ok(affected)
+}
+
+/* =========================
+Collective Intelligence (CI) helpers
+========================= */
+
+pub fn ci_ensure_participant(conn: &Connection, public_key: &str) -> Result<uuid::Uuid, CoreError> {
+    // Try find by public_key
+    if let Ok(mut stmt) = conn.prepare("SELECT id FROM participants WHERE public_key = ?1 LIMIT 1") {
+        if let Ok(Some(id_str)) = stmt.query_row(rusqlite::params![public_key], |r| r.get::<_, String>(0)).optional() {
+            if let Ok(id) = uuid::Uuid::parse_str(&id_str) { return Ok(id); }
+        }
+    }
+    // Insert new participant
+    let id = uuid::Uuid::new_v4();
+    let now = chrono::Utc::now().timestamp();
+    conn.execute(
+        "INSERT INTO participants (id, public_key, reputation_score, total_judgments, accurate_judgments, created_at) VALUES (?1, ?2, 0.5, 0, 0, ?3)",
+        rusqlite::params![id.to_string(), public_key, now],
+    )?;
+    Ok(id)
+}
+
+pub fn ci_insert_judgment(
+    conn: &Connection,
+    judgment: &ci_models::Judgment,
+) -> Result<(), CoreError> {
+    conn.execute(
+        r#"INSERT INTO judgments_ci (id, participant_id, event_id, assessment, confidence_level, reasoning, submitted_at, signature)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)"#,
+        rusqlite::params![
+            judgment.id.to_string(),
+            judgment.participant_id.to_string(),
+            judgment.event_id.to_string(),
+            judgment.assessment,
+            judgment.confidence_level as f64,
+            judgment.reasoning,
+            judgment.submitted_at.timestamp(),
+            judgment.signature,
+        ],
+    )?;
+    // increment participant counters
+    conn.execute(
+        r#"UPDATE participants
+           SET total_judgments = total_judgments + 1, last_activity = ?2
+           WHERE id = ?1"#,
+        rusqlite::params![judgment.participant_id.to_string(), judgment.submitted_at.timestamp()],
+    )?;
+    Ok(())
+}
+
+pub fn ci_get_judgments_by_event(conn: &Connection, event_id: &uuid::Uuid) -> Result<Vec<ci_models::Judgment>, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"SELECT id, participant_id, event_id, assessment, confidence_level, reasoning, submitted_at, signature
+           FROM judgments_ci WHERE event_id = ?1 ORDER BY submitted_at ASC"#,
+    )?;
+    let rows = stmt.query_map(rusqlite::params![event_id.to_string()], |row| {
+        Ok(ci_models::Judgment {
+            id: uuid::Uuid::parse_str(&row.get::<_, String>(0)?).unwrap_or_else(|_| uuid::Uuid::nil()),
+            participant_id: uuid::Uuid::parse_str(&row.get::<_, String>(1)?).unwrap_or_else(|_| uuid::Uuid::nil()),
+            event_id: uuid::Uuid::parse_str(&row.get::<_, String>(2)?).unwrap_or_else(|_| uuid::Uuid::nil()),
+            assessment: row.get(3)?,
+            confidence_level: row.get::<_, f64>(4)? as f32,
+            reasoning: row.get(5)?,
+            submitted_at: chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH + std::time::Duration::from_secs(row.get::<_, i64>(6)? as u64)),
+            signature: row.get(7)?,
+        })
+    })?;
+    let mut out = Vec::new();
+    for r in rows { out.push(r?); }
+    Ok(out)
+}
+
+pub fn ci_get_consensus_by_event(conn: &Connection, event_id: &uuid::Uuid) -> Result<Option<ci_models::Consensus>, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"SELECT id, event_id, consensus_value, confidence_score, participant_count, calculated_at, algorithm_version
+           FROM consensus_ci WHERE event_id = ?1 LIMIT 1"#,
+    )?;
+    let row = stmt.query_row(rusqlite::params![event_id.to_string()], |row| {
+        Ok(ci_models::Consensus {
+            id: uuid::Uuid::parse_str(&row.get::<_, String>(0)?).unwrap_or_else(|_| uuid::Uuid::nil()),
+            event_id: uuid::Uuid::parse_str(&row.get::<_, String>(1)?).unwrap_or_else(|_| uuid::Uuid::nil()),
+            consensus_value: row.get(2)?,
+            confidence_score: row.get::<_, f64>(3)? as f32,
+            participant_count: row.get::<_, i64>(4)? as u32,
+            calculated_at: chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH + std::time::Duration::from_secs(row.get::<_, i64>(5)? as u64)),
+            algorithm_version: row.get(6)?,
+        })
+    }).optional()?;
+    Ok(row)
+}
+
+pub fn ci_upsert_consensus(conn: &Connection, c: &ci_models::Consensus) -> Result<(), CoreError> {
+    conn.execute(
+        r#"INSERT INTO consensus_ci (id, event_id, consensus_value, confidence_score, participant_count, calculated_at, algorithm_version)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+           ON CONFLICT(id) DO UPDATE SET
+             consensus_value=excluded.consensus_value,
+             confidence_score=excluded.confidence_score,
+             participant_count=excluded.participant_count,
+             calculated_at=excluded.calculated_at,
+             algorithm_version=excluded.algorithm_version"#,
+        rusqlite::params![
+            c.id.to_string(), c.event_id.to_string(), c.consensus_value, c.confidence_score as f64,
+            c.participant_count as i64, c.calculated_at.timestamp(), c.algorithm_version,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn ci_calculate_and_upsert_consensus(conn: &Connection, event_id: &uuid::Uuid) -> Result<ci_models::Consensus, CoreError> {
+    let js = ci_get_judgments_by_event(conn, event_id)?;
+    if js.is_empty() {
+        return Err(CoreError::InvalidArg("no judgments for event".into()));
+    }
+    let calc_in = crate::collective_intelligence::consensus::ConsensusCalcInput {
+        event_id: *event_id,
+        judgments: &js,
+        algorithm_version: "1.0.0",
+    };
+    let c = crate::collective_intelligence::consensus::calculate_consensus(calc_in)
+        .map_err(|e| CoreError::InvalidArg(e.to_string()))?;
+    ci_upsert_consensus(conn, &c)?;
+    Ok(c)
+}
+
+pub fn ci_get_reputation_by_participant(conn: &Connection, participant_id: &str) -> Result<Option<serde_json::Value>, CoreError> {
+    let mut stmt = conn.prepare("SELECT reputation_score, total_judgments, accurate_judgments, last_activity FROM participants WHERE id=?1")?;
+    let row = stmt.query_row(rusqlite::params![participant_id], |r| {
+        Ok(serde_json::json!({
+            "reputation_score": r.get::<_, f64>(0)? as f32,
+            "total_judgments": r.get::<_, i64>(1)?,
+            "accurate_judgments": r.get::<_, i64>(2)?,
+            "last_activity": r.get::<_, Option<i64>>(3)?
+        }))
+    }).optional()?;
+    Ok(row)
+}
+
+pub fn ci_get_reputation_leaderboard(conn: &Connection, min_judgments: i64, limit: i64) -> Result<Vec<serde_json::Value>, CoreError> {
+    let mut stmt = conn.prepare("SELECT id, reputation_score, total_judgments, (CASE WHEN total_judgments>0 THEN CAST(accurate_judgments AS REAL)/CAST(total_judgments AS REAL) ELSE 0.0 END) AS accuracy FROM participants WHERE total_judgments >= ?1 ORDER BY reputation_score DESC LIMIT ?2")?;
+    let rows = stmt.query_map(rusqlite::params![min_judgments, limit], |r| {
+        Ok(serde_json::json!({
+            "participant_id": r.get::<_, String>(0)?,
+            "reputation_score": r.get::<_, f64>(1)? as f32,
+            "total_judgments": r.get::<_, i64>(2)?,
+            "accuracy_rate": r.get::<_, f64>(3)? as f32
+        }))
+    })?;
+    let mut leaderboard: Vec<serde_json::Value> = Vec::new();
+    for row in rows { leaderboard.push(row?); }
+    Ok(leaderboard)
 }
 
 /// Слияние входящих рейтингов узлов и групп по правилам конфликта

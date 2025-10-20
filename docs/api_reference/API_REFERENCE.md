@@ -187,6 +187,44 @@ Audience: Android, Web, and CLI clients. Responses are JSON. Unless noted, Conte
 { "status": "ok" }
 ```
 
+### Collective Intelligence
+
+#### POST /api/v1/judgments
+- **Description**: Submit a signed judgment for an event.
+- **Headers**: `Authorization: Bearer <jwt>`
+- **Body**:
+```json
+{
+  "event_id": "<uuid>",
+  "assessment": "true|false|uncertain",
+  "confidence_level": 0.0,
+  "reasoning": "string|null",
+  "public_key": "<base64 32-byte ed25519 public key>",
+  "signature": "<base64 64-byte ed25519 signature of canonical message>"
+}
+```
+- **Response 200**: `{ "id": "<uuid>" }`
+
+#### GET /api/v1/judgments?event_id=<uuid>
+- **Description**: List judgments for an event (anonymized fields preserved).
+- **Headers**: `Authorization: Bearer <jwt>`
+
+#### GET /api/v1/consensus/{event_id}
+- **Description**: Get current consensus for an event.
+- **Headers**: `Authorization: Bearer <jwt>`
+
+#### POST /api/v1/consensus/{event_id}/calculate
+- **Description**: Calculate and upsert consensus for an event.
+- **Headers**: `Authorization: Bearer <jwt>`
+
+#### GET /api/v1/reputation/{participant_id}
+- **Description**: Get participant reputation summary.
+- **Headers**: `Authorization: Bearer <jwt>`
+
+#### GET /api/v1/reputation/leaderboard?limit=<n>&min_judgments=<n>
+- **Description**: Leaderboard by reputation.
+- **Headers**: `Authorization: Bearer <jwt>`
+
 ### P2P Sync (brief)
 
 - `POST /sync`: push local data; signed headers `X-Public-Key`, `X-Signature`, `X-Timestamp`.
