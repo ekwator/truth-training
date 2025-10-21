@@ -1,3 +1,8 @@
+# Expert System (Heuristics)
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 06
+
 ## Expert System (Heuristics)
 
 Implementation: `core_lib::expert_simple`

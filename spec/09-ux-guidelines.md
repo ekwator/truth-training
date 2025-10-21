@@ -1,3 +1,8 @@
+# UX Guidelines
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 09
+
 ## UX Guidelines
 
 See `docs/ui_guidelines.md`. This spec aligns endpoint names with current API.

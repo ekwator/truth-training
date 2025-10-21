@@ -303,24 +303,31 @@ cargo test --target aarch64-linux-android --features mobile
 cargo test --target aarch64-apple-ios --features mobile
 ```
 
-## Core Specifications
+## Specification Index (v0.4.0)
 
-- **01 Product Vision**: `spec/01-product-vision.md` — Cross-platform decentralized truth verification
-- **02 Requirements**: `spec/02-requirements.md` — Platform-specific functional requirements
-- **03 Architecture**: `spec/03-architecture.md` — Cross-platform architecture with FFI interfaces
-- **04 Data Model**: `spec/04-data-model.md` — Shared SQLite schema and models
-- **05 HTTP API**: `spec/05-api.md` — Desktop-only REST endpoints
-- **06 Expert System**: `spec/06-expert-system.md` — Shared truth assessment algorithms
-- **07 Event Rating Protocol**: `spec/07-event-rating-protocol.md` — Cross-platform trust system
-- **08 P2P & Sync**: `spec/08-p2p-sync.md` — Platform-adaptive peer synchronization
-- **09 UX Guidelines**: `spec/09-ux-guidelines.md` — Platform-specific UI standards
-- **10 CLI Specification**: `spec/10-cli.md` — Desktop-only CLI tools
-
-## Cross-Platform Development
-
-- **18 Cross-Platform Architecture**: `spec/18-cross-platform-architecture.md` — Platform-specific feature architecture
-- **19 Build Instructions**: `spec/19-build-instructions.md` — Cross-platform build commands and CI/CD
-- **20 Cargo Configuration**: `spec/20-cargo-configuration.md` — Complete Cargo.toml with feature definitions
+| ID | File | Title |
+|----|-------|--------|
+| 01 | 01-product-vision.md | Product Vision |
+| 02 | 02-requirements.md | Requirements |
+| 03 | 03-architecture.md | Architecture Overview |
+| 04 | 04-data-model.md | Data Model |
+| 05 | 05-api.md | HTTP API (current implementation) |
+| 06 | 06-expert-system.md | Expert System (Heuristics) |
+| 07 | 07-event-rating-protocol.md | Event Rating Protocol |
+| 08 | 08-p2p-sync.md | P2P & Sync |
+| 09 | 09-ux-guidelines.md | UX Guidelines |
+| 10 | 10-cli.md | CLI Specification (truthctl) |
+| 11 | 11-decision-log.md | Decision Log (ADR) |
+| 12 | 12-open-questions.md | Open Questions & Risks |
+| 13 | 13-traceability.md | Traceability Matrix |
+| 14 | 14-quality-gates.md | Quality Gates |
+| 15 | 15-prompts-and-automation.md | Prompts & Automation |
+| 16 | 16-test-plan.md | Test Plan |
+| 17 | 17-offline-reliability.md | Offline Reliability and Data Integrity |
+| 18 | 18-cross-platform-architecture.md | Cross-Platform Architecture Specification |
+| 19 | 19-build-instructions.md | Cross-Platform Build Instructions |
+| 20 | 20-cargo-configuration.md | Cross-Platform Cargo.toml Configuration |
+| 21 | 21-roadmap.md | Roadmap (High-level) |
 
 ## Integration Guides
 

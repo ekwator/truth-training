@@ -1,3 +1,8 @@
+# Open Questions & Risks
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 12
+
 ## Open Questions & Risks
 
 - What validator identity format to store in impact.user_id (pubkey hex vs alias)?

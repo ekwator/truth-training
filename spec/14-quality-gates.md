@@ -1,3 +1,8 @@
+# Quality Gates
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 14
+
 ## Quality Gates
 
 - Lint: cargo fmt + clippy (workspace-wide).

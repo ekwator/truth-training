@@ -1,3 +1,8 @@
+# Prompts & Automation
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 15
+
 ## Prompts & Automation
 
 - PR templates: link changed code to Spec Kit sections (requirements, API, data).
