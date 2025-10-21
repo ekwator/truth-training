@@ -21,7 +21,7 @@ The comparison highlights how Truth Core v0.4.0 preserves semantic truth and col
 
 🔁 2. Data Transmission Reliability
 
-    📡 Truth Training (Decentralized Semantic Exchange)
+📡 A.  Truth Training (Decentralized Semantic Exchange)
 
 Nodes exchange signed JSON messages (signature, public_key).
 
@@ -43,13 +43,15 @@ Collective consensus (via collective_score) is recalculated automatically.
 
 ✅ Reliability:
 
+💬 Truth Training protects the meaning and authenticity of distributed facts.
+
 Fully decentralized.
 
 Loss of connectivity ≠ loss of data.
 
 Achieves eventual semantic consistency.
 
-    💳 Digital Money (Offline Transactions)
+💳 B. Digital Money (Offline Transactions)
 
 Typical use cases: CBDC tokens, hardware wallets, NFC payments.
 
@@ -68,6 +70,8 @@ Conflicting transactions are invalidated.
 Hardware trust layers (TEE, Secure Element) guarantee wallet integrity.
 
 ✅ Reliability:
+
+💰 Digital Money protects the uniqueness of value transfers.
 
 Centralized (issuer-controlled).
 
@@ -93,9 +97,6 @@ Full reconciliation occurs only after online synchronization.
 | **Reliability Definition** | Ability to preserve and restore semantic information without a central authority | Ability to prevent double spending during offline operation |
 | **Primary Goal** | Semantic Consistency (truth persists) | Monetary Consistency (value doesn't duplicate) |
 
-    💬 Truth Training protects the meaning and authenticity of distributed facts.
-
-    💰 Digital Money protects the uniqueness of value transfers.
 
 🧮 5. Collective Reliability Layer (v0.4.0 Addition)
 
@@ -118,9 +119,24 @@ When nodes resynchronize:
 - Performance target: <100ms consensus calculation for 1000 participants
 - No central validator needed — fully decentralized semantic reliability
 
-📊 6. Network Architecture
+🔄 6. Comparative Diagram: Trust Graph vs Digital Money
+
+
+📊 Network Architecture Trust Graph
 ```mermaid
 flowchart LR
+    subgraph TruthTraining["Truth Training: Distributed Trust Graph"]
+        nodeA(User A)
+        nodeB(User B)
+        nodeC(User C)
+        nodeD(User D)
+        nodeA <---> nodeB
+        nodeB <---> nodeC
+        nodeC <---> nodeD
+        nodeA <---> nodeC
+        style TruthTraining fill:#c7f7e5,stroke:#16a085,stroke-width:2px
+    end
+
     subgraph A[Truth Training Node]
         cacheA[Local Cache]
         syncA[Deferred Sync]
@@ -137,7 +153,7 @@ flowchart LR
     style A fill:#a3e4d7,stroke:#1abc9c
     style B fill:#f9e79f,stroke:#f1c40f
 ```
-🔄 7. Comparative Diagram: Trust Graph vs Ledger
+🔄 Network Architecture Digital Money
 ```mermaid
 flowchart TD
     subgraph TruthTraining["Truth Training: Distributed Trust Graph"]
@@ -165,7 +181,7 @@ flowchart TD
 
     TruthTraining -->|P2P Sync| DigitalMoney
 ```
-🧩 8. Summary
+🧩 7. Summary
 
 Both systems ensure offline data transmission reliability but with distinct resilience principles:
 
