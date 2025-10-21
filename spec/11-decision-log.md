@@ -1,4 +1,9 @@
 # Decision Log (ADR)
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 11
+
+## Decision Log (ADR)
 
 ## Architectural Decisions
 

@@ -1,3 +1,8 @@
+# Roadmap (High-level)
+Version: v0.4.0
+Updated: 2025-01-18
+Spec ID: 21
+
 ## Roadmap (High-level)
 
 Milestone M1 (MVP harden)
