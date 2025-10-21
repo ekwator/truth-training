@@ -122,64 +122,65 @@ When nodes resynchronize:
 🔄 6. Comparative Diagram: Trust Graph vs Digital Money
 
 
-📊 Network Architecture Trust Graph
-```mermaid
-flowchart LR
-    subgraph TruthTraining["Truth Training: Distributed Trust Graph"]
-        nodeA(User A)
-        nodeB(User B)
-        nodeC(User C)
-        nodeD(User D)
-        nodeA <---> nodeB
-        nodeB <---> nodeC
-        nodeC <---> nodeD
-        nodeA <---> nodeC
-        style TruthTraining fill:#c7f7e5,stroke:#16a085,stroke-width:2px
-    end
-
-    subgraph A[Truth Training Node]
-        cacheA[Local Cache]
-        syncA[Deferred Sync]
-    end
-    subgraph B[Peer Node]
-        cacheB[Local Cache]
-        syncB[Deferred Sync]
-    end
-
-    A -- P2P Exchange --> B
-    cacheA --> syncA -->|when online| CoreDB[(Truth Core DB)]
-    cacheB --> syncB -->|when online| CoreDBB[(Remote DB)]
-
-    style A fill:#a3e4d7,stroke:#1abc9c
-    style B fill:#f9e79f,stroke:#f1c40f
-```
-🔄 Network Architecture Digital Money
+📊 Truth Training Architecture
 ```mermaid
 flowchart TD
-    subgraph TruthTraining["Truth Training: Distributed Trust Graph"]
-        nodeA(User A)
-        nodeB(User B)
-        nodeC(User C)
-        nodeD(User D)
-        nodeA <---> nodeB
-        nodeB <---> nodeC
-        nodeC <---> nodeD
-        nodeA <---> nodeC
-        style TruthTraining fill:#c7f7e5,stroke:#16a085,stroke-width:2px
+    subgraph L1["Logical Layer: Distributed Trust Graph"]
+        UA["User A"]
+        UB["User B"]
+        UC["User C"]
+        UD["User D"]
+        UA <--> UB
+        UB <--> UC
+        UC <--> UD
+        UA <--> UC
+        style L1 fill:#c7f7e5,stroke:#16a085,stroke-width:2px
     end
 
-    subgraph DigitalMoney["Digital Money: Centralized Ledger"]
+    subgraph L2["Network Layer: Local Caches and Deferred Sync"]
+        subgraph NodeA["Node A"]
+            cacheA["Local Cache"]
+            syncA["Deferred Sync"]
+            dbA["Truth Core DB"]
+            cacheA --> syncA --> dbA
+        end
+
+        subgraph NodeB["Node B"]
+            cacheB["Local Cache"]
+            syncB["Deferred Sync"]
+            dbB["Remote DB"]
+            cacheB --> syncB --> dbB
+        end
+
+        NodeA <-->|P2P Exchange| NodeB
+    end
+
+    L1 --> L2
+
+    style L2 fill:#a3e4d7,stroke:#1abc9c,stroke-width:1.5px
+```
+🔄 Digital Money — Centralized Ledger
+```mermaid
+flowchart TD
+    subgraph Wallets["End-user Devices"]
+        A["Payer Wallet"]
+        B["Payee Wallet"]
+        A -->|Offline Tx| B
+        style Wallets fill:#f9e79f,stroke:#f1c40f,stroke-width:1px
+    end
+
+    subgraph Ledger["Centralized Ledger System"]
         tx1["Tx Record 1"]
         tx2["Tx Record 2"]
         tx3["Tx Record 3"]
-        central["Central Validator"]
+        central["Central Validator / Issuer"]
         tx1 --> central
         tx2 --> central
         tx3 --> central
-        style DigitalMoney fill:#fef9e7,stroke:#f1c40f,stroke-width:2px
+        style Ledger fill:#fef9e7,stroke:#f1c40f,stroke-width:2px
     end
 
-    TruthTraining -->|P2P Sync| DigitalMoney
+    B -->|When Online: Sync Validation| central
 ```
 🧩 7. Summary
 
