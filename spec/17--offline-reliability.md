@@ -3,7 +3,7 @@ Offline Reliability and Data Integrity
 (Truth Training vs Digital Money — Comparative Specification)
 
 Version: v0.4.0
-Spec ID: 09
+Spec ID: 17
 
 ⚙️ 1. Conceptual Overview
 
