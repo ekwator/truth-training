@@ -1,0 +1,480 @@
+openapi: 3.0.3
+info:
+  title: Truth Core API - UI Integration
+  description: API endpoints for UI Desktop Integration (Tauri)
+  version: 1.0.0
+  contact:
+    name: Truth Training Platform
+    url: https://github.com/truth-training
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.truth-training.com/api/v1
+    description: Production server
+
+paths:
+  /events:
+    get:
+      summary: List events
+      description: Retrieve paginated list of events with consensus status
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_progress, converged, diverged]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      summary: Create event
+      description: Submit a new event to the collective intelligence system
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+      responses:
+        '201':
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /events/{eventId}:
+    get:
+      summary: Get event details
+      description: Retrieve detailed information about a specific event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /judgments:
+    get:
+      summary: List judgments
+      description: Retrieve judgments for events (anonymized)
+      parameters:
+        - name: eventId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  judgments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Judgment'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      summary: Submit judgment
+      description: Submit a judgment for an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitJudgmentRequest'
+      responses:
+        '201':
+          description: Judgment submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Judgment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /consensus/{eventId}:
+    get:
+      summary: Get consensus
+      description: Retrieve current consensus for an event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Consensus data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consensus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /consensus/{eventId}/calculate:
+    post:
+      summary: Calculate consensus
+      description: Trigger consensus calculation for an event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Consensus calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consensus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sync/status:
+    get:
+      summary: Get sync status
+      description: Retrieve current synchronization status
+      responses:
+        '200':
+          description: Sync status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStatus'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+          maxLength: 1000
+        context:
+          type: string
+          maxLength: 2000
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        consensusStatus:
+          type: string
+          enum: [pending, in_progress, converged, diverged]
+        participantCount:
+          type: integer
+          minimum: 0
+      required:
+        - id
+        - description
+        - createdAt
+        - updatedAt
+        - consensusStatus
+        - participantCount
+
+    EventDetails:
+      allOf:
+        - $ref: '#/components/schemas/Event'
+        - type: object
+          properties:
+            consensus:
+              $ref: '#/components/schemas/Consensus'
+            judgments:
+              type: array
+              items:
+                $ref: '#/components/schemas/Judgment'
+
+    Judgment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        assessment:
+          type: string
+          enum: [true, false]
+        confidenceLevel:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        reasoning:
+          type: string
+          maxLength: 1000
+        submittedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventId
+        - assessment
+        - confidenceLevel
+        - submittedAt
+
+    Consensus:
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        consensusValue:
+          type: string
+          enum: [true, false, uncertain]
+        confidenceScore:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        participantCount:
+          type: integer
+          minimum: 0
+        calculatedAt:
+          type: string
+          format: date-time
+        algorithmVersion:
+          type: string
+      required:
+        - eventId
+        - consensusValue
+        - confidenceScore
+        - participantCount
+        - calculatedAt
+        - algorithmVersion
+
+    SyncStatus:
+      type: object
+      properties:
+        isOnline:
+          type: boolean
+        lastSyncAt:
+          type: string
+          format: date-time
+        pendingOperations:
+          type: integer
+          minimum: 0
+        coreSystemStatus:
+          type: string
+          enum: [healthy, degraded, unavailable, unknown]
+        syncErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncError'
+      required:
+        - isOnline
+        - pendingOperations
+        - coreSystemStatus
+        - syncErrors
+
+    SyncError:
+      type: object
+      properties:
+        id:
+          type: string
+        operation:
+          type: string
+        error:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        retryCount:
+          type: integer
+          minimum: 0
+      required:
+        - id
+        - operation
+        - error
+        - timestamp
+        - retryCount
+
+    CreateEventRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        context:
+          type: string
+          maxLength: 2000
+        signature:
+          type: string
+        publicKey:
+          type: string
+      required:
+        - description
+        - signature
+        - publicKey
+
+    SubmitJudgmentRequest:
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        assessment:
+          type: string
+          enum: [true, false]
+        confidenceLevel:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        reasoning:
+          type: string
+          maxLength: 1000
+        signature:
+          type: string
+        publicKey:
+          type: string
+      required:
+        - eventId
+        - assessment
+        - confidenceLevel
+        - signature
+        - publicKey
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - error
+        - message
+        - timestamp
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

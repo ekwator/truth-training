@@ -27,7 +27,7 @@ path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
 [workspace]
-members = ["app", "core", "ui-tui", "ui-web"]
+members = ["app", "core", "ui/desktop"]
 resolver = "2"
 
 [features]
