@@ -2,6 +2,9 @@
 name = "truth_core"
 version = "0.4.0-pre"
 description = "Stable foundation release with adaptive trust propagation, P2P analytics, and Android integration."
+authors = ["ekwator"]
+license = "MIT"
+repository = "https://github.com/ekwator/truth-training"
 edition = "2021"
 
 [lib]
@@ -10,7 +13,7 @@ path = "src/lib.rs"
 crate-type = ["cdylib", "rlib", "staticlib"]
 
 [workspace]
-members = ["app","core","ui-tui","ui-web"]
+members = ["app","core","ui/desktop/src-tauri"]
 resolver = "2"
 
 [features]
