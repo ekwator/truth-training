@@ -1,0 +1,16 @@
+{
+  "rust-analyzer.files.excludeDirs": [
+    "ui/desktop/node_modules",
+    "ui/desktop/dist",
+    "ui/desktop/.vite",
+    "target",
+    ".git"
+  ],
+  "files.watcher.exclude": {
+    "ui/desktop/node_modules/**": true,
+    "ui/desktop/dist/**": true,
+    "ui/desktop/.vite/**": true,
+    "target/**": true,
+    ".git/**": true
+  }
+}

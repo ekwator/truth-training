@@ -1,2 +1,5 @@
 /target
 android-libs/
+/ui/desktop/node_modules
+/ui/desktop/dist
+/ui/desktop/.vite

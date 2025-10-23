@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "Truth Training",
+  "version": "0.1.0",
+  "identifier": "com.truth-training.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "Truth Training",
+        "width": 1200,
+        "height": 800
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png",
+      "icons/icon-512.png"
+    ]
+  }
+}
