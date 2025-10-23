@@ -1,0 +1,22 @@
+[package]
+name = "truth-ui-desktop"
+version = "0.1.0"
+description = "Truth Training Desktop UI"
+authors = ["ekwator"]
+license = "MIT"
+repository = "https://github.com/ekwator/truth-training"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2.5.1", features = [] }
+
+[dependencies]
+tauri = { version = "2.5.1", features = [] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

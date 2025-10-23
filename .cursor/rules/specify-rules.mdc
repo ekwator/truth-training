@@ -4,6 +4,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-20
 
 ## Active Technologies
 - Rust 1.75+ (existing project) + Actix-web, SQLite, ed25519_dalek, serde, tokio (001-collective-intelligence-layer)
+- Rust 1.75+ (Tauri), TypeScript/JavaScript (frontend) + Tauri, React/Vue (frontend framework), HTTP client for API communication (002-ui-desktop-integration)
+- Local SQLite via core system API (no direct database access) (002-ui-desktop-integration)
 
 ## Project Structure
 ```
@@ -18,6 +20,8 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust 1.75+ (existing project): Follow standard conventions
 
 ## Recent Changes
+- 002-ui-desktop-integration: Added Rust 1.75+ (Tauri), TypeScript/JavaScript (frontend) + Tauri, React/Vue (frontend framework), HTTP client for API communication
+- 002-ui-desktop-integration: Added Rust 1.75+ (Tauri), TypeScript/JavaScript (frontend) + Tauri, React/Vue (frontend framework), HTTP client for API communication
 - 001-collective-intelligence-layer: Added Rust 1.75+ (existing project) + Actix-web, SQLite, ed25519_dalek, serde, tokio
 
 <!-- MANUAL ADDITIONS START -->
