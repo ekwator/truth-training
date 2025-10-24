@@ -23,6 +23,9 @@ jobs:
       - name: Lint & Test
         working-directory: ./ui/desktop
         run: npm test --silent || true
+      - name: Integration Tests
+        working-directory: ./ui/desktop
+        run: npm test -- tests/integration --verbose
       - name: Build Web
         working-directory: ./ui/desktop
         run: npm run build
