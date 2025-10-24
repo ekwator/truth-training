@@ -5,13 +5,13 @@
 Truth Training is currently under **active development** and published as an open-source experimental project.  
 Security updates are provided for the **latest stable release** and the **development branch**.
 
-| Version          | Supported          | Notes |
-| ---------------- | ------------------ | ----- |
-| `main` (latest)  | ✅ Yes              | Active development, frequent commits |
-| `v0.4.x`         | ✅ Yes              | Collective Intelligence Layer & Offline Reliability |
-| `v0.3.x`         | ✅ Yes              | Core stabilization & crypto verification |
-| `v0.2.x`         | ⚠️ Limited         | Legacy P2P prototype |
-| `< v0.2`         | ❌ No               | Deprecated research builds |
+| Component | Version | Supported | Notes |
+| ---------- | -------- | ---------- | ----- |
+| Core (`master`) | v0.4.x | ✅ Yes | Active development (Collective Intelligence Layer) |
+| Desktop UI | v0.1.x | ✅ Yes | Tauri-based UI, production-ready builds |
+| v0.3.x | ✅ Yes | Core stabilization & crypto verification |
+| v0.2.x | ⚠️ Limited | Legacy P2P prototype |
+| < v0.2 | ❌ No | Deprecated research builds |
 
 ---
 
