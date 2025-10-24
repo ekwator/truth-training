@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/pubKeySuffix"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="pk: ********"
+        android:textSize="12sp"
+        android:paddingBottom="8dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/peersList"
+        android:layout_width="match_parent"
+        android:layout_height="200dp" />
+
+    <EditText
+        android:id="@+id/inputJson"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint='{"action":"ping"}' />
+
+    <Button
+        android:id="@+id/btnSendJson"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Send JSON" />
+
+    <TextView
+        android:id="@+id/output"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:paddingTop="12dp" />
+
+</LinearLayout>
+
+
