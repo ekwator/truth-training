@@ -93,3 +93,14 @@ lint/tmp/
 
 # JNI libraries
 /app/src/main/jniLibs/
+
+# iOS / Xcode
+DerivedData/
+build/
+*.xcuserstate
+*.xcworkspace/
+*.xcuserdata/
+*.xcodeproj/
+Pods/
+Podfile.lock
+.DS_Store
