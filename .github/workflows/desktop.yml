@@ -2,9 +2,10 @@ name: Desktop CI
 
 on:
   push:
-    branches: [ main, develop, 'feature/**' ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build-test:
