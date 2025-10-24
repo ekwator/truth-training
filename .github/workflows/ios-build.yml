@@ -2,19 +2,39 @@ name: iOS Build Check
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ master ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ master ]
+  workflow_run:
+    workflows: ["Cross-Platform Build"]
+    types: [completed]
+    branches: [master]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: Download iOS Rust libraries
+        uses: actions/download-artifact@v4
+        with:
+          name: libtruth_core-ios
+          path: target/
+        if: ${{ github.event_name == 'workflow_run' }}
+        
+      - name: Build iOS Rust libraries (for direct runs)
+        if: ${{ github.event_name != 'workflow_run' }}
+        run: |
+          rustup target add aarch64-apple-ios
+          rustup target add aarch64-apple-ios-sim
+          cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
+          cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p truth_core
+          
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -37,14 +57,6 @@ jobs:
             truth-ios-client/build
           key: xcode-cache-${{ runner.os }}-${{ hashFiles('truth-ios-client/TruthTraining.xcodeproj/project.pbxproj') }}
           
-      - name: Build Rust libraries for iOS
-        run: |
-          # Build for device
-          cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
-          
-          # Build for simulator
-          cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p truth_core
-          
       - name: Copy Rust libraries to iOS project
         run: |
           mkdir -p truth-ios-client/TruthTraining/
@@ -64,11 +76,11 @@ jobs:
           xcodebuild -scheme TruthTraining -sdk iphonesimulator -configuration Release | xcpretty
           
       - name: Upload iOS artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: ios-build-artifacts
+          name: truth_training.ipa
           path: |
-            truth-ios-client/build/
-            target/aarch64-apple-ios/release/libtruth_core.a
-            target/aarch64-apple-ios-sim/release/libtruth_core.a
+            truth-ios-client/build/Products/Release-iphoneos/*.ipa
+            truth-ios-client/build/Products/Release-iphonesimulator/*.app
+          if-no-files-found: warn
           retention-days: 7
