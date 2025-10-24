@@ -2,13 +2,13 @@ name: Desktop CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ master ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
-  build-test:
+  build-test-linux-windows:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,6 +16,10 @@ jobs:
         with:
           node-version: '18'
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
       - name: Install Tauri CLI
         run: cargo install tauri-cli
       - name: Install deps
@@ -36,5 +40,52 @@ jobs:
       - name: Build Tauri (Windows)
         working-directory: ./ui/desktop
         run: cargo tauri build --target x86_64-pc-windows-gnu
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_training-linux
+          path: ui/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_training-windows
+          path: ui/desktop/src-tauri/target/x86_64-pc-windows-gnu/release/bundle/
+          if-no-files-found: warn
+          retention-days: 7
+
+  build-test-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli
+      - name: Install deps
+        working-directory: ./ui/desktop
+        run: npm ci
+      - name: Lint & Test
+        working-directory: ./ui/desktop
+        run: npm test --silent || true
+      - name: Integration Tests
+        working-directory: ./ui/desktop
+        run: npm test -- tests/integration --verbose
+      - name: Build Web
+        working-directory: ./ui/desktop
+        run: npm run build
+      - name: Build Tauri (macOS)
+        working-directory: ./ui/desktop
+        run: cargo tauri build --target x86_64-apple-darwin
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_training-macos
+          path: ui/desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/
+          if-no-files-found: warn
+          retention-days: 7
 
 

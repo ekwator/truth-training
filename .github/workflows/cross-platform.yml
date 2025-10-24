@@ -2,30 +2,17 @@ name: Cross-Platform Build
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ master ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
-  desktop:
-    name: Desktop (Linux/Windows/macOS)
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build desktop
-        run: cargo build --release --features desktop
-      - name: Test desktop
-        run: cargo test --features desktop
-
   android:
     name: Android (ARM64 + x86_64)
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: libtruth_core-android
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -58,6 +45,8 @@ jobs:
   ios:
     name: iOS (ARM64 + Simulator)
     runs-on: macos-latest
+    outputs:
+      artifact-name: libtruth_core-ios
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -77,3 +66,18 @@ jobs:
             target/aarch64-apple-ios/release/libtruth_core.a
             target/aarch64-apple-ios-sim/release/libtruth_core.a
           if-no-files-found: error
+
+  desktop:
+    name: Desktop (Linux/Windows/macOS)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build desktop
+        run: cargo build --release --features desktop
+      - name: Test desktop
+        run: cargo test --features desktop

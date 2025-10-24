@@ -2,16 +2,38 @@ name: Android Build Check
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ master ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ master ]
+  workflow_run:
+    workflows: ["Cross-Platform Build"]
+    types: [completed]
+    branches: [master]
   workflow_dispatch:
   
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Download Android Rust libraries
+        uses: actions/download-artifact@v4
+        with:
+          name: libtruth_core-android
+          path: target/
+        if: ${{ github.event_name == 'workflow_run' }}
+        
+      - name: Build Android Rust libraries (for direct runs)
+        if: ${{ github.event_name != 'workflow_run' }}
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add x86_64-linux-android
+          cargo build --release --target aarch64-linux-android --features mobile --lib -p truth_core
+          cargo build --release --target x86_64-linux-android --features mobile --lib -p truth_core
+          
       - uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
@@ -27,4 +49,21 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
           key: gradle-cache-${{ runner.os }}-${{ hashFiles('truth-android-client/gradle/wrapper/gradle-wrapper.properties') }}
+      - name: Copy Rust libraries to Android project
+        run: |
+          mkdir -p truth-android-client/app/src/main/jniLibs/arm64-v8a/
+          mkdir -p truth-android-client/app/src/main/jniLibs/x86_64/
+          cp target/aarch64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/arm64-v8a/
+          cp target/x86_64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/x86_64/
+          
       - run: cd truth-android-client && ./gradlew clean assembleDebug
+      
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_training.apk
+          path: |
+            truth-android-client/app/build/outputs/apk/debug/*.apk
+            truth-android-client/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
+          retention-days: 7
