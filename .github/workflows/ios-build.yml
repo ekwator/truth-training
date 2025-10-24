@@ -26,9 +26,20 @@ jobs:
           name: libtruth_core-ios
           path: target/
         if: ${{ github.event_name == 'workflow_run' }}
+        continue-on-error: true
         
-      - name: Build iOS Rust libraries (for direct runs)
-        if: ${{ github.event_name != 'workflow_run' }}
+      - name: Check if artifacts were downloaded
+        id: check-artifacts
+        if: ${{ github.event_name == 'workflow_run' }}
+        run: |
+          if [ -f "target/aarch64-apple-ios/release/libtruth_core.a" ]; then
+            echo "artifacts-found=true" >> $GITHUB_OUTPUT
+          else
+            echo "artifacts-found=false" >> $GITHUB_OUTPUT
+          fi
+        
+      - name: Build iOS Rust libraries (for direct runs or if artifacts not found)
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found == 'false' }}
         run: |
           rustup target add aarch64-apple-ios
           rustup target add aarch64-apple-ios-sim

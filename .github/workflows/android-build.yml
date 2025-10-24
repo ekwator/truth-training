@@ -25,22 +25,33 @@ jobs:
           name: libtruth_core-android
           path: target/
         if: ${{ github.event_name == 'workflow_run' }}
+        continue-on-error: true
         
-      - name: Set up Android SDK and NDK (for direct runs)
-        if: ${{ github.event_name != 'workflow_run' }}
+      - name: Check if artifacts were downloaded
+        id: check-artifacts
+        if: ${{ github.event_name == 'workflow_run' }}
+        run: |
+          if [ -f "target/aarch64-linux-android/release/libtruth_core.so" ]; then
+            echo "artifacts-found=true" >> $GITHUB_OUTPUT
+          else
+            echo "artifacts-found=false" >> $GITHUB_OUTPUT
+          fi
+        
+      - name: Set up Android SDK and NDK (for direct runs or if artifacts not found)
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found == 'false' }}
         uses: android-actions/setup-android@v3
         with:
           packages: |
             ndk;26.1.10909125
             
-      - name: Export NDK toolchain (for direct runs)
-        if: ${{ github.event_name != 'workflow_run' }}
+      - name: Export NDK toolchain (for direct runs or if artifacts not found)
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found == 'false' }}
         run: |
           echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
           echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
         
-      - name: Build Android Rust libraries (for direct runs)
-        if: ${{ github.event_name != 'workflow_run' }}
+      - name: Build Android Rust libraries (for direct runs or if artifacts not found)
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found == 'false' }}
         run: |
           rustup target add aarch64-linux-android
           rustup target add x86_64-linux-android
