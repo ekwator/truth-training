@@ -1,0 +1,74 @@
+name: iOS Build Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+          
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-cache-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          
+      - name: Cache Xcode build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            truth-ios-client/build
+          key: xcode-cache-${{ runner.os }}-${{ hashFiles('truth-ios-client/TruthTraining.xcodeproj/project.pbxproj') }}
+          
+      - name: Build Rust libraries for iOS
+        run: |
+          # Build for device
+          cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
+          
+          # Build for simulator
+          cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p truth_core
+          
+      - name: Copy Rust libraries to iOS project
+        run: |
+          mkdir -p truth-ios-client/TruthTraining/
+          cp target/aarch64-apple-ios/release/libtruth_core.a truth-ios-client/TruthTraining/
+          
+      - name: Install xcpretty
+        run: gem install xcpretty
+        
+      - name: Build iOS project
+        run: |
+          cd truth-ios-client
+          xcodebuild -scheme TruthTraining -sdk iphoneos -configuration Release | xcpretty
+          
+      - name: Build iOS project for simulator
+        run: |
+          cd truth-ios-client
+          xcodebuild -scheme TruthTraining -sdk iphonesimulator -configuration Release | xcpretty
+          
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-build-artifacts
+          path: |
+            truth-ios-client/build/
+            target/aarch64-apple-ios/release/libtruth_core.a
+            target/aarch64-apple-ios-sim/release/libtruth_core.a
+          retention-days: 7

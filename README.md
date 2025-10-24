@@ -54,10 +54,15 @@ Truth Training uses a **cross-platform core library** (`truth_core`) that adapts
 - **Desktop** (Linux, Windows, macOS): Full feature set with HTTP server, CLI tools, and complete P2P networking
 - **Mobile** (iOS, Android): Minimal subset with FFI interfaces for native app integration
 
-## 📱 Android Client Integration
+## 📱 Mobile Client Integration
 
+### Android Client
 The Android client (`truth-android-client`) is now part of the monorepo under `/truth-android-client`.
 It is an independent Android application built on top of the shared Truth Core engine.
+
+### iOS Client
+The iOS client (`truth-ios-client`) is now part of the monorepo under `/truth-ios-client`.
+It is an independent iOS application built with SwiftUI and integrated with the Truth Core engine via FFI bindings.
 
 ### Platform-Specific Features
 
