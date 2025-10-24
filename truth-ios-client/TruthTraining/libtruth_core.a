@@ -1,0 +1,2 @@
+# This is a placeholder for the actual libtruth_core.a library
+# The real library will be built by the CI/CD pipeline
