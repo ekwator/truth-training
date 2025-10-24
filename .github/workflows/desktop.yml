@@ -42,6 +42,13 @@ jobs:
       - name: Integration Tests
         working-directory: ./ui/desktop
         run: npm test -- tests/integration --verbose
+      - name: Create Windows ICO icon
+        working-directory: ./ui/desktop/src-tauri
+        run: |
+          # Install ImageMagick for icon conversion
+          sudo apt-get install -y imagemagick
+          # Convert PNG to ICO for Windows
+          convert icons/icon.png -resize 256x256 icons/icon.ico
       - name: Build Web
         working-directory: ./ui/desktop
         run: npm run build
