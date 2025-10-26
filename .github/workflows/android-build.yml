@@ -85,7 +85,8 @@ jobs:
         with:
           name: truth_training.apk
           path: |
-            truth-android-client/app/build/outputs/apk/debug/
-            truth-android-client/app/build/outputs/apk/release/
+            truth-android-client/app/build/outputs/apk/mock/debug/
+            truth-android-client/app/build/outputs/apk/local/debug/
+            truth-android-client/app/build/outputs/apk/remote/debug/
           if-no-files-found: warn
           retention-days: 7

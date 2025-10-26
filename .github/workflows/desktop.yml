@@ -65,8 +65,8 @@ jobs:
         with:
           name: truth_training-linux
           path: |
-            ui/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
-            ui/desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+            target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+            target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
           if-no-files-found: warn
           retention-days: 7
       - name: Upload Windows artifacts
@@ -74,8 +74,8 @@ jobs:
         with:
           name: truth_training-windows
           path: |
-            ui/desktop/src-tauri/target/x86_64-pc-windows-gnu/release/bundle/nsis/*.exe
-            ui/desktop/src-tauri/target/x86_64-pc-windows-gnu/release/bundle/msi/*.msi
+            target/x86_64-pc-windows-gnu/release/bundle/nsis/*.exe
+            target/x86_64-pc-windows-gnu/release/bundle/msi/*.msi
           if-no-files-found: warn
           retention-days: 7
 
@@ -111,8 +111,8 @@ jobs:
         with:
           name: truth_training-macos
           path: |
-            ui/desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
-            ui/desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app
+            target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+            target/x86_64-apple-darwin/release/bundle/macos/*.app
           if-no-files-found: warn
           retention-days: 7
 
