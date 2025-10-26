@@ -88,7 +88,7 @@ jobs:
         with:
           name: truth_training.ipa
           path: |
-            truth-ios-client/build/Products/Release-iphoneos/*.ipa
-            truth-ios-client/build/Products/Release-iphonesimulator/*.app
+            truth-ios-client/build/Products/Release-iphoneos/
+            truth-ios-client/build/Products/Release-iphonesimulator/
           if-no-files-found: warn
           retention-days: 7
