@@ -19,6 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, x86_64-linux-android
+      
       - name: Download Android Rust libraries
         uses: actions/download-artifact@v4
         with:
@@ -29,7 +34,6 @@ jobs:
         
       - name: Check if artifacts were downloaded
         id: check-artifacts
-        if: ${{ github.event_name == 'workflow_run' }}
         run: |
           if [ -f "target/aarch64-linux-android/release/libtruth_core.so" ]; then
             echo "artifacts-found=true" >> $GITHUB_OUTPUT
@@ -37,24 +41,22 @@ jobs:
             echo "artifacts-found=false" >> $GITHUB_OUTPUT
           fi
         
-      - name: Set up Android SDK and NDK (for direct runs or if artifacts not found)
-        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found == 'false' }}
+      - name: Set up Android SDK and NDK
+        if: ${{ steps.check-artifacts.outputs.artifacts-found != 'true' }}
         uses: android-actions/setup-android@v3
         with:
           packages: |
             ndk;26.1.10909125
             
-      - name: Export NDK toolchain (for direct runs or if artifacts not found)
-        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found == 'false' }}
+      - name: Export NDK toolchain
+        if: ${{ steps.check-artifacts.outputs.artifacts-found != 'true' }}
         run: |
           echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
           echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
         
-      - name: Build Android Rust libraries (for direct runs or if artifacts not found)
-        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found == 'false' }}
+      - name: Build Android Rust libraries
+        if: ${{ steps.check-artifacts.outputs.artifacts-found != 'true' }}
         run: |
-          rustup target add aarch64-linux-android
-          rustup target add x86_64-linux-android
           cargo build --release --target aarch64-linux-android --features mobile --lib -p truth_core
           cargo build --release --target x86_64-linux-android --features mobile --lib -p truth_core
           

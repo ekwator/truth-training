@@ -20,6 +20,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+        
       - name: Download iOS Rust libraries
         uses: actions/download-artifact@v4
         with:
@@ -30,7 +35,6 @@ jobs:
         
       - name: Check if artifacts were downloaded
         id: check-artifacts
-        if: ${{ github.event_name == 'workflow_run' }}
         run: |
           if [ -f "target/aarch64-apple-ios/release/libtruth_core.a" ]; then
             echo "artifacts-found=true" >> $GITHUB_OUTPUT
@@ -38,18 +42,11 @@ jobs:
             echo "artifacts-found=false" >> $GITHUB_OUTPUT
           fi
         
-      - name: Build iOS Rust libraries (for direct runs or if artifacts not found)
-        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found == 'false' }}
+      - name: Build iOS Rust libraries
+        if: ${{ steps.check-artifacts.outputs.artifacts-found != 'true' }}
         run: |
-          rustup target add aarch64-apple-ios
-          rustup target add aarch64-apple-ios-sim
           cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
           cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p truth_core
-          
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim
           
       - name: Cache Rust dependencies
         uses: actions/cache@v3
