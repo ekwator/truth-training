@@ -1,6 +1,16 @@
 # Changelog
 
-## [0.4.0-pre] — Collective Intelligence Layer (Current)
+## [0.4.2] — Desktop Integration & Cross-Platform Builds (Current)
+- **Desktop UI**: Complete Tauri integration with React frontend
+- **Cross-Platform Builds**: Production-ready packages for Linux (DEB/RPM), Windows (NSIS/MSI), macOS (DMG)
+- **CI/CD Pipeline**: Automated builds for desktop, Android, and iOS platforms
+- **Icon System**: Dynamic icon generation for all platforms (PNG/ICO formats)
+- **Build System**: Comprehensive troubleshooting documentation and dependency management
+- **Mobile Integration**: Android and iOS client frameworks with Rust FFI bridges
+- **Documentation**: Complete build instructions and troubleshooting guides
+- **Version Management**: Unified versioning across all components
+
+## [0.4.0-pre] — Collective Intelligence Layer
 - Introduced Semantic Correlation Layer for contextual claim evaluation
 - Enhanced API with semantic scoring and trust correlation
 - Integrated offline reliability module for P2P nodes

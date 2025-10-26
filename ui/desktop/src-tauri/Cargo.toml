@@ -1,6 +1,6 @@
 [package]
 name = "truth-ui-desktop"
-version = "0.1.1"
+version = "0.1.2"
 description = "Truth Training Desktop UI"
 authors = ["ekwator"]
 license = "MIT"

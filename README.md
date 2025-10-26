@@ -1,8 +1,17 @@
-# 🧠 Truth Training v0.4.0
+# 🧠 Truth Training v0.4.2
 
 **A distributed collective intelligence system for evaluating truth through trust-weighted consensus**
 
 ---
+
+## What's New in v0.4.2
+
+- **Desktop Integration**: Complete Tauri-based desktop UI with React frontend
+- **Cross-Platform Builds**: Production-ready packages for Linux, Windows, and macOS
+- **CI/CD Pipeline**: Automated builds for desktop, Android, and iOS platforms
+- **Mobile Integration**: Android and iOS client frameworks with Rust FFI bridges
+- **Build System**: Comprehensive troubleshooting documentation and dependency management
+- **Icon System**: Dynamic icon generation for all platforms
 
 ## What's New in v0.4.0
 
