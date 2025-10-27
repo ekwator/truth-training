@@ -25,7 +25,7 @@ jobs:
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
         
-      - name: Download iOS Rust libraries
+      - name: Download iOS Rust libraries (skipped on direct runs)
         if: ${{ github.event_name == 'workflow_run' }}
         uses: actions/download-artifact@v4
         with:
