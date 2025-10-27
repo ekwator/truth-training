@@ -180,6 +180,25 @@ tauri = { version = "2.5.1", features = [] }
 tauri-build = { version = "2.5.1", features = [] }
 ```
 
+## CI/CD Workflow Issues
+
+### 1. GitHub Actions Artifact Warnings ⚠️ **EXPECTED BEHAVIOR**
+
+**Warning**: `Unable to download artifact(s): Artifact not found for name: libtruth_core-android/ios`
+
+**Why this happens:**
+- Workflows try to reuse pre-built Rust libraries from `Cross-Platform Build` workflow
+- On direct runs (push/pull_request), these artifacts don't exist yet
+- Workflows automatically build from source when artifacts are missing
+- This warning is **harmless** and doesn't affect build success
+
+**This is expected and safe to ignore:**
+- Workflow logic: `if: ${{ github.event_name == 'workflow_run' }}` + `continue-on-error: true`
+- Direct runs build libraries from source (slower but works)
+- Dependent runs use artifacts when available (faster)
+
+**No action needed** - the warning appears in logs but builds complete successfully.
+
 ## Build Artifact Issues
 
 ### 1. Wrong Output Paths
