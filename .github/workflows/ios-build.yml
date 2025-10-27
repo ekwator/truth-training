@@ -26,11 +26,11 @@ jobs:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
         
       - name: Download iOS Rust libraries
+        if: ${{ github.event_name == 'workflow_run' }}
         uses: actions/download-artifact@v4
         with:
           name: libtruth_core-ios
           path: target/
-        if: ${{ github.event_name == 'workflow_run' }}
         continue-on-error: true
         
       - name: Check if artifacts were downloaded
