@@ -35,6 +35,7 @@ jobs:
         
       - name: Check if artifacts were downloaded
         id: check-artifacts
+        if: ${{ github.event_name == 'workflow_run' }}
         run: |
           if [ -f "target/aarch64-apple-ios/release/libtruth_core.a" ]; then
             echo "artifacts-found=true" >> $GITHUB_OUTPUT
@@ -43,7 +44,7 @@ jobs:
           fi
         
       - name: Build iOS Rust libraries
-        if: ${{ steps.check-artifacts.outputs.artifacts-found != 'true' }}
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found != 'true' }}
         run: |
           cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
           cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p truth_core
