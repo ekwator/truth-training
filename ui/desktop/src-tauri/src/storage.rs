@@ -21,8 +21,28 @@ impl Db {
               id TEXT PRIMARY KEY,
               title TEXT NOT NULL,
               description TEXT,
+              context_id TEXT NOT NULL,
+              start_date TEXT,
+              end_date TEXT,
               created_at TEXT NOT NULL,
+              updated_at TEXT,
               status TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS impacts (
+              id TEXT PRIMARY KEY,
+              event_id TEXT NOT NULL,
+              impact_level INTEGER NOT NULL CHECK(impact_level >= 1 AND impact_level <= 5),
+              notes TEXT,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY(event_id) REFERENCES events(id)
+            );
+            CREATE TABLE IF NOT EXISTS summaries (
+              id TEXT PRIMARY KEY,
+              event_id TEXT NOT NULL UNIQUE,
+              summary_text TEXT,
+              recommendations TEXT,
+              updated_at TEXT NOT NULL,
+              FOREIGN KEY(event_id) REFERENCES events(id)
             );
             CREATE TABLE IF NOT EXISTS judgments (
               id TEXT PRIMARY KEY,
@@ -47,11 +67,55 @@ impl Db {
         Ok(Db(Mutex::new(conn)))
     }
 
-    pub fn insert_event(&self, id: &str, title: &str, description: Option<&str>, created_at: &str, status: &str) -> Result<(), String> {
+    pub fn insert_event(
+        &self,
+        id: &str,
+        title: &str,
+        description: Option<&str>,
+        context_id: &str,
+        start_date: Option<&str>,
+        end_date: Option<&str>,
+        created_at: &str,
+        status: &str,
+    ) -> Result<(), String> {
         let conn = self.0.lock();
         conn.execute(
-            "INSERT INTO events (id, title, description, created_at, status) VALUES (?, ?, ?, ?, ?)",
-            params![id, title, description, created_at, status],
+            "INSERT INTO events (id, title, description, context_id, start_date, end_date, created_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            params![id, title, description, context_id, start_date, end_date, created_at, status],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn insert_impact(
+        &self,
+        id: &str,
+        event_id: &str,
+        impact_level: i32,
+        notes: Option<&str>,
+        created_at: &str,
+    ) -> Result<(), String> {
+        let conn = self.0.lock();
+        conn.execute(
+            "INSERT INTO impacts (id, event_id, impact_level, notes, created_at) VALUES (?, ?, ?, ?, ?)",
+            params![id, event_id, impact_level, notes, created_at],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn insert_or_update_summary(
+        &self,
+        id: &str,
+        event_id: &str,
+        summary_text: Option<&str>,
+        recommendations: Option<&str>,
+        updated_at: &str,
+    ) -> Result<(), String> {
+        let conn = self.0.lock();
+        conn.execute(
+            "INSERT OR REPLACE INTO summaries (id, event_id, summary_text, recommendations, updated_at) VALUES (?, ?, ?, ?, ?)",
+            params![id, event_id, summary_text, recommendations, updated_at],
         )
         .map_err(|e| e.to_string())?;
         Ok(())

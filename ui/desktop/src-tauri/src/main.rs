@@ -4,7 +4,10 @@
 mod commands;
 mod storage;
 
+pub const LOGS_PAGE_SIZE: usize = 35;
+
 use commands::events::{create_event_fast, get_event_fast, list_events_fast, health_check_core};
+use commands::impacts::add_impact;
 use commands::judgments::{submit_judgment_fast, judgments_list_fast, get_judgment_stats};
 use commands::knowledge_base::knowledge_base_list;
 use commands::logs::{list_logs, clear_logs};
@@ -19,15 +22,16 @@ fn main() {
             get_event_fast,
             health_check_core,
             list_events_fast,
+            add_impact,
             submit_judgment_fast,
             judgments_list_fast,
             get_judgment_stats,
-            knowledge_base_list
-            , list_logs
-            , clear_logs
-            , get_overall_metrics
-            , list_event_rows
-            , export_overall_summary_txt
+            knowledge_base_list,
+            list_logs,
+            clear_logs,
+            get_overall_metrics,
+            list_event_rows,
+            export_overall_summary_txt
         ])
         .manage(db)
         .run(tauri::generate_context!())
