@@ -6,6 +6,7 @@ mod storage;
 
 pub const LOGS_PAGE_SIZE: usize = 35;
 
+use commands::config::{get_app_config, save_app_config, core_status, test_http_connection};
 use commands::events::{create_event_fast, get_event_fast, list_events_fast, health_check_core};
 use commands::impacts::add_impact;
 use commands::judgments::{submit_judgment_fast, judgments_list_fast, get_judgment_stats};
@@ -18,6 +19,10 @@ fn main() {
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
+            get_app_config,
+            save_app_config,
+            core_status,
+            test_http_connection,
             create_event_fast,
             get_event_fast,
             health_check_core,
