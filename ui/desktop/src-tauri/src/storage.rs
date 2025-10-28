@@ -1,6 +1,6 @@
 use directories::ProjectDirs;
 use parking_lot::Mutex;
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use std::path::PathBuf;
 
 pub struct Db(pub Mutex<Connection>);
