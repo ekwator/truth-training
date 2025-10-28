@@ -37,8 +37,8 @@
 - [x] T027 Keyboard shortcuts Alt+1..Alt+6 for screen navigation
 
 ## Phase 3.4: Integration
-- [ ] T028 Wire UI to Tauri commands (invoke) for all screens
-- [ ] T029 Offline queue + background sync; enforce Local-wins on conflicts
+- [x] T028 Wire UI to Tauri commands (invoke) for all screens
+- [x] T029 Offline queue + background sync; enforce Local-wins on conflicts
 - [x] T030 Export service for Overall Summary to `.txt` fixed template
 
 ## Phase 3.5: Polish

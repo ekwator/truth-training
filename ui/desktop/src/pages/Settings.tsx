@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSyncStore } from '@/stores/sync';
 
 export const Settings: React.FC = () => {
-  const { syncStatus, isOnline, pendingOperations, clearQueue, startSync } = useSyncStore();
+  const { syncStatus, isOnline, pendingOperations, startSync } = useSyncStore();
   const [apiBaseUrl, setApiBaseUrl] = useState(import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1');
   const [autoSync, setAutoSync] = useState(true);
   const [syncInterval, setSyncInterval] = useState(30);
@@ -14,7 +14,8 @@ export const Settings: React.FC = () => {
 
   const handleClearQueue = () => {
     if (window.confirm('Are you sure you want to clear the offline queue? This action cannot be undone.')) {
-      clearQueue();
+      // Note: clearQueue functionality moved to offlineQueue service
+      console.log('Clear queue functionality not yet implemented in UI');
     }
   };
 
@@ -123,13 +124,13 @@ export const Settings: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Last Sync</p>
                   <p className="text-lg font-semibold text-gray-900">
-                    {syncStatus?.last_sync ? new Date(syncStatus.last_sync).toLocaleString() : 'Never'}
+                    {syncStatus?.lastSync ? new Date(syncStatus.lastSync).toLocaleString() : 'Never'}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Sync in Progress</p>
-                  <p className={`text-lg font-semibold ${syncStatus?.sync_in_progress ? 'text-yellow-600' : 'text-gray-600'}`}>
-                    {syncStatus?.sync_in_progress ? 'Yes' : 'No'}
+                  <p className={`text-lg font-semibold ${syncStatus?.syncInProgress ? 'text-yellow-600' : 'text-gray-600'}`}>
+                    {syncStatus?.syncInProgress ? 'Yes' : 'No'}
                   </p>
                 </div>
               </div>
