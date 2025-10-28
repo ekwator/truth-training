@@ -50,9 +50,11 @@ export const OverallSummary: React.FC = () => {
   }, [refresh]);
 
   const exportTxt = useCallback(async () => {
-    // TODO: hook export command when available
-    // Placeholder: copy to clipboard-like text (Tauri save impl later)
-    alert('Export to .txt will be implemented via Tauri command.');
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const p = (await invoke('export_overall_summary_txt')) as string;
+      alert(`Exported to: ${p}`);
+    }
   }, []);
 
   return (
