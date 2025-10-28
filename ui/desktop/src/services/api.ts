@@ -144,38 +144,24 @@ export class ApiService {
   // Events endpoints
   static async getEvents(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Event>> {
     if (isTauri()) {
-      // Use Tauri commands for desktop app
       try {
-        // For now, return mock data using Tauri commands
-        const mockEvents: Event[] = [
-          {
-            id: '1',
-            title: 'Sample Event 1',
-            description: 'This is a sample event for testing',
-            created_at: new Date().toISOString(),
-            status: 'active'
-          },
-          {
-            id: '2', 
-            title: 'Sample Event 2',
-            description: 'Another sample event',
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-            status: 'active'
-          }
-        ];
-        
+        const raw = localStorage.getItem('tt_events');
+        const items: Event[] = raw ? JSON.parse(raw) : [];
+        const sorted = items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const start = (page - 1) * perPage;
+        const pageItems = sorted.slice(start, start + perPage);
         return {
-          data: mockEvents,
+          data: pageItems,
           pagination: {
-            page: 1,
-            per_page: 20,
-            total: mockEvents.length,
-            total_pages: 1
+            page,
+            per_page: perPage,
+            total: items.length,
+            total_pages: Math.max(1, Math.ceil(items.length / perPage))
           }
         };
       } catch (error) {
-        console.error('Tauri API error:', error);
-        throw new Error('Failed to fetch events from desktop backend');
+        console.error('Desktop local storage read error:', error);
+        throw new Error('Failed to fetch events from desktop storage');
       }
     } else {
       // Use HTTP API for web development
@@ -207,17 +193,22 @@ export class ApiService {
   static async createEvent(eventData: CreateEventRequest): Promise<Event> {
     if (isTauri()) {
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const event = await invoke('create_event_fast', { 
-          request: {
-            title: eventData.title,
-            description: eventData.description
-          }
-        });
-        return event as Event;
+        const now = new Date().toISOString();
+        const newEvent: Event = {
+          id: crypto.randomUUID(),
+          title: eventData.title,
+          description: eventData.description,
+          created_at: now,
+          status: 'active'
+        };
+        const raw = localStorage.getItem('tt_events');
+        const items: Event[] = raw ? JSON.parse(raw) : [];
+        items.unshift(newEvent);
+        localStorage.setItem('tt_events', JSON.stringify(items));
+        return newEvent;
       } catch (error) {
-        console.error('Tauri createEvent error:', error);
-        throw new Error('Failed to create event in desktop backend');
+        console.error('Desktop local storage write error:', error);
+        throw new Error('Failed to create event in desktop storage');
       }
     } else {
       const response = await apiClient.post('/events', eventData);

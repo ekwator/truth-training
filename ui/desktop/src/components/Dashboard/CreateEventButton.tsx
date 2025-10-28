@@ -44,7 +44,7 @@ export const CreateEventButton: React.FC = () => {
         onClick={() => setIsOpen(true)}
         className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
       >
-        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 mr-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
         Create Event
@@ -90,7 +90,7 @@ export const CreateEventButton: React.FC = () => {
 
                 <div>
                   <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
+                    Knowledge Base Context
                   </label>
                   <select
                     id="category"
@@ -98,12 +98,12 @@ export const CreateEventButton: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="">Select a category</option>
-                    <option value="general">General</option>
-                    <option value="news">News</option>
-                    <option value="science">Science</option>
-                    <option value="politics">Politics</option>
-                    <option value="technology">Technology</option>
+                    <option value="">Select context</option>
+                    <option value="kb:general">KB: General</option>
+                    <option value="kb:science">KB: Science</option>
+                    <option value="kb:technology">KB: Technology</option>
+                    <option value="kb:politics">KB: Politics</option>
+                    <option value="kb:news">KB: News</option>
                   </select>
                 </div>
 
