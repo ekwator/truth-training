@@ -218,7 +218,7 @@ export class ApiService {
   static async getJudgments(eventId?: string, page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Judgment>> {
     if (isTauri()) {
       const { invoke } = await import('@tauri-apps/api/core');
-      const res = await invoke('judgments_list_fast', { eventId: eventId || '', page, perPage });
+        const res = await invoke('judgments_list_fast', { eventId: eventId || '', page, perPage });
       const { data, total } = res as { data: Judgment[]; total: number };
       return {
         data,
