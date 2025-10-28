@@ -78,7 +78,10 @@ export interface PaginatedResponse<T> {
 export interface Event {
   id: string;
   title: string;
-  description: string;
+  description?: string;
+  context_id: string;
+  start_date?: string;
+  end_date?: string;
   created_at: string;
   updated_at?: string;
   status: 'active' | 'inactive' | 'archived';
@@ -87,12 +90,49 @@ export interface Event {
 export interface EventDetails extends Event {
   consensus?: Consensus | null;
   judgments: Judgment[];
+  impacts: Impact[];
+  summary?: Summary;
 }
 
 export interface CreateEventRequest {
   title: string;
-  description: string;
-  category?: string;
+  description?: string;
+  context_id: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+// Impact API
+export interface Impact {
+  id: string;
+  event_id: string;
+  impact_level: number; // 1-5
+  notes?: string;
+  created_at: string;
+}
+
+export interface AddImpactRequest {
+  event_id: string;
+  impact_level: number;
+  notes?: string;
+}
+
+// Summary API
+export interface Summary {
+  id: string;
+  event_id: string;
+  summary_text?: string;
+  recommendations?: string;
+  updated_at: string;
+}
+
+// Logs API
+export interface LogItem {
+  id: string;
+  timestamp: string;
+  source: string;
+  level: string;
+  message: string;
 }
 
 // Judgments API
@@ -176,7 +216,9 @@ export class ApiService {
         return {
           ...event as Event,
           consensus: null,
-          judgments: []
+          judgments: [],
+          impacts: [],
+          summary: undefined
         };
       } catch (error) {
         console.error('Tauri getEvent error:', error);
@@ -191,22 +233,12 @@ export class ApiService {
   static async createEvent(eventData: CreateEventRequest): Promise<Event> {
     if (isTauri()) {
       try {
-        const now = new Date().toISOString();
-        const newEvent: Event = {
-          id: crypto.randomUUID(),
-          title: eventData.title,
-          description: eventData.description,
-          created_at: now,
-          status: 'active'
-        };
-        const raw = localStorage.getItem('tt_events');
-        const items: Event[] = raw ? JSON.parse(raw) : [];
-        items.unshift(newEvent);
-        localStorage.setItem('tt_events', JSON.stringify(items));
-        return newEvent;
+        const { invoke } = await import('@tauri-apps/api/core');
+        const event = await invoke('create_event_fast', { request: eventData });
+        return event as Event;
       } catch (error) {
-        console.error('Desktop local storage write error:', error);
-        throw new Error('Failed to create event in desktop storage');
+        console.error('Tauri createEvent error:', error);
+        throw new Error('Failed to create event in desktop backend');
       }
     } else {
       const response = await apiClient.post('/events', eventData);
@@ -302,6 +334,103 @@ export class ApiService {
       } catch {
         return false;
       }
+    }
+  }
+
+  // Impact endpoints
+  static async addImpact(impactData: AddImpactRequest): Promise<Impact> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const impact = await invoke('add_impact', { request: impactData });
+        return impact as Impact;
+      } catch (error) {
+        console.error('Tauri addImpact error:', error);
+        throw new Error('Failed to add impact in desktop backend');
+      }
+    } else {
+      const response = await apiClient.post('/impacts', impactData);
+      return response.data;
+    }
+  }
+
+  // Logs endpoints
+  static async getLogs(page: number = 1): Promise<{ items: LogItem[]; page: number; total: number }> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = await invoke('list_logs', { page });
+        return result as { items: LogItem[]; page: number; total: number };
+      } catch (error) {
+        console.error('Tauri getLogs error:', error);
+        throw new Error('Failed to fetch logs from desktop backend');
+      }
+    } else {
+      const response = await apiClient.get(`/logs?page=${page}`);
+      return response.data;
+    }
+  }
+
+  static async clearLogs(): Promise<void> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('clear_logs');
+      } catch (error) {
+        console.error('Tauri clearLogs error:', error);
+        throw new Error('Failed to clear logs in desktop backend');
+      }
+    } else {
+      await apiClient.delete('/logs');
+    }
+  }
+
+  // Summary endpoints
+  static async getOverallMetrics(): Promise<{ total_events: number; average_impact_level: number; last_updated?: string }> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = await invoke('get_overall_metrics');
+        return result as { total_events: number; average_impact_level: number; last_updated?: string };
+      } catch (error) {
+        console.error('Tauri getOverallMetrics error:', error);
+        throw new Error('Failed to fetch overall metrics from desktop backend');
+      }
+    } else {
+      const response = await apiClient.get('/summary/metrics');
+      return response.data;
+    }
+  }
+
+  static async getEventRows(): Promise<{ event: string; summary: string; impact?: number; date: string }[]> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = await invoke('list_event_rows');
+        return result as { event: string; summary: string; impact?: number; date: string }[];
+      } catch (error) {
+        console.error('Tauri getEventRows error:', error);
+        throw new Error('Failed to fetch event rows from desktop backend');
+      }
+    } else {
+      const response = await apiClient.get('/summary/events');
+      return response.data;
+    }
+  }
+
+  static async exportOverallSummary(): Promise<string> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = await invoke('export_overall_summary_txt');
+        return result as string;
+      } catch (error) {
+        console.error('Tauri exportOverallSummary error:', error);
+        throw new Error('Failed to export overall summary from desktop backend');
+      }
+    } else {
+      const response = await apiClient.get('/summary/export');
+      return response.data;
     }
   }
 

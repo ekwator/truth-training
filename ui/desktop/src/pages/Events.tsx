@@ -20,7 +20,7 @@ export const Events: React.FC = () => {
     if (!searchTerm) return true;
     return (
       event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchTerm.toLowerCase())
+      (event.description || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
