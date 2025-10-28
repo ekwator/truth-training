@@ -145,23 +145,21 @@ export class ApiService {
   static async getEvents(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Event>> {
     if (isTauri()) {
       try {
-        const raw = localStorage.getItem('tt_events');
-        const items: Event[] = raw ? JSON.parse(raw) : [];
-        const sorted = items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        const start = (page - 1) * perPage;
-        const pageItems = sorted.slice(start, start + perPage);
+        const { invoke } = await import('@tauri-apps/api/core');
+        const res = await invoke('list_events_fast', { page, perPage });
+        const { data, total } = res as { data: Event[]; total: number };
         return {
-          data: pageItems,
+          data,
           pagination: {
             page,
             per_page: perPage,
-            total: items.length,
-            total_pages: Math.max(1, Math.ceil(items.length / perPage))
+            total,
+            total_pages: Math.max(1, Math.ceil(total / perPage))
           }
         };
       } catch (error) {
-        console.error('Desktop local storage read error:', error);
-        throw new Error('Failed to fetch events from desktop storage');
+        console.error('Tauri list_events error:', error);
+        throw new Error('Failed to fetch events from desktop backend');
       }
     } else {
       // Use HTTP API for web development

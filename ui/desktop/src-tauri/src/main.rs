@@ -4,7 +4,7 @@
 mod commands;
 mod storage;
 
-use commands::events::{create_event_fast, get_event_fast, health_check_core};
+use commands::events::{create_event_fast, get_event_fast, list_events_fast, health_check_core};
 use commands::judgments::{submit_judgment_fast, calculate_consensus_fast, get_judgment_stats};
 
 fn main() {
@@ -15,6 +15,7 @@ fn main() {
             create_event_fast,
             get_event_fast,
             health_check_core,
+            list_events_fast,
             submit_judgment_fast,
             calculate_consensus_fast,
             get_judgment_stats
