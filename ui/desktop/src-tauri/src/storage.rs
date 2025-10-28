@@ -33,6 +33,13 @@ impl Db {
               submitted_at TEXT NOT NULL,
               FOREIGN KEY(event_id) REFERENCES events(id)
             );
+            CREATE TABLE IF NOT EXISTS logs (
+              id TEXT PRIMARY KEY,
+              timestamp TEXT NOT NULL,
+              source TEXT NOT NULL,
+              level TEXT NOT NULL,
+              message TEXT NOT NULL
+            );
             "#,
         )
         .map_err(|e| e.to_string())?;
@@ -105,6 +112,35 @@ impl Db {
         let avg_conf: f64 = conn.query_row("SELECT COALESCE(AVG(confidence_level),0.0) FROM judgments WHERE event_id=?1", [event_id], |r| r.get(0)).unwrap_or(0.0);
         let last_submitted: Option<String> = conn.query_row("SELECT submitted_at FROM judgments WHERE event_id=?1 ORDER BY datetime(submitted_at) DESC LIMIT 1", [event_id], |r| r.get(0)).optional().unwrap_or(None);
         Ok((t_true,t_false,t_uncertain,avg_conf,last_submitted))
+    }
+
+    pub fn list_logs(&self, page: i64, page_size: i64) -> Result<(Vec<(String,String,String,String,String)>, i64), String> {
+        let conn = self.0.lock();
+        let total: i64 = conn
+            .query_row("SELECT COUNT(1) FROM logs", [], |row| row.get(0))
+            .map_err(|e| e.to_string())?;
+        let offset = (page.max(1) - 1) * page_size.max(1);
+        let mut stmt = conn
+            .prepare("SELECT id, timestamp, source, level, message FROM logs ORDER BY datetime(timestamp) DESC LIMIT ?1 OFFSET ?2")
+            .map_err(|e| e.to_string())?;
+        let mut rows = stmt.query(params![page_size, offset]).map_err(|e| e.to_string())?;
+        let mut items = Vec::new();
+        while let Some(row) = rows.next().map_err(|e| e.to_string())? {
+            items.push((
+                row.get(0).map_err(|e| e.to_string())?,
+                row.get(1).map_err(|e| e.to_string())?,
+                row.get(2).map_err(|e| e.to_string())?,
+                row.get(3).map_err(|e| e.to_string())?,
+                row.get(4).map_err(|e| e.to_string())?,
+            ));
+        }
+        Ok((items, total))
+    }
+
+    pub fn clear_logs(&self) -> Result<(), String> {
+        let conn = self.0.lock();
+        conn.execute("DELETE FROM logs", []).map_err(|e| e.to_string())?;
+        Ok(())
     }
 }
 
