@@ -5,7 +5,8 @@ mod commands;
 mod storage;
 
 use commands::events::{create_event_fast, get_event_fast, list_events_fast, health_check_core};
-use commands::judgments::{submit_judgment_fast, calculate_consensus_fast, get_judgment_stats};
+use commands::judgments::{submit_judgment_fast, judgments_list_fast, get_judgment_stats};
+use commands::knowledge_base::knowledge_base_list;
 
 fn main() {
     let db = storage::Db::initialize().expect("failed to init db");
@@ -17,8 +18,9 @@ fn main() {
             health_check_core,
             list_events_fast,
             submit_judgment_fast,
-            calculate_consensus_fast,
-            get_judgment_stats
+            judgments_list_fast,
+            get_judgment_stats,
+            knowledge_base_list
         ])
         .manage(db)
         .run(tauri::generate_context!())

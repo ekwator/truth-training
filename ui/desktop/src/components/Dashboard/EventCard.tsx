@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Event } from '@/types/events';
 import { Modal } from '@/components/system/Modal';
+import { ApiService } from '@/services/api';
 
 interface EventCardProps {
   event: Event;
@@ -9,6 +10,10 @@ interface EventCardProps {
 export const EventCard: React.FC<EventCardProps> = ({ event }) => {
   const [openView, setOpenView] = useState(false);
   const [openJudge, setOpenJudge] = useState(false);
+  const [judgeAssessment, setJudgeAssessment] = useState<'true'|'false'|'uncertain'>('true');
+  const [judgeConfidence, setJudgeConfidence] = useState<number>(0.7);
+  const [judgeReasoning, setJudgeReasoning] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -94,13 +99,30 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
       <Modal open={openJudge} onClose={() => setOpenJudge(false)} title="Submit Judgment" footer={
         <>
           <button className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200" onClick={() => setOpenJudge(false)}>Cancel</button>
-          <button className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700" onClick={() => setOpenJudge(false)}>Submit</button>
+          <button disabled={submitting} className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300" onClick={async () => {
+            try {
+              setSubmitting(true);
+              await ApiService.createJudgment({
+                event_id: event.id,
+                assessment: judgeAssessment,
+                confidence_level: judgeConfidence,
+                reasoning: judgeReasoning || undefined,
+                signature: 'local'
+              });
+              setOpenJudge(false);
+              setJudgeReasoning('');
+            } catch (e) {
+              console.error(e);
+            } finally {
+              setSubmitting(false);
+            }
+          }}>Submit</button>
         </>
       }>
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Assessment</label>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
+            <select className="w-full px-3 py-2 border border-gray-300 rounded-md" value={judgeAssessment} onChange={(e) => setJudgeAssessment(e.target.value as any)}>
               <option value="true">True</option>
               <option value="false">False</option>
               <option value="uncertain">Uncertain</option>
@@ -108,11 +130,11 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Confidence (0..1)</label>
-            <input type="number" min={0} max={1} step={0.05} defaultValue={0.7} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+            <input type="number" min={0} max={1} step={0.05} value={judgeConfidence} onChange={(e)=> setJudgeConfidence(Number(e.target.value))} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Reasoning</label>
-            <textarea rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Explain your judgment..." />
+            <textarea rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Explain your judgment..." value={judgeReasoning} onChange={(e)=> setJudgeReasoning(e.target.value)} />
           </div>
         </div>
       </Modal>

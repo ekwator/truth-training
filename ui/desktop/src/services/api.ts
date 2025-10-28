@@ -216,22 +216,38 @@ export class ApiService {
 
   // Judgments endpoints
   static async getJudgments(eventId?: string, page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Judgment>> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      per_page: perPage.toString(),
-    });
-    
-    if (eventId) {
-      params.append('event_id', eventId);
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const res = await invoke('judgments_list_fast', { eventId: eventId || '', page, perPage });
+      const { data, total } = res as { data: Judgment[]; total: number };
+      return {
+        data,
+        pagination: { page, per_page: perPage, total, total_pages: Math.max(1, Math.ceil(total / perPage)) }
+      };
+    } else {
+      const params = new URLSearchParams({ page: page.toString(), per_page: perPage.toString() });
+      if (eventId) params.append('event_id', eventId);
+      const response = await apiClient.get(`/judgments?${params.toString()}`);
+      return response.data;
     }
-
-    const response = await apiClient.get(`/judgments?${params.toString()}`);
-    return response.data;
   }
 
   static async createJudgment(judgmentData: CreateJudgmentRequest): Promise<Judgment> {
-    const response = await apiClient.post('/judgments', judgmentData);
-    return response.data;
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const res = await invoke('submit_judgment_fast', {
+        request: {
+          eventId: judgmentData.event_id,
+          assessment: judgmentData.assessment,
+          confidenceLevel: judgmentData.confidence_level,
+          reasoning: judgmentData.reasoning ?? null,
+        }
+      });
+      return res as Judgment;
+    } else {
+      const response = await apiClient.post('/judgments', judgmentData);
+      return response.data;
+    }
   }
 
   // Consensus endpoints
@@ -287,6 +303,17 @@ export class ApiService {
         return false;
       }
     }
+  }
+
+  // Knowledge Base
+  static async getKnowledgeBaseItems(): Promise<{ id: string; label: string }[]> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const res = await invoke('knowledge_base_list');
+      const { items } = res as { items: { id: string; label: string }[] };
+      return items;
+    }
+    return [];
   }
 }
 
