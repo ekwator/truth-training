@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Event } from '@/types/events';
+import { Modal } from '@/components/system/Modal';
 
 interface EventCardProps {
   event: Event;
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ event }) => {
+  const [openView, setOpenView] = useState(false);
+  const [openJudge, setOpenJudge] = useState(false);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -70,15 +73,49 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           </div>
           
           <div className="flex space-x-2">
-            <button className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors" onClick={() => alert(`View ${event.id}`)}>
+            <button className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors" onClick={() => setOpenView(true)}>
               View
             </button>
-            <button className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors" onClick={() => alert(`Judge ${event.id}`)}>
+            <button className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors" onClick={() => setOpenJudge(true)}>
               Judge
             </button>
           </div>
         </div>
       </div>
+      <Modal open={openView} onClose={() => setOpenView(false)} title="Event Details">
+        <div className="space-y-2">
+          <div className="text-sm text-gray-500">ID: {event.id}</div>
+          <div className="text-base font-semibold">{event.title}</div>
+          <div className="text-sm text-gray-700">{event.description}</div>
+          <div className="text-xs text-gray-500">Status: {event.status}</div>
+          <div className="text-xs text-gray-500">Created: {new Date(event.created_at).toLocaleString()}</div>
+        </div>
+      </Modal>
+      <Modal open={openJudge} onClose={() => setOpenJudge(false)} title="Submit Judgment" footer={
+        <>
+          <button className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200" onClick={() => setOpenJudge(false)}>Cancel</button>
+          <button className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700" onClick={() => setOpenJudge(false)}>Submit</button>
+        </>
+      }>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Assessment</label>
+            <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
+              <option value="true">True</option>
+              <option value="false">False</option>
+              <option value="uncertain">Uncertain</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Confidence (0..1)</label>
+            <input type="number" min={0} max={1} step={0.05} defaultValue={0.7} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Reasoning</label>
+            <textarea rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Explain your judgment..." />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
