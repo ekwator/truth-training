@@ -4,9 +4,9 @@
 **Prerequisites**: plan.md (required), research.md, data-model.md, contracts/
 
 ## Phase 3.1: Setup
-- [ ] T001 Update UI version to 0.2.0 surfaced on Home (ui/desktop frontend)
-- [ ] T002 Ensure text-only base styles (remove residual icons/emojis) in `ui/desktop/src` [P]
-- [ ] T003 Configure logs pagination constant (35) in Tauri backend and UI [P]
+- [x] T001 Update UI version to 0.2.0 surfaced on Home (ui/desktop frontend)
+- [x] T002 Ensure text-only base styles (remove residual icons/emojis) in `ui/desktop/src` [P]
+- [x] T003 Configure logs pagination constant (35) in Tauri backend and UI [P]
 
 ## Phase 3.2: Tests First (TDD)
 - [ ] T004 [P] Contract test: list_kb_contexts schema in `specs/003-truth-training-desktop/contracts/` tests
@@ -27,19 +27,19 @@
 - [ ] T017 Service/command: `list_events` with paging
 - [ ] T018 Service/command: `add_impact` validation and insert
 - [ ] T019 Service/command: `list_logs` + `clear_logs`; store logs and paginate 35
-- [ ] T020 UI: Top menu bar with navigation (Home/New Event/Event Summary/Overall Summary/Training Results/Logs)
-- [ ] T021 UI: Home screen content and actions (Create New Event, Refresh Data)
-- [ ] T022 UI: New Event form (name, description, Context dropdown from KB, dates); Save/Clear/Go to Event Summary
-- [ ] T023 UI: Event Summary list → details (description, impact, notes, recommendations) + Add Impact/Edit/Save/Back
-- [ ] T024 UI: Overall Summary with metrics + text table and Export (.txt)
-- [ ] T025 UI: Training Results filters + ASCII progress/average
-- [ ] T026 UI: Logs screen (scrollable, 35 lines/page, Clear/Save/Refresh)
-- [ ] T027 Keyboard shortcuts Alt+1..Alt+6 for screen navigation
+- [x] T020 UI: Top menu bar with navigation (Home/New Event/Event Summary/Overall Summary/Training Results/Logs)
+- [x] T021 UI: Home screen content and actions (Create New Event, Refresh Data)
+- [x] T022 UI: New Event form (name, description, Context dropdown from KB, dates); Save/Clear/Go to Event Summary
+- [x] T023 UI: Event Summary list → details (description, impact, notes, recommendations) + Add Impact/Edit/Save/Back
+- [x] T024 UI: Overall Summary with metrics + text table and Export (.txt)
+- [x] T025 UI: Training Results filters + ASCII progress/average
+- [x] T026 UI: Logs screen (scrollable, 35 lines/page, Clear/Save/Refresh)
+- [x] T027 Keyboard shortcuts Alt+1..Alt+6 for screen navigation
 
 ## Phase 3.4: Integration
 - [ ] T028 Wire UI to Tauri commands (invoke) for all screens
 - [ ] T029 Offline queue + background sync; enforce Local-wins on conflicts
-- [ ] T030 Export service for Overall Summary to `.txt` fixed template
+- [x] T030 Export service for Overall Summary to `.txt` fixed template
 
 ## Phase 3.5: Polish
 - [ ] T031 [P] Unit tests: validation rules (dates order, impact level)
