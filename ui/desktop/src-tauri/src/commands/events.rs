@@ -47,12 +47,12 @@ pub async fn create_event_fast(request: CreateEventRequest, db: State<'_, Db>) -
 }
 
 #[command]
-pub async fn get_event_fast(eventId: String, db: State<'_, Db>) -> Result<Option<Event>, String> {
+pub async fn get_event_fast(event_id: String, db: State<'_, Db>) -> Result<Option<Event>, String> {
     let conn = db.0.lock();
     let mut stmt = conn
         .prepare("SELECT id, title, description, created_at, status FROM events WHERE id = ?1 LIMIT 1")
         .map_err(|e| e.to_string())?;
-    let mut rows = stmt.query(params![eventId]).map_err(|e| e.to_string())?;
+    let mut rows = stmt.query(params![event_id]).map_err(|e| e.to_string())?;
     if let Some(row) = rows.next().map_err(|e| e.to_string())? {
         let event = Event {
             id: row.get(0).map_err(|e| e.to_string())?,
@@ -78,18 +78,18 @@ pub async fn health_check_core() -> Result<HealthCheckResponse, String> {
 }
 
 #[command]
-pub async fn list_events_fast(page: u32, perPage: u32, db: State<'_, Db>) -> Result<ListEventsResponse, String> {
+pub async fn list_events_fast(page: u32, per_page: u32, db: State<'_, Db>) -> Result<ListEventsResponse, String> {
     let conn = db.0.lock();
     let total: i64 = conn
         .query_row("SELECT COUNT(1) FROM events", [], |row| row.get(0))
         .map_err(|e| e.to_string())?;
 
-    let offset = (page.saturating_sub(1) as i64) * (perPage as i64);
+    let offset = (page.saturating_sub(1) as i64) * (per_page as i64);
     let mut stmt = conn
         .prepare("SELECT id, title, description, created_at, status FROM events ORDER BY datetime(created_at) DESC LIMIT ?1 OFFSET ?2")
         .map_err(|e| e.to_string())?;
 
-    let mut rows = stmt.query(params![perPage as i64, offset]).map_err(|e| e.to_string())?;
+    let mut rows = stmt.query(params![per_page as i64, offset]).map_err(|e| e.to_string())?;
     let mut data: Vec<Event> = Vec::new();
     while let Some(row) = rows.next().map_err(|e| e.to_string())? {
         data.push(Event {
