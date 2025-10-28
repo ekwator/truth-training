@@ -42,7 +42,7 @@
 - [x] T030 Export service for Overall Summary to `.txt` fixed template
 
 ## Phase 3.5: Polish
-- [ ] T031 [P] Unit tests: validation rules (dates order, impact level)
+- [x] T031 [P] Unit tests: validation rules (dates order, impact level)
 - [ ] T032 [P] Performance: navigation + pagination < 100ms on baseline
 - [ ] T033 [P] Docs: update `docs/UI_Desktop.md` with text-only flows and shortcuts
 - [ ] T034 [P] CI: ensure desktop builds (Linux/Windows/macOS) still pass
