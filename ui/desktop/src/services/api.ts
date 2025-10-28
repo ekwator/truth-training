@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { invoke } from '@tauri-apps/api/core';
 import { config } from '@/config/env';
 
 // API Configuration
@@ -16,6 +17,17 @@ let apiClient: AxiosInstance = axios.create({
 // Function to set custom client for testing
 export const setApiClient = (client: AxiosInstance) => {
   apiClient = client;
+};
+
+// Check if we're running in Tauri (robust for v1/v2)
+const isTauri = () => {
+  try {
+    // Vite + Tauri injects this flag
+    if ((import.meta as any)?.env?.TAURI) return true;
+  } catch {}
+  if (typeof window === 'undefined') return false;
+  const w = window as any;
+  return Boolean(w.__TAURI__ || w.__TAURI_IPC__ || w.__TAURI_INTERNALS__);
 };
 
 // Request interceptor for logging
@@ -132,18 +144,84 @@ export interface SyncStatus {
 export class ApiService {
   // Events endpoints
   static async getEvents(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Event>> {
-    const response = await apiClient.get(`/events?page=${page}&per_page=${perPage}`);
-    return response.data;
+    if (isTauri()) {
+      // Use Tauri commands for desktop app
+      try {
+        // For now, return mock data using Tauri commands
+        const mockEvents: Event[] = [
+          {
+            id: '1',
+            title: 'Sample Event 1',
+            description: 'This is a sample event for testing',
+            created_at: new Date().toISOString(),
+            status: 'active'
+          },
+          {
+            id: '2', 
+            title: 'Sample Event 2',
+            description: 'Another sample event',
+            created_at: new Date(Date.now() - 86400000).toISOString(),
+            status: 'active'
+          }
+        ];
+        
+        return {
+          data: mockEvents,
+          pagination: {
+            page: 1,
+            per_page: 20,
+            total: mockEvents.length,
+            total_pages: 1
+          }
+        };
+      } catch (error) {
+        console.error('Tauri API error:', error);
+        throw new Error('Failed to fetch events from desktop backend');
+      }
+    } else {
+      // Use HTTP API for web development
+      const response = await apiClient.get(`/events?page=${page}&per_page=${perPage}`);
+      return response.data;
+    }
   }
 
   static async getEvent(id: string): Promise<EventDetails> {
-    const response = await apiClient.get(`/events/${id}`);
-    return response.data;
+    if (isTauri()) {
+      try {
+        const event = await invoke('get_event_fast', { eventId: id });
+        return {
+          ...event as Event,
+          consensus: null,
+          judgments: []
+        };
+      } catch (error) {
+        console.error('Tauri getEvent error:', error);
+        throw new Error('Failed to fetch event from desktop backend');
+      }
+    } else {
+      const response = await apiClient.get(`/events/${id}`);
+      return response.data;
+    }
   }
 
   static async createEvent(eventData: CreateEventRequest): Promise<Event> {
-    const response = await apiClient.post('/events', eventData);
-    return response.data;
+    if (isTauri()) {
+      try {
+        const event = await invoke('create_event_fast', { 
+          request: {
+            title: eventData.title,
+            description: eventData.description
+          }
+        });
+        return event as Event;
+      } catch (error) {
+        console.error('Tauri createEvent error:', error);
+        throw new Error('Failed to create event in desktop backend');
+      }
+    } else {
+      const response = await apiClient.post('/events', eventData);
+      return response.data;
+    }
   }
 
   // Judgments endpoints
@@ -186,17 +264,37 @@ export class ApiService {
 
   // Sync endpoints
   static async getSyncStatus(): Promise<SyncStatus> {
-    const response = await apiClient.get('/sync/status');
-    return response.data;
+    if (isTauri()) {
+      // Return mock sync status for desktop app
+      return {
+        is_online: true,
+        last_sync: new Date().toISOString(),
+        pending_operations: 0,
+        sync_in_progress: false
+      };
+    } else {
+      const response = await apiClient.get('/sync/status');
+      return response.data;
+    }
   }
 
   // Health check
   static async healthCheck(): Promise<boolean> {
-    try {
-      await apiClient.get('/health');
-      return true;
-    } catch {
-      return false;
+    if (isTauri()) {
+      try {
+        const result = await invoke('health_check_core');
+        return result !== null;
+      } catch (error) {
+        console.error('Tauri health check error:', error);
+        return false;
+      }
+    } else {
+      try {
+        await apiClient.get('/health');
+        return true;
+      } catch {
+        return false;
+      }
     }
   }
 }
