@@ -4,6 +4,7 @@ import { Event, EventDetails, CreateEventRequest, EventFilters, EventSortOptions
 import { ApiService } from '@/services/api';
 import { errorHandler } from '@/services/errorHandler';
 import { performanceMonitor } from '@/services/performance';
+import { offlineQueue } from '@/services/offlineQueue';
 
 interface EventsState {
   // Data
@@ -133,8 +134,12 @@ export const useEventsStore = create<EventsState>()(
           
           // If offline, queue the operation
           if (!navigator.onLine || error.code === 'NETWORK_ERROR') {
-            // This would integrate with the offline queue service
-            console.log('Queuing event creation for offline sync:', eventData);
+            offlineQueue.addOperation({
+              type: 'create_event',
+              data: eventData,
+              maxRetries: 3
+            });
+            console.log('Queued event creation for offline sync:', eventData);
           }
           
           return null;

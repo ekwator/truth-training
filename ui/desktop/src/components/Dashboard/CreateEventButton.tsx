@@ -7,7 +7,9 @@ export const CreateEventButton: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: ''
+    context_id: '',
+    start_date: '',
+    end_date: ''
   });
   const [loading, setLoading] = useState(false);
   const [kbItems, setKbItems] = useState<{id:string;label:string}[]>([]);
@@ -15,18 +17,20 @@ export const CreateEventButton: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim() || !formData.description.trim()) return;
+    if (!formData.title.trim() || !formData.context_id) return;
 
     setLoading(true);
     try {
       await createEvent({
         title: formData.title.trim(),
-        description: formData.description.trim(),
-        category: formData.category || undefined
+        description: formData.description.trim() || undefined,
+        context_id: formData.context_id,
+        start_date: formData.start_date || undefined,
+        end_date: formData.end_date || undefined
       });
       
       // Reset form and close modal
-      setFormData({ title: '', description: '', category: '' });
+      setFormData({ title: '', description: '', context_id: '', start_date: '', end_date: '' });
       setIsOpen(false);
     } catch (error) {
       console.error('Failed to create event:', error);
@@ -36,7 +40,7 @@ export const CreateEventButton: React.FC = () => {
   };
 
   const handleCancel = () => {
-    setFormData({ title: '', description: '', category: '' });
+    setFormData({ title: '', description: '', context_id: '', start_date: '', end_date: '' });
     setIsOpen(false);
   };
 
@@ -80,7 +84,7 @@ export const CreateEventButton: React.FC = () => {
 
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Description *
+                    Description
                   </label>
                   <textarea
                     id="description"
@@ -88,26 +92,53 @@ export const CreateEventButton: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter event description"
-                    required
+                    placeholder="Enter event description (optional)"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-                    Knowledge Base Context
+                  <label htmlFor="context_id" className="block text-sm font-medium text-gray-700 mb-1">
+                    Knowledge Base Context *
                   </label>
                   <select
-                    id="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    id="context_id"
+                    value={formData.context_id}
+                    onChange={(e) => setFormData({ ...formData, context_id: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    required
                   >
                     <option value="">Select context</option>
                     {kbItems.map(i => (
                       <option key={i.id} value={i.id}>{i.label}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="start_date" className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      id="start_date"
+                      value={formData.start_date}
+                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="end_date" className="block text-sm font-medium text-gray-700 mb-1">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      id="end_date"
+                      value={formData.end_date}
+                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex justify-end space-x-3 pt-4">
@@ -120,7 +151,7 @@ export const CreateEventButton: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    disabled={loading || !formData.title.trim() || !formData.description.trim()}
+                    disabled={loading || !formData.title.trim() || !formData.context_id}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                   >
                     {loading ? 'Creating...' : 'Create Event'}

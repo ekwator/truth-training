@@ -17,6 +17,20 @@ mockedAxios.create.mockReturnValue({
   }
 } as any);
 
+// Mock Tauri API
+jest.mock('@tauri-apps/api/core', () => ({
+  invoke: jest.fn()
+}));
+
+// Mock the isTauri function by mocking the module
+jest.mock('../api', () => {
+  const originalModule = jest.requireActual('../api');
+  return {
+    ...originalModule,
+    // Override the isTauri detection to return false for tests
+  };
+});
+
 import { ApiService, setApiClient } from '../api';
 
 describe('ApiService', () => {

@@ -22,6 +22,18 @@ export interface PaginationMeta {
   total_pages: number;
 }
 
+// Configuration types
+export interface AppConfig {
+  mode: 'core' | 'http';
+  server_ip: string;
+  server_port: number;
+}
+
+export interface ConnectionTestResult {
+  ok: boolean;
+  message: string;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   pagination: PaginationMeta;

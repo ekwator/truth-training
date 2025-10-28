@@ -1,52 +1,82 @@
-## Desktop UI Updates (Tauri)
+## Desktop UI Updates (Tauri) - Text-Only Interface
 
-This document summarizes the recent Desktop UI (Tauri) work and current behavior.
+This document summarizes the Desktop UI (Tauri) implementation with text-only interface design.
 
 ### Key Features
-- Events stored in SQLite (rusqlite 0.31, bundled SQLite). Database initialized at app startup in the OS data directory.
-- Event listing and details are read from SQLite via Tauri commands:
-  - `list_events_fast(page, per_page)` – paginated list
-  - `get_event_fast(event_id)` – single event
-- Judgment flow (end-to-end):
-  - SQLite table `judgments` with fields: `id`, `event_id`, `assessment ('true'|'false'|'uncertain')`, `confidence_level (0..1)`, `reasoning`, `submitted_at` (RFC3339)
-  - Tauri commands:
-    - `submit_judgment_fast(request)`
-    - `judgments_list_fast(event_id, page, per_page)`
-    - `get_judgment_stats(event_id)`
-  - UI: Judge modal on `EventCard` submits data through `ApiService.createJudgment` (Tauri branch)
+- **Text-Only Interface**: No icons, emojis, or graphical assets - pure text and structured layout
+- **SQLite Persistence**: Events, impacts, summaries, and judgments stored in SQLite (rusqlite 0.31, bundled)
+- **Offline-First**: Local-wins conflict resolution with background sync when online
+- **Knowledge Base Integration**: Dynamic context selection from `docs/Data_Schema.md`
 
-### Knowledge Base Context
-- Create Event modal now loads Knowledge Base contexts dynamically via Tauri:
-  - Command: `knowledge_base_list()` parses `docs/Data_Schema.md` (section 1. knowledge_base) and returns a flat list of `{ id, label }`.
-  - Selected context is saved in the event payload (stored in `category` field for now).
+### Data Models
+- **Events**: `id`, `title`, `description`, `context_id` (required), `start_date`, `end_date`, `created_at`, `updated_at`, `status`
+- **Impacts**: `id`, `event_id`, `impact_level` (1-5), `notes`, `created_at`
+- **Summaries**: `id`, `event_id`, `summary_text`, `recommendations`, `updated_at` (1:1 with events)
+- **Judgments**: `id`, `event_id`, `assessment` ('true'|'false'|'uncertain'), `confidence_level` (0-1), `reasoning`, `submitted_at`
+- **Logs**: `id`, `timestamp`, `source`, `level`, `message` (paginated at 35 lines/page)
 
-### UI/UX Adjustments
-- Removed oversized SVG icons across the app; replaced with text-only indicators to avoid large visual artifacts:
-  - `SyncStatus` – text statuses only (Synced/Offline/N pending)
-  - Empty states on `Dashboard` and `Events` – simple text placeholders
-  - `EventCard` meta line – text placeholders for participants/consensus
-  - `JudgmentCard` – participant/time displayed as text
-  - `ErrorBoundary` – no warning icon
-  - `Toaster` – text-only; close button is a text label
+### Tauri Commands
+- **Events**: `create_event_fast`, `get_event_fast`, `list_events_fast` (with pagination)
+- **Impacts**: `add_impact` (with validation 1-5 range)
+- **Judgments**: `submit_judgment_fast`, `judgments_list_fast`, `get_judgment_stats`
+- **Knowledge Base**: `knowledge_base_list` (parses Data_Schema.md)
+- **Logs**: `list_logs`, `clear_logs` (35 lines/page pagination)
+- **Summary**: `get_overall_metrics`, `list_event_rows`, `export_overall_summary_txt`
+- **Configuration**: `get_app_config`, `save_app_config`, `core_status`, `test_http_connection`
 
-### Files Touched (high level)
-- UI (React):
-  - `ui/desktop/src/pages/Dashboard.tsx`, `ui/desktop/src/pages/Events.tsx`
-  - `ui/desktop/src/components/Dashboard/{CreateEventButton,EventCard}.tsx`
-  - `ui/desktop/src/components/JudgmentPanel/JudgmentCard.tsx`
-  - `ui/desktop/src/components/system/{SyncStatus,Toaster,ErrorBoundary,Modal}.tsx`
-  - `ui/desktop/src/services/api.ts` (Tauri branches for Events, Judgments, KB)
-- Tauri (Rust):
-  - `ui/desktop/src-tauri/src/storage.rs` (DB init, events/judgments CRUD helpers)
-  - `ui/desktop/src-tauri/src/commands/{events,judgments,knowledge_base}.rs`
-  - `ui/desktop/src-tauri/src/main.rs` (command registration, DB state)
-  - `ui/desktop/src-tauri/Cargo.toml` (rusqlite 0.31 + bundled)
+### Navigation & Shortcuts
+- **Top Menu Bar**: [Home] | [New Event] | [Event Summary] | [Overall Summary] | [Training Results] | [Logs] | [Settings]
+- **Keyboard Shortcuts**: Alt+1 (Home), Alt+2 (New Event), Alt+3 (Event Summary), Alt+4 (Overall Summary), Alt+5 (Training Results), Alt+6 (Logs), Alt+7 (Settings)
+- **Text-Only Design**: No icons, emojis, or graphical assets - pure text and structured layout
 
-### CI Notes
-- Desktop builds stabilized for Linux/Windows/macOS (rusqlite bundled avoids system sqlite conflicts).
-- Mobile workflows (Android/iOS) build only `-p truth_core` and can download artifacts from Cross-Platform runs.
+### App Settings
+- **Connection Mode Toggle**: Choose between Core (Local) and HTTP API modes
+- **Server Configuration**: IP address and port settings for HTTP mode
+- **Validation Rules**: IP format validation (`^\d{1,3}(\.\d{1,3}){3}$`), port range (1-65535)
+- **Test Connection**: Test Core or HTTP connections with real-time feedback
+- **Persistence**: Configuration saved to `~/.truth-training/config.json`
+- **Configuration Schema**:
+  ```json
+  {
+    "mode": "core" | "http",
+    "server_ip": "127.0.0.1",
+    "server_port": 8080
+  }
+  ```
 
-### Next Steps
-- Optional: replace Markdown parsing with a bundled JSON for KB to improve reliability in packaged builds.
-- Add views for detailed Event/Judgment navigation (beyond modals).
+### Offline Queue & Sync
+- **Local-Wins Strategy**: Local changes take precedence over remote changes
+- **Background Sync**: Automatic sync when connection restored
+- **Retry Mechanism**: Configurable max retries (default: 3)
+- **Real-time Status**: Live sync status updates in UI
+
+### Validation Rules
+- **Impact Level**: Must be integer between 1-5
+- **Date Order**: Start date must be before or equal to end date
+- **Context ID**: Required, must match format `kb:[a-z0-9_-]+`
+- **Confidence Level**: Must be between 0.0-1.0
+- **Assessment**: Must be 'true', 'false', or 'uncertain'
+- **Event Title**: Required, max 200 characters
+
+### Performance Targets
+- **Navigation**: < 100ms between screens
+- **Pagination**: < 100ms for 35-item pages
+- **Search**: < 50ms for 1000-item datasets
+- **Memory**: No significant leaks during navigation
+
+### Testing
+- **Unit Tests**: Validation rules, offline queue, knowledge base integration
+- **Performance Tests**: Navigation speed, pagination efficiency, memory usage
+- **Integration Tests**: End-to-end event creation, judgment submission, offline sync
+
+### Files Structure
+- **UI Components**: `ui/desktop/src/pages/`, `ui/desktop/src/components/`
+- **Services**: `ui/desktop/src/services/` (API, offline queue, validation)
+- **Tauri Backend**: `ui/desktop/src-tauri/src/` (commands, storage, main)
+- **Tests**: `ui/desktop/src/services/__tests__/`, `ui/desktop/tests/performance/`
+
+### CI Status
+- ✅ Desktop builds: Linux/Windows/macOS (rusqlite bundled)
+- ✅ Mobile builds: Android/iOS (truth_core only)
+- ✅ Cross-platform artifacts: libtruth_core-desktop per OS
 
