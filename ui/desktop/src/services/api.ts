@@ -1,5 +1,4 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { invoke } from '@tauri-apps/api/core';
 import { config } from '@/config/env';
 
 // API Configuration
@@ -188,6 +187,7 @@ export class ApiService {
   static async getEvent(id: string): Promise<EventDetails> {
     if (isTauri()) {
       try {
+        const { invoke } = await import('@tauri-apps/api/core');
         const event = await invoke('get_event_fast', { eventId: id });
         return {
           ...event as Event,
@@ -207,6 +207,7 @@ export class ApiService {
   static async createEvent(eventData: CreateEventRequest): Promise<Event> {
     if (isTauri()) {
       try {
+        const { invoke } = await import('@tauri-apps/api/core');
         const event = await invoke('create_event_fast', { 
           request: {
             title: eventData.title,
@@ -282,6 +283,7 @@ export class ApiService {
   static async healthCheck(): Promise<boolean> {
     if (isTauri()) {
       try {
+        const { invoke } = await import('@tauri-apps/api/core');
         const result = await invoke('health_check_core');
         return result !== null;
       } catch (error) {
