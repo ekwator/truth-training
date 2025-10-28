@@ -77,7 +77,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Build desktop
-        run: cargo build --release --features desktop
+      - name: Build desktop lib (truth_core)
+        run: cargo build --release --features desktop --lib -p truth_core
       - name: Test desktop
         run: cargo test --features desktop
+      - name: Upload Desktop artifacts (libtruth_core-desktop)
+        uses: actions/upload-artifact@v4
+        with:
+          name: libtruth_core-desktop
+          path: |
+            target/**/release/deps/libtruth_core-*.rlib
+            target/**/release/libtruth_core.a
+            target/**/release/libtruth_core.dylib
+            target/**/release/libtruth_core.so
+            target/**/release/libtruth_core.dll
+          if-no-files-found: warn
