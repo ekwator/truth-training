@@ -19,14 +19,14 @@
 - [ ] T011 Integration test: Overall Summary export produces fixed .txt
 
 ## Phase 3.3: Core Implementation (ONLY after tests are failing)
-- [ ] T012 [P] Data model: add/verify Event schema (context_id required) in `ui/desktop/src-tauri/src/storage.rs`
-- [ ] T013 [P] Data model: Impact (level 1..5) in `storage.rs`
-- [ ] T014 [P] Data model: Summary (1:1 per Event) in `storage.rs`
-- [ ] T015 Service/command: `list_kb_contexts` parse from `docs/Data_Schema.md` in `ui/desktop/src-tauri/src/commands/knowledge_base.rs`
-- [ ] T016 Service/command: `create_event` validates Context presence; forbid save if KB empty
-- [ ] T017 Service/command: `list_events` with paging
-- [ ] T018 Service/command: `add_impact` validation and insert
-- [ ] T019 Service/command: `list_logs` + `clear_logs`; store logs and paginate 35
+- [x] T012 [P] Data model: add/verify Event schema (context_id required) in `ui/desktop/src-tauri/src/storage.rs`
+- [x] T013 [P] Data model: Impact (level 1..5) in `storage.rs`
+- [x] T014 [P] Data model: Summary (1:1 per Event) in `storage.rs`
+- [x] T015 Service/command: `list_kb_contexts` parse from `docs/Data_Schema.md` in `ui/desktop/src-tauri/src/commands/knowledge_base.rs`
+- [x] T016 Service/command: `create_event` validates Context presence; forbid save if KB empty
+- [x] T017 Service/command: `list_events` with paging
+- [x] T018 Service/command: `add_impact` validation and insert
+- [x] T019 Service/command: `list_logs` + `clear_logs`; store logs and paginate 35
 - [x] T020 UI: Top menu bar with navigation (Home/New Event/Event Summary/Overall Summary/Training Results/Logs)
 - [x] T021 UI: Home screen content and actions (Create New Event, Refresh Data)
 - [x] T022 UI: New Event form (name, description, Context dropdown from KB, dates); Save/Clear/Go to Event Summary
