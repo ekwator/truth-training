@@ -142,6 +142,57 @@ impl Db {
         conn.execute("DELETE FROM logs", []).map_err(|e| e.to_string())?;
         Ok(())
     }
+
+    pub fn get_overall_metrics(&self) -> Result<(i64, f64, Option<String>), String> {
+        let conn = self.0.lock();
+        let total_events: i64 = conn
+            .query_row("SELECT COUNT(1) FROM events", [], |r| r.get(0))
+            .unwrap_or(0);
+        let avg_impact: f64 = conn
+            .query_row(
+                "SELECT COALESCE(AVG(confidence_level),0.0) FROM judgments",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0.0);
+        let last_updated: Option<String> = conn
+            .query_row(
+                "SELECT ts FROM (
+                   SELECT MAX(datetime(created_at)) as ts FROM events
+                   UNION ALL
+                   SELECT MAX(datetime(submitted_at)) as ts FROM judgments
+                 ) ORDER BY datetime(ts) DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .optional()
+            .unwrap_or(None);
+        Ok((total_events, avg_impact, last_updated))
+    }
+
+    pub fn list_event_summaries(&self) -> Result<Vec<(String, String, Option<f64>, String)>, String> {
+        let conn = self.0.lock();
+        let mut stmt = conn
+            .prepare(
+                "SELECT e.title, COALESCE(e.description,''),
+                        (SELECT AVG(confidence_level) FROM judgments j WHERE j.event_id = e.id),
+                        e.created_at
+                 FROM events e
+                 ORDER BY datetime(e.created_at) DESC",
+            )
+            .map_err(|e| e.to_string())?;
+        let mut rows = stmt.query([]).map_err(|e| e.to_string())?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next().map_err(|e| e.to_string())? {
+            out.push((
+                row.get(0).map_err(|e| e.to_string())?,
+                row.get(1).map_err(|e| e.to_string())?,
+                row.get(2).ok().unwrap_or(None),
+                row.get(3).map_err(|e| e.to_string())?,
+            ));
+        }
+        Ok(out)
+    }
 }
 
 
