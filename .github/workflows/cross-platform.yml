@@ -84,7 +84,7 @@ jobs:
       - name: Upload Desktop artifacts (libtruth_core-desktop)
         uses: actions/upload-artifact@v4
         with:
-          name: libtruth_core-desktop
+          name: libtruth_core-desktop-${{ matrix.os }}
           path: |
             target/**/release/deps/libtruth_core-*.rlib
             target/**/release/libtruth_core.a
