@@ -86,9 +86,13 @@ jobs:
         with:
           name: libtruth_core-desktop-${{ matrix.os }}
           path: |
-            target/**/release/deps/libtruth_core-*.rlib
-            target/**/release/libtruth_core.a
-            target/**/release/libtruth_core.dylib
-            target/**/release/libtruth_core.so
-            target/**/release/libtruth_core.dll
+            # Rust rlib (Windows often without lib prefix)
+            target/**/release/deps/*truth_core-*.rlib
+            # Static/Shared libs across OSes
+            target/**/release/*truth_core.a
+            target/**/release/*truth_core.so
+            target/**/release/*truth_core.dylib
+            target/**/release/*truth_core.dll
+            target/**/release/*truth_core.lib
+            target/**/release/*truth_core.dll.lib
           if-no-files-found: warn
