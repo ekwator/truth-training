@@ -6,6 +6,7 @@ import { TopMenuBar, Screen } from '@/components/layout/TopMenuBar';
 import { Dashboard } from '@/pages/Dashboard';
 import { EventSummary } from '@/pages/EventSummary';
 import { OverallSummary } from '@/pages/OverallSummary';
+import { TrainingResults } from '@/pages/TrainingResults';
 import { Logs } from '@/pages/Logs';
 
 export const App: React.FC = () => {
@@ -22,7 +23,7 @@ export const App: React.FC = () => {
       case 'overall-summary':
         return <OverallSummary />;
       case 'training-results':
-        return <div className="min-h-screen py-8 px-4">Training Results (Placeholder)</div>;
+        return <TrainingResults />;
       case 'logs':
         return <Logs />;
       default:
