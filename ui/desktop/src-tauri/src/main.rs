@@ -8,7 +8,7 @@ use commands::events::{create_event_fast, get_event_fast, list_events_fast, heal
 use commands::judgments::{submit_judgment_fast, judgments_list_fast, get_judgment_stats};
 use commands::knowledge_base::knowledge_base_list;
 use commands::logs::{list_logs, clear_logs};
-use commands::summary::{get_overall_metrics, list_event_rows};
+use commands::summary::{get_overall_metrics, list_event_rows, export_overall_summary_txt};
 
 fn main() {
     let db = storage::Db::initialize().expect("failed to init db");
@@ -27,6 +27,7 @@ fn main() {
             , clear_logs
             , get_overall_metrics
             , list_event_rows
+            , export_overall_summary_txt
         ])
         .manage(db)
         .run(tauri::generate_context!())
