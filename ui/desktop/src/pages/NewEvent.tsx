@@ -74,7 +74,7 @@ export const NewEvent: React.FC = () => {
       await ApiService.createEvent({
         title: formData.event_name,
         description: formData.description,
-        category: formData.context,
+        context_id: formData.context,
       });
       addToast({
         type: 'success',

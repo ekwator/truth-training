@@ -39,7 +39,7 @@ export const EventSummary: React.FC = () => {
       const display: EventDisplay = {
         id: event.id,
         title: event.title,
-        description: event.description,
+        description: event.description || '',
         results: (event as any).results,
         notes: (event as any).notes,
         recommendations: (event as any).recommendations,

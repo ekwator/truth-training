@@ -3,12 +3,13 @@
 export interface Event {
   id: string;
   title: string;
-  description: string;
+  description?: string;
+  context_id: string;
+  start_date?: string;
+  end_date?: string;
   created_at: string;
   updated_at?: string;
   status: EventStatus;
-  category?: string;
-  tags?: string[];
 }
 
 export type EventStatus = 'active' | 'inactive' | 'archived' | 'pending';
@@ -16,15 +17,18 @@ export type EventStatus = 'active' | 'inactive' | 'archived' | 'pending';
 export interface EventDetails extends Event {
   consensus?: any | null;
   judgments: any[];
+  impacts: any[];
+  summary?: any;
   participant_count?: number;
   last_activity?: string;
 }
 
 export interface CreateEventRequest {
   title: string;
-  description: string;
-  category?: string;
-  tags?: string[];
+  description?: string;
+  context_id: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 export interface UpdateEventRequest {
