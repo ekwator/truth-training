@@ -1,10 +1,6 @@
 name: Android Build Check
 
 on:
-  push:
-
-  pull_request:
-
   workflow_run:
     workflows: ["Cross-Platform Build"]
     types: [completed]
