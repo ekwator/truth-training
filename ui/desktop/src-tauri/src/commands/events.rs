@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use tauri::command;
+use tauri::{command, State};
+use crate::storage::Db;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Event {
@@ -23,14 +24,17 @@ pub struct HealthCheckResponse {
 }
 
 #[command]
-pub async fn create_event_fast(request: CreateEventRequest) -> Result<Event, String> {
+pub async fn create_event_fast(request: CreateEventRequest, db: State<'_, Db>) -> Result<Event, String> {
     // TODO: Implement actual API call to core backend
     // For now, return a mock response
+    let new_id = format!("event_{}", uuid::Uuid::new_v4());
+    let created_at = chrono::Utc::now().to_rfc3339();
+    db.insert_event(&new_id, &request.title, request.description.as_deref(), &created_at, "active")?;
     Ok(Event {
-        id: format!("event_{}", uuid::Uuid::new_v4()),
+        id: new_id,
         title: request.title,
         description: request.description,
-        created_at: chrono::Utc::now().to_rfc3339(),
+        created_at,
         status: "active".to_string(),
     })
 }
