@@ -43,9 +43,9 @@
 
 ## Phase 3.5: Polish
 - [x] T031 [P] Unit tests: validation rules (dates order, impact level)
-- [ ] T032 [P] Performance: navigation + pagination < 100ms on baseline
-- [ ] T033 [P] Docs: update `docs/UI_Desktop.md` with text-only flows and shortcuts
-- [ ] T034 [P] CI: ensure desktop builds (Linux/Windows/macOS) still pass
+- [x] T032 [P] Performance: navigation + pagination < 100ms on baseline
+- [x] T033 [P] Docs: update `docs/UI_Desktop.md` with text-only flows and shortcuts
+- [x] T034 [P] CI: ensure desktop builds (Linux/Windows/macOS) still pass
 
 ## Dependencies
 - T004–T011 before T012–T027 (TDD)

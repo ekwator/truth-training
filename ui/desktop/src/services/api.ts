@@ -21,12 +21,13 @@ export const setApiClient = (client: AxiosInstance) => {
 // Check if we're running in Tauri (robust for v1/v2)
 const isTauri = () => {
   try {
-    // Vite + Tauri injects this flag
-    if ((import.meta as any)?.env?.TAURI) return true;
-  } catch {}
-  if (typeof window === 'undefined') return false;
-  const w = window as any;
-  return Boolean(w.__TAURI__ || w.__TAURI_IPC__ || w.__TAURI_INTERNALS__);
+    // Check for Tauri runtime objects
+    if (typeof window === 'undefined') return false;
+    const w = window as any;
+    return Boolean(w.__TAURI__ || w.__TAURI_IPC__ || w.__TAURI_INTERNALS__);
+  } catch {
+    return false;
+  }
 };
 
 // Request interceptor for logging
