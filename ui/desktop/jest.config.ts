@@ -13,7 +13,10 @@ const config: Config = {
         jsx: 'react-jsx',
         esModuleInterop: true,
         allowSyntheticDefaultImports: true,
+        target: 'es2020',
+        module: 'commonjs',
       },
+      useESM: false,
     }],
   },
   testMatch: [
