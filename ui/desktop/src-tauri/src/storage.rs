@@ -21,8 +21,28 @@ impl Db {
               id TEXT PRIMARY KEY,
               title TEXT NOT NULL,
               description TEXT,
+              context_id TEXT NOT NULL,
+              start_date TEXT,
+              end_date TEXT,
               created_at TEXT NOT NULL,
+              updated_at TEXT,
               status TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS impacts (
+              id TEXT PRIMARY KEY,
+              event_id TEXT NOT NULL,
+              impact_level INTEGER NOT NULL CHECK(impact_level >= 1 AND impact_level <= 5),
+              notes TEXT,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY(event_id) REFERENCES events(id)
+            );
+            CREATE TABLE IF NOT EXISTS summaries (
+              id TEXT PRIMARY KEY,
+              event_id TEXT NOT NULL UNIQUE,
+              summary_text TEXT,
+              recommendations TEXT,
+              updated_at TEXT NOT NULL,
+              FOREIGN KEY(event_id) REFERENCES events(id)
             );
             CREATE TABLE IF NOT EXISTS judgments (
               id TEXT PRIMARY KEY,
@@ -33,6 +53,13 @@ impl Db {
               submitted_at TEXT NOT NULL,
               FOREIGN KEY(event_id) REFERENCES events(id)
             );
+            CREATE TABLE IF NOT EXISTS logs (
+              id TEXT PRIMARY KEY,
+              timestamp TEXT NOT NULL,
+              source TEXT NOT NULL,
+              level TEXT NOT NULL,
+              message TEXT NOT NULL
+            );
             "#,
         )
         .map_err(|e| e.to_string())?;
@@ -40,11 +67,55 @@ impl Db {
         Ok(Db(Mutex::new(conn)))
     }
 
-    pub fn insert_event(&self, id: &str, title: &str, description: Option<&str>, created_at: &str, status: &str) -> Result<(), String> {
+    pub fn insert_event(
+        &self,
+        id: &str,
+        title: &str,
+        description: Option<&str>,
+        context_id: &str,
+        start_date: Option<&str>,
+        end_date: Option<&str>,
+        created_at: &str,
+        status: &str,
+    ) -> Result<(), String> {
         let conn = self.0.lock();
         conn.execute(
-            "INSERT INTO events (id, title, description, created_at, status) VALUES (?, ?, ?, ?, ?)",
-            params![id, title, description, created_at, status],
+            "INSERT INTO events (id, title, description, context_id, start_date, end_date, created_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            params![id, title, description, context_id, start_date, end_date, created_at, status],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn insert_impact(
+        &self,
+        id: &str,
+        event_id: &str,
+        impact_level: i32,
+        notes: Option<&str>,
+        created_at: &str,
+    ) -> Result<(), String> {
+        let conn = self.0.lock();
+        conn.execute(
+            "INSERT INTO impacts (id, event_id, impact_level, notes, created_at) VALUES (?, ?, ?, ?, ?)",
+            params![id, event_id, impact_level, notes, created_at],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn insert_or_update_summary(
+        &self,
+        id: &str,
+        event_id: &str,
+        summary_text: Option<&str>,
+        recommendations: Option<&str>,
+        updated_at: &str,
+    ) -> Result<(), String> {
+        let conn = self.0.lock();
+        conn.execute(
+            "INSERT OR REPLACE INTO summaries (id, event_id, summary_text, recommendations, updated_at) VALUES (?, ?, ?, ?, ?)",
+            params![id, event_id, summary_text, recommendations, updated_at],
         )
         .map_err(|e| e.to_string())?;
         Ok(())
@@ -105,6 +176,86 @@ impl Db {
         let avg_conf: f64 = conn.query_row("SELECT COALESCE(AVG(confidence_level),0.0) FROM judgments WHERE event_id=?1", [event_id], |r| r.get(0)).unwrap_or(0.0);
         let last_submitted: Option<String> = conn.query_row("SELECT submitted_at FROM judgments WHERE event_id=?1 ORDER BY datetime(submitted_at) DESC LIMIT 1", [event_id], |r| r.get(0)).optional().unwrap_or(None);
         Ok((t_true,t_false,t_uncertain,avg_conf,last_submitted))
+    }
+
+    pub fn list_logs(&self, page: i64, page_size: i64) -> Result<(Vec<(String,String,String,String,String)>, i64), String> {
+        let conn = self.0.lock();
+        let total: i64 = conn
+            .query_row("SELECT COUNT(1) FROM logs", [], |row| row.get(0))
+            .map_err(|e| e.to_string())?;
+        let offset = (page.max(1) - 1) * page_size.max(1);
+        let mut stmt = conn
+            .prepare("SELECT id, timestamp, source, level, message FROM logs ORDER BY datetime(timestamp) DESC LIMIT ?1 OFFSET ?2")
+            .map_err(|e| e.to_string())?;
+        let mut rows = stmt.query(params![page_size, offset]).map_err(|e| e.to_string())?;
+        let mut items = Vec::new();
+        while let Some(row) = rows.next().map_err(|e| e.to_string())? {
+            items.push((
+                row.get(0).map_err(|e| e.to_string())?,
+                row.get(1).map_err(|e| e.to_string())?,
+                row.get(2).map_err(|e| e.to_string())?,
+                row.get(3).map_err(|e| e.to_string())?,
+                row.get(4).map_err(|e| e.to_string())?,
+            ));
+        }
+        Ok((items, total))
+    }
+
+    pub fn clear_logs(&self) -> Result<(), String> {
+        let conn = self.0.lock();
+        conn.execute("DELETE FROM logs", []).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn get_overall_metrics(&self) -> Result<(i64, f64, Option<String>), String> {
+        let conn = self.0.lock();
+        let total_events: i64 = conn
+            .query_row("SELECT COUNT(1) FROM events", [], |r| r.get(0))
+            .unwrap_or(0);
+        let avg_impact: f64 = conn
+            .query_row(
+                "SELECT COALESCE(AVG(confidence_level),0.0) FROM judgments",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0.0);
+        let last_updated: Option<String> = conn
+            .query_row(
+                "SELECT ts FROM (
+                   SELECT MAX(datetime(created_at)) as ts FROM events
+                   UNION ALL
+                   SELECT MAX(datetime(submitted_at)) as ts FROM judgments
+                 ) ORDER BY datetime(ts) DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .optional()
+            .unwrap_or(None);
+        Ok((total_events, avg_impact, last_updated))
+    }
+
+    pub fn list_event_summaries(&self) -> Result<Vec<(String, String, Option<f64>, String)>, String> {
+        let conn = self.0.lock();
+        let mut stmt = conn
+            .prepare(
+                "SELECT e.title, COALESCE(e.description,''),
+                        (SELECT AVG(confidence_level) FROM judgments j WHERE j.event_id = e.id),
+                        e.created_at
+                 FROM events e
+                 ORDER BY datetime(e.created_at) DESC",
+            )
+            .map_err(|e| e.to_string())?;
+        let mut rows = stmt.query([]).map_err(|e| e.to_string())?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next().map_err(|e| e.to_string())? {
+            out.push((
+                row.get(0).map_err(|e| e.to_string())?,
+                row.get(1).map_err(|e| e.to_string())?,
+                row.get(2).ok().unwrap_or(None),
+                row.get(3).map_err(|e| e.to_string())?,
+            ));
+        }
+        Ok(out)
     }
 }
 
