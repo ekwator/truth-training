@@ -66,7 +66,7 @@ export const Dashboard: React.FC = () => {
               <SyncStatus 
                 isOnline={isOnline}
                 pendingOperations={pendingOperations}
-                lastSync={syncStatus?.last_sync ?? null}
+                lastSync={syncStatus?.lastSync ?? null}
               />
               <CreateEventButton />
             </div>
