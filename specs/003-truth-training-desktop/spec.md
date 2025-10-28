@@ -20,7 +20,7 @@ As an operator of Truth Training, I need a minimal, text-only desktop interface 
 7. Given I prefer keyboard, When I press Alt+1..Alt+6, Then the app navigates to the corresponding screens instantly.
 
 ### Edge Cases
-- Empty knowledge base: Context dropdown shows [NEEDS CLARIFICATION: behavior when Data_Schema.md is empty or missing].
+- Empty knowledge base: Context dropdown shows clear empty state; saving events is prohibited until a Context becomes available from the knowledge base.
 - No events: Event Summary lists a clear text state indicating no events exist, actions still available.
 - Large logs: Logs screen remains responsive and supports incremental loading or capped view [NEEDS CLARIFICATION: size limit].
 - Date validation: Start Date cannot be after End Date; invalid input shows clear text error.
@@ -35,14 +35,26 @@ As an operator of Truth Training, I need a minimal, text-only desktop interface 
 - **FR-004**: Home MUST display: Core version (v0.4.2), UI Desktop version (0.2.0), sync status, connected clients, last data update timestamp, and actions (Create New Event, Refresh Data).
 - **FR-005**: New Event MUST provide inputs: Event Name, Description, Context (populated from knowledge base), Start Date, End Date, and actions: Save Event, Clear Form, Go to Event Summary.
 - **FR-006**: Context selection MUST be populated from the knowledge base derived from `docs/Data_Schema.md`.
+  - If the knowledge base is unavailable or empty, the system MUST prohibit saving a new event until a Context is selectable.
 - **FR-007**: Event Summary MUST list events and, upon selection, display description, results (impact), notes, recommendations, with actions Add Impact, Edit Summary, Save Changes, Back to Event List.
 - **FR-008**: Overall Summary MUST display Total Events, Average Impact Level, Last Updated, and a text table with columns: Event | Summary | Impact | Date. It MUST provide Refresh Data and Export Report (text file).
+ - **FR-008**: Overall Summary MUST display Total Events, Average Impact Level, Last Updated, and a text table with columns: Event | Summary | Impact | Date. It MUST provide Refresh Data and Export Report in plain text (.txt) using a fixed template.
 - **FR-009**: Training Results MUST support filters (Date Range, Context) and show ASCII-style graphs; MUST provide Update and Reset Filters actions.
 - **FR-010**: Logs MUST show a scrollable text area and actions: Clear Log, Save Log to File, Refresh.
+ - **FR-010**: Logs MUST show a scrollable text area and actions: Clear Log, Save Log to File, Refresh; pagination MUST be 35 lines per page.
 - **FR-011**: All screens MUST be accessible from the top menu and interlinked via text Back/Next navigations where applicable.
 - **FR-012**: The interface MUST avoid any graphical assets, relying solely on plain text and structured layout.
-- **FR-013**: Data interactions MUST integrate with the Truth Core for persistence and retrieval [NEEDS CLARIFICATION: offline behavior and exact data endpoints].
+- **FR-013**: Data interactions MUST integrate with the Truth Core for persistence and retrieval using an offline-first model: full local create/edit/read; background sync when connectivity resumes. Conflicts MUST use Local-wins policy (preserve local edits; remote updates deferred or merged later).
 - **FR-014**: The UI MUST remain functional on Linux (primary), with cross-platform capability.
+
+## Clarifications
+
+### Session 2025-10-28
+- Q: How should interaction with Core work when offline? → A: Offline-first: full local work, background sync on network.
+- Q: How to resolve sync conflicts (local vs Core)? → A: Local-wins (preserve local edits).
+- Q: Log volume constraint on Logs screen? → A: Pagination of 35 lines.
+- Q: Export format in Overall Summary? → A: Plain text (.txt) fixed template.
+- Q: Behavior if Data_Schema.md missing/empty for Context? → A: Forbid saving event without Context.
 
 ### Key Entities (include if feature involves data)
 - **Event**: name, description, context, start date, end date, status, created/updated timestamps.
