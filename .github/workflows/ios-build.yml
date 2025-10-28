@@ -25,17 +25,19 @@ jobs:
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
         
-      - name: Download iOS Rust libraries (skipped on direct runs)
-        if: ${{ github.event_name == 'workflow_run' }}
+      - name: Download iOS Rust libraries from Cross-Platform run (skipped on direct runs)
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
         uses: actions/download-artifact@v4
         with:
           name: libtruth_core-ios
           path: target/
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
         continue-on-error: true
         
       - name: Check if artifacts were downloaded
         id: check-artifacts
-        if: ${{ github.event_name == 'workflow_run' }}
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
         run: |
           if [ -f "target/aarch64-apple-ios/release/libtruth_core.a" ]; then
             echo "artifacts-found=true" >> $GITHUB_OUTPUT
