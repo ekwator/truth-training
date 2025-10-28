@@ -10,6 +10,10 @@ on:
     types: [completed]
     branches: [master]
   workflow_dispatch:
+  
+permissions:
+  actions: read
+  contents: read
 
 jobs:
   build:
@@ -33,6 +37,7 @@ jobs:
           path: target/
           repository: ${{ github.repository }}
           run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
         
       - name: Check if artifacts were downloaded
