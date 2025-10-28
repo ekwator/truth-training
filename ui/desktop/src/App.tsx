@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from '@/components/system/ErrorBoundary';
 import { ToastProvider } from '@/components/system/Toaster';
 import { ThemeProvider } from '@/components/system/ThemeProvider';
@@ -11,6 +11,42 @@ import { Logs } from '@/pages/Logs';
 
 export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey) {
+        switch (event.key) {
+          case '1':
+            event.preventDefault();
+            setCurrentScreen('home');
+            break;
+          case '2':
+            event.preventDefault();
+            setCurrentScreen('new-event');
+            break;
+          case '3':
+            event.preventDefault();
+            setCurrentScreen('event-summary');
+            break;
+          case '4':
+            event.preventDefault();
+            setCurrentScreen('overall-summary');
+            break;
+          case '5':
+            event.preventDefault();
+            setCurrentScreen('training-results');
+            break;
+          case '6':
+            event.preventDefault();
+            setCurrentScreen('logs');
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const renderScreen = () => {
     switch (currentScreen) {
