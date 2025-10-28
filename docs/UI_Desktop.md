@@ -22,11 +22,27 @@ This document summarizes the Desktop UI (Tauri) implementation with text-only in
 - **Knowledge Base**: `knowledge_base_list` (parses Data_Schema.md)
 - **Logs**: `list_logs`, `clear_logs` (35 lines/page pagination)
 - **Summary**: `get_overall_metrics`, `list_event_rows`, `export_overall_summary_txt`
+- **Configuration**: `get_app_config`, `save_app_config`, `core_status`, `test_http_connection`
 
 ### Navigation & Shortcuts
-- **Top Menu Bar**: [Home] | [New Event] | [Event Summary] | [Overall Summary] | [Training Results] | [Logs]
-- **Keyboard Shortcuts**: Alt+1 (Home), Alt+2 (New Event), Alt+3 (Event Summary), Alt+4 (Overall Summary), Alt+5 (Training Results), Alt+6 (Logs)
+- **Top Menu Bar**: [Home] | [New Event] | [Event Summary] | [Overall Summary] | [Training Results] | [Logs] | [Settings]
+- **Keyboard Shortcuts**: Alt+1 (Home), Alt+2 (New Event), Alt+3 (Event Summary), Alt+4 (Overall Summary), Alt+5 (Training Results), Alt+6 (Logs), Alt+7 (Settings)
 - **Text-Only Design**: No icons, emojis, or graphical assets - pure text and structured layout
+
+### App Settings
+- **Connection Mode Toggle**: Choose between Core (Local) and HTTP API modes
+- **Server Configuration**: IP address and port settings for HTTP mode
+- **Validation Rules**: IP format validation (`^\d{1,3}(\.\d{1,3}){3}$`), port range (1-65535)
+- **Test Connection**: Test Core or HTTP connections with real-time feedback
+- **Persistence**: Configuration saved to `~/.truth-training/config.json`
+- **Configuration Schema**:
+  ```json
+  {
+    "mode": "core" | "http",
+    "server_ip": "127.0.0.1",
+    "server_port": 8080
+  }
+  ```
 
 ### Offline Queue & Sync
 - **Local-Wins Strategy**: Local changes take precedence over remote changes

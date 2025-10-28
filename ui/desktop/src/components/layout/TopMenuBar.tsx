@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type Screen = 'home' | 'new-event' | 'event-summary' | 'overall-summary' | 'training-results' | 'logs';
+export type Screen = 'home' | 'new-event' | 'event-summary' | 'overall-summary' | 'training-results' | 'logs' | 'settings';
 
 interface TopMenuBarProps {
   currentScreen: Screen;
@@ -60,6 +60,14 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigat
               }`}
             >
               Logs
+            </button>
+            <button
+              onClick={() => onNavigate('settings')}
+              className={`px-3 py-2 text-sm font-medium ${
+                currentScreen === 'settings' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
+              }`}
+            >
+              Settings
             </button>
           </div>
         </div>

@@ -1,3 +1,4 @@
+pub mod config;
 pub mod events;
 pub mod impacts;
 pub mod judgments;

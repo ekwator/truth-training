@@ -1,26 +1,112 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSyncStore } from '@/stores/sync';
+import { ApiService } from '@/services/api';
+import { AppConfig, ConnectionTestResult } from '@/types/api';
 
 export const Settings: React.FC = () => {
-  const { syncStatus, isOnline, pendingOperations, startSync } = useSyncStore();
-  const [apiBaseUrl, setApiBaseUrl] = useState(import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1');
-  const [autoSync, setAutoSync] = useState(true);
-  const [syncInterval, setSyncInterval] = useState(30);
+  const { isOnline, pendingOperations } = useSyncStore();
+  const [config, setConfig] = useState<AppConfig>({
+    mode: 'core',
+    server_ip: '127.0.0.1',
+    server_port: 8080
+  });
+  const [loading, setLoading] = useState(false);
+  const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
+  const [lastTestTime, setLastTestTime] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleSaveSettings = () => {
-    // In a real implementation, this would save to localStorage or a config file
-    console.log('Settings saved:', { apiBaseUrl, autoSync, syncInterval });
-  };
+  useEffect(() => {
+    loadConfig();
+  }, []);
 
-  const handleClearQueue = () => {
-    if (window.confirm('Are you sure you want to clear the offline queue? This action cannot be undone.')) {
-      // Note: clearQueue functionality moved to offlineQueue service
-      console.log('Clear queue functionality not yet implemented in UI');
+  const loadConfig = async () => {
+    try {
+      const loadedConfig = await ApiService.getAppConfig();
+      setConfig(loadedConfig);
+    } catch (error) {
+      console.error('Failed to load config:', error);
     }
   };
 
-  const handleForceSync = () => {
-    startSync();
+  const validateConfig = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Validate IP address
+    const ipRegex = /^\d{1,3}(\.\d{1,3}){3}$/;
+    if (!ipRegex.test(config.server_ip)) {
+      newErrors.server_ip = 'Invalid IP address format';
+    }
+
+    // Validate port
+    if (config.server_port < 1 || config.server_port > 65535) {
+      newErrors.server_port = 'Port must be between 1 and 65535';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSaveSettings = async () => {
+    if (!validateConfig()) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await ApiService.saveAppConfig(config);
+      setTestResult({
+        ok: true,
+        message: 'Settings saved successfully'
+      });
+    } catch (error) {
+      setTestResult({
+        ok: false,
+        message: `Failed to save settings: ${error}`
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!validateConfig()) {
+      return;
+    }
+
+    setLoading(true);
+    setTestResult(null);
+
+    try {
+      let result: ConnectionTestResult;
+      
+      if (config.mode === 'core') {
+        result = await ApiService.testCoreConnection();
+      } else {
+        result = await ApiService.testHttpConnection(config.server_ip, config.server_port);
+      }
+
+      setTestResult(result);
+      setLastTestTime(new Date().toLocaleString());
+    } catch (error) {
+      setTestResult({
+        ok: false,
+        message: `Connection test failed: ${error}`
+      });
+      setLastTestTime(new Date().toLocaleString());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleModeChange = (mode: 'core' | 'http') => {
+    setConfig(prev => ({ ...prev, mode }));
+    setTestResult(null);
+    setLastTestTime(null);
+  };
+
+  const handleBack = () => {
+    // This would be handled by the parent component's navigation
+    window.history.back();
   };
 
   return (
@@ -30,8 +116,8 @@ export const Settings: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-              <p className="text-sm text-gray-600">Configure application preferences</p>
+              <h1 className="text-2xl font-bold text-gray-900">Truth Training — App Settings</h1>
+              <p className="text-sm text-gray-600">Configure connection and application preferences</p>
             </div>
           </div>
         </div>
@@ -40,149 +126,165 @@ export const Settings: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
-          {/* API Configuration */}
+          {/* Connection Mode */}
           <div className="bg-white shadow rounded-lg">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">API Configuration</h2>
+              <h2 className="text-lg font-medium text-gray-900">Connection Mode:</h2>
             </div>
             <div className="px-6 py-4 space-y-4">
-              <div>
-                <label htmlFor="api-base-url" className="block text-sm font-medium text-gray-700 mb-2">
-                  API Base URL
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="connection-mode"
+                    value="core"
+                    checked={config.mode === 'core'}
+                    onChange={() => handleModeChange('core')}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-900">Connect to Core (Local)</span>
                 </label>
-                <input
-                  type="url"
-                  id="api-base-url"
-                  value={apiBaseUrl}
-                  onChange={(e) => setApiBaseUrl(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="http://localhost:8080/api/v1"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  The base URL for the Truth Training API
-                </p>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="connection-mode"
+                    value="http"
+                    checked={config.mode === 'http'}
+                    onChange={() => handleModeChange('http')}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-900">Connect via HTTP API</span>
+                </label>
               </div>
             </div>
           </div>
 
-          {/* Sync Configuration */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Sync Configuration</h2>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="auto-sync"
-                  checked={autoSync}
-                  onChange={(e) => setAutoSync(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="auto-sync" className="ml-2 block text-sm text-gray-900">
-                  Enable automatic sync
-                </label>
+          {/* Server Configuration */}
+          {config.mode === 'http' && (
+            <div className="bg-white shadow rounded-lg">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">Server Configuration:</h2>
               </div>
-              
-              <div>
-                <label htmlFor="sync-interval" className="block text-sm font-medium text-gray-700 mb-2">
-                  Sync Interval (seconds)
-                </label>
-                <input
-                  type="number"
-                  id="sync-interval"
-                  value={syncInterval}
-                  onChange={(e) => setSyncInterval(parseInt(e.target.value))}
-                  min="10"
-                  max="300"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  How often to automatically sync offline operations
-                </p>
+              <div className="px-6 py-4 space-y-4">
+                <div>
+                  <label htmlFor="server-ip" className="block text-sm font-medium text-gray-700 mb-1">
+                    Server IP Address:
+                  </label>
+                  <input
+                    type="text"
+                    id="server-ip"
+                    value={config.server_ip}
+                    onChange={(e) => setConfig(prev => ({ ...prev, server_ip: e.target.value }))}
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.server_ip ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="127.0.0.1"
+                  />
+                  {errors.server_ip && (
+                    <p className="mt-1 text-sm text-red-600">{errors.server_ip}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <label htmlFor="server-port" className="block text-sm font-medium text-gray-700 mb-1">
+                    Port:
+                  </label>
+                  <input
+                    type="number"
+                    id="server-port"
+                    value={config.server_port}
+                    onChange={(e) => setConfig(prev => ({ ...prev, server_port: parseInt(e.target.value) || 0 }))}
+                    min="1"
+                    max="65535"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.server_port ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="8080"
+                  />
+                  {errors.server_port && (
+                    <p className="mt-1 text-sm text-red-600">{errors.server_port}</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Sync Status */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Sync Status</h2>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Connection Status</p>
-                  <p className={`text-lg font-semibold ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
-                    {isOnline ? 'Online' : 'Offline'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Pending Operations</p>
-                  <p className="text-lg font-semibold text-gray-900">{pendingOperations}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Last Sync</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {syncStatus?.lastSync ? new Date(syncStatus.lastSync).toLocaleString() : 'Never'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Sync in Progress</p>
-                  <p className={`text-lg font-semibold ${syncStatus?.syncInProgress ? 'text-yellow-600' : 'text-gray-600'}`}>
-                    {syncStatus?.syncInProgress ? 'Yes' : 'No'}
-                  </p>
-                </div>
+          {/* Connection Test Result */}
+          {testResult && (
+            <div className="bg-white shadow rounded-lg">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">Connection Test Result:</h2>
               </div>
-              
-              <div className="flex space-x-4">
-                <button
-                  onClick={handleForceSync}
-                  disabled={!isOnline || pendingOperations === 0}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  Force Sync
-                </button>
-                <button
-                  onClick={handleClearQueue}
-                  disabled={pendingOperations === 0}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  Clear Queue
-                </button>
+              <div className="px-6 py-4">
+                <div className={`flex items-center ${testResult.ok ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className="text-lg mr-2">{testResult.ok ? '✅' : '❌'}</span>
+                  <span className="text-sm">{testResult.message}</span>
+                </div>
+                {lastTestTime && (
+                  <p className="mt-2 text-xs text-gray-500">Last test: {lastTestTime}</p>
+                )}
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Application Info */}
+          {/* Current Status */}
           <div className="bg-white shadow rounded-lg">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Application Information</h2>
+              <h2 className="text-lg font-medium text-gray-900">Current Status:</h2>
             </div>
             <div className="px-6 py-4 space-y-2">
               <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-500">Version</span>
-                <span className="text-sm text-gray-900">0.1.0</span>
+                <span className="text-sm font-medium text-gray-500">Current Mode:</span>
+                <span className="text-sm text-gray-900 capitalize">{config.mode}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-500">Build</span>
-                <span className="text-sm text-gray-900">Development</span>
+                <span className="text-sm font-medium text-gray-500">Connection Status:</span>
+                <span className={`text-sm font-semibold ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-500">Platform</span>
-                <span className="text-sm text-gray-900">Tauri Desktop</span>
+                <span className="text-sm font-medium text-gray-500">Pending Operations:</span>
+                <span className="text-sm text-gray-900">{pendingOperations}</span>
               </div>
+              {lastTestTime && (
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-500">Last Test:</span>
+                  <span className="text-sm text-gray-900">{lastTestTime}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <button
-              onClick={handleSaveSettings}
-              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-            >
-              Save Settings
-            </button>
+          {/* Actions */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">Actions:</h2>
+            </div>
+            <div className="px-6 py-4">
+              <div className="flex space-x-4">
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={loading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Saving...' : 'Save Settings'}
+                </button>
+                <button
+                  onClick={handleTestConnection}
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Testing...' : 'Test Connection'}
+                </button>
+                <button
+                  onClick={handleBack}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                >
+                  Back
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </main>

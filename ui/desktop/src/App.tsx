@@ -9,6 +9,7 @@ import { EventSummary } from '@/pages/EventSummary';
 import { OverallSummary } from '@/pages/OverallSummary';
 import { TrainingResults } from '@/pages/TrainingResults';
 import { Logs } from '@/pages/Logs';
+import { Settings } from '@/pages/Settings';
 
 export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -41,6 +42,10 @@ export const App: React.FC = () => {
             event.preventDefault();
             setCurrentScreen('logs');
             break;
+          case '7':
+            event.preventDefault();
+            setCurrentScreen('settings');
+            break;
         }
       }
     };
@@ -63,6 +68,8 @@ export const App: React.FC = () => {
         return <TrainingResults />;
       case 'logs':
         return <Logs />;
+      case 'settings':
+        return <Settings />;
       default:
         return <Dashboard />;
     }

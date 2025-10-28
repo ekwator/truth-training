@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { config } from '@/config/env';
+import { AppConfig, ConnectionTestResult } from '@/types/api';
 
 // API Configuration
 const API_BASE_URL = config.API_BASE_URL;
@@ -438,12 +439,105 @@ export class ApiService {
   // Knowledge Base
   static async getKnowledgeBaseItems(): Promise<{ id: string; label: string }[]> {
     if (isTauri()) {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const res = await invoke('knowledge_base_list');
-      const { items } = res as { items: { id: string; label: string }[] };
-      return items;
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const res = await invoke('knowledge_base_list');
+        const { items } = res as { items: { id: string; label: string }[] };
+        return items;
+      } catch (error) {
+        console.error('Tauri getKnowledgeBaseItems error:', error);
+        throw new Error('Failed to fetch knowledge base items');
+      }
+    } else {
+      // For web development, return mock data
+      return [
+        { id: 'kb:context_a', label: 'Context A' },
+        { id: 'kb:context_b', label: 'Context B' },
+        { id: 'kb:context_c', label: 'Context C' }
+      ];
     }
-    return [];
+  }
+
+  // Configuration Management
+  static async getAppConfig(): Promise<AppConfig> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const config = await invoke('get_app_config');
+        return config as AppConfig;
+      } catch (error) {
+        console.error('Tauri getAppConfig error:', error);
+        throw new Error('Failed to get app configuration');
+      }
+    } else {
+      // For web development, return default config
+      return {
+        mode: 'http',
+        server_ip: '127.0.0.1',
+        server_port: 8080
+      };
+    }
+  }
+
+  static async saveAppConfig(config: AppConfig): Promise<void> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('save_app_config', { config });
+      } catch (error) {
+        console.error('Tauri saveAppConfig error:', error);
+        throw new Error('Failed to save app configuration');
+      }
+    } else {
+      // For web development, save to localStorage
+      localStorage.setItem('truth_training_config', JSON.stringify(config));
+    }
+  }
+
+  static async testCoreConnection(): Promise<ConnectionTestResult> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = await invoke('core_status');
+        return result as ConnectionTestResult;
+      } catch (error) {
+        console.error('Tauri testCoreConnection error:', error);
+        throw new Error('Failed to test core connection');
+      }
+    } else {
+      // For web development, simulate success
+      return {
+        ok: true,
+        message: 'Core connection simulated (web mode)'
+      };
+    }
+  }
+
+  static async testHttpConnection(ip: string, port: number): Promise<ConnectionTestResult> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = await invoke('test_http_connection', { ip, port });
+        return result as ConnectionTestResult;
+      } catch (error) {
+        console.error('Tauri testHttpConnection error:', error);
+        throw new Error('Failed to test HTTP connection');
+      }
+    } else {
+      // For web development, simulate HTTP test
+      try {
+        const response = await fetch(`http://${ip}:${port}/status`);
+        return {
+          ok: response.ok,
+          message: response.ok ? 'HTTP connection successful' : `HTTP server responded with status: ${response.status}`
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          message: `HTTP connection failed: ${error}`
+        };
+      }
+    }
   }
 }
 
