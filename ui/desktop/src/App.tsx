@@ -4,6 +4,7 @@ import { ToastProvider } from '@/components/system/Toaster';
 import { ThemeProvider } from '@/components/system/ThemeProvider';
 import { TopMenuBar, Screen } from '@/components/layout/TopMenuBar';
 import { Dashboard } from '@/pages/Dashboard';
+import { NewEvent } from '@/pages/NewEvent';
 import { EventSummary } from '@/pages/EventSummary';
 import { OverallSummary } from '@/pages/OverallSummary';
 import { TrainingResults } from '@/pages/TrainingResults';
@@ -53,7 +54,7 @@ export const App: React.FC = () => {
       case 'home':
         return <Dashboard />;
       case 'new-event':
-        return <div className="min-h-screen py-8 px-4">New Event (Placeholder)</div>;
+        return <NewEvent />;
       case 'event-summary':
         return <EventSummary />;
       case 'overall-summary':
