@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useEventsStore } from '@/stores/events';
+import { ApiService } from '@/services/api';
 
 export const CreateEventButton: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +10,7 @@ export const CreateEventButton: React.FC = () => {
     category: ''
   });
   const [loading, setLoading] = useState(false);
+  const [kbItems, setKbItems] = useState<{id:string;label:string}[]>([]);
   const { createEvent } = useEventsStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,6 +39,12 @@ export const CreateEventButton: React.FC = () => {
     setFormData({ title: '', description: '', category: '' });
     setIsOpen(false);
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      ApiService.getKnowledgeBaseItems().then(setKbItems).catch(() => setKbItems([]));
+    }
+  }, [isOpen]);
 
   return (
     <>
@@ -99,11 +107,9 @@ export const CreateEventButton: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select context</option>
-                    <option value="kb:general">KB: General</option>
-                    <option value="kb:science">KB: Science</option>
-                    <option value="kb:technology">KB: Technology</option>
-                    <option value="kb:politics">KB: Politics</option>
-                    <option value="kb:news">KB: News</option>
+                    {kbItems.map(i => (
+                      <option key={i.id} value={i.id}>{i.label}</option>
+                    ))}
                   </select>
                 </div>
 
