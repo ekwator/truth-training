@@ -19,7 +19,6 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({ isOnline, pendingOperati
     return 'Synced';
   };
 
-  const getStatusIcon = () => null;
 
   return (
     <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor()}`}>

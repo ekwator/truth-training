@@ -105,7 +105,6 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onRemove }) => {
     }
   };
 
-  const getIcon = (_type: Toast['type']) => null;
 
   return (
     <div className={`max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden border-l-4 ${getToastStyles(toast.type)}`}>
