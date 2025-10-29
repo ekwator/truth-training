@@ -12,6 +12,10 @@ name = "truth_core"
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib", "staticlib"]
 
+[[bin]]
+name = "truth_core_server"
+path = "src/main.rs"
+
 [workspace]
 members = ["app","core","ui/desktop/src-tauri"]
 resolver = "2"
