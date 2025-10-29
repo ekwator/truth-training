@@ -1,6 +1,8 @@
 use serde::Serialize;
 use tauri::command;
 use std::path::PathBuf;
+use std::fs;
+use dirs;
 
 #[derive(Debug, Serialize)]
 pub struct KBItem {
@@ -39,11 +41,39 @@ fn parse_kb_from_markdown(md: &str) -> Vec<KBItem> {
 
 #[command]
 pub async fn knowledge_base_list() -> Result<KBListResponse, String> {
-    // try bundled json first in future; for now read markdown
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push("../../docs/Data_Schema.md");
-    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let items = parse_kb_from_markdown(&content);
+    // Resolution order:
+    // 1) User-provided markdown at ~/.truth-training/Data_Schema.md
+    // 2) Development markdown near repo (best-effort)
+    // 3) Built-in minimal defaults
+
+    // 1) Check user config dir
+    if let Some(home) = dirs::home_dir() {
+        let user_md = home.join(".truth-training").join("Data_Schema.md");
+        if user_md.exists() {
+            if let Ok(content) = fs::read_to_string(&user_md) {
+                let mut items = parse_kb_from_markdown(&content);
+                if !items.is_empty() {
+                    return Ok(KBListResponse { items });
+                }
+            }
+        }
+    }
+
+    // 2) Try dev-relative file (non-fatal on failure)
+    let mut items = Vec::new();
+    let mut dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    dev_path.push("../../docs/Data_Schema.md");
+    if let Ok(content) = fs::read_to_string(&dev_path) {
+        items = parse_kb_from_markdown(&content);
+    }
+    if items.is_empty() {
+        // 3) Fallback minimal defaults
+        items = vec![
+            KBItem { id: "kb:general".to_string(), label: "General".to_string() },
+            KBItem { id: "kb:technology".to_string(), label: "Technology".to_string() },
+            KBItem { id: "kb:science".to_string(), label: "Science".to_string() },
+        ];
+    }
     Ok(KBListResponse { items })
 }
 
