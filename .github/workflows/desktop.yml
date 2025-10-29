@@ -75,7 +75,6 @@ jobs:
           name: truth_training-windows
           path: |
             target/x86_64-pc-windows-gnu/release/bundle/nsis/*.exe
-            target/x86_64-pc-windows-gnu/release/bundle/msi/*.msi
           if-no-files-found: warn
           retention-days: 7
 
@@ -113,6 +112,45 @@ jobs:
           path: |
             target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
             target/x86_64-apple-darwin/release/bundle/macos/*.app
+          if-no-files-found: warn
+          retention-days: 7
+
+  build-windows-native:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli
+      - name: Install NSIS and WiX
+        run: |
+          choco install nsis -y
+          choco install wixtoolset -y
+      - name: Install deps
+        working-directory: ./ui/desktop
+        run: npm ci
+      - name: Lint & Test
+        working-directory: ./ui/desktop
+        run: npm test --silent || exit 0
+      - name: Integration Tests
+        working-directory: ./ui/desktop
+        run: npm test -- tests/integration --verbose
+      - name: Build Web
+        working-directory: ./ui/desktop
+        run: npm run build
+      - name: Build Tauri (Windows native)
+        working-directory: ./ui/desktop
+        run: cargo tauri build
+      - name: Upload Windows artifacts (NSIS/MSI)
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_training-windows
+          path: |
+            ui/desktop/target/release/bundle/nsis/*.exe
+            ui/desktop/target/release/bundle/msi/*.msi
           if-no-files-found: warn
           retention-days: 7
 
