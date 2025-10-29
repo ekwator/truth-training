@@ -166,8 +166,8 @@ jobs:
         with:
           name: truth_training-windows
           path: |
-            ui/desktop/target/release/bundle/nsis/*.exe
-            ui/desktop/target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
+            target/release/bundle/msi/*.msi
           if-no-files-found: warn
           retention-days: 7
 
