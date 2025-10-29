@@ -125,10 +125,18 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Tauri CLI
         run: cargo install tauri-cli
+      - name: Install ImageMagick (for ICO conversion)
+        run: choco install imagemagick -y
       - name: Install NSIS and WiX
         run: |
           choco install nsis -y
           choco install wixtoolset -y
+      - name: Create Windows ICO icon
+        working-directory: ./ui/desktop/src-tauri
+        run: |
+          if (!(Test-Path icons/icon.ico)) {
+            magick convert icons/icon.png -resize 256x256 icons/icon.ico
+          }
       - name: Install deps
         working-directory: ./ui/desktop
         run: npm ci
