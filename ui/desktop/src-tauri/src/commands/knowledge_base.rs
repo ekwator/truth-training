@@ -51,7 +51,7 @@ pub async fn knowledge_base_list() -> Result<KBListResponse, String> {
         let user_md = home.join(".truth-training").join("Data_Schema.md");
         if user_md.exists() {
             if let Ok(content) = fs::read_to_string(&user_md) {
-                let mut items = parse_kb_from_markdown(&content);
+                let items = parse_kb_from_markdown(&content);
                 if !items.is_empty() {
                     return Ok(KBListResponse { items });
                 }
