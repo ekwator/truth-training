@@ -72,7 +72,7 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: truth_training-windows
+          name: truth_training-windows-cross
           path: |
             target/x86_64-pc-windows-gnu/release/bundle/nsis/*.exe
           if-no-files-found: warn
@@ -164,7 +164,7 @@ jobs:
       - name: Upload Windows artifacts (NSIS/MSI)
         uses: actions/upload-artifact@v4
         with:
-          name: truth_training-windows
+          name: truth_training-windows-native
           path: |
             target/release/bundle/nsis/*.exe
             target/release/bundle/msi/*.msi
