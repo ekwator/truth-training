@@ -4,7 +4,6 @@ pub mod verify_json;
 
 use std::ffi::CString;
 use std::os::raw::c_char;
-use serde_json::json;
 
 #[cfg(target_os = "android")]
 use jni::objects::{JClass, JString};
@@ -45,6 +44,7 @@ pub extern "system" fn Java_com_truth_training_client_TruthCore_processJsonReque
     _class: JClass,
     request: JString,
 ) -> jstring {
+    use serde_json::json;
     let input: String = match env.get_string(&request) {
         Ok(jstr) => jstr.into(),
         Err(_) => return env.new_string(r#"{"error":"invalid_input"}"#).unwrap().into_raw(),
