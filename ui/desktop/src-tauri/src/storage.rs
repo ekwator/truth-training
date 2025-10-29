@@ -104,6 +104,7 @@ impl Db {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn insert_or_update_summary(
         &self,
         id: &str,
