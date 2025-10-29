@@ -141,11 +141,7 @@ fn is_valid_ip(ip: &str) -> bool {
     }
     
     for part in parts {
-        if let Ok(num) = part.parse::<u8>() {
-            if num > 255 {
-                return false;
-            }
-        } else {
+        if part.parse::<u8>().is_err() {
             return false;
         }
     }
