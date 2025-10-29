@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::{command, State};
+use tauri::command;
 use dirs;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -56,7 +56,8 @@ pub async fn save_app_config(config: AppConfig) -> Result<(), String> {
         return Err("Invalid IP address format".to_string());
     }
     
-    if config.server_port == 0 || config.server_port > 65535 {
+    // u16 cannot exceed 65535; only check for zero (invalid)
+    if config.server_port == 0 {
         return Err("Invalid port. Must be between 1 and 65535".to_string());
     }
     
@@ -94,7 +95,8 @@ pub async fn test_http_connection(ip: String, port: u16) -> Result<CoreStatus, S
         return Err("Invalid IP address format".to_string());
     }
     
-    if port == 0 || port > 65535 {
+    // u16 cannot exceed 65535; only check for zero (invalid)
+    if port == 0 {
         return Err("Invalid port. Must be between 1 and 65535".to_string());
     }
     
