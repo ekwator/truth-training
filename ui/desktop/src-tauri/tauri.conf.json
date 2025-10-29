@@ -28,7 +28,8 @@
     "targets": "all",
     "icon": [
       "icons/icon.png",
-      "icons/icon-512.png"
+      "icons/icon-512.png",
+      "icons/icon.ico"
     ]
   }
 }
