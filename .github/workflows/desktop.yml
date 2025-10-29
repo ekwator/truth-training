@@ -99,6 +99,14 @@ jobs:
       - name: Integration Tests
         working-directory: ./ui/desktop
         run: npm test -- tests/integration --verbose
+      - name: Install ImageMagick (for icon conversion)
+        run: brew install imagemagick
+      - name: Prepare icons (ensure ICO exists)
+        working-directory: ./ui/desktop/src-tauri
+        run: |
+          if [ ! -f icons/icon.ico ]; then
+            magick convert icons/icon.png -resize 256x256 icons/icon.ico
+          fi
       - name: Build Web
         working-directory: ./ui/desktop
         run: npm run build
