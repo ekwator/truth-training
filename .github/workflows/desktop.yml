@@ -134,7 +134,8 @@ jobs:
         run: npm ci
       - name: Lint & Test
         working-directory: ./ui/desktop
-        run: npm test --silent || exit 0
+        run: npm test --silent
+        continue-on-error: true
       - name: Integration Tests
         working-directory: ./ui/desktop
         run: npm test -- tests/integration --verbose
