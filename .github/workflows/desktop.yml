@@ -364,4 +364,106 @@ jobs:
           fi
           echo "✅ All Cargo crate versions match docs/VERSION_REGISTRY.md"
 
+permissions:
+  contents: write
+
+  build-test-linux-windows:
+    steps:
+      - name: Publish Release (tag push)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          tag_name: ${{ github.ref_name }}
+          name: Desktop UI build (${{ github.ref_name }})
+          files: |
+            **/artifacts/**/*
+            **/*.AppImage
+            **/*.dmg
+            **/*.msi
+            **/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Release (draft on branch)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          tag_name: desktop-${{ github.sha }}
+          name: Desktop UI build (${{ github.sha }})
+          files: |
+            **/artifacts/**/*
+            **/*.AppImage
+            **/*.dmg
+            **/*.msi
+            **/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-test-macos:
+    steps:
+      - name: Publish Release (tag push)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          tag_name: ${{ github.ref_name }}
+          name: Desktop UI build (${{ github.ref_name }})
+          files: |
+            **/artifacts/**/*
+            **/*.AppImage
+            **/*.dmg
+            **/*.msi
+            **/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Release (draft on branch)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          tag_name: desktop-${{ github.sha }}
+          name: Desktop UI build (${{ github.sha }})
+          files: |
+            **/artifacts/**/*
+            **/*.AppImage
+            **/*.dmg
+            **/*.msi
+            **/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows-native:
+    steps:
+      - name: Publish Release (tag push)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          tag_name: ${{ github.ref_name }}
+          name: Desktop UI build (${{ github.ref_name }})
+          files: |
+            **/artifacts/**/*
+            **/*.AppImage
+            **/*.dmg
+            **/*.msi
+            **/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Release (draft on branch)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          tag_name: desktop-${{ github.sha }}
+          name: Desktop UI build (${{ github.sha }})
+          files: |
+            **/artifacts/**/*
+            **/*.AppImage
+            **/*.dmg
+            **/*.msi
+            **/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
