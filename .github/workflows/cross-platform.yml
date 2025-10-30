@@ -3,6 +3,8 @@ name: Cross-Platform Build
 on:
   push:
     branches: [ master ]
+    tags:
+      - '**'
   pull_request:
     branches: [ master ]
   workflow_dispatch:
