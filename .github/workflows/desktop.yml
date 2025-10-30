@@ -131,10 +131,13 @@ jobs:
             sub(/^v/, "", ver); # use sub, not gensub
             print pkg ":" ver;
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
-
-          echo "🔍 Extracting actual package versions from Cargo metadata..."
           cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
-
+          # Normalize CR/LF line endings to LF
+          sed -i 's/\r$//' expected_versions.txt
+          sed -i 's/\r$//' actual_versions.txt
+          # Ensure trailing newlines
+          echo >> expected_versions.txt
+          echo >> actual_versions.txt
           echo "🔍 Comparing expected vs actual..."
           diff_out=$(diff -u expected_versions.txt actual_versions.txt || true)
           if [ -n "$diff_out" ]; then
@@ -235,10 +238,13 @@ jobs:
             sub(/^v/, "", ver); # use sub, not gensub
             print pkg ":" ver;
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
-
-          echo "🔍 Extracting actual package versions from Cargo metadata..."
           cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
-
+          # Normalize CR/LF line endings to LF
+          sed -i 's/\r$//' expected_versions.txt
+          sed -i 's/\r$//' actual_versions.txt
+          # Ensure trailing newlines
+          echo >> expected_versions.txt
+          echo >> actual_versions.txt
           echo "🔍 Comparing expected vs actual..."
           diff_out=$(diff -u expected_versions.txt actual_versions.txt || true)
           if [ -n "$diff_out" ]; then
@@ -342,10 +348,13 @@ jobs:
             sub(/^v/, "", ver); # use sub, not gensub
             print pkg ":" ver;
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
-
-          echo "🔍 Extracting actual package versions from Cargo metadata..."
           cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
-
+          # Normalize CR/LF line endings to LF
+          sed -i 's/\r$//' expected_versions.txt
+          sed -i 's/\r$//' actual_versions.txt
+          # Ensure trailing newlines
+          echo >> expected_versions.txt
+          echo >> actual_versions.txt
           echo "🔍 Comparing expected vs actual..."
           diff_out=$(diff -u expected_versions.txt actual_versions.txt || true)
           if [ -n "$diff_out" ]; then
