@@ -1,57 +1,78 @@
-## Installation layout and runtime data paths by OS
+## Installation Layout and Runtime Data Paths by OS
 
-This document summarizes where the Desktop UI installers place the app and where runtime files (configuration, database, knowledge base) are created.
+This document summarizes where the various Truth Training executables (Desktop UI, Server, CLI) are built, and where they look for configuration files and databases on each supported operating system. It includes build artifact names for each GitHub Actions workflow.
 
-Version baseline: Desktop UI v0.1.3
+### Artifact Types and Build Locations (produced by CI)
 
-### Linux (Deb/AppImage)
+#### Desktop UI (Tauri)
+- Bundled as system installers:
+  - Linux: `.deb`, `.AppImage` (see paths below)
+  - macOS: `.app`, `.dmg`
+  - Windows: `.exe` (NSIS), `.msi`
+- Artifacts appear as:
+  - `truth_training-linux` (AppImage/.deb)
+  - `truth_training-macos` (.app/.dmg)
+  - `truth_training-windows-*` (.exe/.msi)
 
-- Installer outputs (CI):
-  - Deb: `target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb`
-  - AppImage: `target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage`
+#### Server (Standalone application; for running as service)
+- Built binaries:
+  - Linux: `target/x86_64-unknown-linux-gnu/release/truth_core_server`
+  - macOS: `target/x86_64-apple-darwin/release/truth_core_server`
+  - Windows: `target/release/truth_core_server.exe`
+- Service installer artifacts (from server-package.yml workflow):
+  - Linux: `.deb`/`.rpm` with systemd unit
+  - macOS: `.pkg` with LaunchDaemon plist
+  - Windows: `.exe` installer using NSIS & WinSW
+- Artifacts:
+  - `truth_core_server-linux-bin`, `truth_core_server-macos-bin`, `truth_core_server-windows-bin`, etc.
+  - Server-package workflow: `truth-core-server-linux`, `truth-core-server-macos`, `truth-core-server-windows`
 
-- App install location (Deb):
-  - Executable and resources under system paths managed by dpkg (e.g., `/usr/bin`, `/usr/lib/...`), depending on distribution conventions.
+#### CLI Tools
+- Example: `truthctl`
+- Output binary appears as:
+  - `target/release/truthctl` (Linux/macOS)
+  - `target/release/truthctl.exe` (Windows)
 
-- Runtime data created by the app:
-  - Configuration file: `~/.truth-training/config.json`
-  - Knowledge base override (optional): `~/.truth-training/Data_Schema.md`
-  - SQLite database: `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite`
+---
 
-### macOS (.app, .dmg)
+### Where Each App Stores Config and Data Files
 
-- Installer outputs (CI):
-  - App bundle: `target/x86_64-apple-darwin/release/bundle/macos/Truth Training.app`
-  - Disk image: `target/x86_64-apple-darwin/release/bundle/dmg/*.dmg`
+Regardless of how the app is installed (from package, workflow artifact, or manual build), **configuration and database files are created in the user's home directory** unless CLI arguments specify otherwise.
 
-- App install location:
-  - Drag-and-drop into `/Applications` (typical), the app bundle is self-contained.
+**Desktop UI and Server (Tauri, truth_core_server):**
+- Configuration file:  `~/.truth-training/config.json` (Linux/macOS), `%USERPROFILE%\.truth-training\config.json` (Windows)
+- SQLite database:     `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite` (Linux), `~/Library/Application Support/TruthTraining/truth_training.sqlite` (macOS), `%APPDATA%\TruthTraining\truth_training.sqlite` (Windows)
+- Knowledge base override (optional):
+  - `~/.truth-training/Data_Schema.md` (Linux/macOS)
+  - `%USERPROFILE%\.truth-training\Data_Schema.md` (Windows)
 
-- Runtime data created by the app:
-  - Configuration file: `~/.truth-training/config.json`
-  - Knowledge base override (optional): `~/.truth-training/Data_Schema.md`
-  - SQLite database: `~/Library/Application Support/TruthTraining/truth_training.sqlite`
+**CLI Tools (e.g., truthctl):**
+- By default, the CLI stores config and DB in the current working directory unless you provide `--db` and `--peers` arguments, but may also use paths like:
+  - Config JSON: `~/.truthctl/config.json` (see app/src/config_utils.rs)
+  - Database: Default is `truth_db.sqlite` in CWD, override with `--db path/to/file.sqlite`
 
-### Windows (NSIS .exe, MSI .msi)
+---
 
-- Installer outputs (CI):
-  - Windows cross (Ubuntu runner): `target/x86_64-pc-windows-gnu/release/bundle/nsis/*.exe`
-  - Windows native (Windows runner):
-    - NSIS: `target/release/bundle/nsis/*.exe`
-    - MSI: `target/release/bundle/msi/*.msi`
+### Local/Manual Builds
+- All executables and artifacts will appear in the `target/release/` subdirectory of your workspace.
+- You can run UI, server, and CLI binaries directly; they will use the above config/database locations, based on the current user's home.
+- Running with different users or arguments allows running isolated environments on the same system.
 
-- App install location:
-  - Typically under `C:\Program Files\Truth Training\` (exact path depends on installer and architecture).
+---
 
-- Runtime data created by the app:
-  - Configuration file: `%USERPROFILE%\.truth-training\config.json`
-  - Knowledge base override (optional): `%USERPROFILE%\.truth-training\Data_Schema.md`
-  - SQLite database: `%APPDATA%\TruthTraining\truth_training.sqlite`
+### Platform Table: Where artifacts go and where data is stored
 
-### Resolution notes and sources
+| Platform      | UI Installer              | Server Artifact/Installer              | CLI Binary           | Config File Location                        | DB File Location                                                          |
+|--------------|---------------------------|----------------------------------------|----------------------|---------------------------------------------|---------------------------------------------------------------------------|
+| Linux        | `.deb`, `.AppImage`       | `.deb`, `.rpm`, or plain binary        | `truthctl`           | `~/.truth-training/config.json`, `~/.truthctl/config.json` | `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite`     |
+| macOS        | `.app`, `.dmg`            | `.pkg` or plain binary                 | `truthctl`           | `~/.truth-training/config.json`, `~/.truthctl/config.json` | `~/Library/Application Support/TruthTraining/truth_training.sqlite`         |
+| Windows      | `.exe` (NSIS), `.msi`     | `.exe` (NSIS+WinSW) or plain binary    | `truthctl.exe`       | `%USERPROFILE%\.truth-training\config.json`, `%USERPROFILE%\.truthctl\config.json` | `%APPDATA%\TruthTraining\truth_training.sqlite`                |
 
-- Config path (all OS): defined in `ui/desktop/src-tauri/src/commands/config.rs` via `~/.truth-training/config.json`.
-- Knowledge base resolution order: `~/.truth-training/Data_Schema.md`, then dev fallback, then built-in defaults. See `ui/desktop/src-tauri/src/commands/knowledge_base.rs`.
-- SQLite path: created using `directories::ProjectDirs` with qualifier `("com", "truth-training", "TruthTraining")`, then `data_dir()/truth_training.sqlite`. See `ui/desktop/src-tauri/src/storage.rs`.
+---
+
+### Additional Notes
+- You can use the same repo and working directory to build/run all three (UI, Server, CLI) from source on any platform; all outputs are placed under `target/release`, and config is written per user.
+- Service installers (from server-package.yml) register truth_core_server to auto-start as a background process, storing all data/configs in the same user scope as described above.
+- The Desktop UI and Server share config layout by default; the CLI may use custom locations depending on invocation.
 
 
