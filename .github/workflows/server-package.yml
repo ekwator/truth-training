@@ -68,9 +68,10 @@ jobs:
       - name: Build server (release)
         run: cargo build --release --bin truth_core_server --features desktop
       - name: Download WinSW
+        shell: pwsh
         run: |
-          $url = "https://github.com/winsw/winsw/releases/download/v3.0.3/WinSW-net461.exe"
-          Invoke-WebRequest -Uri $url -OutFile winsw.exe
+          $url = "https://github.com/winsw/winsw/releases/download/v3.0.3/WinSW-x64.exe"
+          curl.exe -L -o winsw.exe $url
       - name: Prepare service files
         shell: pwsh
         run: |
