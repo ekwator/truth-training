@@ -128,6 +128,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Validate Cargo crate versions against docs/VERSION_REGISTRY.md
+        shell: bash
         run: |
           set -e
           echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
@@ -246,6 +247,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Validate Cargo crate versions against docs/VERSION_REGISTRY.md
+        shell: bash
         run: |
           set -e
           echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
@@ -367,6 +369,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Validate Cargo crate versions against docs/VERSION_REGISTRY.md
+        shell: bash
         run: |
           set -e
           echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."

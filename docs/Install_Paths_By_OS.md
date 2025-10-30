@@ -1,3 +1,5 @@
+⚙️ Version Reference: See spec/README.md or docs/VERSION_REGISTRY.md for current version map.
+
 ## Installation Layout and Runtime Data Paths by OS
 
 This document summarizes where the various Truth Training executables (Desktop UI, Server, CLI) are built, and where they look for configuration files and databases on each supported operating system. It includes build artifact names for each GitHub Actions workflow.

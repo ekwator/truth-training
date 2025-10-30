@@ -15,6 +15,11 @@ use commands::logs::{list_logs, clear_logs};
 use commands::summary::{get_overall_metrics, list_event_rows, export_overall_summary_txt};
 
 fn main() {
+    if std::env::args().any(|a| a == "--version") {
+        println!("Truth UI Desktop v{}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
+
     let db = storage::Db::initialize().expect("failed to init db");
 
     tauri::Builder::default()

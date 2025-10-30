@@ -62,6 +62,10 @@ fn save_peers(path: &str, peers: &[PeerEntry]) -> std::io::Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if std::env::args().any(|a| a == "--version") {
+        println!("truthctl CLI v{}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
     let cli = Cli::parse();
     let conn = open_db(&cli.db)?;
     init_db(&conn)?;
