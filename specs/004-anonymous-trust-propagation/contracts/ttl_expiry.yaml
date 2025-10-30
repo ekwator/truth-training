@@ -1,0 +1,38 @@
+openapi: 3.0.0
+info:
+  title: ATPP TTL Expiry Check
+  version: 0.1.0
+paths:
+  /event/ttl-status:
+    get:
+      summary: Проверить статус (TTL/отражение) события
+      parameters:
+        - name: event_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ID события
+      responses:
+        '200':
+          description: TTL status for event
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [expired, not_confirmed, confirmed]
+                    description: Статус TTL и отражения события
+                  message:
+                    type: string
+                    description: Разъяснение (если event не отражён — «событие не было подтверждено/доверено»)
+                  errors:
+                    type: array
+                    items:
+                      type: string
+        '404':
+          description: Event not found
+
+

@@ -1,0 +1,43 @@
+openapi: 3.0.0
+info:
+  title: ATPP Rate Limit Violation
+  version: 0.1.0
+paths:
+  /event:
+    post:
+      summary: Публикация события (rate limiting)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                public_key:
+                  type: string
+                  description: Публичный ключ узла
+                timestamp:
+                  type: string
+                  format: date-time
+      responses:
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [blocked]
+                  retry_after:
+                    type: integer
+                    description: Через сколько секунд можно повторить попытку
+                  message:
+                    type: string
+                    description: Сообщение "rate limit exceeded"
+                  errors:
+                    type: array
+                    items:
+                      type: string
+
+
