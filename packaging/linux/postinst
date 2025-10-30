@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl daemon-reload || true
+  systemctl enable truth-training-server || true
+  systemctl start truth-training-server || true
+fi
+
+exit 0
+
+
