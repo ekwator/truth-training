@@ -1,0 +1,52 @@
+openapi: 3.0.0
+info:
+  title: ATPP Event Creation
+  version: 0.1.0
+paths:
+  /event:
+    post:
+      summary: Создать новое событие (event)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - payload
+                - ttl
+                - signature
+              properties:
+                payload:
+                  type: string
+                  format: binary
+                  description: Зашифрованные данные события
+                ttl:
+                  type: integer
+                  minimum: 10
+                  maximum: 86400
+                  description: Время жизни события (секунд)
+                signature:
+                  type: string
+                  description: Криптографическая подпись (не раскрывает ID)
+      responses:
+        '200':
+          description: Event created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event_id:
+                    type: string
+                    description: Уникальный идентификатор события
+                  state:
+                    type: string
+                    enum: [created, pending]
+                  errors:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          description: Validation error
+
+

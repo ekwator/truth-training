@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+if [ "$1" = "purge" ]; then
+  userdel truthd || true
+  groupdel truthd || true
+  rm -rf /etc/truth-core /
+  rm -rf /var/log/truth-core
+fi
+rm -f /etc/systemd/system/truth-core.service
+systemctl daemon-reload || true
