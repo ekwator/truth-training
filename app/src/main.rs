@@ -107,6 +107,10 @@ enum Commands {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if std::env::args().any(|a| a == "--version") {
+        println!("Truth Training Server v{}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
     println!("Truth Training App started!");
     let cli = Cli::parse();
     let mut conn = open_db(&cli.db)?;

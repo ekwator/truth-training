@@ -1,3 +1,5 @@
+⚙️ Version Reference: See spec/README.md or docs/VERSION_REGISTRY.md for current version map.
+
 ## CI Workflows: Directory Structure and Artifacts
 
 This document explains the relevant directory structure for the Desktop UI builds and the artifact files produced by the GitHub Actions workflows defined in `.github/workflows/desktop.yml`.

@@ -1,3 +1,9 @@
+## Current Version
+Truth UI Desktop v0.1.3
+Compatible with Core/Server v0.4.2
+
+> Note: This UI uses a text-only interface (no graphical icons) for all functionality unless otherwise stated.
+
 ## Desktop UI Updates (Tauri) - Text-Only Interface
 
 This document summarizes the Desktop UI (Tauri) implementation with text-only interface design.

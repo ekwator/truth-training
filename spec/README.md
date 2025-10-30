@@ -1,5 +1,23 @@
 # Truth Training – Cross-Platform Spec Kit v0.4.0
 
+| Component       | Current Version |
+|-----------------|-----------------|
+| Core Library    | v0.4.2          |
+| Server          | v0.4.2          |
+| CLI (truthctl)  | v0.4.2          |
+| Desktop UI      | v0.1.3          |
+| Spec Document   | v0.4.0          |
+
+> The Spec Document version refers only to documentation and does not determine software versions.
+
+## Documentation Index
+- Core Architecture Spec → [spec/README.md](../spec/README.md)
+- Build Artifacts → [docs/CI_Workflows_Artifacts.md](../docs/CI_Workflows_Artifacts.md)
+- Install Paths by OS → [docs/Install_Paths_By_OS.md](../docs/Install_Paths_By_OS.md)
+- Desktop UI Guide → [docs/UI_Desktop.md](../docs/UI_Desktop.md)
+- Technical Implementation → [docs/Technical_Specification.md](../docs/Technical_Specification.md)
+- Version Registry → [docs/VERSION_REGISTRY.md](../docs/VERSION_REGISTRY.md)
+
 Purpose: A comprehensive guide for building cross-platform Truth Training applications. This Spec-Kit provides precise instructions for AI agents and developers to build mobile (iOS + Android) and desktop versions using platform-specific features and FFI interfaces.
 
 ## Overview
