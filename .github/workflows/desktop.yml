@@ -55,15 +55,27 @@ jobs:
         working-directory: ./ui/desktop
         run: npm run build
       - name: Build Server (Linux host)
-        run: cargo build --release --package truth-training-server
-      - name: Ensure Linux postinst executable
-        run: chmod +x packaging/linux/postinst
+        run: cargo build --release --bin truth_core_server --features desktop --target x86_64-unknown-linux-gnu
       - name: Build Tauri (Linux)
         working-directory: ./ui/desktop
         run: cargo tauri build --target x86_64-unknown-linux-gnu
       - name: Build Tauri (Windows)
         working-directory: ./ui/desktop
         run: cargo tauri build --target x86_64-pc-windows-gnu
+      - name: Upload Server binary (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_core_server-linux-bin
+          path: target/x86_64-unknown-linux-gnu/release/truth_core_server
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload Server binary (Windows cross)
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_core_server-windows-bin-cross
+          path: target/x86_64-pc-windows-gnu/release/truth_core_server.exe
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -118,13 +130,14 @@ jobs:
         working-directory: ./ui/desktop
         run: cargo tauri build --target x86_64-apple-darwin
       - name: Build Server (macOS host)
-        run: cargo build --release --package truth-training-server
-      - name: Install LaunchDaemon (macOS)
-        run: |
-          sudo chmod +x packaging/macos/postinstall.sh
-          sudo bash packaging/macos/postinstall.sh || true
-      - name: Verify LaunchDaemon (macOS)
-        run: launchctl list | grep truth.training.server || true
+        run: cargo build --release --bin truth_core_server --features desktop --target x86_64-apple-darwin
+      - name: Upload Server binary (macOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_core_server-macos-bin
+          path: target/x86_64-apple-darwin/release/truth_core_server
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -174,18 +187,14 @@ jobs:
         working-directory: ./ui/desktop
         run: cargo tauri build
       - name: Build Server (Windows host)
-        run: cargo build --release --package truth-training-server
-      - name: Download WinSW
-        run: |
-          $url = "https://github.com/winsw/winsw/releases/download/v3.0.3/WinSW-net461.exe"
-          Invoke-WebRequest -Uri $url -OutFile packaging/windows/winsw.exe
-      - name: Install Windows Service (WinSW)
-        working-directory: ./packaging/windows
-        run: |
-          Copy-Item ..\..\target\release\truth-training-server.exe .\truth-training-server.exe -Force
-          powershell -ExecutionPolicy Bypass -File postinstall.ps1
-      - name: Verify Windows Service
-        run: sc query TruthTrainingServer || true
+        run: cargo build --release --bin truth_core_server --features desktop
+      - name: Upload Server binary (Windows native)
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_core_server-windows-bin
+          path: target/release/truth_core_server.exe
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload Windows artifacts (NSIS/MSI)
         uses: actions/upload-artifact@v4
         with:
