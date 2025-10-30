@@ -9,6 +9,9 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   android:
     name: Android (ARM64 + x86_64)
@@ -99,5 +102,3 @@ jobs:
             target/**/release/*truth_core.dll.lib
           if-no-files-found: warn
 
-permissions:
-  contents: write

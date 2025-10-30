@@ -5,9 +5,12 @@ on:
     workflows: ["Cross-Platform Build"]
     types: [completed]
     branches: [master]
+    tags:
+      - '**'
   workflow_dispatch:
   
 permissions:
+  actions: read
   contents: write
 
 jobs:
