@@ -117,27 +117,37 @@ jobs:
       - name: Create NSIS installer
         shell: pwsh
         run: |
-          $nsis = @'
+          $nsisScript = @'
           !include "MUI2.nsh"
           Name "Truth Core Server"
           OutFile "truth-core-server-windows.exe"
-          InstallDir "$PROGRAMFILES\TruthCoreServer"
+          InstallDir "$PROGRAMFILES\\TruthCoreServer"
           Page directory
           Page instfiles
           Section "Install"
             SetOutPath "$INSTDIR"
-            File "target\release\truth_core_server.exe"
+            File "target\\release\\truth_core_server.exe"
             File "winsw.exe"
             File "truth_core_server.xml"
-            Rename "$INSTDIR\winsw.exe" "$INSTDIR\TruthCoreServer.exe"
-            nsExec::ExecToStack '"$INSTDIR\TruthCoreServer.exe" install'
-            nsExec::ExecToStack '"$INSTDIR\TruthCoreServer.exe" start'
+            Rename "$INSTDIR\\winsw.exe" "$INSTDIR\\TruthCoreServer.exe"
+            nsExec::ExecToStack '"$INSTDIR\\TruthCoreServer.exe" install'
+            nsExec::ExecToStack '"$INSTDIR\\TruthCoreServer.exe" start'
           SectionEnd
           '@
-          Set-Content -Path installer.nsi -Value $nsis
-          $makensis = Join-Path ${env:ProgramFiles(x86)} "NSIS/makensis.exe"
-          if (-not (Test-Path $makensis)) { $makensis = "C:\\Program Files (x86)\\NSIS\\makensis.exe" }
-          & "$makensis" installer.nsi
+          Set-Content -Path installer.nsi -Value $nsisScript
+          
+          # Locate makensis.exe reliably
+          $makensis = Get-Command makensis.exe -ErrorAction SilentlyContinue
+          if (-not $makensis) {
+            $makensis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          }
+          if (-not (Test-Path $makensis)) {
+            Write-Host "makensis.exe not found, listing NSIS dir for debug..."
+            Get-ChildItem "C:\Program Files (x86)\NSIS" -Recurse | Select-Object FullName
+            throw "makensis.exe not found"
+          }
+
+          & "$makensis" "installer.nsi"
       - name: Verify binary
         shell: pwsh
         continue-on-error: true
