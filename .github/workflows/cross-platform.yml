@@ -96,3 +96,6 @@ jobs:
             target/**/release/*truth_core.lib
             target/**/release/*truth_core.dll.lib
           if-no-files-found: warn
+
+permissions:
+  contents: write
