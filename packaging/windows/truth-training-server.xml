@@ -1,0 +1,10 @@
+<service>
+  <id>TruthTrainingServer</id>
+  <name>Truth Training Server</name>
+  <description>Local HTTP API server for Truth Training Desktop</description>
+  <executable>%BASE%\truth-training-server.exe</executable>
+  <logpath>%BASE%\logs</logpath>
+  <startmode>Automatic</startmode>
+</service>
+
+

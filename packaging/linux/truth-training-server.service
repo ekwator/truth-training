@@ -1,0 +1,13 @@
+[Unit]
+Description=Truth Training Server
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/truth-training-server
+Restart=always
+User=truth
+
+[Install]
+WantedBy=multi-user.target
+
+

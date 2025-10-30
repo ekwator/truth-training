@@ -54,12 +54,28 @@ jobs:
       - name: Build Web
         working-directory: ./ui/desktop
         run: npm run build
+      - name: Build Server (Linux host)
+        run: cargo build --release --bin truth_core_server --features desktop --target x86_64-unknown-linux-gnu
       - name: Build Tauri (Linux)
         working-directory: ./ui/desktop
         run: cargo tauri build --target x86_64-unknown-linux-gnu
       - name: Build Tauri (Windows)
         working-directory: ./ui/desktop
         run: cargo tauri build --target x86_64-pc-windows-gnu
+      - name: Upload Server binary (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_core_server-linux-bin
+          path: target/x86_64-unknown-linux-gnu/release/truth_core_server
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload Server binary (Windows cross)
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_core_server-windows-bin-cross
+          path: target/x86_64-pc-windows-gnu/release/truth_core_server.exe
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -113,6 +129,15 @@ jobs:
       - name: Build Tauri (macOS)
         working-directory: ./ui/desktop
         run: cargo tauri build --target x86_64-apple-darwin
+      - name: Build Server (macOS host)
+        run: cargo build --release --bin truth_core_server --features desktop --target x86_64-apple-darwin
+      - name: Upload Server binary (macOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_core_server-macos-bin
+          path: target/x86_64-apple-darwin/release/truth_core_server
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -161,6 +186,15 @@ jobs:
       - name: Build Tauri (Windows native)
         working-directory: ./ui/desktop
         run: cargo tauri build
+      - name: Build Server (Windows host)
+        run: cargo build --release --bin truth_core_server --features desktop
+      - name: Upload Server binary (Windows native)
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth_core_server-windows-bin
+          path: target/release/truth_core_server.exe
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload Windows artifacts (NSIS/MSI)
         uses: actions/upload-artifact@v4
         with:
