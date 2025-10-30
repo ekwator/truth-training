@@ -132,9 +132,9 @@ jobs:
             print pkg ":" ver;
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
           cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
-          # Normalize CR/LF line endings to LF
-          sed -i 's/\r$//' expected_versions.txt
-          sed -i 's/\r$//' actual_versions.txt
+          # Normalize CR/LF line endings to LF (portable, works on GNU/BSD sed)
+          sed -i'' -e 's/\r$//' expected_versions.txt
+          sed -i'' -e 's/\r$//' actual_versions.txt
           # Ensure trailing newlines
           echo >> expected_versions.txt
           echo >> actual_versions.txt
@@ -239,9 +239,9 @@ jobs:
             print pkg ":" ver;
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
           cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
-          # Normalize CR/LF line endings to LF
-          sed -i 's/\r$//' expected_versions.txt
-          sed -i 's/\r$//' actual_versions.txt
+          # Normalize CR/LF line endings to LF (portable, works on GNU/BSD sed)
+          sed -i'' -e 's/\r$//' expected_versions.txt
+          sed -i'' -e 's/\r$//' actual_versions.txt
           # Ensure trailing newlines
           echo >> expected_versions.txt
           echo >> actual_versions.txt
@@ -349,9 +349,9 @@ jobs:
             print pkg ":" ver;
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
           cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
-          # Normalize CR/LF line endings to LF
-          sed -i 's/\r$//' expected_versions.txt
-          sed -i 's/\r$//' actual_versions.txt
+          # Normalize CR/LF line endings to LF (portable, works on GNU/BSD sed)
+          sed -i'' -e 's/\r$//' expected_versions.txt
+          sed -i'' -e 's/\r$//' actual_versions.txt
           # Ensure trailing newlines
           echo >> expected_versions.txt
           echo >> actual_versions.txt
