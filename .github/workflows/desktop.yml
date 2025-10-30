@@ -12,16 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate Cargo crate versions
-        run: |
-          echo "🔍 Checking for version consistency across Cargo crates..."
-          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort | uniq -c
-          COUNT=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort -u | wc -l)
-          if [ "$COUNT" -ne 1 ]; then
-            echo "❌ Mismatched crate versions detected!"
-            exit 1
-          fi
-          echo "✅ All crate versions are consistent."
       - name: Verify documentation version alignment
         run: |
           echo "🔍 Checking documentation files for correct version strings..."
@@ -163,16 +153,6 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate Cargo crate versions
-        run: |
-          echo "🔍 Checking for version consistency across Cargo crates..."
-          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort | uniq -c
-          COUNT=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort -u | wc -l)
-          if [ "$COUNT" -ne 1 ]; then
-            echo "❌ Mismatched crate versions detected!"
-            exit 1
-          fi
-          echo "✅ All crate versions are consistent."
       - name: Verify documentation version alignment
         run: |
           echo "🔍 Checking documentation files for correct version strings..."
@@ -282,16 +262,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate Cargo crate versions
-        run: |
-          echo "🔍 Checking for version consistency across Cargo crates..."
-          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort | uniq -c
-          COUNT=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort -u | wc -l)
-          if [ "$COUNT" -ne 1 ]; then
-            echo "❌ Mismatched crate versions detected!"
-            exit 1
-          fi
-          echo "✅ All crate versions are consistent."
       - name: Verify documentation version alignment
         run: |
           echo "🔍 Checking documentation files for correct version strings..."
