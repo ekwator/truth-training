@@ -106,7 +106,9 @@ jobs:
           SectionEnd
           '@
           Set-Content -Path installer.nsi -Value $nsis
-          makensis installer.nsi
+          $makensis = Join-Path ${env:ProgramFiles(x86)} "NSIS/makensis.exe"
+          if (-not (Test-Path $makensis)) { $makensis = "C:\\Program Files (x86)\\NSIS\\makensis.exe" }
+          & "$makensis" installer.nsi
       - name: Verify binary
         run: .\target\release\truth_core_server.exe --version || exit 0
       - name: Upload Windows installer
