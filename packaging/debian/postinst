@@ -1,0 +1,14 @@
+#!/bin/bash
+set -e
+id -u truthd &>/dev/null || useradd --system --no-create-home --shell /usr/sbin/nologin truthd
+groupadd -f truthd
+mkdir -p /etc/truth-core/
+chown truthd:truthd /etc/truth-core
+chmod 750 /etc/truth-core
+mkdir -p /var/log/truth-core
+touch /var/log/truth-core/service.log
+chown truthd:truthd /var/log/truth-core -R
+install -m 644 /usr/lib/truth-core/truth-core.service /etc/systemd/system/truth-core.service
+systemctl daemon-reload
+systemctl enable truth-core.service
+systemctl start truth-core.service
