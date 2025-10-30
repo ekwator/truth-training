@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify documentation version alignment
+        shell: bash
         run: |
           echo "🔍 Checking documentation files for correct version strings..."
           MAIN_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
@@ -122,19 +123,13 @@ jobs:
         run: |
           set -e
           echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
-          awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Component/ && !/Spec Document/ {
+          awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Crate/ && !/^\|--/ {
             gsub(/^[ ]+|[ ]+$/, "", $2);
             gsub(/^[ ]+|[ ]+$/, "", $3);
-            pkg = tolower($2);
+            pkg = $2;
             ver = $3;
-            ver = gensub(/^v/, "", 1, ver); # Remove leading v
-            # Map user-friendly component to actual crate names if needed
-            if (pkg == "core library") pkg_name = "core_lib";
-            else if (pkg == "server") pkg_name = "truth_core_server";
-            else if (pkg == "cli (truthctl)") pkg_name = "truthctl";
-            else if (pkg == "desktop ui") pkg_name = "truth-ui-desktop";
-            else pkg_name = pkg;
-            print pkg_name ":" ver;
+            sub(/^v/, "", ver); # use sub, not gensub
+            print pkg ":" ver;
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
 
           echo "🔍 Extracting actual package versions from Cargo metadata..."
@@ -154,6 +149,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify documentation version alignment
+        shell: bash
         run: |
           echo "🔍 Checking documentation files for correct version strings..."
           MAIN_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
@@ -231,19 +227,13 @@ jobs:
         run: |
           set -e
           echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
-          awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Component/ && !/Spec Document/ {
+          awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Crate/ && !/^\|--/ {
             gsub(/^[ ]+|[ ]+$/, "", $2);
             gsub(/^[ ]+|[ ]+$/, "", $3);
-            pkg = tolower($2);
+            pkg = $2;
             ver = $3;
-            ver = gensub(/^v/, "", 1, ver); # Remove leading v
-            # Map user-friendly component to actual crate names if needed
-            if (pkg == "core library") pkg_name = "core_lib";
-            else if (pkg == "server") pkg_name = "truth_core_server";
-            else if (pkg == "cli (truthctl)") pkg_name = "truthctl";
-            else if (pkg == "desktop ui") pkg_name = "truth-ui-desktop";
-            else pkg_name = pkg;
-            print pkg_name ":" ver;
+            sub(/^v/, "", ver); # use sub, not gensub
+            print pkg ":" ver;
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
 
           echo "🔍 Extracting actual package versions from Cargo metadata..."
@@ -263,6 +253,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify documentation version alignment
+        shell: bash
         run: |
           echo "🔍 Checking documentation files for correct version strings..."
           MAIN_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
@@ -343,19 +334,13 @@ jobs:
         run: |
           set -e
           echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
-          awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Component/ && !/Spec Document/ {
+          awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Crate/ && !/^\|--/ {
             gsub(/^[ ]+|[ ]+$/, "", $2);
             gsub(/^[ ]+|[ ]+$/, "", $3);
-            pkg = tolower($2);
+            pkg = $2;
             ver = $3;
-            ver = gensub(/^v/, "", 1, ver); # Remove leading v
-            # Map user-friendly component to actual crate names if needed
-            if (pkg == "core library") pkg_name = "core_lib";
-            else if (pkg == "server") pkg_name = "truth_core_server";
-            else if (pkg == "cli (truthctl)") pkg_name = "truthctl";
-            else if (pkg == "desktop ui") pkg_name = "truth-ui-desktop";
-            else pkg_name = pkg;
-            print pkg_name ":" ver;
+            sub(/^v/, "", ver); # use sub, not gensub
+            print pkg ":" ver;
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
 
           echo "🔍 Extracting actual package versions from Cargo metadata..."
