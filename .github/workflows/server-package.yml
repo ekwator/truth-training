@@ -110,7 +110,11 @@ jobs:
           if (-not (Test-Path $makensis)) { $makensis = "C:\\Program Files (x86)\\NSIS\\makensis.exe" }
           & "$makensis" installer.nsi
       - name: Verify binary
-        run: .\target\release\truth_core_server.exe --version || exit 0
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          & .\target\release\truth_core_server.exe --help
+          Write-Host "Verification invoked"
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:

@@ -30,21 +30,6 @@
       "icons/icon.png",
       "icons/icon-512.png",
       "icons/icon.ico"
-    ],
-    "linux": {
-      "deb": {
-        "files": [
-          { "source": "../target/release/truth-training-server", "dest": "/usr/local/bin" },
-          { "source": "../../packaging/linux/truth-training-server.service", "dest": "/lib/systemd/system" },
-          { "source": "../../packaging/linux/postinst", "dest": "/DEBIAN/postinst" }
-        ]
-      },
-      "rpm": {
-        "files": [
-          { "source": "../target/release/truth-training-server", "dest": "/usr/local/bin" },
-          { "source": "../../packaging/linux/truth-training-server.service", "dest": "/lib/systemd/system" }
-        ]
-      }
-    }
+    ]
   }
 }
