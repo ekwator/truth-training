@@ -22,8 +22,8 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-      - name: Build truth_core binary
-        run: cargo build --release --bin truth_core
+      - name: Build truth_core_server binary
+        run: cargo build --release --bin truth_core_server
       - name: Prepare packaging deps
         run: sudo apt-get update && sudo apt-get install -y dpkg-dev
       - name: Build .deb package
