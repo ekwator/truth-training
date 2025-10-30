@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::command;
+use tauri::{command, State};
 use dirs;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -124,6 +124,91 @@ pub async fn test_http_connection(ip: String, port: u16) -> Result<CoreStatus, S
             })
         }
     }
+}
+
+#[command]
+pub async fn init_app(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, String> {
+    // 1) Reset config to defaults (overwrite)
+    let default_cfg = AppConfig::default();
+    let cfg_path = get_config_path()?;
+    if let Some(parent) = cfg_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create config directory: {}", e))?;
+    }
+    let content = serde_json::to_string_pretty(&default_cfg)
+        .map_err(|e| format!("Failed to serialize default config: {}", e))?;
+    fs::write(&cfg_path, content)
+        .map_err(|e| format!("Failed to write default config: {}", e))?;
+
+    // 2) Reset database using the current connection
+    let conn = db.0.lock();
+    // Remove data from known tables and vacuum. This avoids file handle issues across platforms.
+    let sql_cleanup = r#"
+        PRAGMA foreign_keys = OFF;
+        DELETE FROM judgments;
+        DELETE FROM impacts;
+        DELETE FROM summaries;
+        DELETE FROM logs;
+        DELETE FROM events;
+        PRAGMA wal_checkpoint(TRUNCATE);
+        VACUUM;
+        PRAGMA foreign_keys = ON;
+    "#;
+    conn.execute_batch(sql_cleanup)
+        .map_err(|e| format!("Failed to reset database: {}", e))?;
+
+    // 3) Recreate schema to ensure integrity (idempotent)
+    // storage::Db::initialize uses the same schema; here we run its batch again.
+    let sql_schema = r#"
+            PRAGMA journal_mode=WAL;
+            CREATE TABLE IF NOT EXISTS events (
+              id TEXT PRIMARY KEY,
+              title TEXT NOT NULL,
+              description TEXT,
+              context_id TEXT NOT NULL,
+              start_date TEXT,
+              end_date TEXT,
+              created_at TEXT NOT NULL,
+              updated_at TEXT,
+              status TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS impacts (
+              id TEXT PRIMARY KEY,
+              event_id TEXT NOT NULL,
+              impact_level INTEGER NOT NULL CHECK(impact_level >= 1 AND impact_level <= 5),
+              notes TEXT,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY(event_id) REFERENCES events(id)
+            );
+            CREATE TABLE IF NOT EXISTS summaries (
+              id TEXT PRIMARY KEY,
+              event_id TEXT NOT NULL UNIQUE,
+              summary_text TEXT,
+              recommendations TEXT,
+              updated_at TEXT NOT NULL,
+              FOREIGN KEY(event_id) REFERENCES events(id)
+            );
+            CREATE TABLE IF NOT EXISTS judgments (
+              id TEXT PRIMARY KEY,
+              event_id TEXT NOT NULL,
+              assessment TEXT NOT NULL,
+              confidence_level REAL NOT NULL,
+              reasoning TEXT,
+              submitted_at TEXT NOT NULL,
+              FOREIGN KEY(event_id) REFERENCES events(id)
+            );
+            CREATE TABLE IF NOT EXISTS logs (
+              id TEXT PRIMARY KEY,
+              timestamp TEXT NOT NULL,
+              source TEXT NOT NULL,
+              level TEXT NOT NULL,
+              message TEXT NOT NULL
+            );
+        "#;
+    conn.execute_batch(sql_schema)
+        .map_err(|e| format!("Failed to recreate schema: {}", e))?;
+
+    Ok(CoreStatus { ok: true, message: "Initialized config and database".to_string() })
 }
 
 fn get_config_path() -> Result<PathBuf, String> {

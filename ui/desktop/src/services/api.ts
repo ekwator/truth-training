@@ -539,6 +539,22 @@ export class ApiService {
       }
     }
   }
+
+  static async initApp(): Promise<ConnectionTestResult> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = await invoke('init_app');
+        return result as ConnectionTestResult;
+      } catch (error) {
+        console.error('Tauri initApp error:', error);
+        throw new Error('Failed to initialize application');
+      }
+    } else {
+      // Simulate init in web mode
+      return { ok: true, message: 'Initialized (web mode simulation)' };
+    }
+  }
 }
 
 // Export the axios instance for custom requests

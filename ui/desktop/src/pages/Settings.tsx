@@ -109,6 +109,20 @@ export const Settings: React.FC = () => {
     window.history.back();
   };
 
+  const handleInit = async () => {
+    setLoading(true);
+    setTestResult(null);
+    try {
+      const result = await ApiService.initApp();
+      setTestResult(result);
+      await loadConfig();
+    } catch (error) {
+      setTestResult({ ok: false, message: `Init failed: ${error}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -276,6 +290,13 @@ export const Settings: React.FC = () => {
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Testing...' : 'Test Connection'}
+                </button>
+                <button
+                  onClick={handleInit}
+                  disabled={loading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Initializing...' : 'Init'}
                 </button>
                 <button
                   onClick={handleBack}
