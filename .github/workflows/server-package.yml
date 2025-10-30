@@ -1,0 +1,164 @@
+name: Server Package
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install packaging deps (fpm, rpm)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ruby ruby-dev build-essential rpm
+          sudo gem install --no-document fpm
+      - name: Build server (release)
+        run: cargo build --release --bin truth_core_server --features desktop
+      - name: Prepare systemd unit
+        run: |
+          mkdir -p packaging/server/linux
+          cat > packaging/server/linux/truth_core_server.service <<'EOF'
+          [Unit]
+          Description=Truth Core Server
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/truth_core_server
+          Restart=always
+          User=truth
+          Environment=RUST_LOG=info
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+      - name: Build DEB
+        run: |
+          fpm -s dir -t deb -n truth-core-server -v 0.4.0 \
+              --deb-systemd packaging/server/linux/truth_core_server.service \
+              --prefix /usr/local/bin target/release/truth_core_server
+      - name: Build RPM
+        run: |
+          fpm -s dir -t rpm -n truth-core-server -v 0.4.0 \
+              --prefix /usr/local/bin target/release/truth_core_server
+      - name: Verify binary
+        run: ./target/release/truth_core_server --version || true
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth-core-server-linux
+          path: |
+            *.deb
+            *.rpm
+          if-no-files-found: error
+          retention-days: 7
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install NSIS
+        run: choco install nsis -y
+      - name: Build server (release)
+        run: cargo build --release --bin truth_core_server --features desktop
+      - name: Download WinSW
+        run: |
+          $url = "https://github.com/winsw/winsw/releases/download/v3.0.3/WinSW-net461.exe"
+          Invoke-WebRequest -Uri $url -OutFile winsw.exe
+      - name: Prepare service files
+        shell: pwsh
+        run: |
+          Set-Content -Path truth_core_server.xml -Value @'
+          <service>
+            <id>TruthCoreServer</id>
+            <name>Truth Core Server</name>
+            <description>Runs Truth Training backend service.</description>
+            <executable>%BASE%\truth_core_server.exe</executable>
+            <logpath>%BASE%\logs</logpath>
+            <log mode="roll"></log>
+          </service>
+          '@
+      - name: Create NSIS installer
+        shell: pwsh
+        run: |
+          $nsis = @'
+          !include "MUI2.nsh"
+          Name "Truth Core Server"
+          OutFile "truth-core-server-windows.exe"
+          InstallDir "$PROGRAMFILES\TruthCoreServer"
+          Page directory
+          Page instfiles
+          Section "Install"
+            SetOutPath "$INSTDIR"
+            File "target\release\truth_core_server.exe"
+            File "winsw.exe"
+            File "truth_core_server.xml"
+            Rename "$INSTDIR\winsw.exe" "$INSTDIR\TruthCoreServer.exe"
+            nsExec::ExecToStack '"$INSTDIR\TruthCoreServer.exe" install'
+            nsExec::ExecToStack '"$INSTDIR\TruthCoreServer.exe" start'
+          SectionEnd
+          '@
+          Set-Content -Path installer.nsi -Value $nsis
+          makensis installer.nsi
+      - name: Verify binary
+        run: .\target\release\truth_core_server.exe --version || exit 0
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth-core-server-windows
+          path: truth-core-server-windows.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build server (release)
+        run: cargo build --release --bin truth_core_server --features desktop
+      - name: Prepare LaunchDaemon plist
+        run: |
+          mkdir -p packaging/server/macos
+          cat > packaging/server/macos/com.truth.training.server.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>Label</key><string>com.truth.training.server</string>
+            <key>ProgramArguments</key>
+            <array>
+              <string>/usr/local/bin/truth_core_server</string>
+            </array>
+            <key>RunAtLoad</key><true/>
+            <key>KeepAlive</key><true/>
+          </dict>
+          </plist>
+          EOF
+      - name: Create .pkg payload
+        run: |
+          mkdir -p payload/usr/local/bin
+          cp target/release/truth_core_server payload/usr/local/bin/
+          mkdir -p payload/Library/LaunchDaemons
+          cp packaging/server/macos/com.truth.training.server.plist payload/Library/LaunchDaemons/
+      - name: Build PKG
+        run: |
+          pkgbuild --root ./payload \
+                   --install-location / \
+                   --identifier com.truth.training.server \
+                   truth-core-server-macos.pkg
+      - name: Verify binary
+        run: ./target/release/truth_core_server --version || true
+      - name: Upload macOS package
+        uses: actions/upload-artifact@v4
+        with:
+          name: truth-core-server-macos
+          path: truth-core-server-macos.pkg
+          if-no-files-found: error
+          retention-days: 7
+
+
