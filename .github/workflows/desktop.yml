@@ -12,6 +12,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate Cargo crate versions
+        run: |
+          echo "🔍 Checking for version consistency across Cargo crates..."
+          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort | uniq -c
+          COUNT=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort -u | wc -l)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "❌ Mismatched crate versions detected!"
+            exit 1
+          fi
+          echo "✅ All crate versions are consistent."
+      - name: Verify documentation version alignment
+        run: |
+          echo "🔍 Checking documentation files for correct version strings..."
+          MAIN_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
+
+          # Check VERSION_REGISTRY.md
+          if ! grep -q "v${MAIN_VERSION}" docs/VERSION_REGISTRY.md; then
+            echo "❌ VERSION_REGISTRY.md does not contain v${MAIN_VERSION}"
+            exit 1
+          fi
+
+          # Check spec/README.md
+          if ! grep -q "v${MAIN_VERSION}" spec/README.md; then
+            echo "❌ spec/README.md does not contain v${MAIN_VERSION}"
+            exit 1
+          fi
+
+          # Check UI_Desktop.md for matching core/server version
+          if ! grep -q "Core/Server v${MAIN_VERSION}" docs/UI_Desktop.md && ! grep -q "Core/Server version: v${MAIN_VERSION}" docs/UI_Desktop.md; then
+            echo "❌ docs/UI_Desktop.md missing correct core/server version reference"
+            exit 1
+          fi
+
+          echo "✅ All documentation files reference correct version v${MAIN_VERSION}"
       - uses: actions/setup-node@v4
         with:
           node-version: '18'
@@ -93,11 +127,75 @@ jobs:
             target/x86_64-pc-windows-gnu/release/bundle/nsis/*.exe
           if-no-files-found: warn
           retention-days: 7
+      - name: Validate Cargo crate versions against docs/VERSION_REGISTRY.md
+        run: |
+          set -e
+          echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
+          awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Component/ && !/Spec Document/ {
+            gsub(/^[ ]+|[ ]+$/, "", $2);
+            gsub(/^[ ]+|[ ]+$/, "", $3);
+            pkg = tolower($2);
+            ver = $3;
+            ver = gensub(/^v/, "", 1, ver); # Remove leading v
+            # Map user-friendly component to actual crate names if needed
+            if (pkg == "core library") pkg_name = "core_lib";
+            else if (pkg == "server") pkg_name = "truth_core_server";
+            else if (pkg == "cli (truthctl)") pkg_name = "truthctl";
+            else if (pkg == "desktop ui") pkg_name = "truth-ui-desktop";
+            else pkg_name = pkg;
+            print pkg_name ":" ver;
+          }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
+
+          echo "🔍 Extracting actual package versions from Cargo metadata..."
+          cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
+
+          echo "🔍 Comparing expected vs actual..."
+          diff_out=$(diff -u expected_versions.txt actual_versions.txt || true)
+          if [ -n "$diff_out" ]; then
+            echo "❌ Version mismatch detected between docs/VERSION_REGISTRY.md and Cargo crates:"
+            echo "$diff_out"
+            exit 1
+          fi
+          echo "✅ All Cargo crate versions match docs/VERSION_REGISTRY.md"
 
   build-test-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate Cargo crate versions
+        run: |
+          echo "🔍 Checking for version consistency across Cargo crates..."
+          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort | uniq -c
+          COUNT=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort -u | wc -l)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "❌ Mismatched crate versions detected!"
+            exit 1
+          fi
+          echo "✅ All crate versions are consistent."
+      - name: Verify documentation version alignment
+        run: |
+          echo "🔍 Checking documentation files for correct version strings..."
+          MAIN_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
+
+          # Check VERSION_REGISTRY.md
+          if ! grep -q "v${MAIN_VERSION}" docs/VERSION_REGISTRY.md; then
+            echo "❌ VERSION_REGISTRY.md does not contain v${MAIN_VERSION}"
+            exit 1
+          fi
+
+          # Check spec/README.md
+          if ! grep -q "v${MAIN_VERSION}" spec/README.md; then
+            echo "❌ spec/README.md does not contain v${MAIN_VERSION}"
+            exit 1
+          fi
+
+          # Check UI_Desktop.md for matching core/server version
+          if ! grep -q "Core/Server v${MAIN_VERSION}" docs/UI_Desktop.md && ! grep -q "Core/Server version: v${MAIN_VERSION}" docs/UI_Desktop.md; then
+            echo "❌ docs/UI_Desktop.md missing correct core/server version reference"
+            exit 1
+          fi
+
+          echo "✅ All documentation files reference correct version v${MAIN_VERSION}"
       - uses: actions/setup-node@v4
         with:
           node-version: '18'
@@ -147,11 +245,75 @@ jobs:
             target/x86_64-apple-darwin/release/bundle/macos/*.app
           if-no-files-found: warn
           retention-days: 7
+      - name: Validate Cargo crate versions against docs/VERSION_REGISTRY.md
+        run: |
+          set -e
+          echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
+          awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Component/ && !/Spec Document/ {
+            gsub(/^[ ]+|[ ]+$/, "", $2);
+            gsub(/^[ ]+|[ ]+$/, "", $3);
+            pkg = tolower($2);
+            ver = $3;
+            ver = gensub(/^v/, "", 1, ver); # Remove leading v
+            # Map user-friendly component to actual crate names if needed
+            if (pkg == "core library") pkg_name = "core_lib";
+            else if (pkg == "server") pkg_name = "truth_core_server";
+            else if (pkg == "cli (truthctl)") pkg_name = "truthctl";
+            else if (pkg == "desktop ui") pkg_name = "truth-ui-desktop";
+            else pkg_name = pkg;
+            print pkg_name ":" ver;
+          }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
+
+          echo "🔍 Extracting actual package versions from Cargo metadata..."
+          cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
+
+          echo "🔍 Comparing expected vs actual..."
+          diff_out=$(diff -u expected_versions.txt actual_versions.txt || true)
+          if [ -n "$diff_out" ]; then
+            echo "❌ Version mismatch detected between docs/VERSION_REGISTRY.md and Cargo crates:"
+            echo "$diff_out"
+            exit 1
+          fi
+          echo "✅ All Cargo crate versions match docs/VERSION_REGISTRY.md"
 
   build-windows-native:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate Cargo crate versions
+        run: |
+          echo "🔍 Checking for version consistency across Cargo crates..."
+          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort | uniq -c
+          COUNT=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[].version' | sort -u | wc -l)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "❌ Mismatched crate versions detected!"
+            exit 1
+          fi
+          echo "✅ All crate versions are consistent."
+      - name: Verify documentation version alignment
+        run: |
+          echo "🔍 Checking documentation files for correct version strings..."
+          MAIN_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
+
+          # Check VERSION_REGISTRY.md
+          if ! grep -q "v${MAIN_VERSION}" docs/VERSION_REGISTRY.md; then
+            echo "❌ VERSION_REGISTRY.md does not contain v${MAIN_VERSION}"
+            exit 1
+          fi
+
+          # Check spec/README.md
+          if ! grep -q "v${MAIN_VERSION}" spec/README.md; then
+            echo "❌ spec/README.md does not contain v${MAIN_VERSION}"
+            exit 1
+          fi
+
+          # Check UI_Desktop.md for matching core/server version
+          if ! grep -q "Core/Server v${MAIN_VERSION}" docs/UI_Desktop.md && ! grep -q "Core/Server version: v${MAIN_VERSION}" docs/UI_Desktop.md; then
+            echo "❌ docs/UI_Desktop.md missing correct core/server version reference"
+            exit 1
+          fi
+
+          echo "✅ All documentation files reference correct version v${MAIN_VERSION}"
       - uses: actions/setup-node@v4
         with:
           node-version: '18'
@@ -204,5 +366,35 @@ jobs:
             target/release/bundle/msi/*.msi
           if-no-files-found: warn
           retention-days: 7
+      - name: Validate Cargo crate versions against docs/VERSION_REGISTRY.md
+        run: |
+          set -e
+          echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
+          awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Component/ && !/Spec Document/ {
+            gsub(/^[ ]+|[ ]+$/, "", $2);
+            gsub(/^[ ]+|[ ]+$/, "", $3);
+            pkg = tolower($2);
+            ver = $3;
+            ver = gensub(/^v/, "", 1, ver); # Remove leading v
+            # Map user-friendly component to actual crate names if needed
+            if (pkg == "core library") pkg_name = "core_lib";
+            else if (pkg == "server") pkg_name = "truth_core_server";
+            else if (pkg == "cli (truthctl)") pkg_name = "truthctl";
+            else if (pkg == "desktop ui") pkg_name = "truth-ui-desktop";
+            else pkg_name = pkg;
+            print pkg_name ":" ver;
+          }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
+
+          echo "🔍 Extracting actual package versions from Cargo metadata..."
+          cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
+
+          echo "🔍 Comparing expected vs actual..."
+          diff_out=$(diff -u expected_versions.txt actual_versions.txt || true)
+          if [ -n "$diff_out" ]; then
+            echo "❌ Version mismatch detected between docs/VERSION_REGISTRY.md and Cargo crates:"
+            echo "$diff_out"
+            exit 1
+          fi
+          echo "✅ All Cargo crate versions match docs/VERSION_REGISTRY.md"
 
 
