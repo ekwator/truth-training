@@ -1,0 +1,7 @@
+Package: truth-core-service
+Version: 0.4.2
+Section: base
+Priority: optional
+Architecture: amd64
+Maintainer: ekwator <admin@yourdomain.tld>
+Description: Truth Core Distributed Trust Engine (systemd сервис, autostart, no-login user)
