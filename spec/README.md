@@ -407,3 +407,37 @@ cargo build --target aarch64-apple-ios --features mobile
 ```
 
 This Spec-Kit ensures consistent cross-platform development while maintaining optimal performance and minimal resource usage for each target platform.
+
+## Working Directory and Data Storage Conventions
+
+All Truth Training binaries—Desktop UI, Server, and CLI—store configuration files and databases in the current user's home directory by default, **regardless of whether installed as an application, service, or run via CLI**.
+
+- Desktop UI & Server: `~/.truth-training/config.json` (macOS/Linux), `%USERPROFILE%\.truth-training\config.json` (Windows)
+- SQLite DB: Platform standard (see Install_Paths_By_OS.md)
+- CLI: Defaults to current directory, but can use `~/.truthctl/config.json` and user-specified db path via `--db` argument.
+
+This ensures configuration, keys, and offline data persist identically across local builds, installer-based apps, services, or direct CLI execution (unless CLI arguments override them).
+
+## Build Artifacts and CI Outputs
+
+Artifacts are created and uploaded by distinct GitHub workflows (see CI_Workflows_Artifacts.md for detail):
+
+| Workflow              | App/OS         | Artifact Type      | Main Output Path/Name                  |
+|---------------------- |--------------- |------------------- |----------------------------------------|
+| desktop.yml           | Linux          | UI app, server bin | .deb, .AppImage, truth_core_server-linux-bin |
+| desktop.yml           | Windows        | UI app, server bin | .exe (NSIS), .msi, truth_core_server-windows-bin |
+| desktop.yml           | macOS          | UI app, server bin | .app, .dmg, truth_core_server-macos-bin |
+| server-package.yml    | Linux          | service installer  | truth-core-server-linux (deb/rpm)       |
+| server-package.yml    | Windows        | service installer  | truth-core-server-windows (.exe, NSIS)  |
+| server-package.yml    | macOS          | service installer  | truth-core-server-macos (.pkg)          |
+
+
+## Platform Data Directories (Summary)
+
+| Platform      | Config Location                              | DB Location                                                        |
+|--------------|----------------------------------------------|--------------------------------------------------------------------|
+| Linux        | `~/.truth-training/config.json`               | `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite` |
+| macOS        | `~/.truth-training/config.json`               | `~/Library/Application Support/TruthTraining/truth_training.sqlite` |
+| Windows      | `%USERPROFILE%\.truth-training\config.json`  | `%APPDATA%\TruthTraining\truth_training.sqlite`                   |
+
+> For more details, see `docs/Install_Paths_By_OS.md` and `docs/CI_Workflows_Artifacts.md`.
