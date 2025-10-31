@@ -70,8 +70,7 @@ pub async fn start_nearby_sync(
                         let conn_clone = conn_arc.clone();
                         let id_clone = id_arc.clone();
                         tokio::spawn(async move {
-                            let guard = conn_clone.lock().await;
-                            if let Err(e) = crate::p2p::sync::bidirectional_sync_with_peer(&url_cloned, &id_clone, &*guard).await {
+                            if let Err(e) = crate::p2p::sync::bidirectional_sync_with_peer(&url_cloned, &id_clone, conn_clone.clone()).await {
                                 log::warn!("nearby sync with {} failed: {}", url_cloned, e);
                             } else {
                                 log::info!("nearby sync with {} succeeded", url_cloned);
