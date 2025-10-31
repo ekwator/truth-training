@@ -80,21 +80,17 @@ pub async fn get_relay_stats() -> Vec<RelayStat> {
 
 /// Flush relay metrics to database and update node_metrics table
 #[allow(dead_code)]
-pub async fn flush_relay_metrics_to_db(conn: &Connection) -> anyhow::Result<()> {
+pub async fn flush_relay_metrics_to_db(conn: std::sync::Arc<tokio::sync::Mutex<Connection>>) -> anyhow::Result<()> {
     let stats = get_relay_stats().await;
     let mut relay_data = Vec::new();
-    
     for stat in stats {
-        // Extract pubkey from peer_url (assuming it's in the URL or we need to map it)
-        // For now, we'll use the peer_url as the identifier
-        let pubkey = stat.peer_url.clone(); // This should be mapped to actual pubkey
+        let pubkey = stat.peer_url.clone();
         relay_data.push((pubkey, stat.relay_rate));
     }
-    
     if !relay_data.is_empty() {
-        core_lib::storage::flush_relay_metrics(conn, &relay_data)?;
+        let guard = conn.lock().await;
+        core_lib::storage::flush_relay_metrics(&*guard, &relay_data)?;
     }
-    
     Ok(())
 }
 
@@ -256,10 +252,7 @@ pub async fn bidirectional_sync_with_peer(
         Ok(sync_result) => {
             // Записываем успешный результат и сразу флешим, чтобы метрики попали в БД
             record_relay_result(peer_url, true).await;
-            {
-                let guard = conn.lock().await;
-                let _ = flush_relay_metrics_to_db(&*guard).await;
-            }
+            let _ = flush_relay_metrics_to_db(conn.clone()).await;
             // Обновляем peer_history: используем средний quality_index сети как прокси качества пира
             let avg_quality_index: f32 = {
                 let guard = conn.lock().await;
@@ -732,10 +725,7 @@ pub async fn incremental_sync_with_peer(
     match result {
         Ok(sync_result) => {
             record_relay_result(peer_url, true).await;
-            {
-                let guard = conn.lock().await;
-                let _ = flush_relay_metrics_to_db(&*guard).await;
-            }
+            let _ = flush_relay_metrics_to_db(conn.clone()).await;
             let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(&*conn.lock().await) {
                 Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
                 _ => 0.0,
