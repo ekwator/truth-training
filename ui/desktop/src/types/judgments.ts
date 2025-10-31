@@ -12,7 +12,7 @@ export interface Judgment {
   weight?: number;
 }
 
-export type JudgmentAssessment = 'true' | 'false' | 'uncertain';
+export type JudgmentAssessment = 'confirm' | 'reject' | 'abstain';
 
 export interface CreateJudgmentRequest {
   event_id: string;
@@ -56,9 +56,9 @@ export interface PaginationMeta {
 export interface JudgmentStats {
   total_judgments: number;
   judgments_by_assessment: {
-    true: number;
-    false: number;
-    uncertain: number;
+    confirm: number;
+    reject: number;
+    abstain: number;
   };
   average_confidence: number;
   recent_judgments_count: number;
@@ -101,9 +101,9 @@ export interface JudgmentAnalysis {
   };
   participant_diversity: number; // unique participants
   assessment_breakdown: {
-    true: number;
-    false: number;
-    uncertain: number;
+    confirm: number;
+    reject: number;
+    abstain: number;
   };
 }
 

@@ -6,6 +6,7 @@ pub mod storage;
 pub mod sync;
 pub mod trust_propagation;
 pub mod collective_intelligence;
+pub mod weights;
 
 pub use crate::models::*;
 pub use crate::storage::*;
