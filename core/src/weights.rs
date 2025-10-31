@@ -1,5 +1,4 @@
 
-use crate::CoreError;
 
 /// Compute status weight from confirmations/rejections.
 /// confirm = +1.0, reject = -1.0, abstain = 0.0. Result clamped to [-1, 1].
