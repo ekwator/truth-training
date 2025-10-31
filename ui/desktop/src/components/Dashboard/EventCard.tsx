@@ -10,7 +10,7 @@ interface EventCardProps {
 export const EventCard: React.FC<EventCardProps> = ({ event }) => {
   const [openView, setOpenView] = useState(false);
   const [openJudge, setOpenJudge] = useState(false);
-  const [judgeAssessment, setJudgeAssessment] = useState<'true'|'false'|'uncertain'>('true');
+  const [judgeAssessment, setJudgeAssessment] = useState<'confirm'|'reject'|'abstain'>('confirm');
   const [judgeConfidence, setJudgeConfidence] = useState<number>(0.7);
   const [judgeReasoning, setJudgeReasoning] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
@@ -37,6 +37,13 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     });
   };
 
+  const isConfession = React.useMemo(() => {
+    if (!event.title || !event.description) return false;
+    const t = event.title.trim();
+    const d = event.description.trim();
+    return d.startsWith(t) || t.startsWith(d.slice(0, Math.min(40, d.length)));
+  }, [event.title, event.description]);
+
   return (
     <div className="bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200">
       <div className="p-6">
@@ -49,9 +56,16 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
               {event.description}
             </p>
           </div>
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
-            {event.status}
-          </span>
+          <div className="flex items-center space-x-2">
+            {isConfession && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Confession
+              </span>
+            )}
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
+              {event.status}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
@@ -113,9 +127,9 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Assessment</label>
             <select className="w-full px-3 py-2 border border-gray-300 rounded-md" value={judgeAssessment} onChange={(e) => setJudgeAssessment(e.target.value as any)}>
-              <option value="true">True</option>
-              <option value="false">False</option>
-              <option value="uncertain">Uncertain</option>
+              <option value="confirm">Confirm</option>
+              <option value="reject">Reject</option>
+              <option value="abstain">Abstain</option>
             </select>
           </div>
           <div>

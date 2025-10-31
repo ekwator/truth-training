@@ -46,6 +46,7 @@ export interface EventFilters {
   date_from?: string;
   date_to?: string;
   search?: string;
+  recognition?: 'confirm' | 'reject' | 'abstain';
 }
 
 export interface EventListResponse {

@@ -8,5 +8,7 @@ pub mod p2p;
 pub mod sync;
 #[cfg(feature = "desktop")]
 pub mod server_diagnostics;
+#[cfg(feature = "desktop")]
+pub mod middleware;
 #[cfg(feature = "mobile")]
 pub mod android;

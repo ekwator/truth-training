@@ -2,10 +2,12 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
+use crate::p2p::encryption::CryptoIdentity;
 
 use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary, RbacUser};
 use core_lib::storage;
-use crate::p2p::encryption::CryptoIdentity;
 use crate::p2p::sync::SyncData;
 use crate::p2p::node::Node;
 use chrono::Utc;
@@ -25,6 +27,7 @@ type DbPool = Arc<Mutex<rusqlite::Connection>>;
 pub struct AppInfo {
     pub db_path: String,
     pub p2p_enabled: bool,
+    pub http_port: u16,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -75,6 +78,103 @@ async fn api_v1_info(node: web::Data<Node>, meta: web::Data<AppInfo>) -> impl Re
         peer_count,
     };
     HttpResponse::Ok().json(info)
+}
+
+#[derive(Deserialize)]
+struct NearbyStartRequest { interval_ms: Option<u64> }
+
+#[post("/api/v1/nearby_sync/start")]
+async fn api_v1_nearby_start(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    meta: web::Data<AppInfo>,
+    handle: web::Data<Arc<RwLock<Option<JoinHandle<()>>>>>,
+    identity: web::Data<Arc<CryptoIdentity>>,
+    body: web::Json<NearbyStartRequest>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    let interval = body.interval_ms.unwrap_or(3000).clamp(500, 60_000);
+    start_nearby_task(handle.get_ref(), pool.get_ref(), identity.get_ref(), meta.http_port, interval).await;
+    HttpResponse::Ok().json(serde_json::json!({"status":"started","interval_ms": interval}))
+}
+
+#[post("/api/v1/nearby_sync/stop")]
+async fn api_v1_nearby_stop(
+    req: HttpRequest,
+    handle: web::Data<Arc<RwLock<Option<JoinHandle<()>>>>>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    stop_nearby_task(handle.get_ref()).await;
+    HttpResponse::Ok().json(serde_json::json!({"status":"stopped"}))
+}
+
+#[derive(Serialize, Deserialize)]
+struct ServerAppConfig { nearby_sync: bool, nearby_interval_ms: u64 }
+
+#[get("/api/v1/config")]
+async fn api_v1_get_config(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        let (enabled, interval) = core_lib::storage::load_app_config(&conn)?;
+        Ok::<ServerAppConfig, core_lib::models::CoreError>(ServerAppConfig { nearby_sync: enabled, nearby_interval_ms: interval })
+    }).await;
+    match result {
+        Ok(Ok(cfg)) => HttpResponse::Ok().json(cfg),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+#[post("/api/v1/config")]
+async fn api_v1_set_config(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    meta: web::Data<AppInfo>,
+    handle: web::Data<Arc<RwLock<Option<JoinHandle<()>>>>>,
+    identity: web::Data<Arc<CryptoIdentity>>,
+    body: web::Json<ServerAppConfig>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    let enabled = body.nearby_sync;
+    let interval = body.nearby_interval_ms.clamp(500, 60_000);
+    // Persist
+    let poolc = pool.clone();
+    let persist = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::save_app_config(&conn, enabled, interval)
+    }).await;
+    if persist.is_err() { return HttpResponse::InternalServerError().finish(); }
+    // Apply runtime
+    if enabled {
+        start_nearby_task(handle.get_ref(), pool.get_ref(), identity.get_ref(), meta.http_port, interval).await;
+    } else {
+        stop_nearby_task(handle.get_ref()).await;
+    }
+    HttpResponse::Ok().json(serde_json::json!({"status":"ok","nearby_sync": enabled, "nearby_interval_ms": interval}))
+}
+
+#[allow(unused_variables)]
+async fn start_nearby_task(
+    handle: &Arc<RwLock<Option<JoinHandle<()>>>>,
+    pool: &Arc<Mutex<rusqlite::Connection>>,
+    identity: &Arc<CryptoIdentity>,
+    http_port: u16,
+    interval_ms: u64,
+) {
+    let mut guard = handle.write().await;
+    if let Some(h) = guard.take() { h.abort(); }
+    let conn = pool.clone();
+    let id = identity.clone();
+    let task = tokio::spawn(async move {
+        #[cfg(any(test, feature = "p2p-client-sync"))]
+        crate::p2p::wifi_direct::start_nearby_sync(conn, id, http_port, interval_ms).await;
+    });
+    *guard = Some(task);
+}
+
+async fn stop_nearby_task(handle: &Arc<RwLock<Option<JoinHandle<()>>>>) {
+    let mut guard = handle.write().await;
+    if let Some(h) = guard.take() { h.abort(); }
 }
 
 #[utoipa::path(
@@ -387,6 +487,7 @@ async fn get_events(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AddEventRequest {
     description: String,
     context_id: i64,
@@ -408,7 +509,9 @@ async fn add_event(pool: web::Data<DbPool>, payload: web::Json<AddEventRequest>)
             timestamp_start: chrono::Utc::now().timestamp(),
             code: 1, // Default code for new events
         };
-        storage::add_truth_event(&_conn, new_event)
+        let id = storage::add_truth_event(&_conn, new_event);
+        if let Ok(ref eid) = id { log::info!("event_created id={} context_id={} vector={}", eid, req.context_id, req.vector); }
+        id
     })
     .await;
 
@@ -744,6 +847,10 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(health)
         .service(api_v1_info)
         .service(api_v1_stats)
+        .service(api_v1_nearby_start)
+        .service(api_v1_nearby_stop)
+        .service(api_v1_get_config)
+        .service(api_v1_set_config)
         .service(recalc_collective)
         .service(api_v1_push)
         .service(api_v1_network_local)

@@ -27,6 +27,8 @@ export interface AppConfig {
   mode: 'core' | 'http';
   server_ip: string;
   server_port: number;
+  nearby_sync?: boolean;
+  nearby_interval_ms?: number;
 }
 
 export interface ConnectionTestResult {

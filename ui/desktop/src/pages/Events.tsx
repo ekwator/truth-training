@@ -17,11 +17,18 @@ export const Events: React.FC = () => {
   };
 
   const filteredEvents = events.filter(event => {
-    if (!searchTerm) return true;
-    return (
-      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (event.description || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Search filter
+    if (searchTerm) {
+      const hit = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (event.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+      if (!hit) return false;
+    }
+    // Recognition filter (heuristic: look for keywords in description/title)
+    if (filters.recognition) {
+      const text = `${event.title} ${(event.description||'')}`.toLowerCase();
+      if (!text.includes(filters.recognition)) return false;
+    }
+    return true;
   });
 
   if (loading) {
@@ -97,6 +104,22 @@ export const Events: React.FC = () => {
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                   <option value="archived">Archived</option>
+                </select>
+              </div>
+              <div className="sm:w-48">
+                <label htmlFor="recognition" className="block text-sm font-medium text-gray-700 mb-2">
+                  Recognition
+                </label>
+                <select
+                  id="recognition"
+                  value={filters.recognition || ''}
+                  onChange={(e) => setFilters({ recognition: (e.target.value as any) || undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All</option>
+                  <option value="confirm">Confirm</option>
+                  <option value="reject">Reject</option>
+                  <option value="abstain">Abstain</option>
                 </select>
               </div>
             </div>

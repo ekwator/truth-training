@@ -356,6 +356,12 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
             expires_at    INTEGER NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_active_tokens_pub ON active_tokens(public_key);
+
+        -- Application configuration (key-value)
+        CREATE TABLE IF NOT EXISTS app_config (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
         "#,
     )?;
 
@@ -526,6 +532,35 @@ pub fn cleanup_expired_tokens(conn: &Connection, now_ts: i64) -> Result<usize, C
         params![now_ts],
     )?;
     Ok(affected)
+}
+
+/// Load application config (nearby sync settings). Defaults if missing
+pub fn load_app_config(conn: &Connection) -> Result<(bool, u64), CoreError> {
+    let mut stmt = conn.prepare("SELECT value FROM app_config WHERE key=?1")?;
+    // nearby_sync
+    let nearby_sync_str: Option<String> = stmt.query_row(params!["nearby_sync"], |r| r.get(0)).optional()?;
+    let nearby_sync = nearby_sync_str.as_deref() == Some("true");
+    // nearby_interval_ms
+    let nearby_interval_ms_str: Option<String> = stmt.query_row(params!["nearby_interval_ms"], |r| r.get(0)).optional()?;
+    let nearby_interval_ms: u64 = nearby_interval_ms_str
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(3000);
+    Ok((nearby_sync, nearby_interval_ms))
+}
+
+/// Save application config (nearby sync settings)
+pub fn save_app_config(conn: &Connection, nearby_sync: bool, nearby_interval_ms: u64) -> Result<(), CoreError> {
+    conn.execute(
+        "INSERT INTO app_config(key, value) VALUES('nearby_sync', ?1)
+         ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        params![if nearby_sync { "true" } else { "false" }],
+    )?;
+    conn.execute(
+        "INSERT INTO app_config(key, value) VALUES('nearby_interval_ms', ?1)
+         ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        params![nearby_interval_ms.to_string()],
+    )?;
+    Ok(())
 }
 
 /* =========================

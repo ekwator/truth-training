@@ -80,21 +80,17 @@ pub async fn get_relay_stats() -> Vec<RelayStat> {
 
 /// Flush relay metrics to database and update node_metrics table
 #[allow(dead_code)]
-pub async fn flush_relay_metrics_to_db(conn: &Connection) -> anyhow::Result<()> {
+pub async fn flush_relay_metrics_to_db(conn: std::sync::Arc<tokio::sync::Mutex<Connection>>) -> anyhow::Result<()> {
     let stats = get_relay_stats().await;
     let mut relay_data = Vec::new();
-    
     for stat in stats {
-        // Extract pubkey from peer_url (assuming it's in the URL or we need to map it)
-        // For now, we'll use the peer_url as the identifier
-        let pubkey = stat.peer_url.clone(); // This should be mapped to actual pubkey
+        let pubkey = stat.peer_url.clone();
         relay_data.push((pubkey, stat.relay_rate));
     }
-    
     if !relay_data.is_empty() {
-        core_lib::storage::flush_relay_metrics(conn, &relay_data)?;
+        let guard = conn.lock().await;
+        core_lib::storage::flush_relay_metrics(&*guard, &relay_data)?;
     }
-    
     Ok(())
 }
 
@@ -180,28 +176,32 @@ pub async fn sync_with_peer(peer_url: &str, identity: &CryptoIdentity) -> anyhow
 #[cfg(any(test, feature = "p2p-client-sync"))]
 #[allow(dead_code)]
 pub async fn bidirectional_sync_with_peer(
-    peer_url: &str, 
+    peer_url: &str,
     identity: &CryptoIdentity,
-    conn: &Connection,
+    conn: std::sync::Arc<tokio::sync::Mutex<Connection>>,
 ) -> anyhow::Result<SyncResult> {
     let result: anyhow::Result<SyncResult> = async {
-        // Получаем локальные данные для отправки
-        let local_events = storage::load_truth_events(conn)?;
-        let local_statements = storage::load_statements(conn)?;
-        let local_impacts = storage::load_impacts(conn)?;
-        let local_metrics = storage::load_metrics(conn)?;
-
-        let local_node_ratings = core_lib::storage::load_node_ratings(conn)?;
-        let local_group_ratings = core_lib::storage::load_group_ratings(conn)?;
-        let local_node_metrics = core_lib::storage::load_all_node_metrics(conn)?;
-    let sync_data = SyncData {
+        // Получаем локальные данные для отправки (короткая блокировка БД)
+        let (local_events, local_statements, local_impacts, local_metrics, local_node_ratings, local_group_ratings, local_node_metrics) = {
+            let guard = conn.lock().await;
+            (
+                storage::load_truth_events(&*guard)?,
+                storage::load_statements(&*guard)?,
+                storage::load_impacts(&*guard)?,
+                storage::load_metrics(&*guard)?,
+                core_lib::storage::load_node_ratings(&*guard)?,
+                core_lib::storage::load_group_ratings(&*guard)?,
+                core_lib::storage::load_all_node_metrics(&*guard)?,
+            )
+        };
+        let sync_data = SyncData {
             events: local_events,
             statements: local_statements,
             impacts: local_impacts,
             metrics: local_metrics,
-        node_ratings: local_node_ratings.clone(),
-        group_ratings: local_group_ratings.clone(),
-        node_metrics: local_node_metrics,
+            node_ratings: local_node_ratings.clone(),
+            group_ratings: local_group_ratings.clone(),
+            node_metrics: local_node_metrics,
             last_sync: chrono::Utc::now().timestamp(),
         };
 
@@ -252,34 +252,47 @@ pub async fn bidirectional_sync_with_peer(
         Ok(sync_result) => {
             // Записываем успешный результат и сразу флешим, чтобы метрики попали в БД
             record_relay_result(peer_url, true).await;
-            let _ = flush_relay_metrics_to_db(conn).await;
+            let _ = flush_relay_metrics_to_db(conn.clone()).await;
             // Обновляем peer_history: используем средний quality_index сети как прокси качества пира
-            let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(conn) {
+            let avg_quality_index: f32 = {
+                let guard = conn.lock().await;
+                match core_lib::storage::load_all_node_metrics(&*guard) {
                 Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
-                _ => 0.0,
+                    _ => 0.0,
+                }
             };
             // Попробуем получить доверие к пиру, если public_key известен как peer_url (MVP)
             let trust_score = {
-                let ratings = core_lib::storage::load_node_ratings(conn).unwrap_or_default();
-                // В MVP нет маппинга URL→pubkey: используем среднее как прокси
+                let guard = conn.lock().await;
+                let ratings = core_lib::storage::load_node_ratings(&*guard).unwrap_or_default();
                 if ratings.is_empty() { 0.0 } else { (ratings.iter().map(|r| r.trust_score as f64).sum::<f64>() / ratings.len() as f64) as f32 }
             };
-            let _ = core_lib::storage::log_peer_sync(conn, peer_url, true, trust_score, avg_quality_index);
+            {
+                let guard = conn.lock().await;
+                let _ = core_lib::storage::log_peer_sync(&*guard, peer_url, true, trust_score, avg_quality_index);
+            }
             Ok(sync_result)
         }
         Err(e) => {
             // Любая ошибка синхронизации учитывается как неуспешная ретрансляция
             record_relay_result(peer_url, false).await;
             // Логируем неуспех
-            let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(conn) {
-                Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
-                _ => 0.0,
+            let avg_quality_index: f32 = {
+                let guard = conn.lock().await;
+                match core_lib::storage::load_all_node_metrics(&*guard) {
+                    Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
+                    _ => 0.0,
+                }
             };
             let trust_score = {
-                let ratings = core_lib::storage::load_node_ratings(conn).unwrap_or_default();
+                let guard = conn.lock().await;
+                let ratings = core_lib::storage::load_node_ratings(&*guard).unwrap_or_default();
                 if ratings.is_empty() { 0.0 } else { (ratings.iter().map(|r| r.trust_score as f64).sum::<f64>() / ratings.len() as f64) as f32 }
             };
-            let _ = core_lib::storage::log_peer_sync(conn, peer_url, false, trust_score, avg_quality_index);
+            {
+                let guard = conn.lock().await;
+                let _ = core_lib::storage::log_peer_sync(&*guard, peer_url, false, trust_score, avg_quality_index);
+            }
             Err(e)
         }
     }
@@ -644,20 +657,24 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
 #[cfg(any(test, feature = "p2p-client-sync"))]
 #[allow(dead_code)]
 pub async fn incremental_sync_with_peer(
-    peer_url: &str, 
+    peer_url: &str,
     identity: &CryptoIdentity,
-    conn: &Connection,
+    conn: std::sync::Arc<tokio::sync::Mutex<Connection>>,
     last_sync_timestamp: i64,
 ) -> anyhow::Result<SyncResult> {
     let result: anyhow::Result<SyncResult> = async {
         // Получаем только изменения с последней синхронизации
-        let recent_events = get_events_since(conn, last_sync_timestamp)?;
-        let recent_statements = get_statements_since(conn, last_sync_timestamp)?;
-        let recent_impacts = get_impacts_since(conn, last_sync_timestamp)?;
-
-        let node_ratings = core_lib::storage::load_node_ratings(conn)?;
-        let group_ratings = core_lib::storage::load_group_ratings(conn)?;
-        let node_metrics = core_lib::storage::load_all_node_metrics(conn)?;
+        let (recent_events, recent_statements, recent_impacts, node_ratings, group_ratings, node_metrics) = {
+            let guard = conn.lock().await;
+            (
+                get_events_since(&*guard, last_sync_timestamp)?,
+                get_statements_since(&*guard, last_sync_timestamp)?,
+                get_impacts_since(&*guard, last_sync_timestamp)?,
+                core_lib::storage::load_node_ratings(&*guard)?,
+                core_lib::storage::load_group_ratings(&*guard)?,
+                core_lib::storage::load_all_node_metrics(&*guard)?,
+            )
+        };
         let sync_data = SyncData {
             events: recent_events,
             statements: recent_statements,
@@ -708,29 +725,35 @@ pub async fn incremental_sync_with_peer(
     match result {
         Ok(sync_result) => {
             record_relay_result(peer_url, true).await;
-            let _ = flush_relay_metrics_to_db(conn).await;
-            let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(conn) {
+            let _ = flush_relay_metrics_to_db(conn.clone()).await;
+            let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(&*conn.lock().await) {
                 Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
                 _ => 0.0,
             };
             let trust_score = {
-                let ratings = core_lib::storage::load_node_ratings(conn).unwrap_or_default();
+                let ratings = core_lib::storage::load_node_ratings(&*conn.lock().await).unwrap_or_default();
                 if ratings.is_empty() { 0.0 } else { (ratings.iter().map(|r| r.trust_score as f64).sum::<f64>() / ratings.len() as f64) as f32 }
             };
-            let _ = core_lib::storage::log_peer_sync(conn, peer_url, true, trust_score, avg_quality_index);
+            {
+                let guard = conn.lock().await;
+                let _ = core_lib::storage::log_peer_sync(&*guard, peer_url, true, trust_score, avg_quality_index);
+            }
             Ok(sync_result)
         }
         Err(e) => {
             record_relay_result(peer_url, false).await;
-            let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(conn) {
+            let avg_quality_index: f32 = match core_lib::storage::load_all_node_metrics(&*conn.lock().await) {
                 Ok(metrics) if !metrics.is_empty() => (metrics.iter().map(|m| m.quality_index as f64).sum::<f64>() / metrics.len() as f64) as f32,
                 _ => 0.0,
             };
             let trust_score = {
-                let ratings = core_lib::storage::load_node_ratings(conn).unwrap_or_default();
+                let ratings = core_lib::storage::load_node_ratings(&*conn.lock().await).unwrap_or_default();
                 if ratings.is_empty() { 0.0 } else { (ratings.iter().map(|r| r.trust_score as f64).sum::<f64>() / ratings.len() as f64) as f32 }
             };
-            let _ = core_lib::storage::log_peer_sync(conn, peer_url, false, trust_score, avg_quality_index);
+            {
+                let guard = conn.lock().await;
+                let _ = core_lib::storage::log_peer_sync(&*guard, peer_url, false, trust_score, avg_quality_index);
+            }
             Err(e)
         }
     }

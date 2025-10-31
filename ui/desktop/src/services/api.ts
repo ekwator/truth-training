@@ -21,6 +21,10 @@ export const setApiClient = (client: AxiosInstance) => {
 
 // Check if we're running in Tauri (robust for v1/v2)
 const isTauri = () => {
+  // Force web mode in tests for predictable mocking
+  if (typeof process !== 'undefined' && (process.env.JEST_WORKER_ID || process.env.NODE_ENV === 'test')) {
+    return false;
+  }
   try {
     // Check for Tauri runtime objects
     if (typeof window === 'undefined') return false;
@@ -142,7 +146,7 @@ export interface Judgment {
   id: string;
   participant_id: string;
   event_id: string;
-  assessment: 'true' | 'false' | 'uncertain';
+  assessment: 'confirm' | 'reject' | 'abstain';
   confidence_level: number;
   reasoning?: string;
   submitted_at: string;
@@ -151,7 +155,7 @@ export interface Judgment {
 
 export interface CreateJudgmentRequest {
   event_id: string;
-  assessment: 'true' | 'false' | 'uncertain';
+  assessment: 'confirm' | 'reject' | 'abstain';
   confidence_level: number;
   reasoning?: string;
   signature: string;
@@ -160,7 +164,7 @@ export interface CreateJudgmentRequest {
 // Consensus API
 export interface Consensus {
   event_id: string;
-  consensus_value: 'true' | 'false' | 'uncertain' | null;
+  consensus_value: 'confirm' | 'reject' | 'abstain' | null;
   confidence_score: number;
   participant_count: number;
   algorithm_version: string;
@@ -201,7 +205,7 @@ export class ApiService {
         };
       } catch (error) {
         console.error('Tauri list_events error:', error);
-        throw new Error('Failed to fetch events from desktop backend');
+        throw error;
       }
     } else {
       // Use HTTP API for web development
@@ -243,7 +247,13 @@ export class ApiService {
         throw new Error('Failed to create event in desktop backend');
       }
     } else {
-      const response = await apiClient.post('/events', eventData);
+      // Map UI request to core API: anonymous confession as event description
+      const payload = {
+        description: eventData.description || eventData.title,
+        context_id: parseInt(eventData.context_id as any, 10) || 1,
+        vector: true
+      };
+      const response = await apiClient.post('/events', payload);
       return response.data;
     }
   }
@@ -471,11 +481,11 @@ export class ApiService {
       }
     } else {
       // For web development, return default config
-      return {
-        mode: 'http',
-        server_ip: '127.0.0.1',
-        server_port: 8080
-      };
+      const raw = localStorage.getItem('truth_training_config');
+      if (raw) {
+        try { return JSON.parse(raw) as AppConfig; } catch {}
+      }
+      return { mode: 'http', server_ip: '127.0.0.1', server_port: 8080, nearby_sync: false, nearby_interval_ms: 3000 };
     }
   }
 
@@ -491,6 +501,23 @@ export class ApiService {
     } else {
       // For web development, save to localStorage
       localStorage.setItem('truth_training_config', JSON.stringify(config));
+    }
+  }
+
+  static async startNearbySync(intervalMs: number): Promise<void> {
+    if (isTauri()) {
+      // TODO: bridge command in desktop backend if needed
+      return;
+    } else {
+      await apiClient.post('/api/v1/nearby_sync/start', { interval_ms: intervalMs });
+    }
+  }
+
+  static async stopNearbySync(): Promise<void> {
+    if (isTauri()) {
+      return;
+    } else {
+      await apiClient.post('/api/v1/nearby_sync/stop');
     }
   }
 
