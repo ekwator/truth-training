@@ -1,6 +1,7 @@
 pub mod node;
 pub mod sync;
 pub mod encryption;
+pub mod wifi_direct;
 
 // Переэкспортируем только то, что реально нужно внешним модулям
 // pub use node::Node;

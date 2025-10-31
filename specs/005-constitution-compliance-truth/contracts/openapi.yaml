@@ -1,0 +1,11 @@
+openapi: 3.0.0
+info:
+  title: Truth Training Compliance Contracts
+  version: 0.1.0
+paths:
+  /events:
+    post:
+      summary: Submit anonymous event (no author metadata)
+  /judgments:
+    post:
+      summary: Submit ternary judgment (confirm/reject/abstain)

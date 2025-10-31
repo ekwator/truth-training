@@ -8,7 +8,9 @@ export const Settings: React.FC = () => {
   const [config, setConfig] = useState<AppConfig>({
     mode: 'core',
     server_ip: '127.0.0.1',
-    server_port: 8080
+    server_port: 8080,
+    nearby_sync: false,
+    nearby_interval_ms: 3000
   });
   const [loading, setLoading] = useState(false);
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
@@ -42,6 +44,11 @@ export const Settings: React.FC = () => {
       newErrors.server_port = 'Port must be between 1 and 65535';
     }
 
+    // Validate nearby interval
+    if (config.nearby_interval_ms !== undefined && (config.nearby_interval_ms < 500 || config.nearby_interval_ms > 60000)) {
+      newErrors.nearby_interval_ms = 'Interval must be between 500 and 60000 ms';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -54,6 +61,12 @@ export const Settings: React.FC = () => {
     setLoading(true);
     try {
       await ApiService.saveAppConfig(config);
+      // Apply nearby sync runtime change (HTTP mode only)
+      if (config.nearby_sync) {
+        await ApiService.startNearbySync(config.nearby_interval_ms || 3000);
+      } else {
+        await ApiService.stopNearbySync();
+      }
       setTestResult({
         ok: true,
         message: 'Settings saved successfully'
@@ -222,6 +235,44 @@ export const Settings: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Nearby Sync */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">Nearby Sync (LAN Broadcast):</h2>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <label className="inline-flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={!!config.nearby_sync}
+                  onChange={(e) => setConfig(prev => ({ ...prev, nearby_sync: e.target.checked }))}
+                />
+                <span className="text-sm">Enable nearby sync</span>
+              </label>
+
+              <div className="sm:w-64">
+                <label htmlFor="nearby-interval" className="block text-sm font-medium text-gray-700 mb-1">
+                  Broadcast interval (ms)
+                </label>
+                <input
+                  id="nearby-interval"
+                  type="number"
+                  min={500}
+                  max={60000}
+                  value={config.nearby_interval_ms || 3000}
+                  onChange={(e) => setConfig(prev => ({ ...prev, nearby_interval_ms: parseInt(e.target.value) || 3000 }))}
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.nearby_interval_ms ? 'border-red-300' : 'border-gray-300'
+                  }`}
+                />
+                {errors.nearby_interval_ms && (
+                  <p className="mt-1 text-sm text-red-600">{errors.nearby_interval_ms}</p>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">When enabled, the node uses UDP broadcast discovery and HTTP sync with peers on the local network.</p>
+            </div>
+          </div>
 
           {/* Connection Test Result */}
           {testResult && (

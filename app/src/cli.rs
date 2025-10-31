@@ -37,6 +37,10 @@ enum Commands {
     Peers { #[command(subcommand)] action: PeerCmd },
     /// Trigger sync with all peers
     Sync { #[arg(long, default_value_t = false)] pull_only: bool },
+    /// Submit anonymous confession (plaintext-at-rest)
+    Confess { #[arg(long, default_value = "-")] file: String, #[arg(long, default_value_t = 1)] context: i64 },
+    /// Submit judgment for event id
+    Judge { #[arg(long)] event: i64, #[arg(long)] signal: String },
 }
 
 #[derive(Subcommand)]
@@ -108,6 +112,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             println!("Synced items: {}", total);
+        }
+        Commands::Confess { file, context } => {
+            eprintln!("[warning] Anonymous confession stored plaintext-at-rest; ensure environment trust.");
+            let text = if file == "-" { use std::io::Read; let mut s=String::new(); std::io::stdin().read_to_string(&mut s).unwrap_or(0); s } else { fs::read_to_string(&file).unwrap_or_default() };
+            if text.trim().is_empty() { println!("No content"); return Ok(()); }
+            let new_ev = core_lib::models::NewTruthEvent { description: text, context_id: context, vector: true, timestamp_start: chrono::Utc::now().timestamp(), code: 1 };
+            let id = core_lib::storage::add_truth_event(&conn, new_ev)?;
+            println!("event_id: {}", id);
+        }
+        Commands::Judge { event, signal } => {
+            let s = signal.to_lowercase();
+            match s.as_str() {
+                "confirm" => { let _ = core_lib::storage::add_impact(&conn, event, 1, true, Some("judge".into()))?; println!("ok"); }
+                "reject" => { let _ = core_lib::storage::add_impact(&conn, event, 1, false, Some("judge".into()))?; println!("ok"); }
+                "abstain" => { println!("abstained"); }
+                _ => { println!("invalid signal: use confirm|reject|abstain"); }
+            }
         }
     }
 

@@ -25,6 +25,10 @@ The "Truth Training" concept emerged as a response to the crisis of trust and ev
 
 In this view, truth is not declared — it is born through collaboration, correction, and convergence among many minds. Truth is a process, not an object, emerging from continuous interaction among many observers — like rhythm arising from multiple beats.
 
+### Truth as Anonymous Confession
+
+The system enables individuals to express truth without fear of judgment — anonymously and cryptographically verified. Like a digital form of confession, it allows a person to share, acknowledge, or correct information within a collective context. The act of revealing truth itself becomes part of the training — a feedback loop of ethical learning.
+
 ### Core Philosophical Principles
 
 **Collective Intelligence as a Neural System of Society**: Each participant acts as a neuron — transmitting, receiving, and adapting — while the network learns through feedback.
@@ -36,6 +40,8 @@ In this view, truth is not declared — it is born through collaboration, correc
 **Ethics as Algorithm**: Instead of moral judgment or punishment, the system relies on adaptive feedback loops — reducing influence for error, rewarding correction.
 
 **Harmony of Perception as the Goal**: Truth is not an absolute endpoint but a state of dynamic balance achieved through constant exchange and recalibration.
+
+**Truth Without Author**: The platform separates truth from authorship. Validation occurs through distributed resonance — multiple confirmations and rejections — rather than authority or identity.
 
 ## Core Technical Principles
 
@@ -83,6 +89,24 @@ The system promotes learning and correction rather than punishment — turning t
 
 ### IX. Cross-Platform Collective Intelligence
 The system maintains platform parity between desktop and mobile implementations, ensuring that collective intelligence can emerge across all access points while respecting platform-specific constraints and capabilities.
+
+## Societal Applications
+
+### I. Anti-Fraud and Integrity Detection
+
+The accumulation of verified events enables probabilistic modeling of truth. Repeated independent confirmations form statistical weight, allowing the system to estimate the authenticity of new claims. Fraud, misinformation, or manipulation attempts decay over time as inconsistent signals lose coherence.
+
+### II. Digital Conscience and Ethical Reflection
+
+By allowing anonymous truth submission and collective verification, the system acts as a distributed moral network — replacing institutional confession with self-organized introspection.
+
+### III. Decentralized Civic Dialogue
+
+Truth Training can function as a decentralized replacement for traditional voting. Instead of casting binary votes, participants express judgments on factual events. Social consensus emerges as a real-time measure of collective reasoning rather than a periodic count.
+
+### IV. Local Mesh of Truth Exchange
+
+Even without central connectivity, nodes can exchange and synchronize events over short-range or opportunistic connections (Wi-Fi, Bluetooth, etc.). This makes the network resilient — similar to LoRa mesh systems but using standard communication layers. Truth spreads naturally, hop by hop, without requiring additional hardware.
 
 ## Architecture and Technology Stack
 
@@ -155,4 +179,4 @@ This constitution supersedes other practices. Amendments require documentation, 
 - Collective intelligence principles must be preserved in all architectural decisions.
 - Truth training methodology must be reflected in all user-facing interfaces and data flows.
 
-**Version**: 2.0.0 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-27
+**Version**: 2.1.0 | **Ratified**: 2025-10-31 | **Last Amended**: 2025-10-31

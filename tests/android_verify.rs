@@ -1,6 +1,16 @@
 
 #[cfg(feature = "mobile")]
 use truth_core::android::verify_json::verify_json_message;
+#[cfg(feature = "mobile")]
+use ed25519_dalek::SigningKey;
+#[cfg(feature = "mobile")]
+use base64::engine::general_purpose;
+#[cfg(feature = "mobile")]
+use serde_json::json;
+#[cfg(feature = "mobile")]
+use base64::Engine;
+#[cfg(feature = "mobile")]
+use ed25519_dalek::Signer;
 
 #[cfg(feature = "mobile")]
 #[test]
