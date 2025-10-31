@@ -8,7 +8,6 @@ use crate::p2p::encryption::CryptoIdentity;
 
 use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary, RbacUser};
 use core_lib::storage;
-use crate::p2p::encryption::CryptoIdentity;
 use crate::p2p::sync::SyncData;
 use crate::p2p::node::Node;
 use chrono::Utc;
@@ -154,6 +153,7 @@ async fn api_v1_set_config(
     HttpResponse::Ok().json(serde_json::json!({"status":"ok","nearby_sync": enabled, "nearby_interval_ms": interval}))
 }
 
+#[allow(unused_variables)]
 async fn start_nearby_task(
     handle: &Arc<RwLock<Option<JoinHandle<()>>>>,
     pool: &Arc<Mutex<rusqlite::Connection>>,
