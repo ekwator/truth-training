@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 use std::str::FromStr;
 
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct WifiDirectConfig {
     pub enabled: bool,
@@ -15,20 +16,23 @@ pub struct WifiDirectConfig {
 }
 
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct NearbyPeer {
-    pub addr: String,
+    pub _addr: String,
     pub port: u16,
     pub pubkey: String,
 }
 
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct WifiDirectSync {
     pub config: WifiDirectConfig,
 }
 
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 impl WifiDirectSync {
     pub fn new(http_port: u16) -> Self {
         Self {
@@ -99,6 +103,7 @@ pub async fn start_nearby_sync(
 }
 
 #[cfg(any(test, feature = "p2p-client-sync"))]
+#[allow(dead_code)]
 fn parse_beacon(s: &str) -> Option<NearbyPeer> {
     // Very simple format: TT_BEACON v1 pubkey=<hex> port=<u16>
     if !s.starts_with("TT_BEACON v1 ") { return None; }
@@ -109,7 +114,7 @@ fn parse_beacon(s: &str) -> Option<NearbyPeer> {
         if let Some(rest) = part.strip_prefix("port=") { port = rest.parse().unwrap_or(0); }
     }
     if pubkey.is_empty() || port == 0 { return None; }
-    Some(NearbyPeer { addr: String::new(), port, pubkey })
+    Some(NearbyPeer { _addr: String::new(), port, pubkey })
 }
 
 // no helper functions
