@@ -118,13 +118,13 @@ async fn main() -> std::io::Result<()> {
     let effective_enabled = if args.nearby_sync { true } else { persist_enabled };
     let effective_interval = if args.nearby_sync { args.nearby_interval_ms } else { persist_interval };
     if effective_enabled {
-        let conn_for_nearby = conn_data.clone();
-        let id_for_nearby = crypto_identity.clone();
-        let port_for_nearby = args.port;
-        let interval_ms = effective_interval;
+        let _conn_for_nearby = conn_data.clone();
+        let _id_for_nearby = crypto_identity.clone();
+        let _port_for_nearby = args.port;
+        let _interval_ms = effective_interval;
         let h = tokio::spawn(async move {
             #[cfg(any(test, feature = "p2p-client-sync"))]
-            crate::p2p::wifi_direct::start_nearby_sync(conn_for_nearby, id_for_nearby, port_for_nearby, interval_ms).await;
+            crate::p2p::wifi_direct::start_nearby_sync(_conn_for_nearby, _id_for_nearby, _port_for_nearby, _interval_ms).await;
         });
         *nearby_handle.write().await = Some(h);
     }
