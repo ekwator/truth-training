@@ -92,6 +92,8 @@ jobs:
       - name: Build Tauri (Windows)
         working-directory: ./ui/desktop
         run: cargo tauri build --target x86_64-pc-windows-gnu
+      - name: Build Server (Windows cross)
+        run: cargo build --release --bin truth_core_server --features desktop --target x86_64-pc-windows-gnu
       - name: Upload Server binary (Linux)
         uses: actions/upload-artifact@v4
         with:
