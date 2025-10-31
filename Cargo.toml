@@ -79,7 +79,7 @@ jni = { version = "0.21", optional = true }
 [target.'cfg(target_os = "android")'.dependencies]
 getrandom = { version = "0.2", features = ["std"] }
 
-[target.'cfg(not(target_os = "windows"))'.dependencies]
+[target.'cfg(all(not(target_os = "windows"), not(target_os = "android")))'.dependencies]
 get_if_addrs = { version = "0.5" }
 
  

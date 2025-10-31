@@ -51,7 +51,7 @@ struct Args {
     nearby_interval_ms: u64,
 }
 
-#[cfg(all(feature = "desktop", not(target_os = "windows")))]
+#[cfg(all(feature = "desktop", not(target_os = "windows"), not(target_os = "android")))]
 fn guess_local_ip() -> String {
     if let Ok(interfaces) = get_if_addrs::get_if_addrs() {
         for iface in interfaces {
@@ -65,7 +65,7 @@ fn guess_local_ip() -> String {
     "127.0.0.1".into()
 }
 
-#[cfg(all(feature = "desktop", target_os = "windows"))]
+#[cfg(all(feature = "desktop", any(target_os = "windows", target_os = "android")))]
 fn guess_local_ip() -> String {
     // Minimal fallback for cross-compile; runtime detection handled separately in native workflow
     "127.0.0.1".into()
