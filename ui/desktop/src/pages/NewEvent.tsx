@@ -11,6 +11,7 @@ export const NewEvent: React.FC = () => {
   const { addToast } = useToast();
   const [kbItems, setKbItems] = useState<KnowledgeBaseItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [confessionMode, setConfessionMode] = useState(false);
   const [formData, setFormData] = useState({
     event_name: '',
     description: '',
@@ -42,7 +43,13 @@ export const NewEvent: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.event_name.trim()) {
+    // In confession mode, auto-derive a minimal title if empty
+    let eventName = formData.event_name.trim();
+    if (confessionMode && !eventName && formData.description.trim()) {
+      eventName = formData.description.trim().slice(0, 40) || 'Confession';
+    }
+
+    if (!eventName) {
       addToast({
         type: 'error',
         title: 'Validation Error',
@@ -72,7 +79,7 @@ export const NewEvent: React.FC = () => {
     setLoading(true);
     try {
       await ApiService.createEvent({
-        title: formData.event_name,
+        title: eventName,
         description: formData.description,
         context_id: formData.context,
       });
@@ -115,6 +122,23 @@ export const NewEvent: React.FC = () => {
         <h1 className="text-3xl font-bold mb-6">Create New Event</h1>
 
         <div className="bg-white rounded-lg shadow p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <label className="inline-flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={confessionMode}
+                onChange={(e) => setConfessionMode(e.target.checked)}
+              />
+              <span className="text-sm font-medium">Anonymous Confession Mode</span>
+            </label>
+          </div>
+
+          {confessionMode && (
+            <div className="px-3 py-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+              Anonymous confessions are stored plaintext-at-rest. Do not include sensitive identifiers. Title may be auto-derived from description.
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-2">Event Name *</label>
             <input
@@ -134,6 +158,9 @@ export const NewEvent: React.FC = () => {
               className="w-full px-3 py-2 border rounded"
               rows={4}
             />
+            {confessionMode && (
+              <p className="mt-2 text-xs text-gray-500">Tip: Paste confession text here. Title will be derived if left empty.</p>
+            )}
           </div>
 
           <div>

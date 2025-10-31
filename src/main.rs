@@ -12,6 +12,8 @@ use clap::Parser;
 use std::sync::Arc;
 #[cfg(feature = "desktop")]
 use tokio::sync::{Mutex, RwLock};
+#[cfg(feature = "desktop")]
+use tokio::task::JoinHandle;
 
 #[cfg(feature = "desktop")]
 mod api;
@@ -39,9 +41,17 @@ struct Args {
 
     #[arg(long, default_value = "truth_training.db")]
     db: String,
+
+    /// Enable LAN nearby sync (UDP broadcast discovery)
+    #[arg(long, default_value_t = false)]
+    nearby_sync: bool,
+
+    /// Nearby sync broadcast interval in milliseconds
+    #[arg(long, default_value_t = 3000)]
+    nearby_interval_ms: u64,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(all(feature = "desktop", not(target_os = "windows"), not(target_os = "android")))]
 fn guess_local_ip() -> String {
     if let Ok(interfaces) = get_if_addrs::get_if_addrs() {
         for iface in interfaces {
@@ -52,6 +62,12 @@ fn guess_local_ip() -> String {
             }
         }
     }
+    "127.0.0.1".into()
+}
+
+#[cfg(all(feature = "desktop", any(target_os = "windows", target_os = "android")))]
+fn guess_local_ip() -> String {
+    // Minimal fallback for cross-compile; runtime detection handled separately in native workflow
     "127.0.0.1".into()
 }
 
@@ -85,19 +101,39 @@ async fn main() -> std::io::Result<()> {
     let conn_data = Arc::new(Mutex::new(conn));
 
     // 🔒 Генерация крипто-идентичности узла
-    let crypto_identity = CryptoIdentity::new();
+    let crypto_identity = Arc::new(CryptoIdentity::new());
     println!("Node public key: {}", crypto_identity.public_key_hex());
 
     // Список известных пиров
     let peers_list = vec!["http://127.0.0.1:8081".to_string()];
 
     //Теперь при создании Node передаём CryptoIdentity и пул БД
-    let crypto_identity = Arc::new(CryptoIdentity::new());
     let node = Arc::new(Node::new(peers_list, conn_data.clone(), crypto_identity.clone()));
     let node_for_task = node.clone();
     tokio::spawn(async move {
         node_for_task.start().await;
     });
+
+    // Nearby sync handle state for dynamic control (persisted config)
+    let nearby_handle: Arc<RwLock<Option<JoinHandle<()>>>> = Arc::new(RwLock::new(None));
+    // Load persisted config
+    let (persist_enabled, persist_interval) = {
+        let guard = conn_data.lock().await;
+        core_lib::storage::load_app_config(&guard).unwrap_or((false, 3000))
+    };
+    let effective_enabled = if args.nearby_sync { true } else { persist_enabled };
+    let effective_interval = if args.nearby_sync { args.nearby_interval_ms } else { persist_interval };
+    if effective_enabled {
+        let _conn_for_nearby = conn_data.clone();
+        let _id_for_nearby = crypto_identity.clone();
+        let _port_for_nearby = args.port;
+        let _interval_ms = effective_interval;
+        let h = tokio::spawn(async move {
+            #[cfg(any(test, feature = "p2p-client-sync"))]
+            crate::p2p::wifi_direct::start_nearby_sync(_conn_for_nearby, _id_for_nearby, _port_for_nearby, _interval_ms).await;
+        });
+        *nearby_handle.write().await = Some(h);
+    }
 
     // Запуск HTTP сервера
     HttpServer::new(move || {
@@ -106,9 +142,12 @@ async fn main() -> std::io::Result<()> {
             .wrap(Cors::permissive())
             .app_data(actix_web::web::Data::new(conn_data.clone()))
             .app_data(actix_web::web::Data::new(node.clone()))
+            .app_data(actix_web::web::Data::new(crypto_identity.clone()))
+            .app_data(actix_web::web::Data::new(nearby_handle.clone()))
             .app_data(actix_web::web::Data::new(crate::api::AppInfo {
                 db_path: args.db.clone(),
                 p2p_enabled: true,
+                http_port: args.port,
             }))
             .configure(api::routes)
             // Serve Swagger UI and OpenAPI JSON

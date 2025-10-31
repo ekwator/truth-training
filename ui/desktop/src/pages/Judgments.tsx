@@ -92,9 +92,9 @@ export const Judgments: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Assessments</option>
-                  <option value="true">True</option>
-                  <option value="false">False</option>
-                  <option value="uncertain">Uncertain</option>
+                  <option value="confirm">Confirm</option>
+                  <option value="reject">Reject</option>
+                  <option value="abstain">Abstain</option>
                 </select>
               </div>
               <div>
@@ -156,9 +156,9 @@ export const Judgments: React.FC = () => {
                   </div>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">True</p>
+                  <p className="text-sm font-medium text-gray-500">Confirm</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    {filteredJudgments.filter(j => j.assessment === 'true').length}
+                    {filteredJudgments.filter(j => j.assessment === 'confirm').length}
                   </p>
                 </div>
               </div>
@@ -172,9 +172,9 @@ export const Judgments: React.FC = () => {
                   </div>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">False</p>
+                  <p className="text-sm font-medium text-gray-500">Reject</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    {filteredJudgments.filter(j => j.assessment === 'false').length}
+                    {filteredJudgments.filter(j => j.assessment === 'reject').length}
                   </p>
                 </div>
               </div>
@@ -188,9 +188,9 @@ export const Judgments: React.FC = () => {
                   </div>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Uncertain</p>
+                  <p className="text-sm font-medium text-gray-500">Abstain</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    {filteredJudgments.filter(j => j.assessment === 'uncertain').length}
+                    {filteredJudgments.filter(j => j.assessment === 'abstain').length}
                   </p>
                 </div>
               </div>
