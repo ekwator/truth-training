@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 #[allow(unused_imports)]
 use std::str::FromStr;
 
+#[cfg(any(test, feature = "p2p-client-sync"))]
 #[derive(Debug, Clone)]
 pub struct WifiDirectConfig {
     pub enabled: bool,
@@ -13,6 +14,7 @@ pub struct WifiDirectConfig {
     pub broadcast_interval_ms: u64,
 }
 
+#[cfg(any(test, feature = "p2p-client-sync"))]
 #[derive(Debug, Clone)]
 pub struct NearbyPeer {
     pub addr: String,
@@ -20,11 +22,13 @@ pub struct NearbyPeer {
     pub pubkey: String,
 }
 
+#[cfg(any(test, feature = "p2p-client-sync"))]
 #[derive(Debug, Clone)]
 pub struct WifiDirectSync {
     pub config: WifiDirectConfig,
 }
 
+#[cfg(any(test, feature = "p2p-client-sync"))]
 impl WifiDirectSync {
     pub fn new(http_port: u16) -> Self {
         Self {
@@ -94,6 +98,7 @@ pub async fn start_nearby_sync(
     }
 }
 
+#[cfg(any(test, feature = "p2p-client-sync"))]
 fn parse_beacon(s: &str) -> Option<NearbyPeer> {
     // Very simple format: TT_BEACON v1 pubkey=<hex> port=<u16>
     if !s.starts_with("TT_BEACON v1 ") { return None; }
