@@ -29,7 +29,6 @@ desktop = [
   "dep:tokio",
   "dep:reqwest",
   "dep:clap",
-  "dep:get_if_addrs",
   "dep:r2d2",
   "dep:r2d2_sqlite",
   "dep:env_logger",
@@ -68,7 +67,6 @@ actix-cors = { version = "0.6", optional = true }
 tokio = { version = "1.37", features = ["full"], optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"], optional = true }
 clap = { version = "4", features = ["derive"], optional = true }
-get_if_addrs = { version = "0.5", optional = true }
 r2d2 = { version = "0.8", optional = true }
 r2d2_sqlite = { version = "0.24.0", optional = true }
 env_logger = { version = "0.11", optional = true }
@@ -80,5 +78,8 @@ jni = { version = "0.21", optional = true }
 # Android-specific dependencies
 [target.'cfg(target_os = "android")'.dependencies]
 getrandom = { version = "0.2", features = ["std"] }
+
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+get_if_addrs = { version = "0.5" }
 
  
