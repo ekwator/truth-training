@@ -4,6 +4,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
+use crate::p2p::encryption::CryptoIdentity;
 
 use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary, RbacUser};
 use core_lib::storage;
@@ -94,19 +95,7 @@ async fn api_v1_nearby_start(
 ) -> impl Responder {
     if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
     let interval = body.interval_ms.unwrap_or(3000).clamp(500, 60_000);
-    // stop existing
-    {
-        let mut guard = handle.write().await;
-        if let Some(h) = guard.take() { h.abort(); }
-        let conn = pool.clone();
-        let id = identity.clone();
-        let port = meta.http_port;
-        let task = tokio::spawn(async move {
-            #[cfg(any(test, feature = "p2p-client-sync"))]
-            crate::p2p::wifi_direct::start_nearby_sync(conn.get_ref().clone(), id.get_ref().clone(), port, interval).await;
-        });
-        *guard = Some(task);
-    }
+    start_nearby_task(handle.get_ref(), pool.get_ref(), identity.get_ref(), meta.http_port, interval).await;
     HttpResponse::Ok().json(serde_json::json!({"status":"started","interval_ms": interval}))
 }
 
@@ -116,10 +105,7 @@ async fn api_v1_nearby_stop(
     handle: web::Data<Arc<RwLock<Option<JoinHandle<()>>>>>,
 ) -> impl Responder {
     if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
-    {
-        let mut guard = handle.write().await;
-        if let Some(h) = guard.take() { h.abort(); }
-    }
+    stop_nearby_task(handle.get_ref()).await;
     HttpResponse::Ok().json(serde_json::json!({"status":"stopped"}))
 }
 
@@ -161,12 +147,34 @@ async fn api_v1_set_config(
     if persist.is_err() { return HttpResponse::InternalServerError().finish(); }
     // Apply runtime
     if enabled {
-        // restart with new interval
-        let _ = api_v1_nearby_start(req, pool, meta, handle, identity, web::Json(NearbyStartRequest{ interval_ms: Some(interval) })).await;
+        start_nearby_task(handle.get_ref(), pool.get_ref(), identity.get_ref(), meta.http_port, interval).await;
     } else {
-        let _ = api_v1_nearby_stop(req, handle).await;
+        stop_nearby_task(handle.get_ref()).await;
     }
     HttpResponse::Ok().json(serde_json::json!({"status":"ok","nearby_sync": enabled, "nearby_interval_ms": interval}))
+}
+
+async fn start_nearby_task(
+    handle: &Arc<RwLock<Option<JoinHandle<()>>>>,
+    pool: &Arc<Mutex<rusqlite::Connection>>,
+    identity: &Arc<CryptoIdentity>,
+    http_port: u16,
+    interval_ms: u64,
+) {
+    let mut guard = handle.write().await;
+    if let Some(h) = guard.take() { h.abort(); }
+    let conn = pool.clone();
+    let id = identity.clone();
+    let task = tokio::spawn(async move {
+        #[cfg(any(test, feature = "p2p-client-sync"))]
+        crate::p2p::wifi_direct::start_nearby_sync(conn, id, http_port, interval_ms).await;
+    });
+    *guard = Some(task);
+}
+
+async fn stop_nearby_task(handle: &Arc<RwLock<Option<JoinHandle<()>>>>) {
+    let mut guard = handle.write().await;
+    if let Some(h) = guard.take() { h.abort(); }
 }
 
 #[utoipa::path(
