@@ -383,6 +383,91 @@ jobs:
           pattern: '*'
           merge-multiple: false
           path: artifacts
+      - name: Prepare release files (deduplicate)
+        run: |
+          mkdir -p release-assets
+          
+          # Function to copy files with deduplication from directory
+          copy_unique_dir() {
+            local src_dir="$1"
+            local dest_dir="$2"
+            
+            if [ ! -d "$src_dir" ]; then
+              return 0
+            fi
+            
+            # Find all files in directory recursively
+            while IFS= read -r -d '' file; do
+              if [ -f "$file" ]; then
+                local filename=$(basename "$file")
+                local dest="$dest_dir/$filename"
+                # Only copy if destination doesn't exist
+                if [ ! -f "$dest" ]; then
+                  cp "$file" "$dest" 2>/dev/null || true
+                  echo "  ✓ Copied: $filename"
+                else
+                  echo "  ⊘ Skipped duplicate: $filename"
+                fi
+              fi
+            done < <(find "$src_dir" -type f -print0 2>/dev/null || true)
+          }
+          
+          echo "📦 Preparing release files..."
+          
+          # Copy server binaries
+          if [ -d "artifacts/truth_core_server-linux-bin" ]; then
+            echo "Processing truth_core_server-linux-bin..."
+            copy_unique_dir "artifacts/truth_core_server-linux-bin" "release-assets"
+          fi
+          if [ -d "artifacts/truth_core_server-macos-bin" ]; then
+            echo "Processing truth_core_server-macos-bin..."
+            copy_unique_dir "artifacts/truth_core_server-macos-bin" "release-assets"
+          fi
+          if [ -d "artifacts/truth_core_server-windows-bin-cross" ]; then
+            echo "Processing truth_core_server-windows-bin-cross..."
+            copy_unique_dir "artifacts/truth_core_server-windows-bin-cross" "release-assets"
+          fi
+          if [ -d "artifacts/truth_core_server-windows-bin" ]; then
+            echo "Processing truth_core_server-windows-bin..."
+            copy_unique_dir "artifacts/truth_core_server-windows-bin" "release-assets"
+          fi
+          
+          # Copy desktop app artifacts
+          if [ -d "artifacts/truth_training-linux" ]; then
+            echo "Processing truth_training-linux..."
+            copy_unique_dir "artifacts/truth_training-linux" "release-assets"
+          fi
+          if [ -d "artifacts/truth_training-macos" ]; then
+            echo "Processing truth_training-macos..."
+            copy_unique_dir "artifacts/truth_training-macos" "release-assets"
+          fi
+          if [ -d "artifacts/truth_training-windows-cross" ]; then
+            echo "Processing truth_training-windows-cross..."
+            copy_unique_dir "artifacts/truth_training-windows-cross" "release-assets"
+          fi
+          if [ -d "artifacts/truth_training-windows-native" ]; then
+            echo "Processing truth_training-windows-native..."
+            copy_unique_dir "artifacts/truth_training-windows-native" "release-assets"
+          fi
+          
+          echo ""
+          echo "📋 Files prepared for upload:"
+          find release-assets -type f -exec ls -lh {} \; | awk '{print "  " $9 " (" $5 ")"}'
+          echo ""
+          echo "Total files: $(find release-assets -type f | wc -l)"
+      
+      - name: Check release exists
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          if ! gh release view "$TAG_NAME" &>/dev/null; then
+            echo "❌ Release '$TAG_NAME' does not exist!"
+            echo "   Please create the release first using create-release.sh script"
+            exit 1
+          fi
+          echo "✓ Release '$TAG_NAME' exists"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Publish Release (attach artifacts only)
         uses: softprops/action-gh-release@v1
         with:
@@ -391,13 +476,6 @@ jobs:
           fail_on_unmatched_files: false
           tag_name: ${{ github.ref_name }}
           files: |
-            artifacts/truth_core_server-linux-bin/*
-            artifacts/truth_core_server-macos-bin/*
-            artifacts/truth_core_server-windows-bin-cross/*
-            artifacts/truth_core_server-windows-bin/*
-            artifacts/truth_training-linux/**/*
-            artifacts/truth_training-macos/**/*
-            artifacts/truth_training-windows-cross/**/*
-            artifacts/truth_training-windows-native/**/*
+            release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
