@@ -11,9 +11,10 @@ Security updates are provided for the **latest stable release** and the **develo
 | Desktop UI | v0.1.3 | ❌ No | Tauri-based UI, production-ready builds |
 | Core (`master`) | v0.4.2 | ❌ No | Desktop Integration & Cross-Platform Builds |
 | Desktop UI | v0.1.2 | ❌ No | Tauri-based UI, production-ready builds |
-| v0.3.x | ❌ No | Core stabilization & crypto verification |
-| v0.2.x | ❌ No | Legacy P2P prototype |
-| < v0.2 | ❌ No | Deprecated research builds |
+| Core (`master`) | v0.3.x | ❌ No | Core stabilization & crypto verification |
+| P2P | v0.2.x | ❌ No | Legacy P2P prototype |
+| P2P | v0.2.x | ❌ No | Legacy P2P prototype |
+| ? | < v0.2 | ❌ No | Deprecated research builds |
 
 ---
 
