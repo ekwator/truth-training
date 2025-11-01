@@ -202,7 +202,7 @@ jobs:
         with:
           draft: false
           generate_release_notes: false
-          make_latest: true
+          fail_on_unmatched_files: false
           tag_name: ${{ github.ref_name }}
           files: |
             artifacts/truth-core-server-linux/**/*
