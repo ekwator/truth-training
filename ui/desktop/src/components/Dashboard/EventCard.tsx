@@ -1,19 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Event } from '@/types/events';
 import { Modal } from '@/components/system/Modal';
 import { ApiService } from '@/services/api';
+import { ContextTemplate } from '@/types/contexts';
+import { Screen } from '@/components/layout/TopMenuBar';
+import { useContextEditorStore } from '@/stores/contextEditor';
 
 interface EventCardProps {
   event: Event;
+  onNavigate?: (screen: Screen) => void;
 }
 
-export const EventCard: React.FC<EventCardProps> = ({ event }) => {
+export const EventCard: React.FC<EventCardProps> = ({ event, onNavigate }) => {
+  const { setPrefilledData } = useContextEditorStore();
   const [openView, setOpenView] = useState(false);
   const [openJudge, setOpenJudge] = useState(false);
   const [judgeAssessment, setJudgeAssessment] = useState<'confirm'|'reject'|'abstain'>('confirm');
   const [judgeConfidence, setJudgeConfidence] = useState<number>(0.7);
   const [judgeReasoning, setJudgeReasoning] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+  const [matchedTemplate, setMatchedTemplate] = useState<ContextTemplate | null>(null);
+  const [matchingTemplate, setMatchingTemplate] = useState(false);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -43,6 +50,51 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     const d = event.description.trim();
     return d.startsWith(t) || t.startsWith(d.slice(0, Math.min(40, d.length)));
   }, [event.title, event.description]);
+
+  // Match event to context template on mount
+  useEffect(() => {
+    const matchTemplate = async () => {
+      // Only match if event has at least one non-NULL context field
+      if (!event.category_id && !event.forma_id && !event.cause_id && !event.develop_id && !event.effect_id) {
+        return;
+      }
+
+      setMatchingTemplate(true);
+      try {
+        const response = await ApiService.matchContext({
+          category_id: event.category_id,
+          forma_id: event.forma_id,
+          cause_id: event.cause_id,
+          develop_id: event.develop_id,
+          effect_id: event.effect_id,
+        });
+        if (response.matched && response.template) {
+          setMatchedTemplate(response.template);
+        }
+      } catch (error) {
+        console.error('Failed to match template:', error);
+        // Silently fail - template matching is optional
+      } finally {
+        setMatchingTemplate(false);
+      }
+    };
+
+    matchTemplate();
+  }, [event.category_id, event.forma_id, event.cause_id, event.develop_id, event.effect_id]);
+
+  const handleCreateTemplate = () => {
+    // Set prefilled data in store and navigate to ContextEditor
+    setPrefilledData({
+      category_id: event.category_id,
+      forma_id: event.forma_id,
+      cause_id: event.cause_id,
+      develop_id: event.develop_id,
+      effect_id: event.effect_id,
+    });
+    if (onNavigate) {
+      onNavigate('context-editor');
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200">
@@ -74,6 +126,26 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
             <span>Updated {formatDate(event.updated_at)}</span>
           )}
         </div>
+
+        {/* Template matching display */}
+        {matchingTemplate ? (
+          <div className="mb-4 text-xs text-gray-500">Matching template...</div>
+        ) : matchedTemplate ? (
+          <div className="mb-4 px-3 py-2 bg-green-50 border border-green-200 rounded text-sm">
+            <span className="text-green-800">
+              <strong>Template:</strong> {matchedTemplate.name}
+            </span>
+          </div>
+        ) : (event.category_id || event.forma_id || event.cause_id || event.develop_id || event.effect_id) ? (
+          <div className="mb-4">
+            <button
+              onClick={handleCreateTemplate}
+              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+            >
+              [Create Template]
+            </button>
+          </div>
+        ) : null}
 
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4 text-sm text-gray-500">

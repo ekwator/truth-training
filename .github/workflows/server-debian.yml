@@ -40,25 +40,46 @@ jobs:
           name: truth_core_service_deb
           path: packaging/truth-core-service.deb
           retention-days: 7
-      - name: Publish Release (tag push)
-        if: startsWith(github.ref, 'refs/tags/')
+
+  publish-release:
+    needs: [linux-deb]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*'
+          merge-multiple: false
+          path: artifacts
+      - name: Publish Release
         uses: softprops/action-gh-release@v1
         with:
           draft: false
           tag_name: ${{ github.ref_name }}
-          name: Debian truth_core service (${{ github.ref_name }})
+          name: Debian Truth Core Service Release (${{ github.ref_name }})
+          body: |
+            ## Debian Truth Core Service Release ${{ github.ref_name }}
+
+            This release includes the Debian package for the Truth Core Server service.
+
+            ### Included Artifacts
+
+            #### Debian Package
+            - **truth-core-service.deb**: Debian package for installation on Debian/Ubuntu-based systems
+
+            ### Installation Instructions
+
+            **Debian/Ubuntu:**
+            ```bash
+            sudo dpkg -i truth-core-service.deb
+            sudo apt-get install -f  # Install dependencies if needed
+            ```
+
+            The package includes the `truth_core_server` binary and systemd service configuration.
+
           files: |
-            packaging/truth-core-service.deb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish Release (draft on branch)
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: true
-          tag_name: debian-truth-core-${{ github.sha }}
-          name: Debian truth_core service (${{ github.sha }})
-          files: |
-            packaging/truth-core-service.deb
+            artifacts/truth_core_service_deb/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

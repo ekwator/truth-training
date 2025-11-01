@@ -8,6 +8,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-20
 - Local SQLite via core system API (no direct database access) (002-ui-desktop-integration)
 - Rust 1.78+ (Tauri backend), TypeScript (Tauri frontend) + Tauri, SQLite (rusqlite), simple TS UI (text-only) (003-truth-training-desktop)
 - SQLite (local, offline-first) (003-truth-training-desktop)
+- Rust (stable), TypeScript/React (desktop UI), SQLite (embedded DB) + Actix Web (server API), Tauri (desktop UI), rusqlite (storage), React/TypeScript (UI) (006-context-fields-embedded)
+- SQLite embedded database (local persistence) (006-context-fields-embedded)
 
 ## Project Structure
 ```
@@ -22,8 +24,8 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust 1.75+ (existing project): Follow standard conventions
 
 ## Recent Changes
+- 006-context-fields-embedded: Added Rust (stable), TypeScript/React (desktop UI), SQLite (embedded DB) + Actix Web (server API), Tauri (desktop UI), rusqlite (storage), React/TypeScript (UI)
 - 003-truth-training-desktop: Added Rust 1.78+ (Tauri backend), TypeScript (Tauri frontend) + Tauri, SQLite (rusqlite), simple TS UI (text-only)
-- 002-ui-desktop-integration: Added Rust 1.75+ (Tauri), TypeScript/JavaScript (frontend) + Tauri, React/Vue (frontend framework), HTTP client for API communication
 - 002-ui-desktop-integration: Added Rust 1.75+ (Tauri), TypeScript/JavaScript (frontend) + Tauri, React/Vue (frontend framework), HTTP client for API communication
 
 <!-- MANUAL ADDITIONS START -->

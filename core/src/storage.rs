@@ -96,7 +96,11 @@ description TEXT
 CREATE TABLE IF NOT EXISTS truth_events (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     description     TEXT NOT NULL,
-    context_id      INTEGER NOT NULL,
+    category_id     INTEGER,                -- FK → category.id, nullable
+    forma_id        INTEGER,                -- FK → forma.id, nullable
+    cause_id        INTEGER,                -- FK → cause.id, nullable
+    develop_id      INTEGER,                -- FK → develop.id, nullable
+    effect_id       INTEGER,                -- FK → effect.id, nullable
     vector          INTEGER NOT NULL,       -- 0/1 вместо BOOLEAN
     detected        INTEGER,                -- NULL/0/1
     corrected       INTEGER NOT NULL DEFAULT 0,
@@ -104,8 +108,18 @@ timestamp_start INTEGER NOT NULL,
     timestamp_end   INTEGER,
     code            INTEGER NOT NULL DEFAULT 1,  -- 8-bit event code
     collective_score REAL,
-FOREIGN KEY(context_id) REFERENCES context(id)
+    FOREIGN KEY(category_id) REFERENCES category(id),
+    FOREIGN KEY(forma_id) REFERENCES forma(id),
+    FOREIGN KEY(cause_id) REFERENCES cause(id),
+    FOREIGN KEY(develop_id) REFERENCES develop(id),
+    FOREIGN KEY(effect_id) REFERENCES effect(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_truth_events_category ON truth_events(category_id);
+CREATE INDEX IF NOT EXISTS idx_truth_events_forma ON truth_events(forma_id);
+CREATE INDEX IF NOT EXISTS idx_truth_events_cause ON truth_events(cause_id);
+CREATE INDEX IF NOT EXISTS idx_truth_events_develop ON truth_events(develop_id);
+CREATE INDEX IF NOT EXISTS idx_truth_events_effect ON truth_events(effect_id);
 
 CREATE TABLE IF NOT EXISTS statements (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -994,6 +1008,7 @@ fn seed_knowledge_base_en(conn: &mut Connection) -> Result<(), CoreError> {
 ========================= */
 
 /// Добавить событие (detected = NULL; corrected = false; timestamp_end = NULL)
+/// Note: FK validation should be done before calling this function
 pub fn add_truth_event(conn: &Connection, new_ev: NewTruthEvent) -> Result<i64, CoreError> {
     if new_ev.description.trim().is_empty() {
         return Err(CoreError::InvalidArg("description is empty".into()));
@@ -1001,12 +1016,16 @@ pub fn add_truth_event(conn: &Connection, new_ev: NewTruthEvent) -> Result<i64, 
 
     conn.execute(
         r#"INSERT INTO truth_events
-            (description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, collective_score)
+            (description, category_id, forma_id, cause_id, develop_id, effect_id, vector, detected, corrected, timestamp_start, timestamp_end, code, collective_score)
           VALUES
-            (?1, ?2, ?3, NULL, 0, ?4, NULL, ?5, NULL)"#,
+            (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, 0, ?8, NULL, ?9, NULL)"#,
         params![
             new_ev.description,
-            new_ev.context_id,
+            new_ev.category_id,
+            new_ev.forma_id,
+            new_ev.cause_id,
+            new_ev.develop_id,
+            new_ev.effect_id,
             if new_ev.vector { 1 } else { 0 },
             new_ev.timestamp_start,
             new_ev.code,
@@ -1019,7 +1038,7 @@ pub fn add_truth_event(conn: &Connection, new_ev: NewTruthEvent) -> Result<i64, 
 /// Получить событие по id
 pub fn get_truth_event(conn: &Connection, id: i64) -> Result<Option<TruthEvent>, CoreError> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key, collective_score
+        r#"SELECT id, description, category_id, forma_id, cause_id, develop_id, effect_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key, collective_score
            FROM truth_events WHERE id = ?1"#,
     )?;
 
@@ -1028,21 +1047,225 @@ pub fn get_truth_event(conn: &Connection, id: i64) -> Result<Option<TruthEvent>,
         Ok(TruthEvent {
             id: row.get(0)?,
             description: row.get(1)?,
-            context_id: row.get(2)?,
-                vector: row.get::<_, i64>(3)? != 0,
-            detected: row.get::<_, Option<i64>>(4)?.map(|v| v != 0),
-            corrected: row.get::<_, i64>(5)? != 0,
-            timestamp_start: row.get(6)?,
-            timestamp_end: row.get::<_, Option<i64>>(7)?,
-                code: row.get(8)?,
-                signature: row.get(9)?,
-                public_key: row.get(10)?,
-                collective_score: row.get(11)?,
+            category_id: row.get(2)?,
+            forma_id: row.get(3)?,
+            cause_id: row.get(4)?,
+            develop_id: row.get(5)?,
+            effect_id: row.get(6)?,
+                vector: row.get::<_, i64>(7)? != 0,
+            detected: row.get::<_, Option<i64>>(8)?.map(|v| v != 0),
+            corrected: row.get::<_, i64>(9)? != 0,
+            timestamp_start: row.get(10)?,
+            timestamp_end: row.get::<_, Option<i64>>(11)?,
+                code: row.get(12)?,
+                signature: row.get(13)?,
+                public_key: row.get(14)?,
+                collective_score: row.get(15)?,
             })
         })
         .optional()?;
 
     Ok(row_opt)
+}
+
+/* =========================
+Foreign Key Validation
+========================= */
+
+/// Validate foreign key reference exists
+/// Returns error if non-NULL ID doesn't exist in the referenced table
+pub fn validate_foreign_key(conn: &Connection, table: &str, field_id: Option<i64>) -> Result<bool, CoreError> {
+    let Some(id) = field_id else {
+        // NULL is valid (nullable FK)
+        return Ok(true);
+    };
+
+    // Map table name to actual table name
+    let query = match table {
+        "category" => "SELECT COUNT(*) FROM category WHERE id = ?1",
+        "forma" => "SELECT COUNT(*) FROM forma WHERE id = ?1",
+        "cause" => "SELECT COUNT(*) FROM cause WHERE id = ?1",
+        "develop" => "SELECT COUNT(*) FROM develop WHERE id = ?1",
+        "effect" => "SELECT COUNT(*) FROM effect WHERE id = ?1",
+        _ => return Err(CoreError::InvalidArg(format!("Unknown table: {}", table))),
+    };
+
+    let count: i64 = conn.query_row(query, params![id], |row| row.get(0))?;
+    if count == 0 {
+        return Err(CoreError::InvalidArg(format!("Foreign key {}={} does not exist in table {}", table, id, table)));
+    }
+
+    Ok(true)
+}
+
+/* =========================
+Context Template Operations
+========================= */
+
+/// Get all context templates
+pub fn get_all_contexts(conn: &Connection) -> Result<Vec<crate::models::Context>, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"SELECT id, name, category_id, forma_id, cause_id, develop_id, effect_id, description
+           FROM context ORDER BY name"#,
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok(crate::models::Context {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            category_id: row.get(2)?,
+            forma_id: row.get(3)?,
+            cause_id: row.get(4)?,
+            develop_id: row.get(5)?,
+            effect_id: row.get(6)?,
+            description: row.get(7)?,
+        })
+    })?;
+
+    let mut contexts = Vec::new();
+    for row in rows {
+        contexts.push(row?);
+    }
+    Ok(contexts)
+}
+
+/// Get context template by name
+pub fn get_context_by_name(conn: &Connection, name: &str) -> Result<Option<crate::models::Context>, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"SELECT id, name, category_id, forma_id, cause_id, develop_id, effect_id, description
+           FROM context WHERE name = ?1"#,
+    )?;
+
+    let row_opt = stmt
+        .query_row(params![name], |row| {
+            Ok(crate::models::Context {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                category_id: row.get(2)?,
+                forma_id: row.get(3)?,
+                cause_id: row.get(4)?,
+                develop_id: row.get(5)?,
+                effect_id: row.get(6)?,
+                description: row.get(7)?,
+            })
+        })
+        .optional()?;
+
+    Ok(row_opt)
+}
+
+/// Check if context template with identical non-NULL fields already exists
+/// Returns true if duplicate found, false otherwise
+/// Only compares non-NULL fields; NULL values are ignored
+pub fn check_duplicate_context(conn: &Connection, new_ctx: &crate::models::NewContext) -> Result<bool, CoreError> {
+    // Build WHERE clause for non-NULL field comparison
+    // Logic: For each field where new_ctx has non-NULL, existing template must have same non-NULL value
+    // If new_ctx field is NULL, ignore that field in comparison
+    let query = r#"
+        SELECT COUNT(*) FROM context
+        WHERE 
+            (category_id = ?1 OR ?1 IS NULL)
+            AND (forma_id = ?2 OR ?2 IS NULL)
+            AND (cause_id = ?3 OR ?3 IS NULL)
+            AND (develop_id = ?4 OR ?4 IS NULL)
+            AND (effect_id = ?5 OR ?5 IS NULL)
+    "#;
+
+    let count: i64 = conn.query_row(
+        query,
+        params![
+            new_ctx.category_id,
+            new_ctx.forma_id,
+            new_ctx.cause_id,
+            new_ctx.develop_id,
+            new_ctx.effect_id,
+        ],
+        |row| row.get(0),
+    )?;
+
+    Ok(count > 0)
+}
+
+/// Match event fields to a context template using non-NULL field comparison
+/// Returns the matched template if found, None otherwise
+/// Only compares non-NULL fields; NULL values are ignored
+pub fn match_context_template(
+    conn: &Connection,
+    category_id: Option<i64>,
+    forma_id: Option<i64>,
+    cause_id: Option<i64>,
+    develop_id: Option<i64>,
+    effect_id: Option<i64>,
+) -> Result<Option<crate::models::Context>, CoreError> {
+    // Build WHERE clause for non-NULL field comparison (same logic as duplicate detection)
+    let mut stmt = conn.prepare(
+        r#"SELECT id, name, category_id, forma_id, cause_id, develop_id, effect_id, description
+        FROM context
+        WHERE 
+            (category_id = ?1 OR ?1 IS NULL)
+            AND (forma_id = ?2 OR ?2 IS NULL)
+            AND (cause_id = ?3 OR ?3 IS NULL)
+            AND (develop_id = ?4 OR ?4 IS NULL)
+            AND (effect_id = ?5 OR ?5 IS NULL)
+        LIMIT 1"#,
+    )?;
+
+    let row_opt = stmt
+        .query_row(
+            params![category_id, forma_id, cause_id, develop_id, effect_id],
+            |row| {
+                Ok(crate::models::Context {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    category_id: row.get(2)?,
+                    forma_id: row.get(3)?,
+                    cause_id: row.get(4)?,
+                    develop_id: row.get(5)?,
+                    effect_id: row.get(6)?,
+                    description: row.get(7)?,
+                })
+            },
+        )
+        .optional()?;
+
+    Ok(row_opt)
+}
+
+/// Add a new context template
+/// Validates FK references and checks for duplicates before inserting
+pub fn add_context(conn: &Connection, new_ctx: crate::models::NewContext) -> Result<i64, CoreError> {
+    if new_ctx.name.trim().is_empty() {
+        return Err(CoreError::InvalidArg("name is empty".into()));
+    }
+
+    // Validate FK references
+    validate_foreign_key(conn, "category", new_ctx.category_id)?;
+    validate_foreign_key(conn, "forma", new_ctx.forma_id)?;
+    validate_foreign_key(conn, "cause", new_ctx.cause_id)?;
+    validate_foreign_key(conn, "develop", new_ctx.develop_id)?;
+    validate_foreign_key(conn, "effect", new_ctx.effect_id)?;
+
+    // Check for duplicate (non-NULL field comparison)
+    if check_duplicate_context(conn, &new_ctx)? {
+        return Err(CoreError::InvalidArg("Template with identical non-NULL fields already exists".into()));
+    }
+
+    // Insert new template
+    conn.execute(
+        r#"INSERT INTO context (name, category_id, forma_id, cause_id, develop_id, effect_id, description)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"#,
+        params![
+            new_ctx.name,
+            new_ctx.category_id,
+            new_ctx.forma_id,
+            new_ctx.cause_id,
+            new_ctx.develop_id,
+            new_ctx.effect_id,
+            new_ctx.description,
+        ],
+    )?;
+
+    Ok(conn.last_insert_rowid())
 }
 
 /// Отметить событие как распознанное (detected = true/false), опционально проставить окончание и corrected
@@ -1941,12 +2164,16 @@ pub fn import_from_json(conn: &mut Connection, file_path: &str) -> Result<(), Co
 
     for event in data.truth_events {
         tx.execute(
-            "INSERT INTO truth_events (id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            "INSERT INTO truth_events (id, description, category_id, forma_id, cause_id, develop_id, effect_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
             rusqlite::params![
                 event.id,
                 event.description,
-                event.context_id,
+                event.category_id,
+                event.forma_id,
+                event.cause_id,
+                event.develop_id,
+                event.effect_id,
                 if event.vector { 1 } else { 0 },
                 event.detected.map(|v| if v { 1 } else { 0 }),
                 if event.corrected { 1 } else { 0 },
@@ -2116,23 +2343,27 @@ pub fn update_statement_score(conn: &Connection, id: i64, truth_score: f32) -> R
 /// Загружаем все события
 pub fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError> {
     let mut stmt = conn.prepare(
-        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key, collective_score FROM truth_events",
+        "SELECT id, description, category_id, forma_id, cause_id, develop_id, effect_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key, collective_score FROM truth_events",
     )?;
 
     let rows = stmt.query_map([], |row| {
         Ok(TruthEvent {
             id: row.get(0)?,
             description: row.get(1)?,
-            context_id: row.get(2)?,
-            vector: row.get::<_, i64>(3)? != 0,
-            detected: row.get::<_, Option<i64>>(4)?.map(|v| v != 0),
-            corrected: row.get::<_, i64>(5)? != 0,
-            timestamp_start: row.get(6)?,
-            timestamp_end: row.get(7)?,
-            code: row.get(8)?,
-            signature: row.get(9)?,
-            public_key: row.get(10)?,
-            collective_score: row.get(11)?,
+            category_id: row.get(2)?,
+            forma_id: row.get(3)?,
+            cause_id: row.get(4)?,
+            develop_id: row.get(5)?,
+            effect_id: row.get(6)?,
+            vector: row.get::<_, i64>(7)? != 0,
+            detected: row.get::<_, Option<i64>>(8)?.map(|v| v != 0),
+            corrected: row.get::<_, i64>(9)? != 0,
+            timestamp_start: row.get(10)?,
+            timestamp_end: row.get(11)?,
+            code: row.get(12)?,
+            signature: row.get(13)?,
+            public_key: row.get(14)?,
+            collective_score: row.get(15)?,
         })
     })?;
 
@@ -2270,7 +2501,11 @@ mod tests {
         // Вставка события
         let new_ev = NewTruthEvent {
             description: "Test event".to_string(),
-            context_id: 1,
+            category_id: Some(1),
+            forma_id: None,
+            cause_id: None,
+            develop_id: None,
+            effect_id: None,
             vector: true,
             timestamp_start: 1_700_000_000,
             code: 1,
@@ -2318,7 +2553,11 @@ mod tests {
         // Author nodeA creates an event
         let new_ev = NewTruthEvent {
             description: "Rated event".to_string(),
-            context_id: 1,
+            category_id: Some(1),
+            forma_id: None,
+            cause_id: None,
+            develop_id: None,
+            effect_id: None,
             vector: true,
             timestamp_start: 1_700_000_100,
             code: 1,
