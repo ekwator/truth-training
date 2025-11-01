@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type Screen = 'home' | 'new-event' | 'event-summary' | 'overall-summary' | 'training-results' | 'logs' | 'settings';
+export type Screen = 'home' | 'new-event' | 'context-editor' | 'event-summary' | 'overall-summary' | 'training-results' | 'logs' | 'settings';
 
 interface TopMenuBarProps {
   currentScreen: Screen;
@@ -28,6 +28,14 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigat
               }`}
             >
               New Event
+            </button>
+            <button
+              onClick={() => onNavigate('context-editor')}
+              className={`px-3 py-2 text-sm font-medium ${
+                currentScreen === 'context-editor' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
+              }`}
+            >
+              Context Editor
             </button>
             <button
               onClick={() => onNavigate('event-summary')}

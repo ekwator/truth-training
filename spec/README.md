@@ -1,12 +1,12 @@
-# Truth Training – Cross-Platform Spec Kit v0.4.0
+# Truth Training – Cross-Platform Spec Kit v1.0.0
 
 | Component       | Current Version |
 |-----------------|-----------------|
-| Core Library    | v0.4.2          |
-| Server          | v0.4.2          |
-| CLI (truthctl)  | v0.4.2          |
-| Desktop UI      | v0.1.3          |
-| Spec Document   | v0.4.0          |
+| Core Library    | v1.0.0          |
+| Server          | v1.0.0          |
+| CLI (truthctl)  | v1.0.0          |
+| Desktop UI      | v1.0.0          |
+| Spec Document   | v1.0.0          |
 
 > The Spec Document version refers only to documentation and does not determine software versions.
 
@@ -321,7 +321,7 @@ cargo test --target aarch64-linux-android --features mobile
 cargo test --target aarch64-apple-ios --features mobile
 ```
 
-## Specification Index (v0.4.0)
+## Specification Index (v1.0.0)
 
 | ID | File | Title |
 |----|-------|--------|
@@ -406,6 +406,7 @@ npm run test:e2e
 
 ## Version History
 
+- **v1.0.0**: First stable baseline - Context fields embedded in events, context template system
 - **v0.4.0**: Cross-platform architecture with mobile/desktop feature separation
 - **v0.3.0**: Android JSON signature verification and P2P stabilization
 - **v0.2.x**: Legacy desktop-only implementation

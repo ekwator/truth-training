@@ -72,6 +72,18 @@ pub struct Context {
     pub description: Option<String>,
 }
 
+/// Вспомогательная структура для создания контекстного шаблона
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewContext {
+    pub name: String,
+    pub category_id: Option<i64>,
+    pub forma_id: Option<i64>,
+    pub cause_id: Option<i64>,
+    pub develop_id: Option<i64>,
+    pub effect_id: Option<i64>,
+    pub description: Option<String>,
+}
+
 /// Тип воздействия (таблица: impact_type)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImpactType {
@@ -85,7 +97,11 @@ pub struct ImpactType {
 pub struct TruthEvent {
     pub id: i64,                    // INTEGER, PK
     pub description: String,        // TEXT
-    pub context_id: i64,            // INTEGER (FK → context.id)
+    pub category_id: Option<i64>,   // INTEGER (FK → category.id, nullable)
+    pub forma_id: Option<i64>,      // INTEGER (FK → forma.id, nullable)
+    pub cause_id: Option<i64>,      // INTEGER (FK → cause.id, nullable)
+    pub develop_id: Option<i64>,    // INTEGER (FK → develop.id, nullable)
+    pub effect_id: Option<i64>,     // INTEGER (FK → effect.id, nullable)
     pub vector: bool,               // BOOLEAN (true = исходящее, false = входящее)
     pub detected: Option<bool>,     // BOOLEAN NULLABLE (распознано ли как ложь/правда)
     pub corrected: bool,            // BOOLEAN
@@ -101,7 +117,11 @@ pub timestamp_end: Option<i64>, // INTEGER NULLABLE (UNIX secs)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewTruthEvent {
 pub description: String,
-pub context_id: i64,
+pub category_id: Option<i64>,   // INTEGER (FK → category.id, nullable)
+pub forma_id: Option<i64>,      // INTEGER (FK → forma.id, nullable)
+pub cause_id: Option<i64>,      // INTEGER (FK → cause.id, nullable)
+pub develop_id: Option<i64>,    // INTEGER (FK → develop.id, nullable)
+pub effect_id: Option<i64>,     // INTEGER (FK → effect.id, nullable)
 pub vector: bool,
 pub timestamp_start: i64,
     pub code: u8,

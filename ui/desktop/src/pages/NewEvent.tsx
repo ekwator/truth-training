@@ -1,45 +1,79 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/components/system/Toaster';
-
-interface KnowledgeBaseItem {
-  id: string;
-  label: string;
-}
+import { ContextTemplate } from '@/types/contexts';
 
 export const NewEvent: React.FC = () => {
   const { addToast } = useToast();
-  const [kbItems, setKbItems] = useState<KnowledgeBaseItem[]>([]);
+  const [templates, setTemplates] = useState<ContextTemplate[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [confessionMode, setConfessionMode] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [formData, setFormData] = useState({
     event_name: '',
     description: '',
-    context: '',
+    category_id: undefined as number | undefined,
+    forma_id: undefined as number | undefined,
+    cause_id: undefined as number | undefined,
+    develop_id: undefined as number | undefined,
+    effect_id: undefined as number | undefined,
     start_date: '',
     end_date: '',
   });
 
-  const fetchKnowledgeBase = useCallback(async () => {
+  const fetchTemplates = useCallback(async () => {
+    setLoadingTemplates(true);
     try {
-      const items = await ApiService.getKnowledgeBaseItems();
-      setKbItems(items || []);
+      const response = await ApiService.getContexts();
+      setTemplates(response.data || []);
     } catch (error) {
-      console.error('Failed to fetch knowledge base:', error);
-      addToast({
-        type: 'error',
-        title: 'Failed to load contexts',
-        message: 'Please ensure docs/Data_Schema.md is available.'
-      });
+      console.error('Failed to fetch context templates:', error);
+      // Don't show error toast, templates are optional
+    } finally {
+      setLoadingTemplates(false);
     }
-  }, [addToast]);
+  }, []);
 
   useEffect(() => {
-    fetchKnowledgeBase();
-  }, [fetchKnowledgeBase]);
+    fetchTemplates();
+  }, [fetchTemplates]);
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | number | undefined) => {
     setFormData({ ...formData, [field]: value });
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    if (templateId) {
+      const template = templates.find(t => t.id.toString() === templateId);
+      if (template) {
+        // Prefill fields from template (user can still modify)
+        setFormData({
+          ...formData,
+          category_id: template.category_id,
+          forma_id: template.forma_id,
+          cause_id: template.cause_id,
+          develop_id: template.develop_id,
+          effect_id: template.effect_id,
+        });
+        addToast({
+          type: 'info',
+          title: 'Template Selected',
+          message: `Fields prefilled from template "${template.name}". You can modify them before saving.`
+        });
+      }
+    } else {
+      // Clear template selection
+      setFormData({
+        ...formData,
+        category_id: undefined,
+        forma_id: undefined,
+        cause_id: undefined,
+        develop_id: undefined,
+        effect_id: undefined,
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -58,14 +92,7 @@ export const NewEvent: React.FC = () => {
       return;
     }
 
-    if (!formData.context) {
-      addToast({
-        type: 'error',
-        title: 'Validation Error',
-        message: 'Context selection is required.'
-      });
-      return;
-    }
+    // Context fields are optional - no validation required
 
     if (formData.start_date && formData.end_date && formData.start_date > formData.end_date) {
       addToast({
@@ -80,8 +107,14 @@ export const NewEvent: React.FC = () => {
     try {
       await ApiService.createEvent({
         title: eventName,
-        description: formData.description,
-        context_id: formData.context,
+        description: formData.description || undefined,
+        category_id: formData.category_id,
+        forma_id: formData.forma_id,
+        cause_id: formData.cause_id,
+        develop_id: formData.develop_id,
+        effect_id: formData.effect_id,
+        start_date: formData.start_date || undefined,
+        end_date: formData.end_date || undefined,
       });
       addToast({
         type: 'success',
@@ -102,10 +135,15 @@ export const NewEvent: React.FC = () => {
   };
 
   const handleClear = () => {
+    setSelectedTemplate('');
     setFormData({
       event_name: '',
       description: '',
-      context: '',
+      category_id: undefined,
+      forma_id: undefined,
+      cause_id: undefined,
+      develop_id: undefined,
+      effect_id: undefined,
       start_date: '',
       end_date: '',
     });
@@ -164,26 +202,87 @@ export const NewEvent: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Context (Knowledge Base) *</label>
-            {kbItems.length === 0 ? (
-              <div className="px-3 py-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                No contexts available. Cannot save event.
+            <label className="block text-sm font-medium mb-2">Context Template (Optional)</label>
+            {loadingTemplates ? (
+              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">
+                Loading templates...
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">
+                No templates available. You can enter context fields manually below.
               </div>
             ) : (
               <select
-                value={formData.context}
-                onChange={(e) => handleChange('context', e.target.value)}
+                value={selectedTemplate}
+                onChange={(e) => handleTemplateSelect(e.target.value)}
                 className="w-full px-3 py-2 border rounded"
-                required
               >
-                <option value="">Select a context...</option>
-                {kbItems.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
+                <option value="">None - Enter fields manually</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id.toString()}>
+                    {template.name}
                   </option>
                 ))}
               </select>
             )}
+            {selectedTemplate && (
+              <p className="mt-2 text-xs text-gray-500">
+                Fields prefilled from template. You can modify them below.
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Category ID (Optional)</label>
+              <input
+                type="number"
+                value={formData.category_id || ''}
+                onChange={(e) => handleChange('category_id', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                className="w-full px-3 py-2 border rounded"
+                placeholder="Enter category ID"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Forma ID (Optional)</label>
+              <input
+                type="number"
+                value={formData.forma_id || ''}
+                onChange={(e) => handleChange('forma_id', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                className="w-full px-3 py-2 border rounded"
+                placeholder="Enter forma ID"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Cause ID (Optional)</label>
+              <input
+                type="number"
+                value={formData.cause_id || ''}
+                onChange={(e) => handleChange('cause_id', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                className="w-full px-3 py-2 border rounded"
+                placeholder="Enter cause ID"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Develop ID (Optional)</label>
+              <input
+                type="number"
+                value={formData.develop_id || ''}
+                onChange={(e) => handleChange('develop_id', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                className="w-full px-3 py-2 border rounded"
+                placeholder="Enter develop ID"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Effect ID (Optional)</label>
+              <input
+                type="number"
+                value={formData.effect_id || ''}
+                onChange={(e) => handleChange('effect_id', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                className="w-full px-3 py-2 border rounded"
+                placeholder="Enter effect ID"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -210,7 +309,7 @@ export const NewEvent: React.FC = () => {
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              disabled={loading || kbItems.length === 0}
+              disabled={loading}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
             >
               Save Event
