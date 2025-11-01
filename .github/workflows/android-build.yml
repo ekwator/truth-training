@@ -109,31 +109,13 @@ jobs:
           pattern: '*'
           merge-multiple: false
           path: artifacts
-      - name: Publish Release
+      - name: Publish Release (attach artifacts only)
         uses: softprops/action-gh-release@v1
         with:
           draft: false
+          generate_release_notes: false
+          make_latest: true
           tag_name: ${{ github.ref_name }}
-          name: Android Build Release (${{ github.ref_name }})
-          body: |
-            ## Android Build Release ${{ github.ref_name }}
-
-            This release includes Android application packages (APK) built for multiple build variants.
-
-            ### Included Artifacts
-
-            #### Android Application Packages
-            - **Mock Debug APK**: Debug build for mock/local testing
-            - **Local Debug APK**: Debug build for local development
-            - **Remote Debug APK**: Debug build for remote server testing
-
-            ### Installation Instructions
-
-            **Android:**
-            - Transfer the `.apk` file to your Android device
-            - Enable "Install from unknown sources" in device settings
-            - Open the `.apk` file to install the application
-
           files: |
             artifacts/truth_training.apk/**/*
         env:

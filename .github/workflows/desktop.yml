@@ -383,50 +383,13 @@ jobs:
           pattern: '*'
           merge-multiple: false
           path: artifacts
-      - name: Publish Release
+      - name: Publish Release (attach artifacts only)
         uses: softprops/action-gh-release@v1
         with:
           draft: false
+          generate_release_notes: false
+          make_latest: true
           tag_name: ${{ github.ref_name }}
-          name: Desktop UI Release (${{ github.ref_name }})
-          body: |
-            ## Desktop UI Release ${{ github.ref_name }}
-
-            This release includes all desktop application binaries and installers for Linux, macOS, and Windows.
-
-            ### Included Artifacts
-
-            #### Server Binaries
-            - **Linux**: `truth_core_server` (x86_64-unknown-linux-gnu)
-            - **macOS**: `truth_core_server` (x86_64-apple-darwin)
-            - **Windows (Cross-compiled)**: `truth_core_server.exe` (x86_64-pc-windows-gnu)
-            - **Windows (Native)**: `truth_core_server.exe` (native Windows build)
-
-            #### Linux Distributables
-            - **Debian Package**: `.deb` installer for Debian/Ubuntu-based systems
-            - **AppImage**: Portable application bundle (`.AppImage`)
-
-            #### macOS Distributables
-            - **DMG**: Disk image installer (`.dmg`)
-            - **Application Bundle**: `.app` bundle
-
-            #### Windows Distributables
-            - **NSIS Installer (Cross-compiled)**: `.exe` installer built on Linux with MinGW
-            - **NSIS Installer (Native)**: `.exe` installer built natively on Windows
-            - **MSI Installer**: `.msi` installer for Windows
-
-            ### Installation Instructions
-
-            **Linux:**
-            - Install the `.deb` package using your package manager, or
-            - Make the `.AppImage` executable and run it directly
-
-            **macOS:**
-            - Open the `.dmg` file and drag the application to your Applications folder
-
-            **Windows:**
-            - Run the `.exe` installer or use the `.msi` installer for enterprise deployment
-
           files: |
             artifacts/truth_core_server-linux-bin/*
             artifacts/truth_core_server-macos-bin/*
