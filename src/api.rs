@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use crate::p2p::encryption::CryptoIdentity;
 
-use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary, RbacUser};
+use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary, RbacUser, NewContext};
 use core_lib::storage;
 use crate::p2p::sync::SyncData;
 use crate::p2p::node::Node;
@@ -490,7 +490,11 @@ async fn get_events(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder
 #[serde(deny_unknown_fields)]
 struct AddEventRequest {
     description: String,
-    context_id: i64,
+    category_id: Option<i64>,
+    forma_id: Option<i64>,
+    cause_id: Option<i64>,
+    develop_id: Option<i64>,
+    effect_id: Option<i64>,
     vector: bool,
 }
 
@@ -501,23 +505,55 @@ async fn add_event(pool: web::Data<DbPool>, payload: web::Json<AddEventRequest>)
     let req = payload.into_inner();
 
     let result = web::block(move || {
-        let _conn = pool.blocking_lock();
-        let new_event = NewTruthEvent {
+        let conn = pool.blocking_lock();
+        
+        // Validate FK references
+        if let Err(e) = storage::validate_foreign_key(&conn, "category", req.category_id) {
+            return Err(e);
+        }
+        if let Err(e) = storage::validate_foreign_key(&conn, "forma", req.forma_id) {
+            return Err(e);
+        }
+        if let Err(e) = storage::validate_foreign_key(&conn, "cause", req.cause_id) {
+            return Err(e);
+        }
+        if let Err(e) = storage::validate_foreign_key(&conn, "develop", req.develop_id) {
+            return Err(e);
+        }
+        if let Err(e) = storage::validate_foreign_key(&conn, "effect", req.effect_id) {
+            return Err(e);
+        }
+
+        let new_event = core_lib::models::NewTruthEvent {
             description: req.description,
-            context_id: req.context_id,
+            category_id: req.category_id,
+            forma_id: req.forma_id,
+            cause_id: req.cause_id,
+            develop_id: req.develop_id,
+            effect_id: req.effect_id,
             vector: req.vector,
             timestamp_start: chrono::Utc::now().timestamp(),
             code: 1, // Default code for new events
         };
-        let id = storage::add_truth_event(&_conn, new_event);
-        if let Ok(ref eid) = id { log::info!("event_created id={} context_id={} vector={}", eid, req.context_id, req.vector); }
+        let id = storage::add_truth_event(&conn, new_event);
+        if let Ok(ref eid) = id { 
+            log::info!("event_created id={} category_id={:?} forma_id={:?} cause_id={:?} develop_id={:?} effect_id={:?} vector={}", 
+                eid, req.category_id, req.forma_id, req.cause_id, req.develop_id, req.effect_id, req.vector); 
+        }
         id
     })
     .await;
 
     match result {
         Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
-        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(Err(e)) => {
+            // Check if it's a validation error (should return 400)
+            if e.to_string().contains("Foreign key") || e.to_string().contains("does not exist") {
+                HttpResponse::BadRequest().body(e.to_string())
+            } else {
+                HttpResponse::InternalServerError().body(e.to_string())
+            }
+        },
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
@@ -538,6 +574,229 @@ async fn add_impact(pool: web::Data<DbPool>, payload: web::Json<Impact>) -> impl
     match result {
         Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/* =========================
+Context Template Endpoints
+========================= */
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CreateContextRequest {
+    name: String,
+    category_id: Option<i64>,
+    forma_id: Option<i64>,
+    cause_id: Option<i64>,
+    develop_id: Option<i64>,
+    effect_id: Option<i64>,
+    description: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MatchContextRequest {
+    category_id: Option<i64>,
+    forma_id: Option<i64>,
+    cause_id: Option<i64>,
+    develop_id: Option<i64>,
+    effect_id: Option<i64>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CreateContextFromEventRequest {
+    name: String,
+    event_id: i64,
+    description: Option<String>,
+}
+
+/// GET /contexts - List all context templates
+#[get("/contexts")]
+async fn list_contexts(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        storage::get_all_contexts(&conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(contexts)) => HttpResponse::Ok().json(serde_json::json!({
+            "data": contexts,
+            "total": contexts.len() as i64
+        })),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /contexts - Create a new context template
+#[post("/contexts")]
+async fn create_context(pool: web::Data<DbPool>, payload: web::Json<CreateContextRequest>) -> impl Responder {
+    let pool = pool.clone();
+    let req = payload.into_inner();
+
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        
+        let new_ctx = NewContext {
+            name: req.name,
+            category_id: req.category_id,
+            forma_id: req.forma_id,
+            cause_id: req.cause_id,
+            develop_id: req.develop_id,
+            effect_id: req.effect_id,
+            description: req.description,
+        };
+
+        storage::add_context(&conn, new_ctx)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(id)) => {
+            // Fetch the created template to return it
+            let pool_for_fetch = pool.clone();
+            let fetch_result = web::block(move || {
+                let conn = pool_for_fetch.blocking_lock();
+                let contexts = storage::get_all_contexts(&conn)?;
+                contexts.into_iter().find(|c| c.id == id).ok_or_else(|| {
+                    core_lib::CoreError::NotFound(format!("Created template {} not found", id))
+                })
+            })
+            .await;
+
+            match fetch_result {
+                Ok(Ok(template)) => HttpResponse::Ok().json(template),
+                _ => HttpResponse::Ok().json(serde_json::json!({"id": id})),
+            }
+        },
+        Ok(Err(e)) => {
+            let err_str = e.to_string();
+            if err_str.contains("already exists") || err_str.contains("duplicate") {
+                HttpResponse::Conflict().body(err_str)
+            } else if err_str.contains("Foreign key") || err_str.contains("does not exist") {
+                HttpResponse::BadRequest().body(err_str)
+            } else {
+                HttpResponse::BadRequest().body(err_str)
+            }
+        },
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /contexts/by-name/{name} - Get context template by name
+#[get("/contexts/by-name/{name}")]
+async fn get_context_by_name(pool: web::Data<DbPool>, path: web::Path<String>) -> impl Responder {
+    let pool = pool.clone();
+    let name = path.into_inner();
+
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        storage::get_context_by_name(&conn, &name)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(Some(context))) => HttpResponse::Ok().json(context),
+        Ok(Ok(None)) => HttpResponse::NotFound().body("Template not found"),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /contexts/match - Match event fields to a context template
+#[post("/contexts/match")]
+async fn match_context(pool: web::Data<DbPool>, payload: web::Json<MatchContextRequest>) -> impl Responder {
+    let pool = pool.clone();
+    let req = payload.into_inner();
+
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        storage::match_context_template(
+            &conn,
+            req.category_id,
+            req.forma_id,
+            req.cause_id,
+            req.develop_id,
+            req.effect_id,
+        )
+    })
+    .await;
+
+    match result {
+        Ok(Ok(Some(template))) => HttpResponse::Ok().json(serde_json::json!({
+            "matched": true,
+            "template": template
+        })),
+        Ok(Ok(None)) => HttpResponse::Ok().json(serde_json::json!({
+            "matched": false,
+            "template": null
+        })),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /contexts/from-event - Create context template from event fields
+#[post("/contexts/from-event")]
+async fn create_context_from_event(pool: web::Data<DbPool>, payload: web::Json<CreateContextFromEventRequest>) -> impl Responder {
+    let pool = pool.clone();
+    let req = payload.into_inner();
+
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        
+        // Fetch event to get embedded fields
+        let event = storage::get_truth_event(&conn, req.event_id)?;
+        let event = event.ok_or_else(|| core_lib::CoreError::NotFound(format!("Event {} not found", req.event_id)))?;
+
+        let new_ctx = NewContext {
+            name: req.name,
+            category_id: event.category_id,
+            forma_id: event.forma_id,
+            cause_id: event.cause_id,
+            develop_id: event.develop_id,
+            effect_id: event.effect_id,
+            description: req.description,
+        };
+
+        storage::add_context(&conn, new_ctx)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(id)) => {
+            // Fetch the created template to return it
+            let pool_for_fetch = pool.clone();
+            let fetch_result = web::block(move || {
+                let conn = pool_for_fetch.blocking_lock();
+                let contexts = storage::get_all_contexts(&conn)?;
+                contexts.into_iter().find(|c| c.id == id).ok_or_else(|| {
+                    core_lib::CoreError::NotFound(format!("Created template {} not found", id))
+                })
+            })
+            .await;
+
+            match fetch_result {
+                Ok(Ok(template)) => HttpResponse::Ok().json(template),
+                _ => HttpResponse::Ok().json(serde_json::json!({"id": id})),
+            }
+        },
+        Ok(Err(e)) => {
+            let err_str = e.to_string();
+            if err_str.contains("not found") {
+                HttpResponse::NotFound().body(err_str)
+            } else if err_str.contains("already exists") || err_str.contains("duplicate") {
+                HttpResponse::Conflict().body(err_str)
+            } else if err_str.contains("Foreign key") || err_str.contains("does not exist") {
+                HttpResponse::BadRequest().body(err_str)
+            } else {
+                HttpResponse::BadRequest().body(err_str)
+            }
+        },
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
@@ -889,7 +1148,12 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(api_v1_consensus_get)
         .service(api_v1_consensus_calculate)
         .service(api_v1_reputation_get)
-        .service(api_v1_reputation_leaderboard);
+        .service(api_v1_reputation_leaderboard)
+        .service(list_contexts)
+        .service(create_context)
+        .service(get_context_by_name)
+        .service(match_context)
+        .service(create_context_from_event);
 }
 
 #[derive(Serialize, ToSchema)]
@@ -1441,7 +1705,7 @@ mod tests {
         // Add event and statement + impact to have some ratings
         let add_event_req = serde_json::json!({
             "description": "Test for ratings",
-            "context_id": 1,
+            "category_id": 1,
             "vector": true
         });
         let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
@@ -1507,7 +1771,7 @@ mod tests {
         // Event A (author nodeA) with positive statement; validator nodeB agrees
         let add_event_req = serde_json::json!({
             "description": "E1",
-            "context_id": 1,
+            "category_id": 1,
             "vector": true
         });
         let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
@@ -1534,7 +1798,7 @@ mod tests {
         // Event C (author nodeC) with negative statement
         let add_event_req = serde_json::json!({
             "description": "E2",
-            "context_id": 1,
+            "category_id": 1,
             "vector": true
         });
         let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
@@ -1594,7 +1858,7 @@ mod tests {
         ).await;
 
         // Create small dataset
-        let add_event_req = serde_json::json!({"description":"E1","context_id":1,"vector":true});
+        let add_event_req = serde_json::json!({"description":"E1","category_id":1,"vector":true});
         let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
         let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         let ev1 = resp.get("id").and_then(|v| v.as_i64()).unwrap();
@@ -1648,7 +1912,7 @@ mod tests {
         // Add event
         let add_event_req = serde_json::json!({
             "description": "E-collective",
-            "context_id": 1,
+            "category_id": 1,
             "vector": true
         });
         let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();

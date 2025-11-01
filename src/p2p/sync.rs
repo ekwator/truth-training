@@ -415,13 +415,17 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
                     // remote wins -> update
                     conn.execute(
                         r#"UPDATE truth_events SET
-                            description=?2, context_id=?3, vector=?4, detected=?5, corrected=?6,
-                            timestamp_start=?7, timestamp_end=?8, code=?9, signature=?10, public_key=?11
+                            description=?2, category_id=?3, forma_id=?4, cause_id=?5, develop_id=?6, effect_id=?7, vector=?8, detected=?9, corrected=?10,
+                            timestamp_start=?11, timestamp_end=?12, code=?13, signature=?14, public_key=?15
                           WHERE id=?1"#,
                         params![
                             ev.id,
                             ev.description,
-                            ev.context_id,
+                            ev.category_id,
+                            ev.forma_id,
+                            ev.cause_id,
+                            ev.develop_id,
+                            ev.effect_id,
                             if ev.vector { 1 } else { 0 },
                             ev.detected.map(|v| if v { 1 } else { 0 }),
                             if ev.corrected { 1 } else { 0 },
@@ -447,13 +451,17 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
             None => {
                 conn.execute(
                     r#"INSERT OR IGNORE INTO truth_events
-                        (id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key)
+                        (id, description, category_id, forma_id, cause_id, develop_id, effect_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key)
                       VALUES
-                        (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)"#,
+                        (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)"#,
                     params![
                         ev.id,
                         ev.description,
-                        ev.context_id,
+                        ev.category_id,
+                        ev.forma_id,
+                        ev.cause_id,
+                        ev.develop_id,
+                        ev.effect_id,
                         if ev.vector { 1 } else { 0 },
                         ev.detected.map(|v| if v { 1 } else { 0 }),
                         if ev.corrected { 1 } else { 0 },
@@ -764,7 +772,7 @@ pub async fn incremental_sync_with_peer(
 #[allow(dead_code)]
 fn get_events_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<TruthEvent>> {
     let mut stmt = conn.prepare(
-        "SELECT id, description, context_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key, collective_score \
+        "SELECT id, description, category_id, forma_id, cause_id, develop_id, effect_id, vector, detected, corrected, timestamp_start, timestamp_end, code, signature, public_key, collective_score \
          FROM truth_events WHERE timestamp_start > ?1 ORDER BY timestamp_start"
     )?;
 
@@ -772,16 +780,20 @@ fn get_events_since(conn: &Connection, timestamp: i64) -> anyhow::Result<Vec<Tru
         Ok(TruthEvent {
             id: row.get(0)?,
             description: row.get(1)?,
-            context_id: row.get(2)?,
-            vector: row.get::<_, i64>(3)? != 0,
-            detected: row.get::<_, Option<i64>>(4)?.map(|v| v != 0),
-            corrected: row.get::<_, i64>(5)? != 0,
-            timestamp_start: row.get(6)?,
-            timestamp_end: row.get::<_, Option<i64>>(7)?,
-            code: row.get(8)?,
-            signature: row.get(9)?,
-            public_key: row.get(10)?,
-            collective_score: row.get(11)?,
+            category_id: row.get(2)?,
+            forma_id: row.get(3)?,
+            cause_id: row.get(4)?,
+            develop_id: row.get(5)?,
+            effect_id: row.get(6)?,
+            vector: row.get::<_, i64>(7)? != 0,
+            detected: row.get::<_, Option<i64>>(8)?.map(|v| v != 0),
+            corrected: row.get::<_, i64>(9)? != 0,
+            timestamp_start: row.get(10)?,
+            timestamp_end: row.get::<_, Option<i64>>(11)?,
+            code: row.get(12)?,
+            signature: row.get(13)?,
+            public_key: row.get(14)?,
+            collective_score: row.get(15)?,
         })
     })?;
 

@@ -47,4 +47,40 @@ This document describes how the Desktop UI bundles and installs the background s
 
 - The UI should be able to connect to the local server at `http://127.0.0.1:8080` (default) when in HTTP mode. Settings screen allows switching modes and testing connectivity.
 
+---
+
+## Database Migration Notes (v1.0.0)
+
+**⚠️ IMPORTANT**: This release includes breaking changes to the database schema. **No automatic migrations are executed**. Manual migration is required for existing databases.
+
+### Migration Requirements
+
+1. **Backup Database**: Before migration, create a backup of your existing database.
+
+2. **Schema Changes**:
+   - Remove `context_id` column from `truth_events` table
+   - Add five new nullable columns: `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`
+   - Add foreign key constraints and indexes for new columns
+
+3. **Data Migration**:
+   - For existing events with `context_id`, extract context template values from `context` table
+   - Populate embedded fields in `truth_events` based on template values
+   - Ensure all FK references are valid before completing migration
+
+4. **Migration Script**:
+   A manual migration script should be provided or executed by database administrators. The script should:
+   - Preserve existing event data
+   - Map `context_id` → embedded fields based on template data
+   - Validate all FK references after migration
+   - Report any orphaned or invalid data
+
+5. **Verification**:
+   After migration, verify:
+   - All events have valid embedded fields or NULL values
+   - No orphaned FK references exist
+   - Indexes are created for query performance
+   - Template matching works correctly
+
+For detailed migration instructions, see `docs/Data_Schema.md` section "Migration Notes".
+
 
