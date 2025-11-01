@@ -14,11 +14,21 @@ Originally conceived to combat fraud, Truth Training evolves into a **self-learn
 
 ---
 
-# 🧠 Truth Training v0.4.2
+# 🧠 Truth Training v1.0.0
 
 **A distributed collective intelligence system for evaluating truth through trust-weighted consensus**
 
 ---
+
+## What's New in v1.0.0
+
+- **Context Fields Embedded**: Events now store context fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`) directly, eliminating the need for `context_id` foreign key lookups
+- **Context Template System**: New Context Editor UI screen for creating and managing reusable context templates
+- **Template-Based Event Creation**: Template selection auto-prefills event form fields, streamlining event entry
+- **Enhanced API**: New endpoints for context template management, matching, and creation from events
+- **Improved Performance**: Reduced query overhead by removing JOINs required for context information
+- **Data Integrity**: Foreign key validation and duplicate template detection ensure data consistency
+- **Breaking Changes**: Manual database migration required — see migration notes in CHANGELOG
 
 ## What's New in v0.4.2
 
