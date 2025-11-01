@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use crate::p2p::encryption::CryptoIdentity;
 
-use core_lib::models::{Impact, NewTruthEvent, NewStatement, GraphData, GraphSummary, RbacUser, NewContext};
+use core_lib::models::{Impact, NewStatement, GraphData, GraphSummary, RbacUser, NewContext};
 use core_lib::storage;
 use crate::p2p::sync::SyncData;
 use crate::p2p::node::Node;
@@ -635,11 +635,12 @@ async fn list_contexts(pool: web::Data<DbPool>) -> impl Responder {
 /// POST /contexts - Create a new context template
 #[post("/contexts")]
 async fn create_context(pool: web::Data<DbPool>, payload: web::Json<CreateContextRequest>) -> impl Responder {
-    let pool = pool.clone();
+    let pool_clone = pool.clone();
+    let pool_for_fetch = pool.clone();
     let req = payload.into_inner();
 
     let result = web::block(move || {
-        let conn = pool.blocking_lock();
+        let conn = pool_clone.blocking_lock();
         
         let new_ctx = NewContext {
             name: req.name,
@@ -658,7 +659,6 @@ async fn create_context(pool: web::Data<DbPool>, payload: web::Json<CreateContex
     match result {
         Ok(Ok(id)) => {
             // Fetch the created template to return it
-            let pool_for_fetch = pool.clone();
             let fetch_result = web::block(move || {
                 let conn = pool_for_fetch.blocking_lock();
                 let contexts = storage::get_all_contexts(&conn)?;
@@ -743,11 +743,12 @@ async fn match_context(pool: web::Data<DbPool>, payload: web::Json<MatchContextR
 /// POST /contexts/from-event - Create context template from event fields
 #[post("/contexts/from-event")]
 async fn create_context_from_event(pool: web::Data<DbPool>, payload: web::Json<CreateContextFromEventRequest>) -> impl Responder {
-    let pool = pool.clone();
+    let pool_clone = pool.clone();
+    let pool_for_fetch = pool.clone();
     let req = payload.into_inner();
 
     let result = web::block(move || {
-        let conn = pool.blocking_lock();
+        let conn = pool_clone.blocking_lock();
         
         // Fetch event to get embedded fields
         let event = storage::get_truth_event(&conn, req.event_id)?;
@@ -770,7 +771,6 @@ async fn create_context_from_event(pool: web::Data<DbPool>, payload: web::Json<C
     match result {
         Ok(Ok(id)) => {
             // Fetch the created template to return it
-            let pool_for_fetch = pool.clone();
             let fetch_result = web::block(move || {
                 let conn = pool_for_fetch.blocking_lock();
                 let contexts = storage::get_all_contexts(&conn)?;
