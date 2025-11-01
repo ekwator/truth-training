@@ -3,14 +3,8 @@ import { ApiService } from '@/services/api';
 import { useToast } from '@/components/system/Toaster';
 import { ContextTemplate } from '@/types/contexts';
 
-interface KnowledgeBaseItem {
-  id: string;
-  label: string;
-}
-
 export const NewEvent: React.FC = () => {
   const { addToast } = useToast();
-  const [kbItems, setKbItems] = useState<KnowledgeBaseItem[]>([]);
   const [templates, setTemplates] = useState<ContextTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -19,7 +13,6 @@ export const NewEvent: React.FC = () => {
   const [formData, setFormData] = useState({
     event_name: '',
     description: '',
-    context: '',
     category_id: undefined as number | undefined,
     forma_id: undefined as number | undefined,
     cause_id: undefined as number | undefined,
@@ -28,20 +21,6 @@ export const NewEvent: React.FC = () => {
     start_date: '',
     end_date: '',
   });
-
-  const fetchKnowledgeBase = useCallback(async () => {
-    try {
-      const items = await ApiService.getKnowledgeBaseItems();
-      setKbItems(items || []);
-    } catch (error) {
-      console.error('Failed to fetch knowledge base:', error);
-      addToast({
-        type: 'error',
-        title: 'Failed to load contexts',
-        message: 'Please ensure docs/Data_Schema.md is available.'
-      });
-    }
-  }, [addToast]);
 
   const fetchTemplates = useCallback(async () => {
     setLoadingTemplates(true);
@@ -57,9 +36,8 @@ export const NewEvent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchKnowledgeBase();
     fetchTemplates();
-  }, [fetchKnowledgeBase, fetchTemplates]);
+  }, [fetchTemplates]);
 
   const handleChange = (field: string, value: string | number | undefined) => {
     setFormData({ ...formData, [field]: value });
@@ -129,7 +107,7 @@ export const NewEvent: React.FC = () => {
     try {
       await ApiService.createEvent({
         title: eventName,
-        description: formData.description,
+        description: formData.description || undefined,
         category_id: formData.category_id,
         forma_id: formData.forma_id,
         cause_id: formData.cause_id,
@@ -161,7 +139,6 @@ export const NewEvent: React.FC = () => {
     setFormData({
       event_name: '',
       description: '',
-      context: '',
       category_id: undefined,
       forma_id: undefined,
       cause_id: undefined,
