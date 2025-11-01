@@ -1,4 +1,4 @@
-# 🌐 Truth Training — The Network of Anonymous Trust
+# 🌐 Truth Training — The Network of Anonymous Trust (Created in Cursor AI IDE)
 
 Truth Training is a decentralized communication ecosystem where **truth travels without identity**.  
 Events move freely through the network — encrypted, verified, and echoed by others — creating a distributed field of awareness instead of a chain of messages.
