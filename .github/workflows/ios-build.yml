@@ -97,31 +97,45 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Publish Release (tag push)
-        if: startsWith(github.ref, 'refs/tags/')
+  publish-release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*'
+          merge-multiple: false
+          path: artifacts
+      - name: Publish Release
         uses: softprops/action-gh-release@v1
         with:
           draft: false
           tag_name: ${{ github.ref_name }}
-          name: iOS build (${{ github.ref_name }})
+          name: iOS Build Release (${{ github.ref_name }})
+          body: |
+            ## iOS Build Release ${{ github.ref_name }}
+
+            This release includes iOS application packages built for device and simulator targets.
+
+            ### Included Artifacts
+
+            #### iOS Application Packages
+            - **Release iPhoneOS**: Application bundle for physical iOS devices (ARM64)
+            - **Release iPhone Simulator**: Application bundle for iOS Simulator (ARM64)
+
+            ### Installation Instructions
+
+            **iOS (Physical Device):**
+            - Use Xcode to install the application bundle to a connected device, or
+            - Use tools like AltStore or TestFlight for distribution
+
+            **iOS Simulator:**
+            - Open the simulator bundle in Xcode or drag into Simulator app
+
           files: |
-            **/artifacts/**/*
-            **/*.ipa
-            **/*.dSYM.zip
-            **/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish Release (draft on branch)
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: true
-          tag_name: ios-build-${{ github.sha }}
-          name: iOS build (${{ github.sha }})
-          files: |
-            **/artifacts/**/*
-            **/*.ipa
-            **/*.dSYM.zip
-            **/*.zip
+            artifacts/truth_training.ipa/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

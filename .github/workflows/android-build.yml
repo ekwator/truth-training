@@ -97,31 +97,44 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Publish Release (tag push)
-        if: startsWith(github.ref, 'refs/tags/')
+  publish-release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*'
+          merge-multiple: false
+          path: artifacts
+      - name: Publish Release
         uses: softprops/action-gh-release@v1
         with:
           draft: false
           tag_name: ${{ github.ref_name }}
-          name: iOS build (${{ github.ref_name }})
+          name: Android Build Release (${{ github.ref_name }})
+          body: |
+            ## Android Build Release ${{ github.ref_name }}
+
+            This release includes Android application packages (APK) built for multiple build variants.
+
+            ### Included Artifacts
+
+            #### Android Application Packages
+            - **Mock Debug APK**: Debug build for mock/local testing
+            - **Local Debug APK**: Debug build for local development
+            - **Remote Debug APK**: Debug build for remote server testing
+
+            ### Installation Instructions
+
+            **Android:**
+            - Transfer the `.apk` file to your Android device
+            - Enable "Install from unknown sources" in device settings
+            - Open the `.apk` file to install the application
+
           files: |
-            **/artifacts/**/*
-            **/*.apk
-            **/*.dSYM.zip
-            **/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish Release (draft on branch)
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: true
-          tag_name: ios-build-${{ github.sha }}
-          name: iOS build (${{ github.sha }})
-          files: |
-            **/artifacts/**/*
-            **/*.apk
-            **/*.dSYM.zip
-            **/*.zip
+            artifacts/truth_training.apk/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
