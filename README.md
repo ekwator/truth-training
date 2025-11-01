@@ -400,7 +400,7 @@ See `CONTRIBUTING.md` (or `spec/14-quality-gates.md`) — standards require:
 
 ## License
 
-MIT / Apache-2.0 (TBD — include the license files in repo).
+This project is licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0). See LICENSE.txt for details.
 
 ---
 
