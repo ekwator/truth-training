@@ -100,8 +100,14 @@ export const useEventsStore = create<EventsState>()(
         
         try {
           const event = await ApiService.getEvent(id);
+          // Convert Event to EventDetails by adding required fields
+          const eventDetails: EventDetails = {
+            ...event,
+            judgments: [],
+            impacts: [],
+          };
           set({
-            currentEvent: event,
+            currentEvent: eventDetails,
             loading: false
           });
         } catch (error: any) {
