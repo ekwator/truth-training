@@ -81,32 +81,11 @@ export interface PaginatedResponse<T> {
 }
 
 // Events API
-export interface Event {
-  id: string;
-  title: string;
-  description?: string;
-  context_id: string;
-  start_date?: string;
-  end_date?: string;
-  created_at: string;
-  updated_at?: string;
-  status: 'active' | 'inactive' | 'archived';
-}
+// Import types from types/events.ts to avoid conflicts with native Event type
+import type { Event as TruthEvent, EventDetails, CreateEventRequest } from '@/types/events';
 
-export interface EventDetails extends Event {
-  consensus?: Consensus | null;
-  judgments: Judgment[];
-  impacts: Impact[];
-  summary?: Summary;
-}
-
-export interface CreateEventRequest {
-  title: string;
-  description?: string;
-  context_id: string;
-  start_date?: string;
-  end_date?: string;
-}
+// Re-export with alias to avoid native Event type conflict
+export type { TruthEvent as Event, EventDetails, CreateEventRequest };
 
 // Impact API
 export interface Impact {
@@ -188,12 +167,12 @@ export interface SyncStatus {
 // API Service Class
 export class ApiService {
   // Events endpoints
-  static async getEvents(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Event>> {
+  static async getEvents(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<TruthEvent>> {
     if (isTauri()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const res = await invoke('list_events_fast', { page, perPage });
-        const { data, total } = res as { data: Event[]; total: number };
+        const { data, total } = res as { data: TruthEvent[]; total: number };
         return {
           data,
           pagination: {
@@ -214,18 +193,12 @@ export class ApiService {
     }
   }
 
-  static async getEvent(id: string): Promise<EventDetails> {
+  static async getEvent(id: string): Promise<TruthEvent> {
     if (isTauri()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const event = await invoke('get_event_fast', { eventId: id });
-        return {
-          ...event as Event,
-          consensus: null,
-          judgments: [],
-          impacts: [],
-          summary: undefined
-        };
+        return event as TruthEvent;
       } catch (error) {
         console.error('Tauri getEvent error:', error);
         throw new Error('Failed to fetch event from desktop backend');
@@ -236,12 +209,12 @@ export class ApiService {
     }
   }
 
-  static async createEvent(eventData: CreateEventRequest): Promise<Event> {
+  static async createEvent(eventData: CreateEventRequest): Promise<TruthEvent> {
     if (isTauri()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const event = await invoke('create_event_fast', { request: eventData });
-        return event as Event;
+        return event as TruthEvent;
       } catch (error) {
         console.error('Tauri createEvent error:', error);
         throw new Error('Failed to create event in desktop backend');
@@ -258,7 +231,7 @@ export class ApiService {
         vector: true
       };
       const response = await apiClient.post('/events', payload);
-      return response.data;
+      return response.data as TruthEvent;
     }
   }
 
