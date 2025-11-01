@@ -5,8 +5,13 @@ import { useToast } from '@/components/system/Toaster';
 import { SyncStatus } from '@/components/system/SyncStatus';
 import { EventCard } from '@/components/Dashboard/EventCard';
 import { CreateEventButton } from '@/components/Dashboard/CreateEventButton';
+import { Screen } from '@/components/layout/TopMenuBar';
 
-export const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onNavigate?: (screen: Screen) => void;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { events, loading, error, fetchEvents } = useEventsStore();
   const { syncStatus, isOnline, pendingOperations, fetchSyncStatus } = useSyncStore();
   const { addToast } = useToast();
@@ -101,7 +106,7 @@ export const Dashboard: React.FC = () => {
               </div>
             ) : (
               events.map((event) => (
-                <EventCard key={event.id} event={event} />
+                <EventCard key={event.id} event={event} onNavigate={onNavigate} />
               ))
             )}
           </div>

@@ -247,10 +247,14 @@ export class ApiService {
         throw new Error('Failed to create event in desktop backend');
       }
     } else {
-      // Map UI request to core API: anonymous confession as event description
+      // Map UI request to core API: use embedded context fields
       const payload = {
         description: eventData.description || eventData.title,
-        context_id: parseInt(eventData.context_id as any, 10) || 1,
+        category_id: eventData.category_id,
+        forma_id: eventData.forma_id,
+        cause_id: eventData.cause_id,
+        develop_id: eventData.develop_id,
+        effect_id: eventData.effect_id,
         vector: true
       };
       const response = await apiClient.post('/events', payload);
@@ -580,6 +584,57 @@ export class ApiService {
     } else {
       // Simulate init in web mode
       return { ok: true, message: 'Initialized (web mode simulation)' };
+    }
+  }
+
+  // Context template endpoints
+  static async getContexts(): Promise<import('@/types/contexts').ContextListResponse> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      return await invoke('list_contexts');
+    } else {
+      const response = await apiClient.get('/contexts');
+      return response.data;
+    }
+  }
+
+  static async getContextByName(name: string): Promise<import('@/types/contexts').ContextTemplate> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      return await invoke('get_context_by_name', { name });
+    } else {
+      const response = await apiClient.get(`/contexts/by-name/${encodeURIComponent(name)}`);
+      return response.data;
+    }
+  }
+
+  static async createContext(request: import('@/types/contexts').CreateContextRequest): Promise<import('@/types/contexts').ContextTemplate> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      return await invoke('create_context', { request });
+    } else {
+      const response = await apiClient.post('/contexts', request);
+      return response.data;
+    }
+  }
+
+  static async matchContext(request: import('@/types/contexts').MatchContextRequest): Promise<import('@/types/contexts').MatchContextResponse> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      return await invoke('match_context', { request });
+    } else {
+      const response = await apiClient.post('/contexts/match', request);
+      return response.data;
+    }
+  }
+
+  static async createContextFromEvent(request: import('@/types/contexts').CreateContextFromEventRequest): Promise<import('@/types/contexts').ContextTemplate> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      return await invoke('create_context_from_event', { request });
+    } else {
+      const response = await apiClient.post('/contexts/from-event', request);
+      return response.data;
     }
   }
 }

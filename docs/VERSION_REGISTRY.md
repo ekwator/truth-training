@@ -4,10 +4,12 @@ This document tracks all current versions across the Truth Training ecosystem.
 
 | Crate/Component     | Version | Description                        |
 |---------------------|---------|------------------------------------|
-| app                 | v0.4.2  | Main desktop app/logic             |
-| core_lib            | v0.4.2  | Shared core library                |
-| truth_core          | v0.4.2  | Core library binary                |
-| truth-ui-desktop    | v0.1.3  | Tauri-based desktop UI (text-only) |
+| app                 | v1.0.0  | Main desktop app/logic             |
+| core_lib            | v1.0.0  | Shared core library                |
+| truth_core          | v1.0.0  | Core library binary                |
+| truth-ui-desktop    | v1.0.0  | Tauri-based desktop UI             |
+
+**v1.0.0 Baseline**: First stable release with context fields embedded in events. Breaking change from previous versions (context_id removed). Manual database migration required.
 
 ---
 

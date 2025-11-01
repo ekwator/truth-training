@@ -1,6 +1,6 @@
 {
   "name": "truth-ui-desktop",
-  "version": "0.1.3",
+  "version": "1.0.0",
   "description": "Truth Training Desktop UI - Tauri Application",
   "type": "module",
   "scripts": {

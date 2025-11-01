@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/system/ThemeProvider';
 import { TopMenuBar, Screen } from '@/components/layout/TopMenuBar';
 import { Dashboard } from '@/pages/Dashboard';
 import { NewEvent } from '@/pages/NewEvent';
+import { ContextEditor } from '@/pages/ContextEditor';
 import { EventSummary } from '@/pages/EventSummary';
 import { OverallSummary } from '@/pages/OverallSummary';
 import { TrainingResults } from '@/pages/TrainingResults';
@@ -28,21 +29,25 @@ export const App: React.FC = () => {
             break;
           case '3':
             event.preventDefault();
-            setCurrentScreen('event-summary');
+            setCurrentScreen('context-editor');
             break;
           case '4':
             event.preventDefault();
-            setCurrentScreen('overall-summary');
+            setCurrentScreen('event-summary');
             break;
           case '5':
             event.preventDefault();
-            setCurrentScreen('training-results');
+            setCurrentScreen('overall-summary');
             break;
           case '6':
             event.preventDefault();
-            setCurrentScreen('logs');
+            setCurrentScreen('training-results');
             break;
           case '7':
+            event.preventDefault();
+            setCurrentScreen('logs');
+            break;
+          case '8':
             event.preventDefault();
             setCurrentScreen('settings');
             break;
@@ -57,9 +62,11 @@ export const App: React.FC = () => {
   const renderScreen = () => {
     switch (currentScreen) {
       case 'home':
-        return <Dashboard />;
+        return <Dashboard onNavigate={setCurrentScreen} />;
       case 'new-event':
         return <NewEvent />;
+      case 'context-editor':
+        return <ContextEditor />;
       case 'event-summary':
         return <EventSummary />;
       case 'overall-summary':
@@ -71,7 +78,7 @@ export const App: React.FC = () => {
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard />;
+        return <Dashboard onNavigate={setCurrentScreen} />;
     }
   };
 

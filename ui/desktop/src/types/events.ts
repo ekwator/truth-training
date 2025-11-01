@@ -4,7 +4,11 @@ export interface Event {
   id: string;
   title: string;
   description?: string;
-  context_id: string;
+  category_id?: number;
+  forma_id?: number;
+  cause_id?: number;
+  develop_id?: number;
+  effect_id?: number;
   start_date?: string;
   end_date?: string;
   created_at: string;
@@ -26,7 +30,11 @@ export interface EventDetails extends Event {
 export interface CreateEventRequest {
   title: string;
   description?: string;
-  context_id: string;
+  category_id?: number;
+  forma_id?: number;
+  cause_id?: number;
+  develop_id?: number;
+  effect_id?: number;
   start_date?: string;
   end_date?: string;
 }

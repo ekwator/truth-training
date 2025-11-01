@@ -2,8 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useEventsStore } from '@/stores/events';
 import { EventCard } from '@/components/Dashboard/EventCard';
 import { CreateEventButton } from '@/components/Dashboard/CreateEventButton';
+import { Screen } from '@/components/layout/TopMenuBar';
 
-export const Events: React.FC = () => {
+interface EventsProps {
+  onNavigate?: (screen: Screen) => void;
+}
+
+export const Events: React.FC<EventsProps> = ({ onNavigate }) => {
   const { events, loading, error, fetchEvents, filters, setFilters } = useEventsStore();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -143,7 +148,7 @@ export const Events: React.FC = () => {
             </div>
           ) : (
             filteredEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
+              <EventCard key={event.id} event={event} onNavigate={onNavigate} />
             ))
           )}
         </div>
