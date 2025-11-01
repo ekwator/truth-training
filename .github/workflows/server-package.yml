@@ -44,12 +44,12 @@ jobs:
           EOF
       - name: Build DEB
         run: |
-          fpm -s dir -t deb -n truth-core-server -v 0.4.0 \
+          fpm -s dir -t deb -n truth-core-server -v 1.0.0 \
               --deb-systemd packaging/server/linux/truth_core_server.service \
               --prefix /usr/local/bin target/release/truth_core_server
       - name: Build RPM
         run: |
-          fpm -s dir -t rpm -n truth-core-server -v 0.4.0 \
+          fpm -s dir -t rpm -n truth-core-server -v 1.0.0 \
               --prefix /usr/local/bin target/release/truth_core_server
       - name: Verify binary
         run: ./target/release/truth_core_server --version || true
