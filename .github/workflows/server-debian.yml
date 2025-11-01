@@ -49,32 +49,13 @@ jobs:
           pattern: '*'
           merge-multiple: false
           path: artifacts
-      - name: Publish Release
+      - name: Publish Release (attach artifacts only)
         uses: softprops/action-gh-release@v1
         with:
           draft: false
+          generate_release_notes: false
+          make_latest: true
           tag_name: ${{ github.ref_name }}
-          name: Debian Truth Core Service Release (${{ github.ref_name }})
-          body: |
-            ## Debian Truth Core Service Release ${{ github.ref_name }}
-
-            This release includes the Debian package for the Truth Core Server service.
-
-            ### Included Artifacts
-
-            #### Debian Package
-            - **truth-core-service.deb**: Debian package for installation on Debian/Ubuntu-based systems
-
-            ### Installation Instructions
-
-            **Debian/Ubuntu:**
-            ```bash
-            sudo dpkg -i truth-core-service.deb
-            sudo apt-get install -f  # Install dependencies if needed
-            ```
-
-            The package includes the `truth_core_server` binary and systemd service configuration.
-
           files: |
             artifacts/truth_core_service_deb/*
         env:

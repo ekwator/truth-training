@@ -109,32 +109,13 @@ jobs:
           pattern: '*'
           merge-multiple: false
           path: artifacts
-      - name: Publish Release
+      - name: Publish Release (attach artifacts only)
         uses: softprops/action-gh-release@v1
         with:
           draft: false
+          generate_release_notes: false
+          make_latest: true
           tag_name: ${{ github.ref_name }}
-          name: iOS Build Release (${{ github.ref_name }})
-          body: |
-            ## iOS Build Release ${{ github.ref_name }}
-
-            This release includes iOS application packages built for device and simulator targets.
-
-            ### Included Artifacts
-
-            #### iOS Application Packages
-            - **Release iPhoneOS**: Application bundle for physical iOS devices (ARM64)
-            - **Release iPhone Simulator**: Application bundle for iOS Simulator (ARM64)
-
-            ### Installation Instructions
-
-            **iOS (Physical Device):**
-            - Use Xcode to install the application bundle to a connected device, or
-            - Use tools like AltStore or TestFlight for distribution
-
-            **iOS Simulator:**
-            - Open the simulator bundle in Xcode or drag into Simulator app
-
           files: |
             artifacts/truth_training.ipa/**/*
         env:

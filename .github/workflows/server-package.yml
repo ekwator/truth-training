@@ -197,54 +197,13 @@ jobs:
           pattern: '*'
           merge-multiple: false
           path: artifacts
-      - name: Publish Release
+      - name: Publish Release (attach artifacts only)
         uses: softprops/action-gh-release@v1
         with:
           draft: false
+          generate_release_notes: false
+          make_latest: true
           tag_name: ${{ github.ref_name }}
-          name: Server Package Release (${{ github.ref_name }})
-          body: |
-            ## Server Package Release ${{ github.ref_name }}
-
-            This release includes server installation packages for Linux, Windows, and macOS.
-
-            ### Included Artifacts
-
-            #### Linux Packages
-            - **DEB Package**: Debian/Ubuntu package (`.deb`) with systemd service
-            - **RPM Package**: Red Hat/CentOS package (`.rpm`)
-
-            #### Windows Package
-            - **NSIS Installer**: Windows installer (`.exe`) with WinSW service wrapper
-
-            #### macOS Package
-            - **PKG Installer**: macOS package (`.pkg`) with LaunchDaemon configuration
-
-            ### Installation Instructions
-
-            **Linux (Debian/Ubuntu):**
-            ```bash
-            sudo dpkg -i *.deb
-            sudo apt-get install -f
-            sudo systemctl enable truth_core_server
-            sudo systemctl start truth_core_server
-            ```
-
-            **Linux (RHEL/CentOS):**
-            ```bash
-            sudo rpm -i *.rpm
-            sudo systemctl enable truth_core_server
-            sudo systemctl start truth_core_server
-            ```
-
-            **Windows:**
-            - Run the `.exe` installer as Administrator
-            - The service will be installed and started automatically
-
-            **macOS:**
-            - Double-click the `.pkg` file and follow the installer
-            - The LaunchDaemon will be configured automatically
-
           files: |
             artifacts/truth-core-server-linux/**/*
             artifacts/truth-core-server-windows/**/*
