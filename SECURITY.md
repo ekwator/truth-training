@@ -7,10 +7,12 @@ Security updates are provided for the **latest stable release** and the **develo
 
 | Component | Version | Supported | Notes |
 | ---------- | -------- | ---------- | ----- |
-| Core (`master`) | v0.4.2 | ✅ Yes | Desktop Integration & Cross-Platform Builds |
-| Desktop UI | v0.1.2 | ✅ Yes | Tauri-based UI, production-ready builds |
-| v0.3.x | ✅ Yes | Core stabilization & crypto verification |
-| v0.2.x | ⚠️ Limited | Legacy P2P prototype |
+| All (`master`) | v1.0.0 | ✅ Yes | Main desktop app/logic & Shared core library & ore library binary & Tauri-based desktop UI |
+| Desktop UI | v0.1.3 | ❌ No | Tauri-based UI, production-ready builds |
+| Core (`master`) | v0.4.2 | ❌ No | Desktop Integration & Cross-Platform Builds |
+| Desktop UI | v0.1.2 | ❌ No | Tauri-based UI, production-ready builds |
+| v0.3.x | ❌ No | Core stabilization & crypto verification |
+| v0.2.x | ❌ No | Legacy P2P prototype |
 | < v0.2 | ❌ No | Deprecated research builds |
 
 ---
