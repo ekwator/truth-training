@@ -161,12 +161,12 @@ jobs:
       - name: Build APK (Debug)
         if: matrix.buildType == 'debug'
         working-directory: truth-android-client
-        run: ./gradlew assembleDebug assembleDebugAndroidTest
+        run: ./gradlew assembleLocalDebug assembleMockDebug assembleRemoteDebug assembleLocalDebugAndroidTest assembleMockDebugAndroidTest assembleRemoteDebugAndroidTest
       
       - name: Build AAB (Release)
         if: matrix.buildType == 'release'
         working-directory: truth-android-client
-        run: ./gradlew bundleRelease
+        run: ./gradlew bundleLocalRelease bundleMockRelease bundleRemoteRelease
       
       - name: Upload APK artifacts
         if: matrix.buildType == 'debug'
