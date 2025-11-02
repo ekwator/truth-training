@@ -68,7 +68,7 @@ jobs:
       
       - name: Run integration tests
         working-directory: truth-android-client
-        run: ./gradlew connectedAndroidTest --continue || true
+        run: ./gradlew connectedAndroidTest --continue --stacktrace 2>&1 | tail -200 || true
       
       - name: Run performance tests
         working-directory: truth-android-client
