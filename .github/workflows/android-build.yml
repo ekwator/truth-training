@@ -1,12 +1,23 @@
+# Android Build & Test Workflow
+# Combines artifact reuse from Cross-Platform Build with modern testing and release stages
+# Tries to download Rust libraries from Cross-Platform Build workflow first (for speed)
+# Falls back to local compilation if artifacts are unavailable
+
 name: Android Build & Test
 
 on:
   workflow_run:
     workflows: ["Cross-Platform Build"]
     types: [completed]
-    branches: [master]
+    branches: [master, main]
     tags:
       - '**'
+  push:
+    branches: [main, 007-title-align-truth]
+  pull_request:
+    branches: [main]
+  release:
+    types: [created]
   workflow_dispatch:
   
 permissions:
@@ -16,6 +27,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -72,6 +84,7 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
     strategy:
       matrix:
         buildType: [debug, release]
@@ -96,8 +109,33 @@ jobs:
           echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
           echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
       
-      - name: Build Android Rust libraries
+      - name: Download Android Rust libraries from Cross-Platform run
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: libtruth_core-android
+          path: target/
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+      
+      - name: Check if artifacts were downloaded
+        id: check-artifacts
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
         run: |
+          if [ -f "target/aarch64-linux-android/release/libtruth_core.so" ] && [ -f "target/x86_64-linux-android/release/libtruth_core.so" ]; then
+            echo "artifacts-found=true" >> $GITHUB_OUTPUT
+            echo "✓ Rust artifacts downloaded successfully from Cross-Platform Build"
+          else
+            echo "artifacts-found=false" >> $GITHUB_OUTPUT
+            echo "⚠ Rust artifacts not found, will build locally"
+          fi
+      
+      - name: Build Android Rust libraries
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found != 'true' }}
+        run: |
+          echo "Building Rust libraries locally..."
           cargo build --release --target aarch64-linux-android --features mobile --lib -p truth_core
           cargo build --release --target x86_64-linux-android --features mobile --lib -p truth_core
       
