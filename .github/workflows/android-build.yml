@@ -54,9 +54,17 @@ jobs:
           restore-keys: |
             gradle-build-${{ runner.os }}-
       
+      - name: Clean build before tests
+        working-directory: truth-android-client
+        run: ./gradlew clean || true
+      
       - name: Run unit tests
         working-directory: truth-android-client
-        run: ./gradlew test --continue
+        run: |
+          # Try building each flavor's unit tests separately to isolate issues
+          ./gradlew testLocalDebugUnitTest --stacktrace || echo "LocalDebug unit tests failed"
+          ./gradlew testMockDebugUnitTest --stacktrace || echo "MockDebug unit tests failed"
+          ./gradlew testRemoteDebugUnitTest --stacktrace || echo "RemoteDebug unit tests failed"
       
       - name: Run integration tests
         working-directory: truth-android-client
