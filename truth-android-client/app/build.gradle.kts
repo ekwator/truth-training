@@ -81,8 +81,10 @@ android {
 
 // Kapt configuration for Room schema location
 kapt {
+    correctErrorTypes = true
     arguments {
         arg("room.schemaLocation", "$projectDir/schemas")
+        arg("room.incremental", "true")
     }
 }
 
