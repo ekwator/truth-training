@@ -2,13 +2,14 @@ package com.truth.training.client.data.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
 import com.truth.training.client.data.database.daos.*
 import com.truth.training.client.data.database.entities.*
 
 /**
  * Room database for Truth Training Android v1.0.0.
  * Matches Desktop SQLite schema with embedded context fields.
+ * 
+ * Note: No TypeConverters needed - all date fields are stored as ISO 8601 strings directly.
  */
 @Database(
     entities = [
@@ -22,7 +23,6 @@ import com.truth.training.client.data.database.entities.*
     version = 1,
     exportSchema = true
 )
-@TypeConverters(Converters::class)
 abstract class TruthDatabase : RoomDatabase() {
     abstract fun eventDao(): EventDao
     abstract fun contextTemplateDao(): ContextTemplateDao
