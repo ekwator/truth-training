@@ -56,7 +56,11 @@ jobs:
       
       - name: Clean build before tests
         working-directory: truth-android-client
-        run: ./gradlew clean || true
+        run: |
+          ./gradlew clean || true
+          # Clear DEX cache to avoid stale class names
+          rm -rf app/build/intermediates/dex* || true
+          rm -rf app/build/tmp/kotlin-classes/* || true
       
       - name: Run unit tests
         working-directory: truth-android-client
