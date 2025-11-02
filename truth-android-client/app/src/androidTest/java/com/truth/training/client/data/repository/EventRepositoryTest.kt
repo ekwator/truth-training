@@ -206,9 +206,7 @@ class EventRepositoryTest {
         
         val listResponse = EventListResponse(
             data = listOf(eventDto),
-            total = 1,
-            limit = 100,
-            offset = 0
+            total = 1
         )
         
         mockWebServer.enqueue(

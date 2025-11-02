@@ -1,5 +1,6 @@
 package com.truth.training.client.performance
 
+import androidx.room.Room
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso
 import androidx.test.espresso.action.ViewActions
@@ -52,7 +53,9 @@ class UIResponseTimeTest {
     @Before
     fun setup() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        database = TruthDatabase.getDatabase(context)
+        database = Room.inMemoryDatabaseBuilder(context, TruthDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
         
         // Populate database with test data
         runBlocking {
