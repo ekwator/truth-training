@@ -1,10 +1,15 @@
 # Truth Training — Android Client
-Truth Android Client (v0.1.0-pre)
+Truth Android Client v1.0.0
 =================================
+
+**Версия:** 1.0.0 (stable)  
+**Статус:** ✅ Полное соответствие Desktop UI v1.0.0  
+**Дата:** 2025-11-02
 
 Требования:
 - Android Studio (Giraffe+), JDK 17
-- Android SDK 24+
+- Android SDK 26+ (minSdk 26, targetSdk 33)
+- Truth Core Server v1.0.0+
 
 Сборка:
 ```bash
@@ -16,13 +21,44 @@ Truth Android Client (v0.1.0-pre)
   - local: `http://10.0.2.2:8080`
   - remote: замените `https://truth-core.example.com`
 
-Интеграция с Truth Core (current main branch, post-v0.3.0 development):
-- Эндпоинты: POST `/api/v1/auth`, GET `/api/v1/info`, `/api/v1/stats`, `/graph/json`, POST `/api/v1/refresh` (опц.)
-- JWT хранится в SharedPreferences; авторизация через заголовок `Authorization: Bearer <token>`
+## Основные возможности v1.0.0
 
-Тесты:
+### ✅ Полная функциональность
+- **Room Database** - Offline-first архитектура с локальным SQLite хранилищем
+- **Context Templates** - Создание, редактирование, поиск и использование шаблонов контекста
+- **Events Management** - Полный CRUD для событий с embedded context fields (v1.0.0 API)
+- **Judgments & Consensus** - Отправка суждений и просмотр статистики консенсуса
+- **P2P Synchronization** - Прямая синхронизация событий между Android клиентами
+- **Jetpack Compose UI** - Современный Material 3 интерфейс
+- **Background Sync** - Автоматическая синхронизация через WorkManager
+
+### Архитектура
+- **Offline-First:** Все операции сохраняются локально, синхронизация в фоне
+- **Room Database:** SQLite через Room с Flow поддержкой для reactive UI
+- **Repository Pattern:** Единый слой доступа к данным (Room + API)
+- **Sync Queue:** Отслеживание и автоматическая обработка pending операций
+
+Интеграция с Truth Core v1.0.0:
+- **API Endpoints:** Полная поддержка v1.0.0 endpoints (Events, Contexts, Judgments, Impacts)
+- **Authentication:** JWT через `Authorization: Bearer <token>` header
+- **Embedded Fields:** События используют `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id` вместо `context_id`
+- **Token Storage:** JWT в SharedPreferences, автоматическое обновление через RefreshAuthenticator
+
+## Тестирование
+
+Unit tests:
 ```bash
 ./gradlew test
+```
+
+Integration tests:
+```bash
+./gradlew connectedAndroidTest
+```
+
+Contract tests (API endpoints):
+```bash
+./gradlew test --tests "*Contract*"
 ```
 
 Примечания по интеграции:
@@ -51,20 +87,62 @@ Secure P2P Messaging:
 - На экране `P2PActivity` показывается окончание публичного ключа для быстрой идентификации
 - The Rust core now verifies message signatures (RSA/Ed25519) for all incoming JSON packets from Android before further processing.
 
-Ed25519 JSON Signatures:
-- Подпись Ed25519 (BouncyCastle), единая для Android/Rust; Base64 без паддинга
-- Пример конверта `/api/v1/push` и P2P:
+## Структура проекта
+
+### Room Database
+- `data/database/TruthDatabase.kt` - главная база данных
+- `data/database/entities/` - EventEntity, ContextTemplateEntity, JudgmentEntity, ImpactEntity, SummaryEntity, SyncQueueEntity
+- `data/database/daos/` - DAO интерфейсы с Flow поддержкой
+
+### Repositories
+- `data/repository/EventRepository.kt` - управление событиями (offline-first)
+- `data/repository/ContextTemplateRepository.kt` - управление шаблонами контекста
+- `data/repository/JudgmentRepository.kt` - управление суждениями и консенсусом
+- `data/repository/ImpactRepository.kt` - управление воздействиями
+- `data/repository/SummaryRepository.kt` - управление резюме
+
+### Sync Infrastructure
+- `data/sync/SyncQueueManager.kt` - управление очередью синхронизации
+- `data/sync/SyncWorker.kt` - WorkManager worker для фоновой синхронизации
+
+### P2P
+- `p2p/P2PSyncManager.kt` - распространение событий через P2P
+- `p2p/P2PMessageHandler.kt` - обработка зашифрованных P2P сообщений
+- `p2p/P2PDiscoveryService.kt` - обнаружение peer'ов через NSD
+
+### UI (Jetpack Compose)
+- `ui/compose/events/` - экраны событий (список, создание, детали)
+- `ui/compose/contexts/` - экраны шаблонов контекста (список, редактор, выбор)
+- `ui/compose/judgments/` - экраны суждений (список, отправка)
+
+## Ed25519 P2P Signatures
+
+Подпись Ed25519 (BouncyCastle) для P2P сообщений:
+- Каждое сообщение подписывается перед отправкой
+- Формат конверта:
 ```json
 {
-  "payload": { "event": "truth_claim", "value": 1 },
+  "payload": { "type": "EVENT_SYNC", "event_id": "...", ... },
   "signature": "<base64>",
   "public_key": "<base64>"
 }
 ```
-- cURL пример:
-```bash
-curl -X POST "$BASE_URL/api/v1/push" \
-  -H "Authorization: Bearer <jwt>" \
-  -H "Content-Type: application/json" \
-  -d '{"payload":{"event":"truth_claim","value":1},"signature":"<b64>","public_key":"<b64>"}'
-```
+
+## Миграция с v0.3.0
+
+Подробное руководство по миграции см. в `docs/ANDROID_MIGRATION.md`.
+
+Основные изменения:
+- Версия: `0.3.0` → `1.0.0`
+- minSdk: `24` → `26`
+- Room Database для offline-first режима
+- Jetpack Compose UI
+- Embedded context fields вместо `context_id`
+
+## Дополнительная документация
+
+- **Сравнение с Desktop:** `docs/COMPARISON_ANDROID_VS_DESKTOP.md`
+- **Миграция:** `docs/ANDROID_MIGRATION.md`
+- **Спецификация:** `specs/007-title-align-truth/spec.md`
+- **Data Model:** `specs/007-title-align-truth/data-model.md`
+- **API Contracts:** `specs/007-title-align-truth/contracts/openapi.yaml`

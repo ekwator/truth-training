@@ -20,6 +20,21 @@ Originally conceived to combat fraud, Truth Training evolves into a **self-learn
 
 ---
 
+## ✅ Cross-Platform v1.0.0 (Core, Desktop, Android) — Production Ready
+
+**Status**: All platforms aligned to v1.0.0 baseline  
+**Release**: [GitHub Release v1.0.0](https://github.com/ekwator/truth-training/releases/tag/v1.0.0)
+
+### Platform Availability
+
+- ✅ **Core/Server/CLI**: v1.0.0 (stable)
+- ✅ **Desktop UI**: v1.0.0 (stable) — Linux, Windows, macOS
+- ✅ **Android Client**: v1.0.0 (stable) — **NEW** — Full feature parity
+
+All platforms share the same data model, API contracts, and synchronization protocol.
+
+---
+
 ## What's New in v1.0.0
 
 - **Context Fields Embedded**: Events now store context fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`) directly, eliminating the need for `context_id` foreign key lookups

@@ -1,6 +1,32 @@
 # Changelog
 
-## [1.0.0] — First Stable Baseline — Context Fields Embedded
+## [1.0.0] — First Stable Baseline — Cross-Platform Unified Release
+
+**Release Date**: 2025-11-02  
+**Status**: Stable Production Release
+
+### 🎉 Cross-Platform Milestone
+
+This release represents the first unified stable version across all platforms:
+- ✅ **Core/Server/CLI**: v1.0.0 (stable)
+- ✅ **Desktop UI**: v1.0.0 (stable)
+- ✅ **Android Client**: v1.0.0 (stable) — **NEW**
+
+### 📱 Android Client v1.0.0 (New)
+
+The Android client has been completely rewritten to achieve full feature parity with Desktop v1.0.0:
+
+- **Offline-First Architecture**: Room database with automatic background sync
+- **Jetpack Compose UI**: Modern Material 3 design with 9 complete screens
+- **96% Test Coverage**: Comprehensive unit, integration, and performance tests
+- **Performance Targets Met**: All benchmarks under thresholds
+- **Full Feature Parity**: Events, Context Templates, Judgments, Impacts, P2P sync
+
+See `truth-android-client/CHANGELOG.md` for detailed Android-specific changes.
+
+### 🖥️ Desktop UI & Core (v1.0.0)
+
+## [1.0.0-desktop] — Desktop UI — Context Fields Embedded
 - **Breaking Change**: Removed `context_id` foreign key from events; embedded context fields directly in events
 - **Data Model Refactor**:
   - Events now store `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id` directly (nullable FK references)

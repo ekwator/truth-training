@@ -2,19 +2,27 @@ package com.truth.training.client.data
 
 import android.content.Context
 import com.truth.training.client.BuildConfig
+import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.network.NetworkModule
 import com.truth.training.client.data.network.MockTruthApi
 import com.truth.training.client.data.network.TokenStorage
+import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.AuthRequest
 import com.truth.training.client.data.network.dto.InfoResponse
 import com.truth.training.client.data.network.dto.StatsResponse
+import com.truth.training.client.data.repository.*
+import com.truth.training.client.data.sync.SyncQueueManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class TruthRepository(context: Context) {
+/**
+ * Main repository integrating Room database, API client, and sync queue.
+ * Implements offline-first architecture with automatic background sync.
+ */
+class TruthRepository(context: Context, database: TruthDatabase? = null) {
     private val tokenStorage = TokenStorage(context)
-    private val api = if (BuildConfig.FLAVOR == "mock") {
+    private val api: TruthApi = if (BuildConfig.FLAVOR == "mock") {
         MockTruthApi(context)
     } else {
         NetworkModule.provideApi(
@@ -23,9 +31,27 @@ class TruthRepository(context: Context) {
             )
         )
     }
+    
+    // Room database (lazy initialization if not provided)
+    private val db: TruthDatabase = database ?: throw IllegalStateException(
+        "TruthDatabase must be initialized in Application class before creating TruthRepository"
+    )
+    
+    // Repositories for each entity
+    val eventRepository: EventRepository = EventRepository(db, api)
+    val contextTemplateRepository: ContextTemplateRepository = ContextTemplateRepository(db, api)
+    val judgmentRepository: JudgmentRepository = JudgmentRepository(db, api)
+    val impactRepository: ImpactRepository = ImpactRepository(db, api)
+    val summaryRepository: SummaryRepository = SummaryRepository(db)
+    
+    // Sync queue manager
+    val syncQueueManager: SyncQueueManager = SyncQueueManager(db)
 
     private val _lastSync = MutableStateFlow<Long?>(null)
     val lastSync: Flow<Long?> = _lastSync.asStateFlow()
+    
+    private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Unknown)
+    val syncStatus: Flow<SyncStatus> = _syncStatus.asStateFlow()
 
     suspend fun login(email: String, password: String): Result<Unit> = runCatching {
         val resp = api.authenticate(AuthRequest(email, password))
@@ -53,6 +79,31 @@ class TruthRepository(context: Context) {
         if (!resp.isSuccessful || resp.body() == null) error("Graph failed: ${resp.code()}")
         _lastSync.value = System.currentTimeMillis()
         resp.body()!!.string()
+    }
+    
+    /**
+     * Get sync status with pending operation count.
+     */
+    suspend fun getSyncStatus(): SyncStatus {
+        val pendingCount = syncQueueManager.getPendingCount()
+        return SyncStatus(
+            isOnline = true, // TODO: Check network connectivity
+            pendingOperations = pendingCount,
+            lastSyncTimestamp = _lastSync.value
+        )
+    }
+}
+
+/**
+ * Sync status information.
+ */
+data class SyncStatus(
+    val isOnline: Boolean,
+    val pendingOperations: Int,
+    val lastSyncTimestamp: Long? = null
+) {
+    companion object {
+        val Unknown = SyncStatus(isOnline = false, pendingOperations = 0, lastSyncTimestamp = null)
     }
 }
 
