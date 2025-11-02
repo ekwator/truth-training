@@ -37,7 +37,7 @@ class ContextTemplateDuplicateTest {
     }
 
     @Test
-    fun `creating duplicate template returns conflict error`() = runBlocking {
+    fun creatingDuplicateTemplateReturnsConflictError() = runBlocking {
         // Step 1: Create first template
         val request1 = CreateContextRequest(
             name = "Template 1",
@@ -74,7 +74,7 @@ class ContextTemplateDuplicateTest {
     }
 
     @Test
-    fun `templates with different fields are allowed`() = runBlocking {
+    fun templatesWithDifferentFieldsAreAllowed() = runBlocking {
         val request1 = CreateContextRequest("Template A", 1, 2, 3, 4, 5, null)
         val request2 = CreateContextRequest("Template B", 10, 20, 30, 40, 50, null)
         
@@ -86,7 +86,7 @@ class ContextTemplateDuplicateTest {
     }
 
     @Test
-    fun `templates with NULL fields are matched correctly`() = runBlocking {
+    fun templatesWithNullFieldsAreMatchedCorrectly() = runBlocking {
         val request1 = CreateContextRequest("Template C", null, null, null, null, null, null)
         val request2 = CreateContextRequest("Template D", null, null, null, null, null, null)
         

@@ -43,7 +43,7 @@ class EventCreationWithTemplateTest {
     }
 
     @Test
-    fun `create event with context template matches template and prefills fields`() = runBlocking {
+    fun createEventWithContextTemplateMatchesTemplateAndPrefillsFields() = runBlocking {
         // Step 1: Create context template
         val templateRequest = CreateContextRequest(
             name = "Standard Training Event",

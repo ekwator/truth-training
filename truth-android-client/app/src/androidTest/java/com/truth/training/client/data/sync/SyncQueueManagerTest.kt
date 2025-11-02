@@ -52,7 +52,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `queueOperation creates new CREATE operation`() = runBlocking {
+    fun queueoperationCreatesNewCreateOperation() = runBlocking {
         val payload = CreateEventRequest(
             title = "Test Event",
             description = "Test",
@@ -87,7 +87,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `queueOperation creates UPDATE operation`() = runBlocking {
+    fun queueoperationCreatesUpdateOperation() = runBlocking {
         val payload = CreateEventRequest(
             title = "Updated Event",
             description = "Updated",
@@ -109,7 +109,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `queueOperation creates DELETE operation`() = runBlocking {
+    fun queueoperationCreatesDeleteOperation() = runBlocking {
         val payload = mapOf<String, Any>() // Empty payload for delete
 
         val result = syncManager.queueOperation(
@@ -127,7 +127,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `queueOperation updates existing operation for same entity (local-wins)`() = runBlocking {
+    fun queueoperationUpdatesExistingOperationForSameEntityLocalWins() = runBlocking {
         val payload1 = CreateEventRequest(
             title = "Original",
             description = "Original",
@@ -171,7 +171,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `getPendingOperations returns only PENDING operations`() = runBlocking {
+    fun getpendingoperationsReturnsOnlyPendingOperations() = runBlocking {
         // Create multiple operations
         repeat(3) { i ->
             val payload = CreateEventRequest(
@@ -193,7 +193,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `getPendingCount returns correct count`() = runBlocking {
+    fun getpendingcountReturnsCorrectCount() = runBlocking {
         repeat(5) { i ->
             val payload = CreateEventRequest(
                 title = "Event $i",
@@ -213,7 +213,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `markSyncing transitions status from PENDING to SYNCING`() = runBlocking {
+    fun marksyncingTransitionsStatusFromPendingToSyncing() = runBlocking {
         val payload = CreateEventRequest(
             title = "Test Event",
             description = "Test",
@@ -238,7 +238,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `markSyncing handles error when operation not found`() = runBlocking {
+    fun marksyncingHandlesErrorWhenOperationNotFound() = runBlocking {
         val result = syncManager.markSyncing(9999L)
         
         assertTrue(result.isFailure)
@@ -246,7 +246,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `markCompleted removes operation from queue`() = runBlocking {
+    fun markcompletedRemovesOperationFromQueue() = runBlocking {
         val payload = CreateEventRequest(
             title = "Test Event",
             description = "Test",
@@ -274,7 +274,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `markCompleted handles error when operation not found`() = runBlocking {
+    fun markcompletedHandlesErrorWhenOperationNotFound() = runBlocking {
         val result = syncManager.markCompleted(9999L)
         
         assertTrue(result.isFailure)
@@ -282,7 +282,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `markFailed increments retry count and keeps PENDING if under max`() = runBlocking {
+    fun markfailedIncrementsRetryCountAndKeepsPendingIfUnderMax() = runBlocking {
         val payload = CreateEventRequest(
             title = "Test Event",
             description = "Test",
@@ -321,7 +321,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `markFailed marks as FAILED when retry count reaches max`() = runBlocking {
+    fun markfailedMarksAsFailedWhenRetryCountReachesMax() = runBlocking {
         val payload = CreateEventRequest(
             title = "Test Event",
             description = "Test",
@@ -355,7 +355,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `cleanupFailedOperations removes FAILED operations`() = runBlocking {
+    fun cleanupfailedoperationsRemovesFailedOperations() = runBlocking {
         // Create operation and fail it 3 times
         val payload = CreateEventRequest(
             title = "Test Event",
@@ -387,7 +387,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `multiple operations for same entity are merged (local-wins)`() = runBlocking {
+    fun multipleOperationsForSameEntityAreMergedLocalWins() = runBlocking {
         val payload1 = CreateEventRequest(title = "First", description = "First", categoryId = 1)
         syncManager.queueOperation("CREATE", "EVENT", "event_1", payload1)
         
@@ -404,7 +404,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `concurrent operation queuing handles different entities independently`() = runBlocking {
+    fun concurrentOperationQueuingHandlesDifferentEntitiesIndependently() = runBlocking {
         // Queue operations for different entities
         repeat(5) { i ->
             val payload = CreateEventRequest(
@@ -429,7 +429,7 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `retry count limits are enforced correctly`() = runBlocking {
+    fun retryCountLimitsAreEnforcedCorrectly() = runBlocking {
         val payload = CreateEventRequest(
             title = "Test Event",
             description = "Test",

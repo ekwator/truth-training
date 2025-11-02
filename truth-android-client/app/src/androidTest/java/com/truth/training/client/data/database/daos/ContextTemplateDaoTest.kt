@@ -36,7 +36,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun `insert and get template by id`() = runBlocking {
+    fun insertAndGetTemplateById() = runBlocking {
         val template = createTestTemplate(name = "Template 1")
         val id = templateDao.insertTemplate(template)
         
@@ -47,7 +47,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun `get template by name`() = runBlocking {
+    fun getTemplateByName() = runBlocking {
         val template = createTestTemplate(name = "Unique Template")
         templateDao.insertTemplate(template)
         
@@ -57,7 +57,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun `list templates flow`() = runBlocking {
+    fun listTemplatesFlow() = runBlocking {
         repeat(5) { i ->
             templateDao.insertTemplate(createTestTemplate(name = "Template $i"))
         }
@@ -69,7 +69,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun `match template with exact fields`() = runBlocking {
+    fun matchTemplateWithExactFields() = runBlocking {
         templateDao.insertTemplate(createTestTemplate(name = "Matched", categoryId = 1, formaId = 2))
         
         val matched = templateDao.matchTemplate(
@@ -84,7 +84,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun `match template with partial fields`() = runBlocking {
+    fun matchTemplateWithPartialFields() = runBlocking {
         templateDao.insertTemplate(createTestTemplate(name = "Partial", categoryId = 1, formaId = null))
         
         val matched = templateDao.matchTemplate(
@@ -99,7 +99,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun `count duplicate templates`() = runBlocking {
+    fun countDuplicateTemplates() = runBlocking {
         val template1 = createTestTemplate(name = "Template 1", categoryId = 1, formaId = 2)
         val id1 = templateDao.insertTemplate(template1).toInt()
         
@@ -126,7 +126,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun `update and delete template`() = runBlocking {
+    fun updateAndDeleteTemplate() = runBlocking {
         val template = createTestTemplate(name = "Original")
         val id = templateDao.insertTemplate(template).toInt()
         

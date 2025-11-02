@@ -59,7 +59,7 @@ class JudgmentDaoTest {
     }
 
     @Test
-    fun `insert and get judgment by id`() = runBlocking {
+    fun insertAndGetJudgmentById() = runBlocking {
         val judgment = createTestJudgment("judg_1", "event_1")
         judgmentDao.insertJudgment(judgment)
         
@@ -71,7 +71,7 @@ class JudgmentDaoTest {
     }
 
     @Test
-    fun `list judgments for event`() = runBlocking {
+    fun listJudgmentsForEvent() = runBlocking {
         repeat(5) { i ->
             judgmentDao.insertJudgment(
                 createTestJudgment("judg_$i", "event_1", assessment = if (i % 2 == 0) "true" else "false")
@@ -83,7 +83,7 @@ class JudgmentDaoTest {
     }
 
     @Test
-    fun `list judgments for event flow`() = runBlocking {
+    fun listJudgmentsForEventFlow() = runBlocking {
         repeat(3) { i ->
             judgmentDao.insertJudgment(createTestJudgment("judg_$i", "event_1"))
         }
@@ -94,7 +94,7 @@ class JudgmentDaoTest {
     }
 
     @Test
-    fun `count judgments by assessment`() = runBlocking {
+    fun countJudgmentsByAssessment() = runBlocking {
         judgmentDao.insertJudgment(createTestJudgment("judg_1", "event_1", "true"))
         judgmentDao.insertJudgment(createTestJudgment("judg_2", "event_1", "true"))
         judgmentDao.insertJudgment(createTestJudgment("judg_3", "event_1", "false"))
@@ -110,7 +110,7 @@ class JudgmentDaoTest {
     }
 
     @Test
-    fun `get average confidence`() = runBlocking {
+    fun getAverageConfidence() = runBlocking {
         judgmentDao.insertJudgment(createTestJudgment("judg_1", "event_1", confidenceLevel = 0.9))
         judgmentDao.insertJudgment(createTestJudgment("judg_2", "event_1", confidenceLevel = 0.8))
         judgmentDao.insertJudgment(createTestJudgment("judg_3", "event_1", confidenceLevel = 0.7))
@@ -121,7 +121,7 @@ class JudgmentDaoTest {
     }
 
     @Test
-    fun `get judgment count for event`() = runBlocking {
+    fun getJudgmentCountForEvent() = runBlocking {
         repeat(7) { i ->
             judgmentDao.insertJudgment(createTestJudgment("judg_$i", "event_1"))
         }
@@ -131,7 +131,7 @@ class JudgmentDaoTest {
     }
 
     @Test
-    fun `update and delete judgment`() = runBlocking {
+    fun updateAndDeleteJudgment() = runBlocking {
         val judgment = createTestJudgment("judg_update", "event_1")
         judgmentDao.insertJudgment(judgment)
         

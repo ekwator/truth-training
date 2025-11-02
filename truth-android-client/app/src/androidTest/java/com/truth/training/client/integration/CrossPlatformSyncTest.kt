@@ -38,7 +38,7 @@ class CrossPlatformSyncTest {
     }
 
     @Test
-    fun `events created in Android match Desktop v1_0_0 schema`() = runBlocking {
+    fun eventsCreatedInAndroidMatchDesktopV100Schema() = runBlocking {
         // Step 1: Create event with all embedded fields (v1.0.0 schema)
         val request = CreateEventRequest(
             title = "Cross-Platform Event",

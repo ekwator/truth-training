@@ -132,7 +132,7 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun `benchmark pagination query with 100 events`() = runBlocking {
+    fun benchmarkPaginationQueryWith100Events() = runBlocking {
         // Setup: populate database with 100 events
         populateDatabase(100)
         
@@ -164,7 +164,7 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun `benchmark pagination query with 1000 events`() = runBlocking {
+    fun benchmarkPaginationQueryWith1000Events() = runBlocking {
         populateDatabase(1000)
         
         val benchmark = measureAverageTime(10) {
@@ -189,7 +189,7 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun `benchmark pagination query with 10000 events`() = runBlocking {
+    fun benchmarkPaginationQueryWith10000Events() = runBlocking {
         populateDatabase(10000)
         
         val benchmark = measureAverageTime(10) {
@@ -214,7 +214,7 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun `benchmark single entity retrieval`() = runBlocking {
+    fun benchmarkSingleEntityRetrieval() = runBlocking {
         populateDatabase(1000)
         
         // Measure single entity retrieval
@@ -244,7 +244,7 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun `benchmark bulk insert 100 events`() = runBlocking {
+    fun benchmarkBulkInsert100Events() = runBlocking {
         // Measure bulk insert
         val events = (0..99).map { index ->
             createTestEvent("bulk_event_$index", "Bulk Event $index")
@@ -278,7 +278,7 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun `benchmark complex query with status filter`() = runBlocking {
+    fun benchmarkComplexQueryWithStatusFilter() = runBlocking {
         populateDatabase(1000)
         
         // Measure filtered query by status
@@ -308,7 +308,7 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun `benchmark flow emission latency`() = runBlocking {
+    fun benchmarkFlowEmissionLatency() = runBlocking {
         populateDatabase(100)
         
         // Measure Flow initial emission latency
@@ -339,7 +339,7 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun `validate database indices`() = runBlocking {
+    fun validateDatabaseIndices() = runBlocking {
         // This test validates that indices are properly created
         // by checking query performance doesn't degrade with larger datasets
         populateDatabase(100)

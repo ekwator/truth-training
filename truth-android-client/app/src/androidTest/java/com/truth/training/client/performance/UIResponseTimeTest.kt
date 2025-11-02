@@ -130,7 +130,7 @@ class UIResponseTimeTest {
     }
 
     @Test
-    fun `benchmark screen rendering cold start`() {
+    fun benchmarkScreenRenderingColdStart() {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         
         // Measure time until first UI render
@@ -160,7 +160,7 @@ class UIResponseTimeTest {
     }
 
     @Test
-    fun `benchmark screen rendering warm start`() {
+    fun benchmarkScreenRenderingWarmStart() {
         // First launch to warm up
         ActivityScenario.launch(MainActivity::class.java).use { firstScenario ->
             Thread.sleep(500) // Wait for initial render
@@ -189,7 +189,7 @@ class UIResponseTimeTest {
     }
 
     @Test
-    fun `benchmark data loading with large dataset`() {
+    fun benchmarkDataLoadingWithLargeDataset() {
         // Populate with large dataset
         runBlocking {
             populateDatabase(database, 100)
@@ -224,7 +224,7 @@ class UIResponseTimeTest {
     }
 
     @Test
-    fun `benchmark user interaction button click`() {
+    fun benchmarkUserInteractionButtonClick() {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         
         // Wait for UI to be ready
@@ -258,7 +258,7 @@ class UIResponseTimeTest {
     }
 
     @Test
-    fun `benchmark navigation transition`() {
+    fun benchmarkNavigationTransition() {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         
         // Wait for initial screen
