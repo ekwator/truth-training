@@ -31,7 +31,9 @@ class P2PMessageHandler(
             
             // Verify Ed25519 signature
             Ed25519CryptoManager.init(context)
-            if (!Ed25519CryptoManager.verifyJsonPayload(payload, signature, publicKey)) {
+            val publicKeyObj = Ed25519CryptoManager.decodePublicKeyFromBase64(publicKey)
+            val payloadStr = payload.toString()
+            if (!Ed25519CryptoManager.verifySignature(publicKeyObj, payloadStr, signature)) {
                 return@withContext Result.failure(SecurityException("Invalid message signature"))
             }
             

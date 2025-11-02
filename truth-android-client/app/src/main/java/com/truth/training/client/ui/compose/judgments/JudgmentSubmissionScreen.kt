@@ -33,7 +33,7 @@ fun JudgmentSubmissionScreen(
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.ArrowBack,
+                            imageVector = androidx.compose.material.icons.Icons.Filled.ArrowBack,
                             contentDescription = "Cancel"
                         )
                     }
@@ -150,7 +150,7 @@ fun JudgmentSubmissionScreen(
             )
 
             Slider(
-                value = confidenceLevel.toDoubleOrNull()?.coerceIn(0.0, 1.0) ?: 0.5f,
+                value = (confidenceLevel.toDoubleOrNull()?.coerceIn(0.0, 1.0) ?: 0.5).toFloat(),
                 onValueChange = { confidenceLevel = it.toString() },
                 valueRange = 0f..1f,
                 steps = 9,

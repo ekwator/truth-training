@@ -5,6 +5,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -67,7 +71,7 @@ fun DashboardScreen(
                 StatCard(
                     title = "Events",
                     value = eventCount.toString(),
-                    icon = Icons.Default.Event,
+                    icon = Icons.Filled.Event,
                     modifier = Modifier.weight(1f),
                     onClick = onNavigateToEvents
                 )
@@ -84,19 +88,19 @@ fun DashboardScreen(
 
             QuickActionButton(
                 text = "View Events",
-                icon = Icons.Default.Event,
+                icon = Icons.Filled.Event,
                 onClick = onNavigateToEvents
             )
 
             QuickActionButton(
                 text = "Manage Context Templates",
-                icon = Icons.Default.Settings,
+                icon = Icons.Filled.Settings,
                 onClick = onNavigateToContexts
             )
 
             QuickActionButton(
                 text = "View Judgments",
-                icon = Icons.Default.CheckCircle,
+                icon = Icons.Filled.CheckCircle,
                 onClick = onNavigateToJudgments
             )
         }
@@ -133,7 +137,7 @@ private fun SyncStatusCard(
                     fontWeight = FontWeight.Bold
                 )
                 Icon(
-                    imageVector = if (syncStatus.isOnline) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                    imageVector = if (syncStatus.isOnline) Icons.Filled.CloudDone else Icons.Filled.CloudOff,
                     contentDescription = if (syncStatus.isOnline) "Online" else "Offline",
                     tint = if (syncStatus.isOnline) {
                         MaterialTheme.colorScheme.primary
@@ -176,7 +180,7 @@ private fun SyncStatusCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Sync,
+                        imageVector = Icons.Filled.Sync,
                         contentDescription = "Sync Now",
                         modifier = Modifier.size(18.dp)
                     )

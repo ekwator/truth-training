@@ -38,13 +38,13 @@ fun EventDetailScreen(
                 actions = {
                     IconButton(onClick = onEdit) {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Edit,
+                            imageVector = androidx.compose.material.icons.Icons.Filled.Edit,
                             contentDescription = "Edit"
                         )
                     }
                     IconButton(onClick = onDelete) {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Delete,
+                            imageVector = androidx.compose.material.icons.Icons.Filled.Delete,
                             contentDescription = "Delete"
                         )
                     }
