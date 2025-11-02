@@ -99,7 +99,7 @@ class CrossPlatformSyncTest {
     }
 
     @Test
-    fun `events with partial context fields are valid`() = runBlocking {
+    fun eventsWithPartialContextFieldsAreValid() = runBlocking {
         // Event with only some context fields
         val request = CreateEventRequest(
             title = "Partial Context Event",
