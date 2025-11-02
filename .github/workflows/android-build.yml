@@ -1,14 +1,14 @@
 name: Android Build & Test
 
 on:
-  push:
-    branches: [main, 007-title-align-truth]
-  pull_request:
-    branches: [main]
-  release:
-    types: [created]
+  workflow_run:
+    workflows: ["Cross-Platform Build"]
+    types: [completed]
+    branches: [master]
+    tags:
+      - '**'
   workflow_dispatch:
-
+  
 permissions:
   actions: read
   contents: write
