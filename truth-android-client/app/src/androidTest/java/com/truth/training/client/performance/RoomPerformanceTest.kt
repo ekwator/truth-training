@@ -49,7 +49,7 @@ class RoomPerformanceTest {
 
     @Before
     fun setup() {
-        val context = ApplicationProvider.getApplicationContext()
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         database = Room.inMemoryDatabaseBuilder(context, TruthDatabase::class.java)
             .allowMainThreadQueries()
             .build()
