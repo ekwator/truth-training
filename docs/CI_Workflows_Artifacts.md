@@ -104,4 +104,136 @@ Note: Exact filenames can vary slightly based on Tauri bundler conventions and v
 - Tags like `v0.4.2` are created and pushed to mark release points
 - Releases can be created via GitHub CLI (`gh release create`) and can attach the produced artifacts
 
+---
+
+## Android Build Workflow
+
+This section explains the Android client build process and artifacts produced by the GitHub Actions workflow defined in `.github/workflows/android-build.yml`.
+
+### Key Repository Directories
+
+- `truth-android-client/`
+  - Android application project root
+  - `app/` — Android app module
+    - `build.gradle.kts` — App-level Gradle configuration
+    - `src/main/java/` — Kotlin source code
+    - `src/test/java/` — Unit tests
+    - `src/androidTest/java/` — Instrumented tests
+    - `src/main/jniLibs/` — Native libraries (Rust truth_core)
+  - `gradle/` — Gradle wrapper and configuration
+
+### Android Workflow Jobs Overview
+
+The workflow `Android Build & Test` defines three jobs:
+
+1) **`test`** (runs on Ubuntu)
+   - Sets up JDK 17
+   - Caches Gradle dependencies and build artifacts
+   - Runs unit tests (`./gradlew test`)
+   - Runs integration tests (`./gradlew connectedAndroidTest`)
+   - Runs performance tests (`./gradlew connectedAndroidTest --tests "*performance*"`)
+   - Uploads test results artifacts
+
+2) **`build`** (runs on Ubuntu, matrix: Debug/Release)
+   - Installs Rust toolchain (aarch64-linux-android, x86_64-linux-android)
+   - Sets up Android SDK and NDK
+   - Builds Rust libraries (`truth_core`) for Android targets
+   - Copies native libraries to Android project
+   - Sets up JDK 17
+   - Caches Gradle dependencies
+   - Builds Debug APK or Release AAB based on matrix
+   - Uploads build artifacts
+
+3) **`release`** (runs on Ubuntu, triggered by release event)
+   - Downloads all build artifacts from `build` job
+   - Creates GitHub Release with artifacts attached
+   - Generates release notes automatically
+
+### Android Artifact Names and Paths
+
+Artifact names are unique per build type:
+
+- **Debug APK** (from `build` job, `buildType: debug`):
+  - Name: `android-debug-apk`
+  - Paths uploaded:
+    - `truth-android-client/app/build/outputs/apk/**/*.apk`
+  - Retention: 30 days
+
+- **Release AAB** (from `build` job, `buildType: release`):
+  - Name: `android-release-aab`
+  - Paths uploaded:
+    - `truth-android-client/app/build/outputs/bundle/**/*.aab`
+  - Retention: 30 days
+
+- **Test Results** (from `test` job):
+  - Name: `test-results`
+  - Paths uploaded:
+    - `truth-android-client/app/build/test-results/**/*`
+    - `truth-android-client/app/build/outputs/androidTest-results/**/*`
+  - Retention: 7 days
+
+### Typical Build Outputs
+
+After successful builds, expect the following files:
+
+- **Debug APK**:
+  - `truth-android-client/app/build/outputs/apk/debug/app-debug.apk`
+  - Size: ~15-25 MB (includes debug symbols)
+
+- **Release AAB**:
+  - `truth-android-client/app/build/outputs/bundle/release/app-release.aab`
+  - Size: ~10-15 MB (optimized, signed for Google Play)
+
+### Version Configuration
+
+- **versionName**: "1.0.0" (configured in `truth-android-client/app/build.gradle.kts`)
+- **versionCode**: 1
+- **minSdk**: 26 (Android 8.0)
+- **targetSdk**: 33 (Android 13)
+- **compileSdk**: 35
+
+### Gradle Caching Strategy
+
+The workflow caches:
+- **Gradle dependencies**: `~/.gradle/caches`, `~/.gradle/wrapper`, `truth-android-client/.gradle`
+- **Gradle build cache**: `truth-android-client/.gradle/caches`, `truth-android-client/.gradle/build`
+- Cache keys based on Gradle wrapper version and build file hashes
+
+### Native Library Build Process
+
+1. Rust toolchain installed with Android targets:
+   - `aarch64-linux-android` (ARM64)
+   - `x86_64-linux-android` (x86_64)
+
+2. Rust libraries built with `cargo build --release --target <target> --features mobile --lib -p truth_core`
+
+3. Native libraries copied to:
+   - `truth-android-client/app/src/main/jniLibs/arm64-v8a/libtruth_core.so`
+   - `truth-android-client/app/src/main/jniLibs/x86_64/libtruth_core.so`
+
+### Test Execution
+
+- **Unit Tests**: JUnit tests for DAOs, Repositories, Sync infrastructure
+- **Integration Tests**: Android instrumented tests for full user scenarios
+- **Performance Tests**: Room database and UI response time benchmarks
+- Tests run with `--continue` flag to report all failures
+
+### Release Process
+
+When a GitHub release is created:
+1. `release` job triggers automatically
+2. Downloads Debug APK and Release AAB artifacts
+3. Creates GitHub Release with:
+   - Tag name from release event
+   - Auto-generated release notes
+   - All Android artifacts attached
+4. Artifacts available for download from GitHub Releases page
+
+### Notes
+
+- Performance tests may be skipped in CI if no device/emulator is available (uses `|| true`)
+- Rust library build requires NDK toolchain setup
+- AAB (Android App Bundle) is preferred for Google Play distribution
+- APK is provided for direct installation/testing
+
 
