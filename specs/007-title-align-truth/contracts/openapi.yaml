@@ -1,0 +1,853 @@
+openapi: 3.0.3
+info:
+  title: Truth Training API v1.0.0 - Android Client
+  version: 1.0.0
+  description: |
+    API specification for Truth Training Android client v1.0.0.
+    Matches Desktop UI v1.0.0 API endpoints with embedded context fields.
+    
+    All endpoints require JWT authentication via `Authorization: Bearer <token>` header.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://truth-core.example.com
+    description: Production server
+
+paths:
+  # Authentication (existing)
+  /api/v1/auth:
+    post:
+      summary: Authenticate user
+      operationId: authenticate
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+        '500':
+          description: Internal server error
+
+  /api/v1/info:
+    get:
+      summary: Get server information
+      operationId: getInfo
+      tags:
+        - System
+      responses:
+        '200':
+          description: Server info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfoResponse'
+
+  # Events API (v1.0.0 with embedded fields)
+  /api/v1/events:
+    get:
+      summary: List events with pagination
+      operationId: listEvents
+      tags:
+        - Events
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 35
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, archived, pending]
+      responses:
+        '200':
+          description: List of events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventListResponse'
+        '500':
+          description: Internal server error
+
+    post:
+      summary: Create a new event with embedded context fields
+      operationId: createEvent
+      tags:
+        - Events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+      responses:
+        '200':
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          description: Validation error (invalid FK reference, date order, empty title)
+        '500':
+          description: Internal server error
+
+  /api/v1/events/{id}:
+    get:
+      summary: Get event by ID
+      operationId: getEvent
+      tags:
+        - Events
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetailsResponse'
+        '404':
+          description: Event not found
+        '500':
+          description: Internal server error
+
+    put:
+      summary: Update event
+      operationId: updateEvent
+      tags:
+        - Events
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEventRequest'
+      responses:
+        '200':
+          description: Event updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          description: Validation error
+        '404':
+          description: Event not found
+        '500':
+          description: Internal server error
+
+    delete:
+      summary: Delete event
+      operationId: deleteEvent
+      tags:
+        - Events
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Event deleted successfully
+        '404':
+          description: Event not found
+        '500':
+          description: Internal server error
+
+  # Context Templates API (v1.0.0)
+  /api/v1/contexts:
+    get:
+      summary: List all context templates
+      operationId: listContexts
+      tags:
+        - Context Templates
+      responses:
+        '200':
+          description: List of context templates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextListResponse'
+        '500':
+          description: Internal server error
+
+    post:
+      summary: Create a new context template
+      operationId: createContext
+      tags:
+        - Context Templates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContextRequest'
+      responses:
+        '200':
+          description: Context template created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextTemplate'
+        '400':
+          description: Validation error (duplicate template, invalid FK, empty name)
+        '409':
+          description: Conflict - template with identical fields already exists
+        '500':
+          description: Internal server error
+
+  /api/v1/contexts/by-name/{name}:
+    get:
+      summary: Get context template by name
+      operationId: getContextByName
+      tags:
+        - Context Templates
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Context template found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextTemplate'
+        '404':
+          description: Template not found
+        '500':
+          description: Internal server error
+
+  /api/v1/contexts/match:
+    post:
+      summary: Match event fields to a context template
+      operationId: matchContext
+      tags:
+        - Context Templates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchContextRequest'
+      responses:
+        '200':
+          description: Match result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchContextResponse'
+        '500':
+          description: Internal server error
+
+  /api/v1/contexts/from-event:
+    post:
+      summary: Create context template from event fields
+      operationId: createContextFromEvent
+      tags:
+        - Context Templates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContextFromEventRequest'
+      responses:
+        '200':
+          description: Context template created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextTemplate'
+        '400':
+          description: Validation error (duplicate template, invalid FK, empty name)
+        '409':
+          description: Conflict - template with identical fields already exists
+        '500':
+          description: Internal server error
+
+  # Judgments API
+  /api/v1/judgments:
+    get:
+      summary: List judgments for an event
+      operationId: listJudgments
+      tags:
+        - Judgments
+      parameters:
+        - name: event_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 35
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of judgments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JudgmentListResponse'
+        '500':
+          description: Internal server error
+
+    post:
+      summary: Submit a judgment
+      operationId: submitJudgment
+      tags:
+        - Judgments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJudgmentRequest'
+      responses:
+        '200':
+          description: Judgment submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Judgment'
+        '400':
+          description: Validation error (invalid assessment, confidence level out of range)
+        '404':
+          description: Event not found
+        '500':
+          description: Internal server error
+
+  /api/v1/judgments/stats/{event_id}:
+    get:
+      summary: Get judgment statistics for an event
+      operationId: getJudgmentStats
+      tags:
+        - Judgments
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Judgment statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JudgmentStatsResponse'
+        '404':
+          description: Event not found
+        '500':
+          description: Internal server error
+
+  # Impacts API
+  /api/v1/impacts:
+    post:
+      summary: Add an impact assessment
+      operationId: addImpact
+      tags:
+        - Impacts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateImpactRequest'
+      responses:
+        '200':
+          description: Impact added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Impact'
+        '400':
+          description: Validation error (impact level out of range 1-5)
+        '404':
+          description: Event not found
+        '500':
+          description: Internal server error
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AuthRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+          nullable: true
+        tokenType:
+          type: string
+          default: Bearer
+
+    InfoResponse:
+      type: object
+      properties:
+        version:
+          type: string
+        uptime:
+          type: string
+        nodeId:
+          type: string
+        network:
+          type: string
+
+    # Events
+    CreateEventRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        category_id:
+          type: integer
+          nullable: true
+        forma_id:
+          type: integer
+          nullable: true
+        cause_id:
+          type: integer
+          nullable: true
+        develop_id:
+          type: integer
+          nullable: true
+        effect_id:
+          type: integer
+          nullable: true
+        start_date:
+          type: string
+          format: date-time
+          nullable: true
+        end_date:
+          type: string
+          format: date-time
+          nullable: true
+
+    UpdateEventRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        category_id:
+          type: integer
+          nullable: true
+        forma_id:
+          type: integer
+          nullable: true
+        cause_id:
+          type: integer
+          nullable: true
+        develop_id:
+          type: integer
+          nullable: true
+        effect_id:
+          type: integer
+          nullable: true
+        start_date:
+          type: string
+          format: date-time
+          nullable: true
+        end_date:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive, archived, pending]
+
+    EventResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        category_id:
+          type: integer
+          nullable: true
+        forma_id:
+          type: integer
+          nullable: true
+        cause_id:
+          type: integer
+          nullable: true
+        develop_id:
+          type: integer
+          nullable: true
+        effect_id:
+          type: integer
+          nullable: true
+        start_date:
+          type: string
+          format: date-time
+          nullable: true
+        end_date:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+
+    EventDetailsResponse:
+      allOf:
+        - $ref: '#/components/schemas/EventResponse'
+        - type: object
+          properties:
+            impacts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Impact'
+            judgments:
+              type: array
+              items:
+                $ref: '#/components/schemas/Judgment'
+            summary:
+              $ref: '#/components/schemas/Summary'
+              nullable: true
+            consensus:
+              $ref: '#/components/schemas/Consensus'
+              nullable: true
+
+    EventListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventResponse'
+        total:
+          type: integer
+
+    # Context Templates
+    ContextTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category_id:
+          type: integer
+          nullable: true
+        forma_id:
+          type: integer
+          nullable: true
+        cause_id:
+          type: integer
+          nullable: true
+        develop_id:
+          type: integer
+          nullable: true
+        effect_id:
+          type: integer
+          nullable: true
+        description:
+          type: string
+          nullable: true
+
+    CreateContextRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+        category_id:
+          type: integer
+          nullable: true
+        forma_id:
+          type: integer
+          nullable: true
+        cause_id:
+          type: integer
+          nullable: true
+        develop_id:
+          type: integer
+          nullable: true
+        effect_id:
+          type: integer
+          nullable: true
+        description:
+          type: string
+          nullable: true
+
+    MatchContextRequest:
+      type: object
+      properties:
+        category_id:
+          type: integer
+          nullable: true
+        forma_id:
+          type: integer
+          nullable: true
+        cause_id:
+          type: integer
+          nullable: true
+        develop_id:
+          type: integer
+          nullable: true
+        effect_id:
+          type: integer
+          nullable: true
+
+    MatchContextResponse:
+      type: object
+      properties:
+        matched:
+          type: boolean
+        template:
+          $ref: '#/components/schemas/ContextTemplate'
+          nullable: true
+
+    CreateContextFromEventRequest:
+      type: object
+      required:
+        - name
+        - event_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+        event_id:
+          type: string
+        description:
+          type: string
+          nullable: true
+
+    ContextListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContextTemplate'
+        total:
+          type: integer
+
+    # Judgments
+    Judgment:
+      type: object
+      properties:
+        id:
+          type: string
+        event_id:
+          type: string
+        assessment:
+          type: string
+          enum: [true, false, uncertain]
+        confidence_level:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+        reasoning:
+          type: string
+          nullable: true
+        submitted_at:
+          type: string
+          format: date-time
+
+    CreateJudgmentRequest:
+      type: object
+      required:
+        - event_id
+        - assessment
+        - confidence_level
+      properties:
+        event_id:
+          type: string
+        assessment:
+          type: string
+          enum: [true, false, uncertain]
+        confidence_level:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+        reasoning:
+          type: string
+          nullable: true
+
+    JudgmentListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Judgment'
+        total:
+          type: integer
+
+    JudgmentStatsResponse:
+      type: object
+      properties:
+        true_count:
+          type: integer
+        false_count:
+          type: integer
+        uncertain_count:
+          type: integer
+        avg_confidence:
+          type: number
+          format: double
+        last_submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # Impacts
+    Impact:
+      type: object
+      properties:
+        id:
+          type: string
+        event_id:
+          type: string
+        impact_level:
+          type: integer
+          minimum: 1
+          maximum: 5
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    CreateImpactRequest:
+      type: object
+      required:
+        - event_id
+        - impact_level
+      properties:
+        event_id:
+          type: string
+        impact_level:
+          type: integer
+          minimum: 1
+          maximum: 5
+        notes:
+          type: string
+          nullable: true
+
+    # Summaries
+    Summary:
+      type: object
+      properties:
+        id:
+          type: string
+        event_id:
+          type: string
+        summary_text:
+          type: string
+          nullable: true
+        recommendations:
+          type: string
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+
+    # Consensus
+    Consensus:
+      type: object
+      properties:
+        dominant_assessment:
+          type: string
+          enum: [true, false, uncertain]
+        confidence:
+          type: number
+          format: double
+        total_judgments:
+          type: integer
+        weighted_confidence:
+          type: number
+          format: double
+
+security:
+  - BearerAuth: []
+
