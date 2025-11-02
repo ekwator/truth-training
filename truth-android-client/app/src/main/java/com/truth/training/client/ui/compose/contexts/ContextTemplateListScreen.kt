@@ -28,7 +28,7 @@ fun ContextTemplateListScreen(
                 actions = {
                     IconButton(onClick = onNewTemplateClick) {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Add,
+                            imageVector = androidx.compose.material.icons.Icons.Filled.Add,
                             contentDescription = "New Template"
                         )
                     }
@@ -38,7 +38,7 @@ fun ContextTemplateListScreen(
         floatingActionButton = {
             FloatingActionButton(onClick = onNewTemplateClick) {
                 Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.Add,
+                    imageVector = androidx.compose.material.icons.Icons.Filled.Add,
                     contentDescription = "New Template"
                 )
             }

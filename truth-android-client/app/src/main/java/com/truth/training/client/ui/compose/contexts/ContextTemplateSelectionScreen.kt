@@ -29,7 +29,7 @@ fun ContextTemplateSelectionScreen(
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.ArrowBack,
+                            imageVector = androidx.compose.material.icons.Icons.Filled.ArrowBack,
                             contentDescription = "Cancel"
                         )
                     }

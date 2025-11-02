@@ -15,7 +15,7 @@ import java.util.UUID
  */
 class EventRepository(
     private val database: TruthDatabase,
-    private val api: TruthApi
+    private val api: TruthApi?
 ) {
     private val eventDao: EventDao = database.eventDao()
 
@@ -137,6 +137,7 @@ class EventRepository(
      */
     suspend fun syncFromServer(): Result<Int> {
         return try {
+            val api = api ?: return Result.failure(Exception("API not available"))
             val response = api.listEvents(limit = 100, offset = 0)
             if (!response.isSuccessful || response.body() == null) {
                 return Result.failure(Exception("Failed to sync events: ${response.code()}"))
