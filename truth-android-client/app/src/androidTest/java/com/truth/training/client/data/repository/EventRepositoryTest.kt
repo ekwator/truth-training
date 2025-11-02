@@ -76,7 +76,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `createEvent saves locally immediately`() = runBlocking {
+    fun createeventSavesLocallyImmediately() = runBlocking {
         val request = CreateEventRequest(
             title = "Test Event",
             description = "Test description",
@@ -103,7 +103,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `updateEvent updates locally immediately`() = runBlocking {
+    fun updateeventUpdatesLocallyImmediately() = runBlocking {
         // Create event first
         val createRequest = CreateEventRequest(
             title = "Original",
@@ -138,7 +138,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `updateEvent handles conflict when event not found`() = runBlocking {
+    fun updateeventHandlesConflictWhenEventNotFound() = runBlocking {
         val updateRequest = UpdateEventRequest(
             title = "Updated",
             description = "Updated description"
@@ -151,7 +151,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `deleteEvent deletes locally immediately`() = runBlocking {
+    fun deleteeventDeletesLocallyImmediately() = runBlocking {
         // Create event first
         val createRequest = CreateEventRequest(
             title = "To Delete",
@@ -178,7 +178,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `deleteEvent handles error when event not found`() = runBlocking {
+    fun deleteeventHandlesErrorWhenEventNotFound() = runBlocking {
         val result = repository.deleteEvent("non_existent_id")
         
         assertTrue(result.isFailure)
@@ -186,7 +186,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `syncFromServer syncs events from API to local database`() = runBlocking {
+    fun syncfromserverSyncsEventsFromApiToLocalDatabase() = runBlocking {
         // Mock API response
         val eventDto = EventResponse(
             id = "server_event_1",
@@ -227,7 +227,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `syncFromServer handles API error`() = runBlocking {
+    fun syncfromserverHandlesApiError() = runBlocking {
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(500)
@@ -240,7 +240,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `getAllEventsFlow emits events reactively`() = runBlocking {
+    fun getalleventsflowEmitsEventsReactively() = runBlocking {
         // Create multiple events
         repeat(3) { i ->
             val request = CreateEventRequest(
@@ -268,13 +268,13 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `getEventById returns null for non-existent event`() = runBlocking {
+    fun geteventbyidReturnsNullForNonExistentEvent() = runBlocking {
         val result = repository.getEventById("non_existent")
         assertNull(result)
     }
 
     @Test
-    fun `getEventById returns event from local database`() = runBlocking {
+    fun geteventbyidReturnsEventFromLocalDatabase() = runBlocking {
         val request = CreateEventRequest(
             title = "Test Event",
             description = "Test description",
@@ -295,7 +295,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `listEvents returns paginated events`() = runBlocking {
+    fun listeventsReturnsPaginatedEvents() = runBlocking {
         // Create 10 events
         repeat(10) { i ->
             val request = CreateEventRequest(
@@ -320,7 +320,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `listEvents filters by status`() = runBlocking {
+    fun listeventsFiltersByStatus() = runBlocking {
         // Create events with different statuses
         val activeRequest = CreateEventRequest(
             title = "Active Event",
@@ -346,7 +346,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun `offline-first behavior - create works without network`() = runBlocking {
+    fun offlineFirstBehaviorCreateWorksWithoutNetwork() = runBlocking {
         // Simulate network failure by shutting down server
         mockWebServer.shutdown()
         

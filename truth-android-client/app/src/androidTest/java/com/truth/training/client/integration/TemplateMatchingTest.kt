@@ -37,7 +37,7 @@ class TemplateMatchingTest {
     }
 
     @Test
-    fun `match template finds template with matching non-NULL fields`() = runBlocking {
+    fun matchTemplateFindsTemplateWithMatchingNonNullFields() = runBlocking {
         // Step 1: Create templates
         val template1 = CreateContextRequest("Template A", 1, 2, 3, 4, 5, null)
         val template2 = CreateContextRequest("Template B", 10, 20, null, null, null, null)
@@ -64,7 +64,7 @@ class TemplateMatchingTest {
     }
 
     @Test
-    fun `match template with NULL fields returns any template with all NULLs`() = runBlocking {
+    fun matchTemplateWithNullFieldsReturnsAnyTemplateWithAllNulls() = runBlocking {
         // Create template with all NULL fields
         val template = CreateContextRequest("Empty Template", null, null, null, null, null, null)
         val result = templateRepository.createTemplate(template)

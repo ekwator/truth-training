@@ -48,7 +48,7 @@ class OfflineFirstTest {
     }
 
     @Test
-    fun `offline operations are saved locally and queued for sync`() = runBlocking {
+    fun offlineOperationsAreSavedLocallyAndQueuedForSync() = runBlocking {
         // Step 1: Create event offline (no API)
         val eventResult = eventRepository.createEvent(
             CreateEventRequest("Offline Event", "Created offline", null, null, null, null, null, null, null)
@@ -91,7 +91,7 @@ class OfflineFirstTest {
     }
 
     @Test
-    fun `local data persists across app restarts`() = runBlocking {
+    fun localDataPersistsAcrossAppRestarts() = runBlocking {
         // Step 1: Create data
         val eventResult = eventRepository.createEvent(
             CreateEventRequest("Persistent Event", null, null, null, null, null, null, null, null)

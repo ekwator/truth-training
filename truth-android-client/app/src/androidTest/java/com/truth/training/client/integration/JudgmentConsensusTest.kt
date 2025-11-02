@@ -41,7 +41,7 @@ class JudgmentConsensusTest {
     }
 
     @Test
-    fun `submit judgments and calculate consensus statistics`() = runBlocking {
+    fun submitJudgmentsAndCalculateConsensusStatistics() = runBlocking {
         // Step 1: Create event
         val eventResult = eventRepository.createEvent(
             CreateEventRequest("Test Event", "Description", null, null, null, null, null, null, null)

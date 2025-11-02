@@ -36,7 +36,7 @@ class EventDaoTest {
     }
 
     @Test
-    fun `insert and get event by id`() = runBlocking {
+    fun insertAndGetEventById() = runBlocking {
         val event = createTestEvent("event_1", "Test Event")
         eventDao.insertEvent(event)
         
@@ -47,7 +47,7 @@ class EventDaoTest {
     }
 
     @Test
-    fun `get event by id flow`() = runBlocking {
+    fun getEventByIdFlow() = runBlocking {
         val event = createTestEvent("event_2", "Flow Test")
         eventDao.insertEvent(event)
         
@@ -58,7 +58,7 @@ class EventDaoTest {
     }
 
     @Test
-    fun `list events with pagination`() = runBlocking {
+    fun listEventsWithPagination() = runBlocking {
         // Insert multiple events
         repeat(10) { i ->
             eventDao.insertEvent(createTestEvent("event_$i", "Event $i"))
@@ -72,7 +72,7 @@ class EventDaoTest {
     }
 
     @Test
-    fun `list events by status`() = runBlocking {
+    fun listEventsByStatus() = runBlocking {
         eventDao.insertEvent(createTestEvent("event_active", "Active", "active"))
         eventDao.insertEvent(createTestEvent("event_inactive", "Inactive", "inactive"))
         
@@ -82,7 +82,7 @@ class EventDaoTest {
     }
 
     @Test
-    fun `update event`() = runBlocking {
+    fun updateEvent() = runBlocking {
         val event = createTestEvent("event_3", "Original")
         eventDao.insertEvent(event)
         
@@ -95,7 +95,7 @@ class EventDaoTest {
     }
 
     @Test
-    fun `delete event`() = runBlocking {
+    fun deleteEvent() = runBlocking {
         val event = createTestEvent("event_4", "To Delete")
         eventDao.insertEvent(event)
         
@@ -106,7 +106,7 @@ class EventDaoTest {
     }
 
     @Test
-    fun `get event count`() = runBlocking {
+    fun getEventCount() = runBlocking {
         repeat(5) { i ->
             eventDao.insertEvent(createTestEvent("event_$i", "Event $i"))
         }
@@ -116,7 +116,7 @@ class EventDaoTest {
     }
 
     @Test
-    fun `get all events flow`() = runBlocking {
+    fun getAllEventsFlow() = runBlocking {
         repeat(3) { i ->
             eventDao.insertEvent(createTestEvent("event_$i", "Event $i"))
         }
