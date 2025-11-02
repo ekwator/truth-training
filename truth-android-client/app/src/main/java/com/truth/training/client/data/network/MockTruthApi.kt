@@ -70,43 +70,57 @@ class MockTruthApi(private val context: Context) : TruthApi {
         return Response.success(Unit)
     }
 
-    override suspend fun listContextTemplates(): Response<ContextTemplateListResponse> {
+    override suspend fun listContexts(): Response<ContextListResponse> {
         val json = load("api/contexts.json")
-        val obj = Gson().fromJson(json, ContextTemplateListResponse::class.java)
+        val obj = Gson().fromJson(json, ContextListResponse::class.java)
         return Response.success(obj)
     }
 
-    override suspend fun createContextTemplate(body: CreateContextTemplateRequest): Response<ContextTemplateResponse> {
+    override suspend fun createContext(body: CreateContextRequest): Response<ContextTemplate> {
         val json = load("api/context_create.json")
-        val obj = Gson().fromJson(json, ContextTemplateResponse::class.java)
+        val obj = Gson().fromJson(json, ContextTemplate::class.java)
         return Response.success(obj)
     }
 
-    override suspend fun getContextTemplate(id: Int): Response<ContextTemplateResponse> {
+    override suspend fun getContextByName(name: String): Response<ContextTemplate> {
         val json = load("api/context_detail.json")
-        val obj = Gson().fromJson(json, ContextTemplateResponse::class.java)
+        val obj = Gson().fromJson(json, ContextTemplate::class.java)
         return Response.success(obj)
     }
 
-    override suspend fun updateContextTemplate(id: Int, body: UpdateContextTemplateRequest): Response<ContextTemplateResponse> {
-        val json = load("api/context_update.json")
-        val obj = Gson().fromJson(json, ContextTemplateResponse::class.java)
+    override suspend fun matchContext(body: MatchContextRequest): Response<MatchContextResponse> {
+        val json = load("api/context_match.json")
+        val obj = Gson().fromJson(json, MatchContextResponse::class.java)
         return Response.success(obj)
     }
 
-    override suspend fun deleteContextTemplate(id: Int): Response<Unit> {
-        return Response.success(Unit)
+    override suspend fun createContextFromEvent(body: CreateContextFromEventRequest): Response<ContextTemplate> {
+        val json = load("api/context_create.json")
+        val obj = Gson().fromJson(json, ContextTemplate::class.java)
+        return Response.success(obj)
     }
 
-    override suspend fun submitJudgment(body: SubmitJudgmentRequest): Response<JudgmentResponse> {
+    override suspend fun listJudgments(eventId: String, limit: Int, offset: Int): Response<JudgmentListResponse> {
+        val json = load("api/judgments.json")
+        val obj = Gson().fromJson(json, JudgmentListResponse::class.java)
+        return Response.success(obj)
+    }
+
+    override suspend fun submitJudgment(body: CreateJudgmentRequest): Response<Judgment> {
         val json = load("api/judgment_submit.json")
-        val obj = Gson().fromJson(json, JudgmentResponse::class.java)
+        val obj = Gson().fromJson(json, Judgment::class.java)
         return Response.success(obj)
     }
 
     override suspend fun getJudgmentStats(eventId: String): Response<JudgmentStatsResponse> {
         val json = load("api/judgment_stats.json")
         val obj = Gson().fromJson(json, JudgmentStatsResponse::class.java)
+        return Response.success(obj)
+    }
+
+    override suspend fun addImpact(body: CreateImpactRequest): Response<Impact> {
+        val json = load("api/impact_create.json")
+        val obj = Gson().fromJson(json, Impact::class.java)
         return Response.success(obj)
     }
 }

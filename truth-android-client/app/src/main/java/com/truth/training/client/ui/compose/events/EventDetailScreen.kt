@@ -3,6 +3,9 @@ package com.truth.training.client.ui.compose.events
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -38,13 +41,13 @@ fun EventDetailScreen(
                 actions = {
                     IconButton(onClick = onEdit) {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Filled.Edit,
+                            imageVector = Icons.Filled.Edit,
                             contentDescription = "Edit"
                         )
                     }
                     IconButton(onClick = onDelete) {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Filled.Delete,
+                            imageVector = Icons.Filled.Delete,
                             contentDescription = "Delete"
                         )
                     }
