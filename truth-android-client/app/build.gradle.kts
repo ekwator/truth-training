@@ -22,6 +22,13 @@ android {
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
         }
+        
+        // Room schema export location
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments["room.schemaLocation"] = "$projectDir/schemas"
+            }
+        }
     }
 
     buildTypes {
