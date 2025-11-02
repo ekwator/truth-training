@@ -161,7 +161,7 @@ jobs:
       - name: Build APK (Debug)
         if: matrix.buildType == 'debug'
         working-directory: truth-android-client
-        run: ./gradlew assembleLocalDebug assembleMockDebug assembleRemoteDebug assembleLocalDebugAndroidTest assembleMockDebugAndroidTest assembleRemoteDebugAndroidTest
+        run: ./gradlew assembleLocalDebug assembleMockDebug assembleRemoteDebug assembleLocalDebugAndroidTest assembleMockDebugAndroidTest assembleRemoteDebugAndroidTest --stacktrace --info
       
       - name: Build AAB (Release)
         if: matrix.buildType == 'release'
