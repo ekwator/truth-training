@@ -82,9 +82,15 @@ android {
 // Kapt configuration for Room schema location
 kapt {
     correctErrorTypes = true
+    useBuildCache = true
+    mapDiagnosticLocations = true
     arguments {
         arg("room.schemaLocation", "$projectDir/schemas")
         arg("room.incremental", "true")
+        arg("room.expandProjection", "true")
+    }
+    javacOptions {
+        option("-Xmaxerrs", 500)
     }
 }
 
