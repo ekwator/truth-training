@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
+        android:name=".TruthTrainingApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="TruthTrainingClient"
@@ -46,6 +47,16 @@
         <activity
             android:name=".PushTestActivity"
             android:exported="false" />
+
+        <!-- WorkManager for background sync -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup" />
+        </provider>
 
     </application>
 
