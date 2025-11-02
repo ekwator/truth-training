@@ -82,15 +82,17 @@ android {
 // Kapt configuration for Room schema location
 kapt {
     correctErrorTypes = true
-    useBuildCache = true
+    useBuildCache = false  // Disable cache to avoid stale state issues
     mapDiagnosticLocations = true
     arguments {
         arg("room.schemaLocation", "$projectDir/schemas")
-        arg("room.incremental", "true")
+        // Disable incremental compilation - it can cause issues with Kotlin 2.0 + Kapt
+        arg("room.incremental", "false")
         arg("room.expandProjection", "true")
     }
     javacOptions {
         option("-Xmaxerrs", 500)
+        option("-Xmaxwarns", 500)
     }
 }
 
