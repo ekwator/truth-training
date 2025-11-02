@@ -68,7 +68,7 @@ class ContextTemplateDuplicateTest {
         assertTrue(result2.isFailure)
         val error = result2.exceptionOrNull()
         assertNotNull(error)
-        val message = error.message
+        val message = error!!.message
         assertNotNull(message)
         assertTrue(message!!.contains("409") || message.contains("duplicate"))
     }
