@@ -13,7 +13,7 @@ import java.util.UUID
  */
 class JudgmentRepository(
     private val database: TruthDatabase,
-    private val api: TruthApi
+    private val api: TruthApi?
 ) {
     private val judgmentDao: JudgmentDao = database.judgmentDao()
 
@@ -95,7 +95,7 @@ class JudgmentRepository(
      */
     suspend fun syncJudgmentsForEvent(eventId: String): Result<Int> {
         return try {
-            val response = api.listJudgments(eventId, limit = 100, offset = 0)
+            val response = api?.listJudgments(eventId, limit = 100, offset = 0) ?: return Result.failure(Exception("API not available"))
             if (!response.isSuccessful || response.body() == null) {
                 return Result.failure(Exception("Failed to sync judgments: ${response.code()}"))
             }

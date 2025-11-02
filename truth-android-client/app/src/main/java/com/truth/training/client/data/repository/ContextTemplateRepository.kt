@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
  */
 class ContextTemplateRepository(
     private val database: TruthDatabase,
-    private val api: TruthApi
+    private val api: TruthApi?
 ) {
     private val templateDao: ContextTemplateDao = database.contextTemplateDao()
 
@@ -155,7 +155,7 @@ class ContextTemplateRepository(
      */
     suspend fun syncFromServer(): Result<Int> {
         return try {
-            val response = api.listContexts()
+            val response = api?.listContexts() ?: return Result.failure(Exception("API not available"))
             if (!response.isSuccessful || response.body() == null) {
                 return Result.failure(Exception("Failed to sync templates: ${response.code()}"))
             }
