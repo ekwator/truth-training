@@ -23,12 +23,7 @@ android {
             abiFilters += listOf("arm64-v8a", "x86_64")
         }
         
-        // Room schema export location
-        javaCompileOptions {
-            annotationProcessorOptions {
-                arguments["room.schemaLocation"] = "$projectDir/schemas"
-            }
-        }
+        // Room schema export location (configured via kapt block below)
     }
 
     buildTypes {
@@ -81,6 +76,13 @@ android {
             buildConfigField("String", "BASE_URL", "\"http://mock\"")
             buildConfigField("boolean", "MOCK_ENABLED", "true")
         }
+    }
+}
+
+// Kapt configuration for Room schema location
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
     }
 }
 

@@ -130,13 +130,17 @@ jobs:
         run: |
           set -e
           echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
+          # Extract Cargo crate versions only (exclude non-Cargo components like truth-android-client)
           awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Crate/ && !/^\|--/ {
             gsub(/^[ ]+|[ ]+$/, "", $2);
             gsub(/^[ ]+|[ ]+$/, "", $3);
             pkg = $2;
             ver = $3;
             sub(/^v/, "", ver); # use sub, not gensub
-            print pkg ":" ver;
+            # Filter out non-Cargo components (Android, iOS, etc.)
+            if (pkg !~ /-android-client$|ios-client$/i) {
+              print pkg ":" ver;
+            }
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
           cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
           # Normalize CR/LF line endings to LF (portable, works on GNU/BSD sed)
@@ -237,13 +241,17 @@ jobs:
         run: |
           set -e
           echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
+          # Extract Cargo crate versions only (exclude non-Cargo components like truth-android-client)
           awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Crate/ && !/^\|--/ {
             gsub(/^[ ]+|[ ]+$/, "", $2);
             gsub(/^[ ]+|[ ]+$/, "", $3);
             pkg = $2;
             ver = $3;
             sub(/^v/, "", ver); # use sub, not gensub
-            print pkg ":" ver;
+            # Filter out non-Cargo components (Android, iOS, etc.)
+            if (pkg !~ /-android-client$|ios-client$/i) {
+              print pkg ":" ver;
+            }
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
           cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
           # Normalize CR/LF line endings to LF (portable, works on GNU/BSD sed)
@@ -347,13 +355,17 @@ jobs:
         run: |
           set -e
           echo "🔍 Extracting expected package versions from docs/VERSION_REGISTRY.md..."
+          # Extract Cargo crate versions only (exclude non-Cargo components like truth-android-client)
           awk -F'|' '/\|/ && /v[0-9]+\.[0-9]+\.[0-9]+/ && !/^\| Crate/ && !/^\|--/ {
             gsub(/^[ ]+|[ ]+$/, "", $2);
             gsub(/^[ ]+|[ ]+$/, "", $3);
             pkg = $2;
             ver = $3;
             sub(/^v/, "", ver); # use sub, not gensub
-            print pkg ":" ver;
+            # Filter out non-Cargo components (Android, iOS, etc.)
+            if (pkg !~ /-android-client$|ios-client$/i) {
+              print pkg ":" ver;
+            }
           }' docs/VERSION_REGISTRY.md | sort > expected_versions.txt
           cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | "\(.name):\(.version)"' | sort > actual_versions.txt
           # Normalize CR/LF line endings to LF (portable, works on GNU/BSD sed)
