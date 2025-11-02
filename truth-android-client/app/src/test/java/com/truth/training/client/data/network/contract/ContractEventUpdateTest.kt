@@ -49,7 +49,7 @@ class ContractEventUpdateTest {
         
         val expectedResponse = EventResponse(
             id = "event_123",
-            title = request.title,
+            title = request.title ?: "Updated Title",
             description = request.description,
             categoryId = request.categoryId,
             formaId = null,
@@ -60,7 +60,7 @@ class ContractEventUpdateTest {
             endDate = null,
             createdAt = "2024-01-01T00:00:00Z",
             updatedAt = "2024-01-02T00:00:00Z",
-            status = request.status!!
+            status = request.status ?: "archived"
         )
         
         mockWebServer.enqueue(
