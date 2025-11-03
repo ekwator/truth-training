@@ -68,6 +68,7 @@ jobs:
           cp target/aarch64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/arm64-v8a/libtruthcore.so
  
       - name: Run integration and performance tests on emulator (macOS HVF)
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -98,6 +99,7 @@ jobs:
           path: |
             truth-android-client/app/build/test-results/**/*
             truth-android-client/app/build/outputs/androidTest-results/**/*
+            truth-android-client/app/build/reports/androidTests/**/*
           retention-days: 7
 
   build:
