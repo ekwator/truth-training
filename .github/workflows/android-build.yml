@@ -32,15 +32,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platform-tools
-            platforms;android-33
-            build-tools;34.0.0
-            emulator
+
 
       - name: Install Rust (for test JNI build)
         uses: dtolnay/rust-toolchain@stable
