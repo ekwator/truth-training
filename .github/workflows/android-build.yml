@@ -55,7 +55,7 @@ jobs:
             echo "🚀 Running integration tests on Android emulator..."
             (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace) || echo "Some integration tests failed"
             echo "🚀 Running performance tests on Android emulator..."
-            (cd truth-android-client && ./gradlew connectedAndroidTest --tests "*performance*" --continue) || echo "Performance tests completed with warnings"
+            (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue) || echo "Performance tests completed with warnings"
       
       - name: Stop Android Emulator
         if: always()
