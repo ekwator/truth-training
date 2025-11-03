@@ -52,11 +52,10 @@ jobs:
           emulator-boot-timeout: 600000
           emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect
           script: |
-            cd truth-android-client
             echo "🚀 Running integration tests on Android emulator..."
-            ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace || echo "Some integration tests failed"
+            (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace) || echo "Some integration tests failed"
             echo "🚀 Running performance tests on Android emulator..."
-            ./gradlew connectedAndroidTest --tests "*performance*" --continue || echo "Performance tests completed with warnings"
+            (cd truth-android-client && ./gradlew connectedAndroidTest --tests "*performance*" --continue) || echo "Performance tests completed with warnings"
       
       - name: Stop Android Emulator
         if: always()
