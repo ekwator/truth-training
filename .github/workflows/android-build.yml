@@ -2,7 +2,7 @@
 # Combines artifact reuse from Cross-Platform Build with modern testing and release stages
 # Tries to download Rust libraries from Cross-Platform Build workflow first (for speed)
 # Falls back to local compilation if artifacts are unavailable
-
+#
 name: Android Build & Test
 
 on:
@@ -12,6 +12,7 @@ on:
        - '**'
    pull_request:
      branches: [ master ]
+     
   workflow_run:
     workflows: ["Cross-Platform Build"]
     types: [completed]
