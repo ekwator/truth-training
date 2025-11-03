@@ -84,7 +84,15 @@ jobs:
             (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace) || echo "Some integration tests failed"
             echo "🚀 Running performance tests on Android emulator..."
             (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue) || echo "Performance tests completed with warnings"
-      
+            echo "📦 Collecting test reports..."
+            mkdir -p android-test-artifacts/outputs || true
+            mkdir -p android-test-artifacts/reports || true
+            # Copy results if they exist
+            cp -R truth-android-client/app/build/outputs/androidTest-results android-test-artifacts/outputs/ 2>/dev/null || true
+            cp -R truth-android-client/app/build/reports/androidTests android-test-artifacts/reports/ 2>/dev/null || true
+            # Also copy unit test results if present
+            cp -R truth-android-client/app/build/test-results android-test-artifacts/ 2>/dev/null || true
+ 
       - name: Stop Android Emulator
         if: always()
         run: |
@@ -96,10 +104,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: |
-            truth-android-client/app/build/test-results/**/*
-            truth-android-client/app/build/outputs/androidTest-results/**/*
-            truth-android-client/app/build/reports/androidTests/**/*
+          path: android-test-artifacts/**
           retention-days: 7
 
   build:
