@@ -40,6 +40,33 @@ jobs:
           target: google_apis
           arch: x86_64
 
+      - name: Install Rust (for test JNI build)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, x86_64-linux-android
+
+      - name: Set up Android NDK (for Rust cross-compile)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            ndk;26.1.10909125
+
+      - name: Export NDK toolchain (macOS)
+        run: |
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
+          echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin" >> $GITHUB_PATH
+
+      - name: Build and copy JNI libraries for tests
+        run: |
+          echo "Building Rust libraries for Android (x86_64 + arm64-v8a)"
+          cargo build --release --target x86_64-linux-android --features mobile --lib -p truth_core
+          cargo build --release --target aarch64-linux-android --features mobile --lib -p truth_core
+          mkdir -p truth-android-client/app/src/main/jniLibs/x86_64
+          mkdir -p truth-android-client/app/src/main/jniLibs/arm64-v8a
+          # Rename libtruth_core.so -> libtruthcore.so to match System.loadLibrary("truthcore")
+          cp target/x86_64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/x86_64/libtruthcore.so
+          cp target/aarch64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/arm64-v8a/libtruthcore.so
+ 
       - name: Run integration and performance tests on emulator (macOS HVF)
         uses: reactivecircus/android-emulator-runner@v2
         with:
