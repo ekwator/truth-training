@@ -47,17 +47,39 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
           # Install system image
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;x86_64"
+          # Create AVD directory if it doesn't exist
+          mkdir -p $HOME/.android/avd
+          # Set AVD home explicitly
+          export ANDROID_AVD_HOME=$HOME/.android/avd
           # Create AVD (echo "no" to skip custom hardware profile)
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test_avd -k "system-images;android-33;google_apis;x86_64" --force
           # Verify AVD was created
+          echo "Checking created AVDs..."
           $ANDROID_HOME/emulator/emulator -list-avds
+          # Verify AVD files exist
+          ls -la $HOME/.android/avd/ || echo "AVD directory check"
+          ls -la $HOME/.android/avd/*.ini 2>/dev/null || echo "No .ini files found"
+          ls -la $HOME/.android/avd/*.avd 2>/dev/null || echo "No .avd directories found"
       
       - name: Start Android Emulator
         run: |
+          # Set AVD home explicitly (must match creation step)
+          export ANDROID_AVD_HOME=$HOME/.android/avd
+          # Verify AVD exists before starting
+          echo "Checking AVD configuration..."
+          $ANDROID_HOME/emulator/emulator -list-avds
+          if [ -z "$($ANDROID_HOME/emulator/emulator -list-avds | grep test_avd)" ]; then
+            echo "ERROR: test_avd not found in AVD list"
+            echo "Available AVDs:"
+            $ANDROID_HOME/emulator/emulator -list-avds
+            echo "AVD files in $HOME/.android/avd:"
+            ls -la $HOME/.android/avd/ || true
+            exit 1
+          fi
           echo "Starting Android emulator..."
           $ANDROID_HOME/emulator/emulator -avd test_avd -no-window -no-audio -no-snapshot -gpu swiftshader_indirect &
           EMU_PID=$!
-          echo "Waiting for emulator to boot..."
+          echo "Waiting for emulator to boot (PID: $EMU_PID)..."
           # Wait for device to be available
           adb wait-for-device
           # Wait for boot to complete
