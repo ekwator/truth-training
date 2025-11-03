@@ -33,6 +33,29 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 33
+          target: default
+          arch: x86_64
+          emulator-build: 10873000
+      
+      - name: Create Android Virtual Device (AVD)
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;default;x86_64"
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test_avd -k "system-images;android-33;default;x86_64" -d "pixel_4"
+      
+      - name: Start Android Emulator
+        run: |
+          $ANDROID_HOME/emulator/emulator -avd test_avd -no-window -no-audio -no-snapshot -gpu swiftshader_indirect &
+          echo "Waiting for emulator to boot..."
+          adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
+          echo "Emulator is ready"
+          adb shell settings put global window_animation_scale 0.0
+          adb shell settings put global transition_animation_scale 0.0
+          adb shell settings put global animator_duration_scale 0.0
+      
       - name: Cache Gradle dependencies
         uses: actions/cache@v3
         with:
@@ -70,23 +93,33 @@ jobs:
           ./gradlew testMockDebugUnitTest --stacktrace || echo "MockDebug unit tests failed"
           ./gradlew testRemoteDebugUnitTest --stacktrace || echo "RemoteDebug unit tests failed"
       
-      - name: Run integration tests (requires emulator/device)
-        working-directory: truth-android-client
-        continue-on-error: true
+      - name: Verify emulator is running
         run: |
-          echo "⚠️ Integration tests require a connected device/emulator."
-          echo "Skipping connectedAndroidTest in CI (requires setup with Android emulator)."
-          echo "To run integration tests locally: ./gradlew connectedAndroidTest"
-          # Try to build test APKs to verify compilation succeeds
-          ./gradlew assembleLocalDebugAndroidTest assembleMockDebugAndroidTest assembleRemoteDebugAndroidTest --continue || echo "Test APK build completed with warnings"
+          adb devices
+          adb shell getprop ro.build.version.release
+          echo "✅ Emulator is ready for testing"
       
-      - name: Run performance tests (requires emulator/device)
+      - name: Run integration tests
         working-directory: truth-android-client
+        timeout-minutes: 30
         continue-on-error: true
         run: |
-          echo "⚠️ Performance tests require a connected device/emulator."
-          echo "Skipping connectedAndroidTest performance tests in CI."
-          echo "To run performance tests locally: ./gradlew connectedAndroidTest --tests '*performance*'"
+          echo "🚀 Running integration tests on Android emulator..."
+          ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace || echo "Some integration tests failed"
+      
+      - name: Run performance tests
+        working-directory: truth-android-client
+        timeout-minutes: 15
+        continue-on-error: true
+        run: |
+          echo "🚀 Running performance tests on Android emulator..."
+          ./gradlew connectedAndroidTest --tests "*performance*" --continue || echo "Performance tests completed with warnings"
+      
+      - name: Stop Android Emulator
+        if: always()
+        run: |
+          adb emu kill || true
+          pkill -f emulator || true
       
       - name: Upload test results
         if: always()
