@@ -12,16 +12,6 @@ import androidx.room.ColumnInfo
  */
 @Entity(
     tableName = "events",
-    foreignKeys = [
-        ForeignKey(
-            entity = ContextTemplateEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["category_id"],
-            onDelete = ForeignKey.NO_ACTION
-        ),
-        // Note: Additional foreign keys for forma_id, cause_id, develop_id, effect_id
-        // would reference knowledge base tables (not implemented as Room entities)
-    ],
     indices = [
         Index(value = ["status"]),
         Index(value = ["created_at"]),

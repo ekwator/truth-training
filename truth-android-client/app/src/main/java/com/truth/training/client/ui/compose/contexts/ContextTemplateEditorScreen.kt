@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -45,7 +45,7 @@ fun ContextTemplateEditorScreen(
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
                         Icon(
-                            imageVector = Icons.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Cancel"
                         )
                     }
@@ -124,7 +124,7 @@ fun ContextTemplateEditorScreen(
                 maxLines = 5
             )
 
-            Divider()
+            HorizontalDivider()
 
             Text(
                 text = "Context Fields (optional, NULL values ignored in duplicate detection)",

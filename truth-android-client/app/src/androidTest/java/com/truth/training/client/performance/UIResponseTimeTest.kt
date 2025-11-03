@@ -55,6 +55,7 @@ class UIResponseTimeTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         database = Room.inMemoryDatabaseBuilder(context, TruthDatabase::class.java)
             .allowMainThreadQueries()
+            .fallbackToDestructiveMigration()
             .build()
         
         // Populate database with test data
@@ -65,7 +66,9 @@ class UIResponseTimeTest {
 
     @After
     fun tearDown() {
-        scenario.close()
+        if (this::scenario.isInitialized) {
+            scenario.close()
+        }
         database.close()
     }
 
