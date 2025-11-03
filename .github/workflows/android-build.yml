@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: macos-13
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
     steps:
       - name: Checkout code
@@ -37,126 +37,23 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           api-level: 33
-          target: default
-          arch: arm64-v8a
-          emulator-build: 10873000
-      
-      - name: Create Android Virtual Device (AVD)
-        run: |
-          # Accept licenses first
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          # Install ARM64 system image (doesn't require KVM hardware acceleration)
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;arm64-v8a"
-          # Create AVD directory if it doesn't exist
-          mkdir -p $HOME/.android/avd
-          # Set AVD home explicitly
-          export ANDROID_AVD_HOME=$HOME/.android/avd
-          # Create AVD (echo "no" to skip custom hardware profile)
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test_avd -k "system-images;android-33;google_apis;arm64-v8a" --force
-          # Verify AVD was created
-          echo "Checking created AVDs..."
-          $ANDROID_HOME/emulator/emulator -list-avds
-          # Verify AVD files exist
-          ls -la $HOME/.android/avd/ || echo "AVD directory check"
-          ls -la $HOME/.android/avd/*.ini 2>/dev/null || echo "No .ini files found"
-          ls -la $HOME/.android/avd/*.avd 2>/dev/null || echo "No .avd directories found"
-      
-      - name: Start Android Emulator
-        run: |
-          # Set AVD home explicitly (must match creation step)
-          export ANDROID_AVD_HOME=$HOME/.android/avd
-          # Verify AVD exists before starting
-          echo "Checking AVD configuration..."
-          $ANDROID_HOME/emulator/emulator -list-avds
-          if [ -z "$($ANDROID_HOME/emulator/emulator -list-avds | grep test_avd)" ]; then
-            echo "ERROR: test_avd not found in AVD list"
-            echo "Available AVDs:"
-            $ANDROID_HOME/emulator/emulator -list-avds
-            echo "AVD files in $HOME/.android/avd:"
-            ls -la $HOME/.android/avd/ || true
-            exit 1
-          fi
-          echo "Starting Android emulator (ARM64, no hardware acceleration required)..."
-          # ARM64 emulator doesn't require KVM, runs slower but works in CI
-          $ANDROID_HOME/emulator/emulator -avd test_avd -no-window -no-audio -no-snapshot -gpu swiftshader_indirect -no-accel &
-          EMU_PID=$!
-          echo "Waiting for emulator to boot (PID: $EMU_PID)..."
-          # Wait for device to be available (ARM64 emulator is slower without acceleration)
-          echo "Waiting for ADB connection..."
-          adb wait-for-device
-          echo "Device connected, waiting for boot to complete (this may take 5-10 minutes without acceleration)..."
-          # ARM64 emulator without acceleration takes longer to boot, increase timeout to 600s (10 minutes)
-          timeout 600 bash -c 'until adb shell getprop sys.boot_completed | grep -q 1; do sleep 2; done' || (echo "Emulator boot timeout after 10 minutes" && exit 1)
-          # Unlock screen
-          adb shell input keyevent 82 || true
-          echo "Emulator is ready"
-          # Disable animations for faster tests
-          adb shell settings put global window_animation_scale 0.0
-          adb shell settings put global transition_animation_scale 0.0
-          adb shell settings put global animator_duration_scale 0.0
-          adb shell settings put global always_finish_activities 0
-          # Verify emulator is responsive
-          adb shell getprop ro.build.version.release || (echo "Emulator not responding" && exit 1)
-          echo "✅ Emulator booted successfully"
-      
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v3
+          target: google_apis
+          arch: x86_64
+
+      - name: Run integration and performance tests on emulator (macOS HVF)
+        uses: reactivecircus/android-emulator-runner@v2
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            truth-android-client/.gradle
-          key: gradle-${{ runner.os }}-${{ hashFiles('truth-android-client/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-      
-      - name: Cache Gradle build
-        uses: actions/cache@v3
-        with:
-          path: |
-            truth-android-client/.gradle/caches
-            truth-android-client/.gradle/build
-          key: gradle-build-${{ runner.os }}-${{ hashFiles('truth-android-client/**/*.gradle*') }}
-          restore-keys: |
-            gradle-build-${{ runner.os }}-
-      
-      - name: Clean build before tests
-        working-directory: truth-android-client
-        run: |
-          ./gradlew clean || true
-          # Clear DEX cache to avoid stale class names
-          rm -rf app/build/intermediates/dex* || true
-          rm -rf app/build/tmp/kotlin-classes/* || true
-      
-      - name: Run unit tests
-        working-directory: truth-android-client
-        run: |
-          # Try building each flavor's unit tests separately to isolate issues
-          ./gradlew testLocalDebugUnitTest --stacktrace || echo "LocalDebug unit tests failed"
-          ./gradlew testMockDebugUnitTest --stacktrace || echo "MockDebug unit tests failed"
-          ./gradlew testRemoteDebugUnitTest --stacktrace || echo "RemoteDebug unit tests failed"
-      
-      - name: Verify emulator is running
-        run: |
-          adb devices
-          adb shell getprop ro.build.version.release
-          echo "✅ Emulator is ready for testing"
-      
-      - name: Run integration tests
-        working-directory: truth-android-client
-        timeout-minutes: 30
-        continue-on-error: true
-        run: |
-          echo "🚀 Running integration tests on Android emulator..."
-          ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace || echo "Some integration tests failed"
-      
-      - name: Run performance tests
-        working-directory: truth-android-client
-        timeout-minutes: 15
-        continue-on-error: true
-        run: |
-          echo "🚀 Running performance tests on Android emulator..."
-          ./gradlew connectedAndroidTest --tests "*performance*" --continue || echo "Performance tests completed with warnings"
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect
+          script: |
+            cd truth-android-client
+            echo "🚀 Running integration tests on Android emulator..."
+            ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace || echo "Some integration tests failed"
+            echo "🚀 Running performance tests on Android emulator..."
+            ./gradlew connectedAndroidTest --tests "*performance*" --continue || echo "Performance tests completed with warnings"
       
       - name: Stop Android Emulator
         if: always()
