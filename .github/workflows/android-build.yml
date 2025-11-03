@@ -71,7 +71,7 @@ jobs:
           profile: pixel_5
           force-avd-creation: true
           disable-animations: true
-          emulator-boot-timeout: 600000
+          emulator-boot-timeout: 1200000
           emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect
           script: |
             echo "🚀 Running integration tests on Android emulator..."
