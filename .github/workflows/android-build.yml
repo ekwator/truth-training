@@ -47,7 +47,10 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_5
-          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect
+          force-avd-creation: true
+          disable-animations: true
+          emulator-boot-timeout: 600000
+          emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect
           script: |
             cd truth-android-client
             echo "🚀 Running integration tests on Android emulator..."
