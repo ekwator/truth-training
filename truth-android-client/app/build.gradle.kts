@@ -57,6 +57,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = "17"
+        languageVersion = "1.9"
+    }
+
     kotlin {
         jvmToolchain(17)
     }
@@ -91,8 +96,8 @@ kapt {
         arg("room.expandProjection", "true")
     }
     javacOptions {
-        option("-Xmaxerrs", 500)
-        option("-Xmaxwarns", 500)
+        option("-Xmaxerrs", "500")
+        option("-Xmaxwarns", "500")
     }
 }
 

@@ -40,11 +40,10 @@ class TruthTrainingApplication : Application(), Configuration.Provider {
         startPeriodicSync()
     }
 
-    override fun getWorkManagerConfiguration(): Configuration {
-        return Configuration.Builder()
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
             .setMinimumLoggingLevel(android.util.Log.INFO)
             .build()
-    }
 
     /**
      * Start periodic background sync worker.

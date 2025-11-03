@@ -79,7 +79,7 @@ jobs:
             echo "🚀 Running performance tests on Android emulator..."
             (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue) || echo "Performance tests completed with warnings"
             echo "📦 Collecting test reports..."
-            ART_DIR="${GITHUB_WORKSPACE}/android-test-artifacts"
+            ART_DIR="${RUNNER_TEMP}/android-test-artifacts"
             mkdir -p "${ART_DIR}/outputs" || true
             mkdir -p "${ART_DIR}/reports" || true
             # Copy results if they exist
@@ -102,7 +102,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: android-test-artifacts/**
+          path: ${RUNNER_TEMP}/android-test-artifacts/**
           retention-days: 7
 
   build:
