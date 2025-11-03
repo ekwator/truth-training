@@ -14,7 +14,7 @@ import kotlinx.coroutines.SupervisorJob
  * Application class for Truth Training Android v1.0.0.
  * Initializes Room database, WorkManager, and dependency injection.
  */
-class TruthTrainingApplication : Application() {
+class TruthTrainingApplication : Application(), Configuration.Provider {
     // Application scope for coroutines
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -35,15 +35,15 @@ class TruthTrainingApplication : Application() {
         // Initialize Truth Core
         TruthCore.initNode()
         
-        // Initialize WorkManager with custom configuration
-        val workManagerConfiguration = Configuration.Builder()
-            .setMinimumLoggingLevel(android.util.Log.INFO)
-            .build()
-        WorkManager.initialize(this, workManagerConfiguration)
-        
         // Start periodic sync worker (if enabled)
         // Note: In production, this should be controlled by user settings
         startPeriodicSync()
+    }
+
+    override fun getWorkManagerConfiguration(): Configuration {
+        return Configuration.Builder()
+            .setMinimumLoggingLevel(android.util.Log.INFO)
+            .build()
     }
 
     /**

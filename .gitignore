@@ -104,3 +104,6 @@ build/
 Pods/
 Podfile.lock
 .DS_Store
+
+# Test
+test-results/
