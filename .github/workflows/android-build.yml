@@ -38,21 +38,21 @@ jobs:
         with:
           api-level: 33
           target: default
-          arch: x86_64
+          arch: arm64-v8a
           emulator-build: 10873000
       
       - name: Create Android Virtual Device (AVD)
         run: |
           # Accept licenses first
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          # Install system image
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;x86_64"
+          # Install ARM64 system image (doesn't require KVM hardware acceleration)
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;arm64-v8a"
           # Create AVD directory if it doesn't exist
           mkdir -p $HOME/.android/avd
           # Set AVD home explicitly
           export ANDROID_AVD_HOME=$HOME/.android/avd
           # Create AVD (echo "no" to skip custom hardware profile)
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test_avd -k "system-images;android-33;google_apis;x86_64" --force
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test_avd -k "system-images;android-33;google_apis;arm64-v8a" --force
           # Verify AVD was created
           echo "Checking created AVDs..."
           $ANDROID_HOME/emulator/emulator -list-avds
@@ -76,14 +76,17 @@ jobs:
             ls -la $HOME/.android/avd/ || true
             exit 1
           fi
-          echo "Starting Android emulator..."
-          $ANDROID_HOME/emulator/emulator -avd test_avd -no-window -no-audio -no-snapshot -gpu swiftshader_indirect &
+          echo "Starting Android emulator (ARM64, no hardware acceleration required)..."
+          # ARM64 emulator doesn't require KVM, runs slower but works in CI
+          $ANDROID_HOME/emulator/emulator -avd test_avd -no-window -no-audio -no-snapshot -gpu swiftshader_indirect -no-accel &
           EMU_PID=$!
           echo "Waiting for emulator to boot (PID: $EMU_PID)..."
-          # Wait for device to be available
+          # Wait for device to be available (ARM64 emulator is slower without acceleration)
+          echo "Waiting for ADB connection..."
           adb wait-for-device
-          # Wait for boot to complete
-          timeout 300 bash -c 'until adb shell getprop sys.boot_completed | grep -q 1; do sleep 1; done' || (echo "Emulator boot timeout" && exit 1)
+          echo "Device connected, waiting for boot to complete (this may take 5-10 minutes without acceleration)..."
+          # ARM64 emulator without acceleration takes longer to boot, increase timeout to 600s (10 minutes)
+          timeout 600 bash -c 'until adb shell getprop sys.boot_completed | grep -q 1; do sleep 2; done' || (echo "Emulator boot timeout after 10 minutes" && exit 1)
           # Unlock screen
           adb shell input keyevent 82 || true
           echo "Emulator is ready"
