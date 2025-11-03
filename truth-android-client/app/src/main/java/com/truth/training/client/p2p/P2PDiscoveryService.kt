@@ -51,9 +51,11 @@ class P2PDiscoveryService(
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {}
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
                 if (serviceInfo.serviceType != SERVICE_TYPE) return
+                @Suppress("DEPRECATION") // TODO: Migrate to modern NSD APIs when minSdk > 31
                 nsdManager.resolveService(serviceInfo, object : NsdManager.ResolveListener {
                     override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {}
                     override fun onServiceResolved(resolved: NsdServiceInfo) {
+                        @Suppress("DEPRECATION") // TODO: Replace deprecated host getter when available
                         val host = resolved.host?.hostAddress ?: return
                         val peer = P2PPeer(resolved.serviceName, host, resolved.port)
                         peers[resolved.serviceName] = peer

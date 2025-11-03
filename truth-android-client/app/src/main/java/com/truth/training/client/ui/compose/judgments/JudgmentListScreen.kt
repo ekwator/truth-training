@@ -131,7 +131,7 @@ private fun ConsensusStatsCard(
                 StatItem("Uncertain", stats.uncertainCount.toString())
             }
             
-            Divider()
+            HorizontalDivider()
             
             Row(
                 modifier = Modifier.fillMaxWidth(),

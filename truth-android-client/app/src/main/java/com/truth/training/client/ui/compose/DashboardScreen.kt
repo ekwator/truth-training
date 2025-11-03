@@ -55,7 +55,7 @@ fun DashboardScreen(
                 onSyncNow = onSyncNow
             )
 
-            Divider()
+            HorizontalDivider()
 
             // Quick Stats
             Text(
@@ -77,7 +77,7 @@ fun DashboardScreen(
                 )
             }
 
-            Divider()
+            HorizontalDivider()
 
             // Quick Actions
             Text(

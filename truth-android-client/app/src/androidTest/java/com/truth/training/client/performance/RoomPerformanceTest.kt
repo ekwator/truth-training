@@ -52,6 +52,7 @@ class RoomPerformanceTest {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         database = Room.inMemoryDatabaseBuilder(context, TruthDatabase::class.java)
             .allowMainThreadQueries()
+            .fallbackToDestructiveMigration()
             .build()
         eventDao = database.eventDao()
     }

@@ -6,6 +6,12 @@
 name: Android Build & Test
 
 on:
+   push:
+     branches: [ master ]
+     tags:
+       - '**'
+   pull_request:
+     branches: [ master ]
   workflow_run:
     workflows: ["Cross-Platform Build"]
     types: [completed]
@@ -75,9 +81,9 @@ jobs:
           emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect
           script: |
             echo "🚀 Running integration tests on Android emulator..."
-            (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace) || echo "Some integration tests failed"
+            (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace -Pkotlin.warningsAsErrors=true) || echo "Some integration tests failed"
             echo "🚀 Running performance tests on Android emulator..."
-            (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue) || echo "Performance tests completed with warnings"
+            (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue -Pkotlin.warningsAsErrors=true) || echo "Performance tests completed with warnings"
             echo "📦 Collecting test reports..."
             ART_DIR="${RUNNER_TEMP}/android-test-artifacts"
             mkdir -p "${ART_DIR}/outputs" || true
@@ -97,13 +103,27 @@ jobs:
           adb emu kill || true
           pkill -f emulator || true
       
+      - name: Check test artifacts before upload
+        if: always()
+        run: |
+          ART_DIR="${{ runner.temp }}/android-test-artifacts"
+          echo "📋 Checking test artifacts in: ${ART_DIR}"
+          if [ -d "${ART_DIR}" ]; then
+            echo "✅ Artifact directory exists"
+            find "${ART_DIR}" -type f | head -20 || echo "No files found"
+            echo "Total files: $(find "${ART_DIR}" -type f 2>/dev/null | wc -l)"
+          else
+            echo "⚠️ Artifact directory does not exist: ${ART_DIR}"
+          fi
+      
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: ${RUNNER_TEMP}/android-test-artifacts/**
+          path: ${{ runner.temp }}/android-test-artifacts/**
           retention-days: 7
+          if-no-files-found: warn
 
   build:
     needs: test
@@ -194,21 +214,21 @@ jobs:
         working-directory: truth-android-client
         run: |
           # Build each flavor separately to isolate issues
-          ./gradlew assembleLocalDebug --stacktrace || echo "LocalDebug build failed, continuing..."
-          ./gradlew assembleMockDebug --stacktrace || echo "MockDebug build failed, continuing..."
-          ./gradlew assembleRemoteDebug --stacktrace || echo "RemoteDebug build failed, continuing..."
-          ./gradlew assembleLocalDebugAndroidTest --stacktrace || echo "LocalDebugAndroidTest build failed, continuing..."
-          ./gradlew assembleMockDebugAndroidTest --stacktrace || echo "MockDebugAndroidTest build failed, continuing..."
-          ./gradlew assembleRemoteDebugAndroidTest --stacktrace || echo "RemoteDebugAndroidTest build failed, continuing..."
+          ./gradlew assembleLocalDebug --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalDebug build failed, continuing..."
+          ./gradlew assembleMockDebug --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockDebug build failed, continuing..."
+          ./gradlew assembleRemoteDebug --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteDebug build failed, continuing..."
+          ./gradlew assembleLocalDebugAndroidTest --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalDebugAndroidTest build failed, continuing..."
+          ./gradlew assembleMockDebugAndroidTest --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockDebugAndroidTest build failed, continuing..."
+          ./gradlew assembleRemoteDebugAndroidTest --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteDebugAndroidTest build failed, continuing..."
       
       - name: Build AAB (Release)
         if: matrix.buildType == 'release'
         working-directory: truth-android-client
         run: |
           # Build each flavor separately to isolate issues
-          ./gradlew bundleLocalRelease --stacktrace || echo "LocalRelease build failed, continuing..."
-          ./gradlew bundleMockRelease --stacktrace || echo "MockRelease build failed, continuing..."
-          ./gradlew bundleRemoteRelease --stacktrace || echo "RemoteRelease build failed, continuing..."
+          ./gradlew bundleLocalRelease --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalRelease build failed, continuing..."
+          ./gradlew bundleMockRelease --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockRelease build failed, continuing..."
+          ./gradlew bundleRemoteRelease --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteRelease build failed, continuing..."
       
       - name: Upload APK artifacts
         if: ${{ matrix.buildType == 'debug' && !startsWith(github.ref, 'refs/tags/') }}

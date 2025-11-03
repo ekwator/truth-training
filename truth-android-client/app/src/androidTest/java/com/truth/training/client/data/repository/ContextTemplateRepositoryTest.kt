@@ -53,7 +53,7 @@ class ContextTemplateRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
             TruthDatabase::class.java
-        ).allowMainThreadQueries().build()
+        ).allowMainThreadQueries().fallbackToDestructiveMigration().build()
 
         mockWebServer = MockWebServer()
         mockWebServer.start()

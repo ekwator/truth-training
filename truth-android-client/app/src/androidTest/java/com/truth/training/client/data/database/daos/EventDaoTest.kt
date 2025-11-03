@@ -26,7 +26,7 @@ class EventDaoTest {
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
             TruthDatabase::class.java
-        ).allowMainThreadQueries().build()
+        ).allowMainThreadQueries().fallbackToDestructiveMigration().build()
         eventDao = database.eventDao()
     }
 

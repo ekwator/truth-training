@@ -50,7 +50,7 @@ class EventRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
             TruthDatabase::class.java
-        ).allowMainThreadQueries().build()
+        ).allowMainThreadQueries().fallbackToDestructiveMigration().build()
 
         // Setup MockWebServer for API mocking
         mockWebServer = MockWebServer()
