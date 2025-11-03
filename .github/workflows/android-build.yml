@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-13
+    runs-on: macos-15-intel
     if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && !startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: Checkout code
@@ -36,9 +36,11 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
+          packages: |
+            platform-tools
+            platforms;android-33
+            build-tools;34.0.0
+            emulator
 
       - name: Install Rust (for test JNI build)
         uses: dtolnay/rust-toolchain@stable
@@ -102,7 +104,7 @@ jobs:
           adb devices || true
           adb emu kill || true
           pkill -f emulator || true
- 
+      
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -156,12 +158,12 @@ jobs:
         id: check-artifacts
         if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
         run: |
-          if [ -f "target/aarch64-linux-android/release/libtruth_core.so" ]; then
+          if [ -f "target/aarch64-linux-android/release/libtruth_core.so" ] && [ -f "target/x86_64-linux-android/release/libtruth_core.so" ]; then
             echo "artifacts-found=true" >> $GITHUB_OUTPUT
-            echo "✓ Rust artifacts downloaded successfully from Cross-Platform Build"
+            echo "✓ Both Android Rust artifacts present (arm64 + x86_64)"
           else
             echo "artifacts-found=false" >> $GITHUB_OUTPUT
-            echo "⚠ Rust artifacts not found, will build locally"
+            echo "⚠ Missing one or both Android Rust artifacts; will build locally"
           fi
       
       - name: Build Android Rust libraries
