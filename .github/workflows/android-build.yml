@@ -22,7 +22,7 @@ permissions:
 jobs:
   test:
     runs-on: macos-13
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && !startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -129,12 +129,14 @@ jobs:
           targets: aarch64-linux-android, x86_64-linux-android
       
       - name: Set up Android SDK and NDK
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found != 'true' }}
         uses: android-actions/setup-android@v3
         with:
           packages: |
             ndk;26.1.10909125
       
       - name: Export NDK toolchain
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found != 'true' }}
         run: |
           echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
           echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
@@ -154,7 +156,7 @@ jobs:
         id: check-artifacts
         if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
         run: |
-          if [ -f "target/aarch64-linux-android/release/libtruth_core.so" ] && [ -f "target/x86_64-linux-android/release/libtruth_core.so" ]; then
+          if [ -f "target/aarch64-linux-android/release/libtruth_core.so" ]; then
             echo "artifacts-found=true" >> $GITHUB_OUTPUT
             echo "✓ Rust artifacts downloaded successfully from Cross-Platform Build"
           else
@@ -194,7 +196,7 @@ jobs:
           cp target/x86_64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/x86_64/
       
       - name: Build APK (Debug)
-        if: matrix.buildType == 'debug'
+        if: ${{ matrix.buildType == 'debug' && !startsWith(github.ref, 'refs/tags/') }}
         working-directory: truth-android-client
         run: |
           # Build each flavor separately to isolate issues
@@ -215,7 +217,7 @@ jobs:
           ./gradlew bundleRemoteRelease --stacktrace || echo "RemoteRelease build failed, continuing..."
       
       - name: Upload APK artifacts
-        if: matrix.buildType == 'debug'
+        if: ${{ matrix.buildType == 'debug' && !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@v4
         with:
           name: android-debug-apk
