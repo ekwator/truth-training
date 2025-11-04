@@ -30,6 +30,7 @@ jobs:
     if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && !startsWith(github.ref, 'refs/tags/') }}
     env:
       ART_DIR: ${{ github.workspace }}/android-test-artifacts
+      ANDROID_EMULATOR_WAIT_TIME_BEFORE_KILL: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
