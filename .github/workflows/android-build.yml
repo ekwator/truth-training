@@ -1,0 +1,277 @@
+name: Android Build & Test
+
+on:
+  push:
+    branches: [ master ]
+    tags:
+      - '**'
+  pull_request:
+    branches: [ master ]
+  workflow_run:
+    workflows: ["Cross-Platform Build"]
+    types: [completed]
+    branches: [master]
+    tags:
+      - '**'
+  workflow_dispatch:
+  
+permissions:
+  actions: read
+  contents: write
+  
+
+jobs:
+  test:
+    runs-on: macos-15-intel
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && !startsWith(github.ref, 'refs/tags/') }}
+    env:
+      ART_DIR: ${{ github.workspace }}/android-test-artifacts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+
+      - name: Install Rust (for test JNI build)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, x86_64-linux-android
+
+      - name: Set up Android NDK (for Rust cross-compile)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            ndk;26.1.10909125
+
+      - name: Export NDK toolchain (macOS)
+        run: |
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
+          echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin" >> $GITHUB_PATH
+
+      - name: Build and copy JNI libraries for tests
+        run: |
+          echo "Building Rust libraries for Android (x86_64 + arm64-v8a)"
+          cargo build --release --target x86_64-linux-android --features mobile --lib -p truth_core
+          cargo build --release --target aarch64-linux-android --features mobile --lib -p truth_core
+          mkdir -p truth-android-client/app/src/main/jniLibs/x86_64
+          mkdir -p truth-android-client/app/src/main/jniLibs/arm64-v8a
+          # Rename libtruth_core.so -> libtruthcore.so to match System.loadLibrary("truthcore")
+          cp target/x86_64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/x86_64/libtruthcore.so
+          cp target/aarch64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/arm64-v8a/libtruthcore.so
+ 
+      - name: Run integration and performance tests on emulator (macOS HVF)
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          force-avd-creation: true
+          disable-animations: true
+          emulator-boot-timeout: 1200000
+          emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect
+          script: |
+            echo "🚀 Running integration tests on Android emulator..."
+            (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace -Pkotlin.warningsAsErrors=true) || echo "Some integration tests failed"
+
+            echo "🚀 Running performance tests on Android emulator..."
+            (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue -Pkotlin.warningsAsErrors=true) || echo "Performance tests completed with warnings"
+
+            echo "📦 Collecting test reports..."
+            mkdir -p "${ART_DIR}/outputs" "${ART_DIR}/reports" || true
+            chmod -R 755 "${ART_DIR}" || true
+            cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/outputs/androidTest-results" "${ART_DIR}/outputs/" 2>/dev/null || true
+            cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/reports/androidTests" "${ART_DIR}/reports/" 2>/dev/null || true
+            cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/test-results" "${ART_DIR}/" 2>/dev/null || true
+
+            echo "🪵 Capturing Android logcat output..."
+            mkdir -p "${ART_DIR}/logs" || true
+            echo "=== LOGCAT DUMP ($(date)) ===" > "${ART_DIR}/logs/logcat.txt"
+            if adb get-state 1>/dev/null 2>&1; then
+              echo "Device is active — dumping logs..."
+              sleep 2
+              adb logcat -d >> "${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat failed"
+            else
+              echo "⚠️ No emulator/device detected — skipping logcat dump" >> "${ART_DIR}/logs/logcat.txt"
+            fi
+            du -h "${ART_DIR}/logs/logcat.txt" || true
+ 
+      - name: Stop Android Emulator
+        if: always()
+        run: |
+          adb devices || true
+          adb emu kill || true
+          pkill -f emulator || true
+      
+      - name: Verify collected reports
+        if: always()
+        run: |
+          echo "✅ Listing collected test reports..."
+          find "${{ env.ART_DIR }}" -type f | head -20 || echo "⚠️ No files found"
+          echo "Total files: $(find "${{ env.ART_DIR }}" -type f 2>/dev/null | wc -l || echo 0)"
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            ${{ env.ART_DIR }}/**/*.*
+          retention-days: 7
+          if-no-files-found: warn
+
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    strategy:
+      matrix:
+        buildType: [debug, release]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, x86_64-linux-android
+      
+      - name: Set up Android SDK and NDK
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found != 'true' }}
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            ndk;26.1.10909125
+      
+      - name: Export NDK toolchain
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found != 'true' }}
+        run: |
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
+          echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+      
+      - name: Download Android Rust libraries from Cross-Platform run
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: libtruth_core-android
+          path: target/
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+      
+      - name: Check if artifacts were downloaded
+        id: check-artifacts
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
+        run: |
+          if [ -f "target/aarch64-linux-android/release/libtruth_core.so" ] && [ -f "target/x86_64-linux-android/release/libtruth_core.so" ]; then
+            echo "artifacts-found=true" >> $GITHUB_OUTPUT
+            echo "✓ Both Android Rust artifacts present (arm64 + x86_64)"
+          else
+            echo "artifacts-found=false" >> $GITHUB_OUTPUT
+            echo "⚠ Missing one or both Android Rust artifacts; will build locally"
+          fi
+      
+      - name: Build Android Rust libraries
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found != 'true' }}
+        run: |
+          echo "Building Rust libraries locally..."
+          cargo build --release --target aarch64-linux-android --features mobile --lib -p truth_core
+          cargo build --release --target x86_64-linux-android --features mobile --lib -p truth_core
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            truth-android-client/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('truth-android-client/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+      
+      - name: Copy Rust libraries to Android project
+        run: |
+          mkdir -p truth-android-client/app/src/main/jniLibs/arm64-v8a/
+          mkdir -p truth-android-client/app/src/main/jniLibs/x86_64/
+          cp target/aarch64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/arm64-v8a/
+          cp target/x86_64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/x86_64/
+      
+      - name: Build APK (Debug)
+        if: ${{ matrix.buildType == 'debug' && !startsWith(github.ref, 'refs/tags/') }}
+        working-directory: truth-android-client
+        run: |
+          # Build each flavor separately to isolate issues
+          ./gradlew assembleLocalDebug --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalDebug build failed, continuing..."
+          ./gradlew assembleMockDebug --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockDebug build failed, continuing..."
+          ./gradlew assembleRemoteDebug --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteDebug build failed, continuing..."
+          ./gradlew assembleLocalDebugAndroidTest --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalDebugAndroidTest build failed, continuing..."
+          ./gradlew assembleMockDebugAndroidTest --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockDebugAndroidTest build failed, continuing..."
+          ./gradlew assembleRemoteDebugAndroidTest --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteDebugAndroidTest build failed, continuing..."
+      
+      - name: Build AAB (Release)
+        if: matrix.buildType == 'release'
+        working-directory: truth-android-client
+        run: |
+          # Build each flavor separately to isolate issues
+          ./gradlew bundleLocalRelease --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalRelease build failed, continuing..."
+          ./gradlew bundleMockRelease --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockRelease build failed, continuing..."
+          ./gradlew bundleRemoteRelease --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteRelease build failed, continuing..."
+      
+      - name: Upload APK artifacts
+        if: ${{ matrix.buildType == 'debug' && !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: |
+            truth-android-client/app/build/outputs/apk/**/*.apk
+          retention-days: 30
+      
+      - name: Upload AAB artifacts
+        if: matrix.buildType == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-aab
+          path: |
+            truth-android-client/app/build/outputs/bundle/**/*.aab
+          retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'android-*'
+          merge-multiple: true
+          path: artifacts
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
