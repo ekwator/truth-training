@@ -74,21 +74,29 @@ jobs:
           profile: pixel_5
           force-avd-creation: true
           disable-animations: true
-          emulator-boot-timeout: 1200000
+          emulator-boot-timeout: 1800000
           emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect
           script: |
             echo "🚀 Running integration tests on Android emulator..."
-            (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace -Pkotlin.warningsAsErrors=true) || echo "Some integration tests failed"
-
+            (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace -Pkotlin.warningsAsErrors=true) || echo "Some integration tests failed"  
             echo "🚀 Running performance tests on Android emulator..."
             (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue -Pkotlin.warningsAsErrors=true) || echo "Performance tests completed with warnings"
 
             echo "📦 Collecting test reports..."
-            mkdir -p "${ART_DIR}/outputs" "${ART_DIR}/reports" || true
+            mkdir -p "${ART_DIR}/outputs" || true
+            mkdir -p "${ART_DIR}/reports" || true
+            # Ensure directory has proper permissions
             chmod -R 755 "${ART_DIR}" || true
+            # Copy results if they exist
             cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/outputs/androidTest-results" "${ART_DIR}/outputs/" 2>/dev/null || true
             cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/reports/androidTests" "${ART_DIR}/reports/" 2>/dev/null || true
+            # Also copy unit test results if present
             cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/test-results" "${ART_DIR}/" 2>/dev/null || true
+            # Ensure artifact directory is non-empty
+            if ! find "${ART_DIR}" -type f | grep -q .; then
+              echo "⚠️ No reports found — creating placeholder"
+              echo "no reports found" > "${ART_DIR}/no-reports.txt"
+            fi
 
             echo "🪵 Capturing Android logcat output..."
             mkdir -p "${ART_DIR}/logs" || true
