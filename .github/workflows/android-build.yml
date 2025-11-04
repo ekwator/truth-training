@@ -97,6 +97,7 @@ jobs:
             # Also copy unit test results if present
             cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/test-results" "${ART_DIR}/" 2>/dev/null || true
             # Ensure artifact directory is non-empty
+            echo "🔍 Checking if any test reports exist..."
             FOUND_FILES=$(find "${ART_DIR}" -type f 2>/dev/null | wc -l | tr -d ' ')
             if [ "${FOUND_FILES}" -eq 0 ]; then
               echo "⚠️ No reports found — creating placeholder"
@@ -104,6 +105,7 @@ jobs:
             else
               echo "✅ ${FOUND_FILES} report files collected"
             fi
+
             echo "🪵 Capturing Android logcat output..."
             mkdir -p "${ART_DIR}/logs" || true
             echo "=== LOGCAT DUMP ($(date)) ===" > "${ART_DIR}/logs/logcat.txt"
@@ -115,6 +117,7 @@ jobs:
               echo "⚠️ No emulator/device detected — skipping logcat dump" >> "${ART_DIR}/logs/logcat.txt"
             fi
             du -h "${ART_DIR}/logs/logcat.txt" || true
+
       - name: Stop Android Emulator
         if: always()
         run: |
