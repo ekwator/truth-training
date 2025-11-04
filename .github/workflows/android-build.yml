@@ -100,16 +100,18 @@ jobs:
               echo "⚠️ No reports found — creating placeholder"
               echo "no reports found" > "${ART_DIR}/no-reports.txt"
             fi
- 
-      - name: Capture logcat output
-        if: always()
-        run: |
-          echo "🪵 Capturing Android logcat output..."
-          mkdir -p "${{ env.ART_DIR }}/logs" || true
-          echo "=== LOGCAT DUMP ($(date)) ===" > "${{ env.ART_DIR }}/logs/logcat.txt"
-          sleep 2
-          adb logcat -d >> "${{ env.ART_DIR }}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat unavailable"
-          echo "✅ Saved to ${{ env.ART_DIR }}/logs/logcat.txt"
+
+            echo "🪵 Capturing Android logcat output..."
+            mkdir -p "${ART_DIR}/logs" || true
+            echo "=== LOGCAT DUMP ($(date)) ===" > "${ART_DIR}/logs/logcat.txt"
+            if adb get-state 1>/dev/null 2>&1; then
+              echo "Device is active — dumping logs..."
+              sleep 2
+              adb logcat -d >> "${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat failed"
+            else
+              echo "⚠️ No emulator/device detected — skipping logcat dump" >> "${ART_DIR}/logs/logcat.txt"
+            fi
+            du -h "${ART_DIR}/logs/logcat.txt" || true
  
       - name: Stop Android Emulator
         if: always()
