@@ -30,6 +30,7 @@ jobs:
     if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && !startsWith(github.ref, 'refs/tags/') }}
     env:
       ART_DIR: ${{ github.workspace }}/android-test-artifacts
+      ANDROID_EMULATOR_WAIT_TIME_BEFORE_KILL: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -113,6 +114,17 @@ jobs:
             fi
             du -h "${ART_DIR}/logs/logcat.txt" || true
  
+      - name: Ensure artifacts directory (fallback)
+        if: always()
+        run: |
+          mkdir -p "${{ env.ART_DIR }}/logs" || true
+          if [ ! -s "${{ env.ART_DIR }}/logs/logcat.txt" ]; then
+            echo "logcat unavailable or emulator failed early" > "${{ env.ART_DIR }}/logs/logcat.txt"
+          fi
+          if ! find "${{ env.ART_DIR }}" -type f | grep -q .; then
+            echo "no reports found" > "${{ env.ART_DIR }}/no-reports.txt"
+          fi
+
       - name: Stop Android Emulator
         if: always()
         run: |
