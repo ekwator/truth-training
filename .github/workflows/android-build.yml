@@ -78,9 +78,9 @@ jobs:
           emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect
           script: |
             echo "🚀 Running integration tests on Android emulator..."
-            (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace -Pkotlin.warningsAsErrors=true) || echo "Some integration tests failed"  
+            (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace --info -Pkotlin.warningsAsErrors=true > ../gradle-build.log 2>&1) || echo "Some integration tests failed"  
             echo "🚀 Running performance tests on Android emulator..."
-            (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue -Pkotlin.warningsAsErrors=true) || echo "Performance tests completed with warnings"
+            (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue --stacktrace --info -Pkotlin.warningsAsErrors=true >> ../gradle-build.log 2>&1) || echo "Performance tests completed with warnings"
 
             echo "📦 Collecting test reports..."
             mkdir -p "${ART_DIR}/outputs" || true
@@ -95,6 +95,10 @@ jobs:
 
             # Ensure artifact directory is non-empty
             if ! find "${ART_DIR}" -type f | grep -q .; then echo "⚠️ No reports found — creating placeholder"; echo "no reports found" > "${ART_DIR}/no-reports.txt"; fi
+
+            echo "📦 Collecting Gradle build logs..."
+            mkdir -p "${ART_DIR}/logs" || true
+            cp "${GITHUB_WORKSPACE}/gradle-build.log" "${ART_DIR}/logs/gradle-build.log" 2>/dev/null || echo "⚠️ No Gradle log found"
 
             echo "🪵 Capturing Android logcat output..."
             mkdir -p "${ART_DIR}/logs" || true
