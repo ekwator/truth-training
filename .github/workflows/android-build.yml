@@ -28,6 +28,8 @@ jobs:
   test:
     runs-on: macos-15-intel
     if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && !startsWith(github.ref, 'refs/tags/') }}
+    env:
+      ART_DIR: ${{ github.workspace }}/android-test-artifacts
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,16 +86,30 @@ jobs:
             echo "🚀 Running performance tests on Android emulator..."
             (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue -Pkotlin.warningsAsErrors=true) || echo "Performance tests completed with warnings"
             echo "📦 Collecting test reports..."
-            ART_DIR="${RUNNER_TEMP}/android-test-artifacts"
             mkdir -p "${ART_DIR}/outputs" || true
             mkdir -p "${ART_DIR}/reports" || true
+            # Ensure directory has proper permissions
+            chmod -R 755 "${ART_DIR}" || true
             # Copy results if they exist
             cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/outputs/androidTest-results" "${ART_DIR}/outputs/" 2>/dev/null || true
             cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/reports/androidTests" "${ART_DIR}/reports/" 2>/dev/null || true
             # Also copy unit test results if present
             cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/test-results" "${ART_DIR}/" 2>/dev/null || true
             # Ensure artifact directory is non-empty
-            find "${ART_DIR}" -type f | grep . >/dev/null || echo "no-reports.txt" > "${ART_DIR}/no-reports.txt"
+            if ! find "${ART_DIR}" -type f | grep -q .; then
+              echo "⚠️ No reports found — creating placeholder"
+              echo "no reports found" > "${ART_DIR}/no-reports.txt"
+            fi
+ 
+      - name: Capture logcat output
+        if: always()
+        run: |
+          echo "🪵 Capturing Android logcat output..."
+          mkdir -p "${{ env.ART_DIR }}/logs" || true
+          echo "=== LOGCAT DUMP ($(date)) ===" > "${{ env.ART_DIR }}/logs/logcat.txt"
+          sleep 2
+          adb logcat -d >> "${{ env.ART_DIR }}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat unavailable"
+          echo "✅ Saved to ${{ env.ART_DIR }}/logs/logcat.txt"
  
       - name: Stop Android Emulator
         if: always()
@@ -102,25 +118,20 @@ jobs:
           adb emu kill || true
           pkill -f emulator || true
       
-      - name: Check test artifacts before upload
+      - name: Verify collected reports
         if: always()
         run: |
-          ART_DIR="${{ runner.temp }}/android-test-artifacts"
-          echo "📋 Checking test artifacts in: ${ART_DIR}"
-          if [ -d "${ART_DIR}" ]; then
-            echo "✅ Artifact directory exists"
-            find "${ART_DIR}" -type f | head -20 || echo "No files found"
-            echo "Total files: $(find "${ART_DIR}" -type f 2>/dev/null | wc -l)"
-          else
-            echo "⚠️ Artifact directory does not exist: ${ART_DIR}"
-          fi
+          echo "✅ Listing collected test reports..."
+          find "${{ env.ART_DIR }}" -type f | head -20 || echo "⚠️ No files found"
+          echo "Total files: $(find "${{ env.ART_DIR }}" -type f 2>/dev/null | wc -l || echo 0)"
       
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: ${{ runner.temp }}/android-test-artifacts/**
+          path: |
+            ${{ env.ART_DIR }}/**/*.*
           retention-days: 7
           if-no-files-found: warn
 
