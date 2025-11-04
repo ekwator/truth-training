@@ -97,11 +97,13 @@ jobs:
             # Also copy unit test results if present
             cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/test-results" "${ART_DIR}/" 2>/dev/null || true
             # Ensure artifact directory is non-empty
-            if ! find "${ART_DIR}" -type f | grep -q .; then
+            FOUND_FILES=$(find "${ART_DIR}" -type f 2>/dev/null | wc -l | tr -d ' ')
+            if [ "${FOUND_FILES}" -eq 0 ]; then
               echo "⚠️ No reports found — creating placeholder"
               echo "no reports found" > "${ART_DIR}/no-reports.txt"
+            else
+              echo "✅ ${FOUND_FILES} report files collected"
             fi
-
             echo "🪵 Capturing Android logcat output..."
             mkdir -p "${ART_DIR}/logs" || true
             echo "=== LOGCAT DUMP ($(date)) ===" > "${ART_DIR}/logs/logcat.txt"
