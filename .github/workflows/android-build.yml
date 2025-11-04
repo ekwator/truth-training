@@ -94,23 +94,13 @@ jobs:
             cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/test-results" "${ART_DIR}/" 2>/dev/null || true
 
             # Ensure artifact directory is non-empty
-
-            if ! find "${ART_DIR}" -type f | grep -q .; then
-              echo "⚠️ No reports found — creating placeholder"
-              echo "no reports found" > "${ART_DIR}/no-reports.txt"
-            fi
+            if ! find "${ART_DIR}" -type f | grep -q .; then echo "⚠️ No reports found — creating placeholder"; echo "no reports found" > "${ART_DIR}/no-reports.txt"; fi
 
             echo "🪵 Capturing Android logcat output..."
             mkdir -p "${ART_DIR}/logs" || true
             echo "=== LOGCAT DUMP ($(date)) ===" > "${ART_DIR}/logs/logcat.txt"
 
-            if adb get-state 1>/dev/null 2>&1; then
-              echo "Device is active — dumping logs..."
-              adb logcat -d >> "${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat failed"
-              sleep 2
-            else
-              echo "⚠️ No emulator/device detected — skipping logcat dump" >> "${ART_DIR}/logs/logcat.txt"
-            fi
+            if adb get-state 1>/dev/null 2>&1; then echo "Device is active — dumping logs..."; adb logcat -d >> "${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat failed"; sleep 2; else echo "⚠️ No emulator/device detected — skipping logcat dump" >> "${ART_DIR}/logs/logcat.txt"; fi
 
             du -h "${ART_DIR}/logs/logcat.txt" || true
  
