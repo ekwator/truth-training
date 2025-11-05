@@ -84,6 +84,36 @@ jobs:
           gradle_timeout_min=${GRADLE_TIMEOUT_MIN:-30}
           cd "${GITHUB_WORKSPACE}"
 
+          run_with_timeout() {
+            local minutes="$1"; shift || true
+            local cmd="$*"
+            if command -v timeout >/dev/null 2>&1; then
+              timeout "${minutes}m" bash -lc "${cmd}"
+              return $?
+            elif command -v gtimeout >/dev/null 2>&1; then
+              gtimeout "${minutes}m" bash -lc "${cmd}"
+              return $?
+            else
+              echo "⚠️ 'timeout' not found; using manual watchdog for ${minutes}m"
+              local secs=$((minutes*60))
+              bash -lc "${cmd}" &
+              local pid=$!
+              while kill -0 "$pid" 2>/dev/null && [ $secs -gt 0 ]; do
+                sleep 1
+                secs=$((secs-1))
+              done
+              if kill -0 "$pid" 2>/dev/null; then
+                echo "⏱ Manual timeout reached, terminating PID $pid"
+                kill -TERM "$pid" || true
+                sleep 5 || true
+                kill -KILL "$pid" || true
+                return 124
+              fi
+              wait "$pid"
+              return $?
+            fi
+          }
+
           # Start adb server and wait for device visibility
           adb start-server || true
           adb wait-for-device
@@ -127,14 +157,14 @@ jobs:
 
           # Run integration tests (puts output into ../gradle-build.log as before)
           echo "🚀 Running integration tests (timeout ${gradle_timeout_min}m)..."
-          if ! timeout "${gradle_timeout_min}m" bash -c "cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace --info -Pkotlin.warningsAsErrors=true > ../gradle-build.log 2>&1"; then
+          if ! run_with_timeout "${gradle_timeout_min}" 'cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace --info -Pkotlin.warningsAsErrors=true > ../gradle-build.log 2>&1'; then
             echo "⚠️ Integration tests failed or timed out (check ../gradle-build.log)"
           fi
 
           # Run performance tests (separate timeout)
           echo "🚀 Running performance tests (timeout ${gradle_timeout_min}m)..."
           adb wait-for-device || true
-          if ! timeout "${gradle_timeout_min}m" bash -c "cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue --stacktrace --info -Pkotlin.warningsAsErrors=true >> ../gradle-build.log 2>&1"; then
+          if ! run_with_timeout "${gradle_timeout_min}" 'cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue --stacktrace --info -Pkotlin.warningsAsErrors=true >> ../gradle-build.log 2>&1'; then
             echo "⚠️ Performance tests failed or timed out (check ../gradle-build.log)"
           fi
 
