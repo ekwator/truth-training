@@ -78,12 +78,39 @@ jobs:
           emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect -noaudio -camera-back none -camera-front none
           script: |
             echo "🚀 Running integration tests on Android emulator..."
-            adb wait-for-device || true
-            adb devices || true
-            (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace --info -Pkotlin.warningsAsErrors=true > ../gradle-build.log 2>&1) || echo "Some integration tests failed"  
+            # Ensure adb server is started and the emulator is visible
+            adb start-server
+            adb wait-for-device
+
+            # Wait for Android system to be fully booted (sys.boot_completed == 1).
+            # Timeout after 300s (5 minutes) to fail fast if emulator never completes boot.
+            boot_timeout=300
+            for i in $(seq 1 $boot_timeout); do
+              if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
+                echo "Device fully booted"
+                break
+              fi
+              if [ "$i" -eq "$boot_timeout" ]; then
+                echo "Timed out waiting for Android to finish booting"
+                adb devices -l || true
+                exit 1
+              fi
+              echo "Waiting for Android boot... ($i/$boot_timeout)"
+              sleep 1
+            done
+            adb devices -l
+            # Unlock device in case the lock screen would block instrumentation
+            adb shell input keyevent 82 || true
+            sleep 5
+
+            # Run integration tests with a hard timeout so the job can't hang indefinitely.
+            # Increase the timeout (30m) if you expect longer test runs.
+            timeout 30m bash -c "cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace --info -Pkotlin.warningsAsErrors=true > ../gradle-build.log 2>&1" || echo "Some integration tests failed or timed out"
+
             echo "🚀 Running performance tests on Android emulator..."
-            adb wait-for-device || true
-            (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue --stacktrace --info -Pkotlin.warningsAsErrors=true >> ../gradle-build.log 2>&1) || echo "Performance tests completed with warnings"
+            # Ensure device still attached before running performance tests
+            adb wait-for-device
+            timeout 30m bash -c "cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue --stacktrace --info -Pkotlin.warningsAsErrors=true >> ../gradle-build.log 2>&1" || echo "Performance tests completed with warnings or timed out"
 
             echo "📦 Collecting test reports..."
             mkdir -p "${ART_DIR}/outputs" || true
