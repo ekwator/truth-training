@@ -85,9 +85,15 @@ class OfflineFirstTest {
         // Note: In actual implementation, repositories would call syncManager.queueOperation()
         // For now, we verify local storage works correctly
         val pendingCount = syncManager.getPendingCount()
+        val pendingOps = syncManager.getPendingOperations()
+        
+        // Verify sync queue infrastructure is working
+        assertNotNull(pendingOps)
+        assertTrue("Sync queue should be accessible", pendingCount >= 0)
+        
         // This will be 0 because we're not actually queuing operations in the test
         // But the infrastructure is ready for when repositories are updated
-        assertTrue("Sync queue infrastructure ready", true)
+        assertEquals("Sync queue should be empty until repositories are updated", 0, pendingCount)
     }
 
     @Test
@@ -98,6 +104,11 @@ class OfflineFirstTest {
         )
         assertTrue(eventResult.isSuccess)
         val eventId = eventResult.getOrNull()!!.id
+        
+        // Verify event exists before restart simulation
+        val beforeRestart = eventRepository.getEventById(eventId)
+        assertNotNull(beforeRestart)
+        assertEquals("Persistent Event", beforeRestart!!.title)
 
         // Step 2: Simulate app restart (close and reopen database)
         database.close()
@@ -106,13 +117,17 @@ class OfflineFirstTest {
             .allowMainThreadQueries()
             .build()
         
-        // Note: In-memory database doesn't persist, but Room database would
-        // This test validates the concept
+        // Note: In-memory database doesn't persist between instances
+        // This test validates the pattern for persistent databases
         val newEventRepository = EventRepository(newDatabase, null)
         
         // In a real scenario with persistent database, event would be found
-        // For in-memory test, we verify the pattern
-        assertTrue("Database persistence pattern validated", true)
+        // For in-memory test, we verify the repository pattern works
+        val afterRestart = newEventRepository.getEventById(eventId)
+        // In-memory DB: null, but pattern is correct for persistent DB
+        assertNull("In-memory DB doesn't persist, but pattern is correct", afterRestart)
+        
+        newDatabase.close()
     }
 }
 

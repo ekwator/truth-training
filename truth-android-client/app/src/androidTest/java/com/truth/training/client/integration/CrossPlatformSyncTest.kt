@@ -74,7 +74,8 @@ class CrossPlatformSyncTest {
         
         // Step 4: Verify ISO 8601 date format
         assertNotNull(event.createdAt)
-        assertTrue(event.createdAt!!.contains("T") || event.createdAt.contains("Z"))
+        assertTrue("CreatedAt should be ISO 8601 format", 
+            event.createdAt.contains("T") || event.createdAt.contains("Z"))
 
         // Step 5: Verify event can be converted to API DTO format
         val eventResponse = EventResponse(
