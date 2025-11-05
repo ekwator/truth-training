@@ -154,6 +154,7 @@ jobs:
           echo "=== LOGCAT DUMP ($(date)) ===" > "${ART_DIR}/logs/logcat.txt" || true
           if adb get-state 1>/dev/null 2>&1; then
             adb logcat -d >> "${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat failed" || true
+            du -h "${ART_DIR}/logs/logcat.txt" || true
           else
             echo "⚠️ No emulator/device detected — skipping logcat dump" >> "${ART_DIR}/logs/logcat.txt"
           fi
@@ -184,69 +185,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 1800000
           emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect -noaudio -camera-back none -camera-front none
-          script: |
-            echo "🚀 Running integration tests on Android emulator..."
-            # Ensure adb server is started and the emulator is visible
-            adb start-server
-            adb wait-for-device
-
-            # Wait for Android system to be fully booted (sys.boot_completed == 1).
-            # Timeout after 300s (5 minutes) to fail fast if emulator never completes boot.
-            boot_timeout=300
-            i=1
-            while [ "$i" -le "$boot_timeout" ]; do
-              if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
-                echo "Device fully booted"
-                break
-              fi
-              if [ "$i" -eq "$boot_timeout" ]; then
-                echo "Timed out waiting for Android to finish booting"
-                adb devices -l || true
-                exit 1
-              fi
-              echo "Waiting for Android boot... ($i/$boot_timeout)"
-              i=$((i+1))
-              sleep 1
-            done
-            adb devices -l
-            # Unlock device in case the lock screen would block instrumentation
-            adb shell input keyevent 82 || true
-            sleep 5
-
-            # Run integration tests with a hard timeout so the job can't hang indefinitely.
-            # Increase the timeout (30m) if you expect longer test runs.
-            timeout 30m bash -c "cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace --info -Pkotlin.warningsAsErrors=true > ../gradle-build.log 2>&1" || echo "Some integration tests failed or timed out"
-
-            echo "🚀 Running performance tests on Android emulator..."
-            # Ensure device still attached before running performance tests
-            adb wait-for-device
-            timeout 30m bash -c "cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue --stacktrace --info -Pkotlin.warningsAsErrors=true >> ../gradle-build.log 2>&1" || echo "Performance tests completed with warnings or timed out"
-
-            echo "📦 Collecting test reports..."
-            mkdir -p "${ART_DIR}/outputs" || true
-            mkdir -p "${ART_DIR}/reports" || true
-            # Ensure directory has proper permissions
-            chmod -R 755 "${ART_DIR}" || true
-            # Copy results if they exist
-            cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/outputs/androidTest-results" "${ART_DIR}/outputs/" 2>/dev/null || true
-            cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/reports/androidTests" "${ART_DIR}/reports/" 2>/dev/null || true
-            # Also copy unit test results if present
-            cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/test-results" "${ART_DIR}/" 2>/dev/null || true
-
-            # Ensure artifact directory is non-empty
-            if ! find "${ART_DIR}" -type f | grep -q .; then echo "⚠️ No reports found — creating placeholder"; echo "no reports found" > "${ART_DIR}/no-reports.txt"; fi
-
-            echo "📦 Collecting Gradle build logs..."
-            mkdir -p "${ART_DIR}/logs" || true
-            cp "${GITHUB_WORKSPACE}/gradle-build.log" "${ART_DIR}/logs/gradle-build.log" 2>/dev/null || echo "⚠️ No Gradle log found"
-
-            echo "🪵 Capturing Android logcat output..."
-            mkdir -p "${ART_DIR}/logs" || true
-            echo "=== LOGCAT DUMP ($(date)) ===" > "${ART_DIR}/logs/logcat.txt"
-
-            if adb get-state 1>/dev/null 2>&1; then echo "Device is active — dumping logs..."; adb logcat -d >> "${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat failed"; sleep 2; else echo "⚠️ No emulator/device detected — skipping logcat dump" >> "${ART_DIR}/logs/logcat.txt"; fi
-
-            du -h "${ART_DIR}/logs/logcat.txt" || true
+          script: ./run_tests.sh
  
       - name: Stop Android Emulator
         if: always()
