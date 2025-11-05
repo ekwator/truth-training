@@ -10,7 +10,8 @@
 # ===============================================
 
 set -euo pipefail
-BASE_DIR="${1:-.}"
+#BASE_DIR="${1:-.}"
+BASE_DIR="test-results/"
 OUT_FILE="android-test-summary.txt"
 
 echo "🧪 Analyzing Android test results in: ${BASE_DIR}"

@@ -224,7 +224,7 @@ class ContextTemplateRepositoryTest {
             developId = 4,
             effectId = 5
         )
-        val template1 = repository.createTemplate(template1Request).getOrNull()!!
+        repository.createTemplate(template1Request).getOrNull()!!
 
         val template2Request = CreateContextRequest(
             name = "Template 2",
