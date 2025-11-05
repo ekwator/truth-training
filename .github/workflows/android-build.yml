@@ -64,6 +64,114 @@ jobs:
           cp target/x86_64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/x86_64/libtruthcore.so
           cp target/aarch64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/arm64-v8a/libtruthcore.so
  
+      - name: Prepare emulator test script
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Path to generated script inside workspace
+          SCRIPT_PATH="${GITHUB_WORKSPACE}/run_tests.sh"
+          ART_DIR="${ART_DIR:-${GITHUB_WORKSPACE}/android-test-artifacts}"
+          BOOT_TIMEOUT="${BOOT_TIMEOUT:-300}"
+          GRADLE_TIMEOUT_MIN=30
+
+          cat > "${SCRIPT_PATH}" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          export ART_DIR="${ART_DIR}"
+          export GITHUB_WORKSPACE="${GITHUB_WORKSPACE}"
+          boot_timeout="${BOOT_TIMEOUT:-300}"
+          gradle_timeout_min=${GRADLE_TIMEOUT_MIN:-30}
+          cd "${GITHUB_WORKSPACE}"
+
+          # Start adb server and wait for device visibility
+          adb start-server || true
+          adb wait-for-device
+
+          echo "⏳ Waiting for Android system to finish booting (timeout: ${boot_timeout}s)..."
+          if command -v seq >/dev/null 2>&1; then
+            for i in $(seq 1 "${boot_timeout}"); do
+              if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
+                echo "✅ Device reported sys.boot_completed after ${i}s"
+                break
+              fi
+              if [ "${i}" -eq "${boot_timeout}" ]; then
+                echo "❌ Timed out waiting for Android to finish booting (${boot_timeout}s)"
+                adb devices -l || true
+                # Do not exit here; let gradle run so logs can be collected
+                break
+              fi
+              sleep 1
+            done
+          else
+            # fallback simple loop
+            i=1
+            while [ "${i}" -le "${boot_timeout}" ]; do
+              if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
+                echo "✅ Device reported sys.boot_completed after ${i}s"
+                break
+              fi
+              if [ "${i}" -eq "${boot_timeout}" ]; then
+                echo "❌ Timed out waiting for Android to finish booting (${boot_timeout}s)"
+                adb devices -l || true
+                break
+              fi
+              sleep 1
+              i=$((i+1))
+            done
+          fi
+
+          # Unlock device so instrumentation isn't blocked by lock screen
+          adb shell input keyevent 82 || true
+          sleep 3
+
+          # Run integration tests (puts output into ../gradle-build.log as before)
+          echo "🚀 Running integration tests (timeout ${gradle_timeout_min}m)..."
+          if ! timeout "${gradle_timeout_min}m" bash -c "cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace --info -Pkotlin.warningsAsErrors=true > ../gradle-build.log 2>&1"; then
+            echo "⚠️ Integration tests failed or timed out (check ../gradle-build.log)"
+          fi
+
+          # Run performance tests (separate timeout)
+          echo "🚀 Running performance tests (timeout ${gradle_timeout_min}m)..."
+          adb wait-for-device || true
+          if ! timeout "${gradle_timeout_min}m" bash -c "cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue --stacktrace --info -Pkotlin.warningsAsErrors=true >> ../gradle-build.log 2>&1"; then
+            echo "⚠️ Performance tests failed or timed out (check ../gradle-build.log)"
+          fi
+
+          # Collect test reports and logs into ART_DIR
+          mkdir -p "${ART_DIR}/outputs" "${ART_DIR}/reports" "${ART_DIR}/logs" || true
+          cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/outputs/androidTest-results" "${ART_DIR}/outputs/" 2>/dev/null || true
+          cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/reports/androidTests" "${ART_DIR}/reports/" 2>/dev/null || true
+          cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/test-results" "${ART_DIR}/" 2>/dev/null || true
+
+          # Copy gradle build log if present
+          if [ -f "${GITHUB_WORKSPACE}/gradle-build.log" ]; then
+            cp "${GITHUB_WORKSPACE}/gradle-build.log" "${ART_DIR}/logs/gradle-build.log" || true
+          fi
+
+          # Dump logcat if device is present
+          echo "🪵 Dumping logcat to ${ART_DIR}/logs/logcat.txt"
+          echo "=== LOGCAT DUMP ($(date)) ===" > "${ART_DIR}/logs/logcat.txt" || true
+          if adb get-state 1>/dev/null 2>&1; then
+            adb logcat -d >> "${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat failed" || true
+          else
+            echo "⚠️ No emulator/device detected — skipping logcat dump" >> "${ART_DIR}/logs/logcat.txt"
+          fi
+
+          # Small summary
+          FOUND_FILES=$(find "${ART_DIR}" -type f 2>/dev/null | wc -l | tr -d ' ')
+          if [ "${FOUND_FILES:-0}" -eq 0 ]; then
+            echo "⚠️ No reports collected; creating placeholder"
+            echo "no reports found" > "${ART_DIR}/no-reports.txt" || true
+          else
+            echo "✅ Collected ${FOUND_FILES} files under ${ART_DIR}"
+          fi
+
+          EOF
+
+          chmod +x "${SCRIPT_PATH}"
+          echo "✅ Generated run_tests.sh at ${SCRIPT_PATH}"
+
       - name: Run integration and performance tests on emulator (macOS HVF)
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
@@ -76,41 +184,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 1800000
           emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect -noaudio -camera-back none -camera-front none
-          script: |
-            echo "🚀 Running integration tests on Android emulator..."
-            # Ensure adb server is started and the emulator is visible
-            adb start-server
-            adb wait-for-device
-
-            # Wait for Android system to be fully booted (sys.boot_completed == 1).
-            # Timeout after 300s (5 minutes) to fail fast if emulator never completes boot.
-            boot_timeout=300
-            for i in $(seq 1 $boot_timeout); do
-              if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
-                echo "Device fully booted"
-                break
-              fi
-              if [ "$i" -eq "$boot_timeout" ]; then
-                echo "Timed out waiting for Android to finish booting"
-                adb devices -l || true
-                exit 1
-              fi
-              echo "Waiting for Android boot... ($i/$boot_timeout)"
-              sleep 1
-            done
-            adb devices -l
-            # Unlock device in case the lock screen would block instrumentation
-            adb shell input keyevent 82 || true
-            sleep 5
-
-            # Run integration tests with a hard timeout so the job can't hang indefinitely.
-            # Increase the timeout (30m) if you expect longer test runs.
-            timeout 30m bash -c "cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace --info -Pkotlin.warningsAsErrors=true > ../gradle-build.log 2>&1" || echo "Some integration tests failed or timed out"
-
-            echo "🚀 Running performance tests on Android emulator..."
-            # Ensure device still attached before running performance tests
-            adb wait-for-device
-            timeout 30m bash -c "cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue --stacktrace --info -Pkotlin.warningsAsErrors=true >> ../gradle-build.log 2>&1" || echo "Performance tests completed with warnings or timed out"
+          script: ./run_tests.sh
 
             echo "📦 Collecting test reports..."
             mkdir -p "${ART_DIR}/outputs" || true
