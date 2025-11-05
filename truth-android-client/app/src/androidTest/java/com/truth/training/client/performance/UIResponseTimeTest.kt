@@ -13,7 +13,7 @@ import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.entities.EventEntity
 import androidx.test.espresso.IdlingPolicies
 import java.util.concurrent.TimeUnit as JavaTimeUnit
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -60,11 +60,6 @@ class UIResponseTimeTest {
             .fallbackToDestructiveMigration()
             .build()
         
-        // Populate database with test data
-        runBlocking {
-            populateDatabase(database, 100)
-        }
-
         // Increase Espresso timeouts to reduce flakiness on emulators
         IdlingPolicies.setMasterPolicyTimeout(5, JavaTimeUnit.MINUTES)
         IdlingPolicies.setIdlingResourceTimeout(5, JavaTimeUnit.MINUTES)
@@ -139,9 +134,9 @@ class UIResponseTimeTest {
     }
 
     @Test
-    fun benchmarkScreenRenderingColdStart() {
+    fun benchmarkScreenRenderingColdStart() = runTest {
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        Thread.sleep(200)
+        Thread.sleep(500) // Wait for activity to be fully initialized
         
         // Measure time until first UI render (with warm-up)
         // Warm-up
@@ -172,15 +167,15 @@ class UIResponseTimeTest {
     }
 
     @Test
-    fun benchmarkScreenRenderingWarmStart() {
+    fun benchmarkScreenRenderingWarmStart() = runTest {
         // First launch to warm up
-        ActivityScenario.launch(MainActivity::class.java).use { firstScenario ->
+        ActivityScenario.launch(MainActivity::class.java).use { _ ->
             Thread.sleep(500) // Wait for initial render
         }
         
         // Second launch for warm start measurement
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        Thread.sleep(150)
+        Thread.sleep(500) // Wait for activity to be fully initialized
         
         // Warm-up
         Espresso.onView(ViewMatchers.withId(android.R.id.content))
@@ -205,14 +200,12 @@ class UIResponseTimeTest {
     }
 
     @Test
-    fun benchmarkDataLoadingWithLargeDataset() {
+    fun benchmarkDataLoadingWithLargeDataset() = runTest {
         // Populate with large dataset
-        runBlocking {
-            populateDatabase(database, 100)
-        }
+        populateDatabase(database, 100)
         
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        Thread.sleep(150)
+        Thread.sleep(500) // Wait for activity to be fully initialized
         
         // Measure time until data is displayed (approximate via UI ready check)
         // Warm-up
@@ -243,9 +236,9 @@ class UIResponseTimeTest {
     }
 
     @Test
-    fun benchmarkUserInteractionButtonClick() {
+    fun benchmarkUserInteractionButtonClick() = runTest {
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        Thread.sleep(200)
+        Thread.sleep(500) // Wait for activity to be fully initialized
         
         // Measure button click response time
         val benchmark = measureAverageTime(10) {
@@ -275,9 +268,9 @@ class UIResponseTimeTest {
     }
 
     @Test
-    fun benchmarkNavigationTransition() {
+    fun benchmarkNavigationTransition() = runTest {
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        Thread.sleep(200)
+        Thread.sleep(500) // Wait for activity to be fully initialized
         
         // Measure navigation time (simulated)
         // Warm-up
