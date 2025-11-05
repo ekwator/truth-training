@@ -7,7 +7,7 @@ import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.daos.EventDao
 import com.truth.training.client.data.database.entities.EventEntity
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -76,12 +76,12 @@ class RoomPerformanceTest {
     /**
      * Helper function to measure average execution time over iterations.
      */
-    private fun measureAverageTime(iterations: Int, block: () -> Unit): PerformanceBenchmark {
+    private suspend fun measureAverageTime(iterations: Int, block: suspend () -> Unit): PerformanceBenchmark {
         // Warm-up run to mitigate JIT/initialization costs
-        measureTime(block)
+        measureTime { block() }
         val times = mutableListOf<Long>()
         repeat(iterations) {
-            val (_, time) = measureTime(block)
+            val (_, time) = measureTime { block() }
             times.add(time)
         }
         val average = times.average().toLong()
@@ -131,30 +131,48 @@ class RoomPerformanceTest {
     private suspend fun populateDatabase(size: Int) {
         database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=OFF")
         database.runInTransaction {
-            repeat(size) { index ->
-                val event = createTestEvent(
-                    id = "event_$index",
-                    title = "Event $index",
-                    status = if (index % 2 == 0) "active" else "completed"
-                )
-                eventDao.insertEvent(event)
+            kotlinx.coroutines.runBlocking {
+                repeat(size) { index ->
+                    val event = createTestEvent(
+                        id = "event_$index",
+                        title = "Event $index",
+                        status = if (index % 2 == 0) "active" else "completed"
+                    )
+                    eventDao.insertEvent(event)
+                }
             }
         }
         database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=ON")
     }
 
+    /**
+     * Warm up database by performing initial queries.
+     */
+    private suspend fun warmUpDatabase() {
+        eventDao.listEvents(limit = 1, offset = 0)
+        eventDao.getEventCount()
+    }
+
+    /**
+     * Measure median time from a list of execution times.
+     */
+    private fun measureMedianTime(times: List<Long>): Long {
+        return medianOf(times)
+    }
+
     @Test
-    fun benchmarkPaginationQueryWith100Events() = runBlocking {
+    fun benchmarkPaginationQueryWith100Events() = runTest {
         // Setup: populate database with 100 events
         populateDatabase(100)
+        warmUpDatabase()
         
         // Measure pagination query (35 events as per requirement)
         val times = mutableListOf<Long>()
         // Warm-up query
-        runBlocking { eventDao.listEvents(limit = 35, offset = 0) }
+        eventDao.listEvents(limit = 35, offset = 0)
         repeat(10) {
             val (_, t) = measureTime {
-                runBlocking { eventDao.listEvents(limit = 35, offset = 0) }
+                eventDao.listEvents(limit = 35, offset = 0)
             }
             times.add(t)
         }
@@ -181,13 +199,14 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun benchmarkPaginationQueryWith1000Events() = runBlocking {
+    fun benchmarkPaginationQueryWith1000Events() = runTest {
         populateDatabase(1000)
+        warmUpDatabase()
         
         val times = mutableListOf<Long>()
-        runBlocking { eventDao.listEvents(limit = 35, offset = 0) }
+        eventDao.listEvents(limit = 35, offset = 0)
         repeat(10) {
-            val (_, t) = measureTime { runBlocking { eventDao.listEvents(limit = 35, offset = 0) } }
+            val (_, t) = measureTime { eventDao.listEvents(limit = 35, offset = 0) }
             times.add(t)
         }
         val median = medianOf(times)
@@ -208,13 +227,14 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun benchmarkPaginationQueryWith10000Events() = runBlocking {
+    fun benchmarkPaginationQueryWith10000Events() = runTest {
         populateDatabase(10000)
+        warmUpDatabase()
         
         val times = mutableListOf<Long>()
-        runBlocking { eventDao.listEvents(limit = 35, offset = 0) }
+        eventDao.listEvents(limit = 35, offset = 0)
         repeat(10) {
-            val (_, t) = measureTime { runBlocking { eventDao.listEvents(limit = 35, offset = 0) } }
+            val (_, t) = measureTime { eventDao.listEvents(limit = 35, offset = 0) }
             times.add(t)
         }
         val median = medianOf(times)
@@ -235,14 +255,15 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun benchmarkSingleEntityRetrieval() = runBlocking {
+    fun benchmarkSingleEntityRetrieval() = runTest {
         populateDatabase(1000)
+        warmUpDatabase()
         
         // Measure single entity retrieval
         val times = mutableListOf<Long>()
-        runBlocking { eventDao.getEventById("event_500") }
+        eventDao.getEventById("event_500")
         repeat(10) {
-            val (_, t) = measureTime { runBlocking { eventDao.getEventById("event_500") } }
+            val (_, t) = measureTime { eventDao.getEventById("event_500") }
             times.add(t)
         }
         val median = medianOf(times)
@@ -267,7 +288,7 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun benchmarkBulkInsert100Events() = runBlocking {
+    fun benchmarkBulkInsert100Events() = runTest {
         // Measure bulk insert
         val events = (0..99).map { index ->
             createTestEvent("bulk_event_$index", "Bulk Event $index")
@@ -276,7 +297,7 @@ class RoomPerformanceTest {
         val (_, time) = measureTime {
             database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=OFF")
             database.runInTransaction {
-                runBlocking {
+                kotlinx.coroutines.runBlocking {
                     events.forEach { event ->
                         eventDao.insertEvent(event)
                     }
@@ -305,14 +326,15 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun benchmarkComplexQueryWithStatusFilter() = runBlocking {
+    fun benchmarkComplexQueryWithStatusFilter() = runTest {
         populateDatabase(1000)
+        warmUpDatabase()
         
         // Measure filtered query by status
         val times = mutableListOf<Long>()
-        runBlocking { eventDao.listEventsByStatus("active", limit = 50, offset = 0) }
+        eventDao.listEventsByStatus("active", limit = 50, offset = 0)
         repeat(10) {
-            val (_, t) = measureTime { runBlocking { eventDao.listEventsByStatus("active", limit = 50, offset = 0) } }
+            val (_, t) = measureTime { eventDao.listEventsByStatus("active", limit = 50, offset = 0) }
             times.add(t)
         }
         val median = medianOf(times)
@@ -337,19 +359,18 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun benchmarkFlowEmissionLatency() = runBlocking {
+    fun benchmarkFlowEmissionLatency() = runTest {
         populateDatabase(100)
+        warmUpDatabase()
         
         // Measure Flow initial emission latency
         // Warm-up a subscription
-        runBlocking { eventDao.getAllEventsFlow().first() }
+        eventDao.getAllEventsFlow().first()
         val times = mutableListOf<Long>()
         repeat(10) {
             val (_, t) = measureTime {
-                runBlocking {
-                    val flow = eventDao.getAllEventsFlow()
-                    flow.first()
-                }
+                val flow = eventDao.getAllEventsFlow()
+                flow.first()
             }
             times.add(t)
         }
@@ -375,23 +396,21 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun validateDatabaseIndices() = runBlocking {
+    fun validateDatabaseIndices() = runTest {
         // This test validates that indices are properly created
         // by checking query performance doesn't degrade with larger datasets
         populateDatabase(100)
+        warmUpDatabase()
         val smallDbTime = measureAverageTime(5) {
-            runBlocking {
-                eventDao.listEvents(limit = 35, offset = 0)
-            }
+            eventDao.listEvents(limit = 35, offset = 0)
         }
         
         // Clear and repopulate with larger dataset
         database.clearAllTables()
         populateDatabase(1000)
+        warmUpDatabase()
         val largeDbTime = measureAverageTime(5) {
-            runBlocking {
-                eventDao.listEvents(limit = 35, offset = 0)
-            }
+            eventDao.listEvents(limit = 35, offset = 0)
         }
         
         // With proper indices, query time should not increase significantly
