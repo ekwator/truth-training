@@ -53,6 +53,14 @@ jobs:
           echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.1.10909125" >> $GITHUB_ENV
           echo "${ANDROID_SDK_ROOT}/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin" >> $GITHUB_PATH
 
+      - name: Install coreutils (gtimeout) for macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew update || true
+          brew install coreutils || true
+
       - name: Build and copy JNI libraries for tests
         run: |
           echo "Building Rust libraries for Android (x86_64 + arm64-v8a)"
