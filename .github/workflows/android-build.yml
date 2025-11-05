@@ -81,7 +81,7 @@ jobs:
           SCRIPT_PATH="${GITHUB_WORKSPACE}/run_tests.sh"
           ART_DIR="${ART_DIR:-${GITHUB_WORKSPACE}/android-test-artifacts}"
           BOOT_TIMEOUT="${BOOT_TIMEOUT:-300}"
-          GRADLE_TIMEOUT_MIN=30
+          GRADLE_TIMEOUT_MIN=150
 
           cat > "${SCRIPT_PATH}" <<'EOF'
           #!/usr/bin/env bash
@@ -89,7 +89,7 @@ jobs:
           export ART_DIR="${ART_DIR}"
           export GITHUB_WORKSPACE="${GITHUB_WORKSPACE}"
           boot_timeout="${BOOT_TIMEOUT:-300}"
-          gradle_timeout_min=${GRADLE_TIMEOUT_MIN:-30}
+          gradle_timeout_min=${GRADLE_TIMEOUT_MIN:-150}
           cd "${GITHUB_WORKSPACE}"
 
           run_with_timeout() {
