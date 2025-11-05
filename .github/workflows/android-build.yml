@@ -85,7 +85,8 @@ jobs:
             # Wait for Android system to be fully booted (sys.boot_completed == 1).
             # Timeout after 300s (5 minutes) to fail fast if emulator never completes boot.
             boot_timeout=300
-            for i in $(seq 1 $boot_timeout); do
+            i=1
+            while [ "$i" -le "$boot_timeout" ]; do
               if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
                 echo "Device fully booted"
                 break
@@ -96,6 +97,7 @@ jobs:
                 exit 1
               fi
               echo "Waiting for Android boot... ($i/$boot_timeout)"
+              i=$((i+1))
               sleep 1
             done
             adb devices -l
