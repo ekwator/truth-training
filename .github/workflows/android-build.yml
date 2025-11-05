@@ -75,11 +75,14 @@ jobs:
           force-avd-creation: true
           disable-animations: true
           emulator-boot-timeout: 1800000
-          emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect
+          emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect -noaudio -camera-back none -camera-front none
           script: |
             echo "🚀 Running integration tests on Android emulator..."
+            adb wait-for-device || true
+            adb devices || true
             (cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace --info -Pkotlin.warningsAsErrors=true > ../gradle-build.log 2>&1) || echo "Some integration tests failed"  
             echo "🚀 Running performance tests on Android emulator..."
+            adb wait-for-device || true
             (cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue --stacktrace --info -Pkotlin.warningsAsErrors=true >> ../gradle-build.log 2>&1) || echo "Performance tests completed with warnings"
 
             echo "📦 Collecting test reports..."
