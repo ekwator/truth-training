@@ -141,10 +141,11 @@ jobs:
               remote) FLV=Remote ;;
               *) FLV=Local ;;
             esac
+            # add --info for more detailed information
             if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc "
               cd truth-android-client && \
               ./gradlew connected${FLV}DebugAndroidTest --build-cache \
-                --continue --stacktrace --info -Pkotlin.warningsAsErrors=true
+                --continue --stacktrace -Pkotlin.warningsAsErrors=true
             "; then
               echo "⚠️ Tests for $flavor failed or timed out."
             fi
@@ -160,11 +161,12 @@ jobs:
           done
 
           echo "🚀 Running performance tests (timeout ${GRADLE_TIMEOUT_MIN}m)..."
+          # add --info for more detailed information
           if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc '
             cd truth-android-client && \
             ./gradlew connectedAndroidTest --build-cache \
               -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance \
-              --continue --stacktrace --info -Pkotlin.warningsAsErrors=true
+              --continue --stacktrace -Pkotlin.warningsAsErrors=true
           '; then
             echo "⚠️ Performance tests failed or timed out."
           fi
