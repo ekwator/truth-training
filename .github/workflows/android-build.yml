@@ -162,6 +162,7 @@ jobs:
           echo "✅ Generated run_tests.sh at ${SCRIPT_PATH}"
 
       - name: Run integration and performance tests on emulator (macOS HVF)
+        shell: bash
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -172,7 +173,7 @@ jobs:
           force-avd-creation: true
           disable-animations: true
           emulator-boot-timeout: 1800000
-          emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader -noaudio -camera-back none -camera-front none
+          emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader_indirect -noaudio -camera-back none -camera-front none
           script: ./run_tests.sh
 
  
