@@ -162,7 +162,6 @@ jobs:
           echo "✅ Generated run_tests.sh at ${SCRIPT_PATH}"
 
       - name: Run integration and performance tests on emulator (macOS HVF)
-        shell: bash
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
