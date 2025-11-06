@@ -123,10 +123,8 @@ jobs:
 
           echo "📱 Running connected tests sequentially..."
 
-          # Initialize gradle-build.log in workspace root (truncate if exists)
-          cd "\${GITHUB_WORKSPACE:-.}" && > gradle-build.log || true
-
           # Dynamically disable any flavor based on environment variables
+          first_flavor=true
           for flavor in local mock remote; do
             upper_flavor=$(printf '%s' "$flavor" | tr '[:lower:]' '[:upper:]')
             var_name="DISABLE_${upper_flavor}_TESTS"
@@ -144,13 +142,20 @@ jobs:
               remote) FLV=Remote ;;
               *) FLV=Local ;;
             esac
-            # Run Gradle tests and redirect all output to gradle-build.log (append mode)
+            # Run Gradle tests and redirect all output to gradle-build.log
+            # First flavor overwrites, subsequent flavors append
             # add --info for more detailed information
+            if [ "$first_flavor" = "true" ]; then
+              redirect_op=">"
+              first_flavor=false
+            else
+              redirect_op=">>"
+            fi
             if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc "
               cd truth-android-client && \
               ./gradlew connected${FLV}DebugAndroidTest --build-cache \
               --continue --stacktrace --info -Pkotlin.warningsAsErrors=true \
-              >> ../gradle-build.log 2>&1
+              ${redirect_op} ../gradle-build.log 2>&1
            "; then
               echo "⚠️ Tests for $flavor failed or timed out." | tee -a ../gradle-build.log
             fi
@@ -180,10 +185,10 @@ jobs:
           echo "📦 Collecting Gradle logs and logcat..."
           mkdir -p "\${ART_DIR}/logs" || true
           # Copy gradle build log from workspace root if present
-          if [ -f "\${GITHUB_WORKSPACE:-.}/gradle-build.log" ]; then
-            cp -f "\${GITHUB_WORKSPACE:-.}/gradle-build.log" "\${ART_DIR}/logs/gradle-build.log" || true
-          elif [ -f "gradle-build.log" ]; then
+          if [ -f "gradle-build.log" ]; then
             cp -f "gradle-build.log" "\${ART_DIR}/logs/gradle-build.log" || true
+          elif [ -f "\${GITHUB_WORKSPACE}/gradle-build.log" ]; then
+            cp -f "\${GITHUB_WORKSPACE}/gradle-build.log" "\${ART_DIR}/logs/gradle-build.log" || true
           else
             echo "⚠️ No gradle-build.log found in workspace root"
           fi
