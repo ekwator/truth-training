@@ -222,7 +222,7 @@ jobs:
           force-avd-creation: true
           disable-animations: true
           emulator-boot-timeout: 1800000
-          emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader -noaudio -camera-back none -camera-front none -skip-adb-auth
+          emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader -noaudio -camera-back none -camera-front none
           script: ./run_tests.sh
  
       - name: Stop Android Emulator
