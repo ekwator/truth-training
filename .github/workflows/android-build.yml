@@ -123,6 +123,9 @@ jobs:
 
           echo "📱 Running connected tests sequentially..."
 
+          # Initialize gradle-build.log (truncate if exists)
+          > "\${GITHUB_WORKSPACE:-.}/gradle-build.log" || true
+
           # Dynamically disable any flavor based on environment variables
           for flavor in local mock remote; do
             upper_flavor=$(printf '%s' "$flavor" | tr '[:lower:]' '[:upper:]')
@@ -141,13 +144,15 @@ jobs:
               remote) FLV=Remote ;;
               *) FLV=Local ;;
             esac
+            # Run Gradle tests and redirect all output to gradle-build.log (append mode)
             # add --info for more detailed information
             if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc "
               cd truth-android-client && \
               ./gradlew connected${FLV}DebugAndroidTest --build-cache \
-                --continue --stacktrace -Pkotlin.warningsAsErrors=true
-            "; then
-              echo "⚠️ Tests for $flavor failed or timed out."
+              --continue --stacktrace --info -Pkotlin.warningsAsErrors=true \
+              >> ../gradle-build.log 2>&1
+           "; then
+              echo "⚠️ Tests for $flavor failed or timed out." | tee -a ../gradle-build.log
             fi
 
             # Collect per-flavor reports (best-effort)
@@ -165,15 +170,21 @@ jobs:
           if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc '
             cd truth-android-client && \
             ./gradlew connectedAndroidTest --build-cache \
-              -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance \
-              --continue --stacktrace -Pkotlin.warningsAsErrors=true
+            -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance \
+            --continue --stacktrace --info -Pkotlin.warningsAsErrors=true \
+            >> ../gradle-build.log 2>&1
           '; then
-            echo "⚠️ Performance tests failed or timed out."
+            echo "⚠️ Performance tests failed or timed out." | tee -a ../gradle-build.log
           fi
 
           echo "📦 Collecting Gradle logs and logcat..."
           mkdir -p "\${ART_DIR}/logs" || true
-          cp -f "\${GITHUB_WORKSPACE:-.}/gradle-build.log" "\${ART_DIR}/logs/gradle-build.log" 2>/dev/null || true
+          # Copy gradle build log if present
+          if [ -f "\${GITHUB_WORKSPACE:-.}/gradle-build.log" ]; then
+            cp -f "\${GITHUB_WORKSPACE:-.}/gradle-build.log" "\${ART_DIR}/logs/gradle-build.log" || true
+          else
+            echo "⚠️ No file \${GITHUB_WORKSPACE:-.}/gradle-build.log found"
+          fi
           adb logcat -d > "\${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat dump failed"
           du -h "\${ART_DIR}/logs/logcat.txt" || true
           EOF
