@@ -123,8 +123,8 @@ jobs:
 
           echo "📱 Running connected tests sequentially..."
 
-          # Initialize gradle-build.log (truncate if exists)
-          > "\${GITHUB_WORKSPACE:-.}/gradle-build.log" || true
+          # Initialize gradle-build.log in workspace root (truncate if exists)
+          cd "\${GITHUB_WORKSPACE:-.}" && > gradle-build.log || true
 
           # Dynamically disable any flavor based on environment variables
           for flavor in local mock remote; do
@@ -179,11 +179,13 @@ jobs:
 
           echo "📦 Collecting Gradle logs and logcat..."
           mkdir -p "\${ART_DIR}/logs" || true
-          # Copy gradle build log if present
+          # Copy gradle build log from workspace root if present
           if [ -f "\${GITHUB_WORKSPACE:-.}/gradle-build.log" ]; then
             cp -f "\${GITHUB_WORKSPACE:-.}/gradle-build.log" "\${ART_DIR}/logs/gradle-build.log" || true
+          elif [ -f "gradle-build.log" ]; then
+            cp -f "gradle-build.log" "\${ART_DIR}/logs/gradle-build.log" || true
           else
-            echo "⚠️ No file \${GITHUB_WORKSPACE:-.}/gradle-build.log found"
+            echo "⚠️ No gradle-build.log found in workspace root"
           fi
           adb logcat -d > "\${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat dump failed"
           du -h "\${ART_DIR}/logs/logcat.txt" || true
