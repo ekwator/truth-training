@@ -114,21 +114,27 @@ jobs:
 
           echo "📱 Running connected tests sequentially..."
 
-          # Define available flavors
-          flavors=("local" "mock" "remote")
-
           # Dynamically disable any flavor based on environment variables
-          for flavor in "${flavors[@]}"; do
-            var_name="DISABLE_${flavor^^}_TESTS"
-            if [ "${!var_name:-false}" = "true" ]; then
-              echo "⏩ Skipping $flavor tests (disabled via \$${var_name})"
+          for flavor in local mock remote; do
+            upper_flavor=$(printf '%s' "$flavor" | tr '[:lower:]' '[:upper:]')
+            var_name="DISABLE_${upper_flavor}_TESTS"
+            eval val="\${${var_name}:-false}"
+            if [ "$val" = "true" ]; then
+              echo "⏩ Skipping $flavor tests (disabled via $var_name)"
               continue
             fi
 
             echo "🚀 Starting tests for flavor: $flavor"
+            # Map to Gradle task case
+            case "$flavor" in
+              local) FLV=Local ;;
+              mock) FLV=Mock ;;
+              remote) FLV=Remote ;;
+              *) FLV=Local ;;
+            esac
             if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc "
               cd truth-android-client && \
-              ./gradlew connected${flavor^}DebugAndroidTest \
+              ./gradlew connected${FLV}DebugAndroidTest \
                 --continue --stacktrace --info -Pkotlin.warningsAsErrors=true
             "; then
               echo "⚠️ Tests for $flavor failed or timed out."
