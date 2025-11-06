@@ -26,6 +26,9 @@ jobs:
     if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && !startsWith(github.ref, 'refs/tags/') }}
     env:
       ART_DIR: ${{ github.workspace }}/android-test-artifacts
+      DISABLE_LOCAL_TESTS: 'false'
+      DISABLE_MOCK_TESTS: 'false'
+      DISABLE_REMOTE_TESTS: 'false'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,131 +84,78 @@ jobs:
           SCRIPT_PATH="${GITHUB_WORKSPACE}/run_tests.sh"
           ART_DIR="${ART_DIR:-${GITHUB_WORKSPACE}/android-test-artifacts}"
           BOOT_TIMEOUT="${BOOT_TIMEOUT:-300}"
-          GRADLE_TIMEOUT_MIN=150
+          GRADLE_TIMEOUT_MIN="${GRADLE_TIMEOUT_MIN:-150}"
 
           cat > "${SCRIPT_PATH}" <<'EOF'
           #!/usr/bin/env bash
           set -euo pipefail
-          export ART_DIR="${ART_DIR}"
-          export GITHUB_WORKSPACE="${GITHUB_WORKSPACE}"
-          boot_timeout="${BOOT_TIMEOUT:-300}"
-          gradle_timeout_min=${GRADLE_TIMEOUT_MIN:-150}
-          cd "${GITHUB_WORKSPACE}"
 
-          run_with_timeout() {
-            local minutes="$1"; shift || true
-            local cmd="$*"
-            if command -v timeout >/dev/null 2>&1; then
-              timeout "${minutes}m" bash -lc "${cmd}"
-              return $?
-            elif command -v gtimeout >/dev/null 2>&1; then
-              gtimeout "${minutes}m" bash -lc "${cmd}"
-              return $?
-            else
-              echo "⚠️ 'timeout' not found; using manual watchdog for ${minutes}m"
-              local secs=$((minutes*60))
-              bash -lc "${cmd}" &
-              local pid=$!
-              while kill -0 "$pid" 2>/dev/null && [ $secs -gt 0 ]; do
-                sleep 1
-                secs=$((secs-1))
-              done
-              if kill -0 "$pid" 2>/dev/null; then
-                echo "⏱ Manual timeout reached, terminating PID $pid"
-                kill -TERM "$pid" || true
-                sleep 5 || true
-                kill -KILL "$pid" || true
-                return 124
-              fi
-              wait "$pid"
-              return $?
+          # timeout on macOS via coreutils (gtimeout)
+          if ! command -v timeout >/dev/null 2>&1 && command -v gtimeout >/dev/null 2>&1; then
+            alias timeout='gtimeout'
+          fi
+
+          ART_DIR="${ART_DIR:-${GITHUB_WORKSPACE:-$(pwd)}/android-test-artifacts}"
+          BOOT_TIMEOUT="${BOOT_TIMEOUT:-300}"
+          GRADLE_TIMEOUT_MIN="${GRADLE_TIMEOUT_MIN:-150}"
+
+          echo "⏳ Waiting for Android system to finish booting (timeout: ${BOOT_TIMEOUT}s)..."
+          for i in $(seq 1 "${BOOT_TIMEOUT}"); do
+            if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
+              echo "✅ Device reported sys.boot_completed after ${i}s"
+              break
             fi
-          }
+            sleep 1
+          done
 
-          # Start adb server and wait for device visibility
-          adb start-server || true
-          adb wait-for-device
-
-          echo "⏳ Waiting for Android system to finish booting (timeout: ${boot_timeout}s)..."
-          if command -v seq >/dev/null 2>&1; then
-            for i in $(seq 1 "${boot_timeout}"); do
-              if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
-                echo "✅ Device reported sys.boot_completed after ${i}s"
-                break
-              fi
-              if [ "${i}" -eq "${boot_timeout}" ]; then
-                echo "❌ Timed out waiting for Android to finish booting (${boot_timeout}s)"
-                adb devices -l || true
-                # Do not exit here; let gradle run so logs can be collected
-                break
-              fi
-              sleep 1
-            done
-          else
-            # fallback simple loop
-            i=1
-            while [ "${i}" -le "${boot_timeout}" ]; do
-              if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
-                echo "✅ Device reported sys.boot_completed after ${i}s"
-                break
-              fi
-              if [ "${i}" -eq "${boot_timeout}" ]; then
-                echo "❌ Timed out waiting for Android to finish booting (${boot_timeout}s)"
-                adb devices -l || true
-                break
-              fi
-              sleep 1
-              i=$((i+1))
-            done
-          fi
-
-          # Unlock device so instrumentation isn't blocked by lock screen
+          # Unlock device (in case lock screen blocks instrumentation)
           adb shell input keyevent 82 || true
-          sleep 3
+          sleep 2
 
-          # Run integration tests (puts output into ../gradle-build.log as before)
-          echo "🚀 Running integration tests (timeout ${gradle_timeout_min}m)..."
-          if ! run_with_timeout "${gradle_timeout_min}" 'cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest connectedMockDebugAndroidTest connectedRemoteDebugAndroidTest --continue --stacktrace --info -Pkotlin.warningsAsErrors=true > ../gradle-build.log 2>&1'; then
-            echo "⚠️ Integration tests failed or timed out (check ../gradle-build.log)"
+          echo "📱 Running connected tests sequentially..."
+
+          # Define available flavors
+          flavors=("local" "mock" "remote")
+
+          # Dynamically disable any flavor based on environment variables
+          for flavor in "${flavors[@]}"; do
+            var_name="DISABLE_${flavor^^}_TESTS"
+            if [ "${!var_name:-false}" = "true" ]; then
+              echo "⏩ Skipping $flavor tests (disabled via \$${var_name})"
+              continue
+            fi
+
+            echo "🚀 Starting tests for flavor: $flavor"
+            if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc "
+              cd truth-android-client && \
+              ./gradlew connected${flavor^}DebugAndroidTest \
+                --continue --stacktrace --info -Pkotlin.warningsAsErrors=true
+            "; then
+              echo "⚠️ Tests for $flavor failed or timed out."
+            fi
+
+            # Collect per-flavor reports (best-effort)
+            mkdir -p \"\${ART_DIR}/reports/\$flavor\" || true
+            mkdir -p \"\${ART_DIR}/outputs/\$flavor\" || true
+            cp -R truth-android-client/app/build/reports/androidTests/connected \"\${ART_DIR}/reports/\$flavor/\" 2>/dev/null || true
+            cp -R truth-android-client/app/build/outputs/androidTest-results \"\${ART_DIR}/outputs/\$flavor/\" 2>/dev/null || true
+          done
+
+          echo "🚀 Running performance tests (timeout ${GRADLE_TIMEOUT_MIN}m)..."
+          if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc '
+            cd truth-android-client && \
+            ./gradlew connectedAndroidTest \
+              -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance \
+              --continue --stacktrace --info -Pkotlin.warningsAsErrors=true
+          '; then
+            echo "⚠️ Performance tests failed or timed out."
           fi
 
-          # Run performance tests (separate timeout)
-          echo "🚀 Running performance tests (timeout ${gradle_timeout_min}m)..."
-          adb wait-for-device || true
-          if ! run_with_timeout "${gradle_timeout_min}" 'cd truth-android-client && ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance --continue --stacktrace --info -Pkotlin.warningsAsErrors=true >> ../gradle-build.log 2>&1'; then
-            echo "⚠️ Performance tests failed or timed out (check ../gradle-build.log)"
-          fi
-
-          # Collect test reports and logs into ART_DIR
-          mkdir -p "${ART_DIR}/outputs" "${ART_DIR}/reports" "${ART_DIR}/logs" || true
-          cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/outputs/androidTest-results" "${ART_DIR}/outputs/" 2>/dev/null || true
-          cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/reports/androidTests" "${ART_DIR}/reports/" 2>/dev/null || true
-          cp -R "${GITHUB_WORKSPACE}/truth-android-client/app/build/test-results" "${ART_DIR}/" 2>/dev/null || true
-
-          # Copy gradle build log if present
-          if [ -f "${GITHUB_WORKSPACE}/gradle-build.log" ]; then
-            cp "${GITHUB_WORKSPACE}/gradle-build.log" "${ART_DIR}/logs/gradle-build.log" || true
-          fi
-
-          # Dump logcat if device is present
-          echo "🪵 Dumping logcat to ${ART_DIR}/logs/logcat.txt"
-          echo "=== LOGCAT DUMP ($(date)) ===" > "${ART_DIR}/logs/logcat.txt" || true
-          if adb get-state 1>/dev/null 2>&1; then
-            adb logcat -d >> "${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat failed" || true
-            du -h "${ART_DIR}/logs/logcat.txt" || true
-          else
-            echo "⚠️ No emulator/device detected — skipping logcat dump" >> "${ART_DIR}/logs/logcat.txt"
-          fi
-
-          # Small summary
-          FOUND_FILES=$(find "${ART_DIR}" -type f 2>/dev/null | wc -l | tr -d ' ')
-          if [ "${FOUND_FILES:-0}" -eq 0 ]; then
-            echo "⚠️ No reports collected; creating placeholder"
-            echo "no reports found" > "${ART_DIR}/no-reports.txt" || true
-          else
-            echo "✅ Collected ${FOUND_FILES} files under ${ART_DIR}"
-          fi
-
+          echo "📦 Collecting Gradle logs and logcat..."
+          mkdir -p "\${ART_DIR}/logs" || true
+          cp -f "\${GITHUB_WORKSPACE:-.}/gradle-build.log" "\${ART_DIR}/logs/gradle-build.log" 2>/dev/null || true
+          adb logcat -d > "\${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat dump failed"
+          du -h "\${ART_DIR}/logs/logcat.txt" || true
           EOF
 
           chmod +x "${SCRIPT_PATH}"
@@ -224,6 +174,7 @@ jobs:
           emulator-boot-timeout: 1800000
           emulator-options: -no-snapshot -no-snapshot-load -no-boot-anim -no-window -gpu swiftshader -noaudio -camera-back none -camera-front none
           script: ./run_tests.sh
+
  
       - name: Stop Android Emulator
         if: always()
