@@ -64,6 +64,15 @@ jobs:
           brew update || true
           brew install coreutils || true
 
+      - name: Enable Gradle caching and parallel builds
+        run: |
+          mkdir -p ~/.gradle
+          {
+            echo "org.gradle.caching=true"
+            echo "org.gradle.parallel=true"
+            echo "org.gradle.daemon=true"
+          } >> ~/.gradle/gradle.properties
+
       - name: Build and copy JNI libraries for tests
         run: |
           echo "Building Rust libraries for Android (x86_64 + arm64-v8a)"
@@ -134,7 +143,7 @@ jobs:
             esac
             if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc "
               cd truth-android-client && \
-              ./gradlew connected${FLV}DebugAndroidTest \
+              ./gradlew connected${FLV}DebugAndroidTest --build-cache \
                 --continue --stacktrace --info -Pkotlin.warningsAsErrors=true
             "; then
               echo "⚠️ Tests for $flavor failed or timed out."
@@ -145,12 +154,15 @@ jobs:
             mkdir -p \"\${ART_DIR}/outputs/\$flavor\" || true
             cp -R truth-android-client/app/build/reports/androidTests/connected \"\${ART_DIR}/reports/\$flavor/\" 2>/dev/null || true
             cp -R truth-android-client/app/build/outputs/androidTest-results \"\${ART_DIR}/outputs/\$flavor/\" 2>/dev/null || true
+            # Clear build outputs to avoid report overwrites in next flavor
+            rm -rf truth-android-client/app/build/reports/androidTests/connected || true
+            rm -rf truth-android-client/app/build/outputs/androidTest-results || true
           done
 
           echo "🚀 Running performance tests (timeout ${GRADLE_TIMEOUT_MIN}m)..."
           if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc '
             cd truth-android-client && \
-            ./gradlew connectedAndroidTest \
+            ./gradlew connectedAndroidTest --build-cache \
               -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance \
               --continue --stacktrace --info -Pkotlin.warningsAsErrors=true
           '; then
@@ -294,21 +306,21 @@ jobs:
         working-directory: truth-android-client
         run: |
           # Build each flavor separately to isolate issues
-          ./gradlew assembleLocalDebug --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalDebug build failed, continuing..."
-          ./gradlew assembleMockDebug --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockDebug build failed, continuing..."
-          ./gradlew assembleRemoteDebug --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteDebug build failed, continuing..."
-          ./gradlew assembleLocalDebugAndroidTest --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalDebugAndroidTest build failed, continuing..."
-          ./gradlew assembleMockDebugAndroidTest --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockDebugAndroidTest build failed, continuing..."
-          ./gradlew assembleRemoteDebugAndroidTest --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteDebugAndroidTest build failed, continuing..."
+          ./gradlew assembleLocalDebug --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalDebug build failed, continuing..."
+          ./gradlew assembleMockDebug --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockDebug build failed, continuing..."
+          ./gradlew assembleRemoteDebug --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteDebug build failed, continuing..."
+          ./gradlew assembleLocalDebugAndroidTest --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalDebugAndroidTest build failed, continuing..."
+          ./gradlew assembleMockDebugAndroidTest --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockDebugAndroidTest build failed, continuing..."
+          ./gradlew assembleRemoteDebugAndroidTest --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteDebugAndroidTest build failed, continuing..."
       
       - name: Build AAB (Release)
         if: matrix.buildType == 'release'
         working-directory: truth-android-client
         run: |
           # Build each flavor separately to isolate issues
-          ./gradlew bundleLocalRelease --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalRelease build failed, continuing..."
-          ./gradlew bundleMockRelease --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockRelease build failed, continuing..."
-          ./gradlew bundleRemoteRelease --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteRelease build failed, continuing..."
+          ./gradlew bundleLocalRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalRelease build failed, continuing..."
+          ./gradlew bundleMockRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockRelease build failed, continuing..."
+          ./gradlew bundleRemoteRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteRelease build failed, continuing..."
       
       - name: Upload APK artifacts
         if: ${{ matrix.buildType == 'debug' && !startsWith(github.ref, 'refs/tags/') }}
