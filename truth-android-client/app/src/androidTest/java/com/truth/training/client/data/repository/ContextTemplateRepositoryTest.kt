@@ -10,7 +10,7 @@ import com.truth.training.client.data.database.entities.ContextTemplateEntity
 import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.*
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Before
@@ -78,7 +78,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun createtemplateSavesLocallyAfterDuplicateCheck() = runBlocking {
+    fun createtemplateSavesLocallyAfterDuplicateCheck() = runTest {
         val request = CreateContextRequest(
             name = "Test Template",
             categoryId = 1,
@@ -104,7 +104,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun createtemplateDetectsDuplicateAndFails() = runBlocking {
+    fun createtemplateDetectsDuplicateAndFails() = runTest {
         val request = CreateContextRequest(
             name = "Template 1",
             categoryId = 1,
@@ -135,7 +135,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun createtemplateAllowsTemplatesWithAllNullFields() = runBlocking {
+    fun createtemplateAllowsTemplatesWithAllNullFields() = runTest {
         val request = CreateContextRequest(
             name = "Empty Template",
             categoryId = null,
@@ -156,7 +156,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun createtemplateAllowsTemplatesWithPartialFields() = runBlocking {
+    fun createtemplateAllowsTemplatesWithPartialFields() = runTest {
         val request = CreateContextRequest(
             name = "Partial Template",
             categoryId = 1,
@@ -177,7 +177,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun updatetemplateUpdatesLocallyAfterDuplicateValidation() = runBlocking {
+    fun updatetemplateUpdatesLocallyAfterDuplicateValidation() = runTest {
         // Create template first
         val createRequest = CreateContextRequest(
             name = "Original",
@@ -214,7 +214,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun updatetemplateDetectsDuplicateWhenExcludingCurrentId() = runBlocking {
+    fun updatetemplateDetectsDuplicateWhenExcludingCurrentId() = runTest {
         // Create two different templates
         val template1Request = CreateContextRequest(
             name = "Template 1",
@@ -253,7 +253,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun updatetemplateHandlesErrorWhenTemplateNotFound() = runBlocking {
+    fun updatetemplateHandlesErrorWhenTemplateNotFound() = runTest {
         val updateRequest = CreateContextRequest(
             name = "Updated",
             categoryId = 1,
@@ -270,7 +270,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun deletetemplateDeletesLocallyImmediately() = runBlocking {
+    fun deletetemplateDeletesLocallyImmediately() = runTest {
         val createRequest = CreateContextRequest(
             name = "To Delete",
             categoryId = 1,
@@ -292,7 +292,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun deletetemplateHandlesErrorWhenTemplateNotFound() = runBlocking {
+    fun deletetemplateHandlesErrorWhenTemplateNotFound() = runTest {
         val result = repository.deleteTemplate(9999)
         
         assertTrue(result.isFailure)
@@ -300,7 +300,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun matchtemplateMatchesByNonNullFields() = runBlocking {
+    fun matchtemplateMatchesByNonNullFields() = runTest {
         // Create template with specific fields
         val createRequest = CreateContextRequest(
             name = "Match Template",
@@ -326,7 +326,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun matchtemplateReturnsNullWhenNoMatchFound() = runBlocking {
+    fun matchtemplateReturnsNullWhenNoMatchFound() = runTest {
         // Create template
         val createRequest = CreateContextRequest(
             name = "Template",
@@ -351,7 +351,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun matchtemplateHandlesPartialFieldMatching() = runBlocking {
+    fun matchtemplateHandlesPartialFieldMatching() = runTest {
         // Create template with partial fields
         val createRequest = CreateContextRequest(
             name = "Partial Match",
@@ -377,7 +377,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun syncfromserverSyncsTemplatesFromApiToLocalDatabase() = runBlocking {
+    fun syncfromserverSyncsTemplatesFromApiToLocalDatabase() = runTest {
         // Mock API response
         val templateDto = ContextTemplate(
             id = 100,
@@ -413,7 +413,7 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun syncfromserverHandlesApiError() = runBlocking {
+    fun syncfromserverHandlesApiError() = runTest {
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(500)
@@ -426,32 +426,33 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun getalltemplatesflowEmitsTemplatesReactively() = runBlocking {
-        // Create multiple templates
+    fun getalltemplatesflowEmitsTemplatesReactively() = runTest {
+        // Create multiple templates with different fields to avoid duplicate detection
         repeat(3) { i ->
             val request = CreateContextRequest(
                 name = "Template $i",
-                categoryId = 1,
+                categoryId = i + 1, // Different categoryId for each template to avoid duplicates
                 formaId = 2,
                 causeId = 3,
                 developId = 4,
                 effectId = 5
             )
-            repository.createTemplate(request)
+            val result = repository.createTemplate(request)
+            assertTrue("Template $i should be created successfully", result.isSuccess)
         }
         
         // Test Flow emission
         val flow = repository.getAllTemplatesFlow()
         val templates = flow.first()
         
-        assertEquals(3, templates.size)
+        assertEquals("Should have 3 templates", 3, templates.size)
         assertTrue(templates.any { it.name == "Template 0" })
         assertTrue(templates.any { it.name == "Template 1" })
         assertTrue(templates.any { it.name == "Template 2" })
     }
 
     @Test
-    fun gettemplatebynameReturnsTemplateByName() = runBlocking {
+    fun gettemplatebynameReturnsTemplateByName() = runTest {
         val request = CreateContextRequest(
             name = "Unique Name",
             categoryId = 1,
@@ -468,27 +469,28 @@ class ContextTemplateRepositoryTest {
     }
 
     @Test
-    fun gettemplatebynameReturnsNullForNonExistentTemplate() = runBlocking {
+    fun gettemplatebynameReturnsNullForNonExistentTemplate() = runTest {
         val retrieved = repository.getTemplateByName("Non Existent")
         assertNull(retrieved)
     }
 
     @Test
-    fun listtemplatesReturnsAllTemplates() = runBlocking {
+    fun listtemplatesReturnsAllTemplates() = runTest {
         repeat(5) { i ->
             val request = CreateContextRequest(
                 name = "Template $i",
-                categoryId = 1,
+                categoryId = i + 1, // Different categoryId for each template to avoid duplicates
                 formaId = 2,
                 causeId = 3,
                 developId = 4,
                 effectId = 5
             )
-            repository.createTemplate(request)
+            val result = repository.createTemplate(request)
+            assertTrue("Template $i should be created successfully", result.isSuccess)
         }
         
         val templates = repository.listTemplates()
-        assertEquals(5, templates.size)
+        assertEquals("Should have 5 templates", 5, templates.size)
     }
 }
 

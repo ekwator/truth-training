@@ -10,7 +10,7 @@ import com.truth.training.client.data.database.entities.EventEntity
 import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.*
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Before
@@ -87,7 +87,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun createeventSavesLocallyImmediately() = runBlocking {
+    fun createeventSavesLocallyImmediately() = runTest {
         val request = CreateEventRequest(
             title = "Test Event",
             description = "Test description",
@@ -114,7 +114,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun updateeventUpdatesLocallyImmediately() = runBlocking {
+    fun updateeventUpdatesLocallyImmediately() = runTest {
         // Create event first
         val createRequest = CreateEventRequest(
             title = "Original",
@@ -149,7 +149,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun updateeventHandlesConflictWhenEventNotFound() = runBlocking {
+    fun updateeventHandlesConflictWhenEventNotFound() = runTest {
         val updateRequest = UpdateEventRequest(
             title = "Updated",
             description = "Updated description"
@@ -162,7 +162,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun deleteeventDeletesLocallyImmediately() = runBlocking {
+    fun deleteeventDeletesLocallyImmediately() = runTest {
         // Create event first
         val createRequest = CreateEventRequest(
             title = "To Delete",
@@ -189,7 +189,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun deleteeventHandlesErrorWhenEventNotFound() = runBlocking {
+    fun deleteeventHandlesErrorWhenEventNotFound() = runTest {
         val result = repository.deleteEvent("non_existent_id")
         
         assertTrue(result.isFailure)
@@ -197,7 +197,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun syncfromserverSyncsEventsFromApiToLocalDatabase() = runBlocking {
+    fun syncfromserverSyncsEventsFromApiToLocalDatabase() = runTest {
         // Mock API response
         val eventDto = EventResponse(
             id = "server_event_1",
@@ -238,7 +238,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun syncfromserverHandlesApiError() = runBlocking {
+    fun syncfromserverHandlesApiError() = runTest {
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(500)
@@ -251,7 +251,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun getalleventsflowEmitsEventsReactively() = runBlocking {
+    fun getalleventsflowEmitsEventsReactively() = runTest {
         // Create multiple events
         repeat(3) { i ->
             val request = CreateEventRequest(
@@ -279,13 +279,13 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun geteventbyidReturnsNullForNonExistentEvent() = runBlocking {
+    fun geteventbyidReturnsNullForNonExistentEvent() = runTest {
         val result = repository.getEventById("non_existent")
         assertNull(result)
     }
 
     @Test
-    fun geteventbyidReturnsEventFromLocalDatabase() = runBlocking {
+    fun geteventbyidReturnsEventFromLocalDatabase() = runTest {
         val request = CreateEventRequest(
             title = "Test Event",
             description = "Test description",
@@ -306,7 +306,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun listeventsReturnsPaginatedEvents() = runBlocking {
+    fun listeventsReturnsPaginatedEvents() = runTest {
         // Create 10 events
         repeat(10) { i ->
             val request = CreateEventRequest(
@@ -331,7 +331,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun listeventsFiltersByStatus() = runBlocking {
+    fun listeventsFiltersByStatus() = runTest {
         // Create events with different statuses
         val activeRequest = CreateEventRequest(
             title = "Active Event",
@@ -357,7 +357,7 @@ class EventRepositoryTest {
     }
 
     @Test
-    fun offlineFirstBehaviorCreateWorksWithoutNetwork() = runBlocking {
+    fun offlineFirstBehaviorCreateWorksWithoutNetwork() = runTest {
         // Simulate network failure by using repository with null API
         val offlineRepository = EventRepository(database, null)
         
