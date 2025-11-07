@@ -144,17 +144,22 @@ jobs:
 
           # Dynamically disable any flavor based on environment variables
           for flavor in local mock remote; do
-            upper_flavor=$(printf '%s' "$flavor" | tr '[:lower:]' '[:upper:]')
-            var_name="DISABLE_${upper_flavor}_TESTS"
-            eval val="\${${var_name}:-false}"
-            if [ "$val" = "true" ]; then
-              echo "⏩ Skipping $flavor tests (disabled via $var_name)"
+            upper_flavor=\$(printf '%s' "\$flavor" | tr '[:lower:]' '[:upper:]')
+            var_name="DISABLE_\${upper_flavor}_TESTS"
+            # Use indirect variable expansion with default value
+            # This expands to: eval "val=\${DISABLE_LOCAL_TESTS:-false}" etc.
+            # Use set +u temporarily to avoid errors with unset variables
+            set +u
+            eval "val=\\\$\${var_name}:-false"
+            set -u
+            if [ "\${val}" = "true" ]; then
+              echo "⏩ Skipping \${flavor} tests (disabled via \${var_name})"
               continue
             fi
 
-            echo "🚀 Starting tests for flavor: $flavor"
+            echo "🚀 Starting tests for flavor: \${flavor}"
             # Map to Gradle task case
-            case "$flavor" in
+            case "\${flavor}" in
               local) FLV=Local ;;
               mock) FLV=Mock ;;
               remote) FLV=Remote ;;
