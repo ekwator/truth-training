@@ -259,10 +259,9 @@ jobs:
           ART_DIR="${{ env.ART_DIR }}"
           if [ -d "$ART_DIR" ]; then
             echo "📁 Artifacts directory exists: $ART_DIR"
-            find "$ART_DIR" -type f | head -20 || echo "⚠️ No files found"
             echo "Total files: $(find "$ART_DIR" -type f 2>/dev/null | wc -l || echo 0)"
             echo "📂 Directory structure:"
-            ls -laR "$ART_DIR" | head -50 || true
+            ls -laR "$ART_DIR" || true
           else
             echo "⚠️ Artifacts directory not found: $ART_DIR"
             echo "Checking workspace root..."
