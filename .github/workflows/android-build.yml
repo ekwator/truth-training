@@ -95,7 +95,10 @@ jobs:
           BOOT_TIMEOUT="${BOOT_TIMEOUT:-300}"
           GRADLE_TIMEOUT_MIN="${GRADLE_TIMEOUT_MIN:-150}"
 
-          cat > "${SCRIPT_PATH}" <<'EOF'
+          # Export ART_DIR so it's available in the script
+          export ART_DIR
+
+          cat > "${SCRIPT_PATH}" <<EOF
           #!/usr/bin/env bash
           set -euo pipefail
 
@@ -104,14 +107,27 @@ jobs:
             alias timeout='gtimeout'
           fi
 
-          ART_DIR="${ART_DIR:-${GITHUB_WORKSPACE:-$(pwd)}/android-test-artifacts}"
-          BOOT_TIMEOUT="${BOOT_TIMEOUT:-300}"
-          GRADLE_TIMEOUT_MIN="${GRADLE_TIMEOUT_MIN:-150}"
+          # Determine ART_DIR - use environment variable if set, otherwise use the value from workflow or fallback
+          ART_DIR="\${ART_DIR:-${ART_DIR}}"
+          if [ -z "\${ART_DIR}" ]; then
+            if [ -n "\${GITHUB_WORKSPACE:-}" ]; then
+              ART_DIR="\${GITHUB_WORKSPACE}/android-test-artifacts"
+            else
+              ART_DIR="\$(pwd)/android-test-artifacts"
+            fi
+          fi
+          export ART_DIR
+          BOOT_TIMEOUT="\${BOOT_TIMEOUT:-${BOOT_TIMEOUT}}"
+          GRADLE_TIMEOUT_MIN="\${GRADLE_TIMEOUT_MIN:-${GRADLE_TIMEOUT_MIN}}"
+          
+          echo "📁 ART_DIR is set to: \${ART_DIR}"
+          echo "📁 GITHUB_WORKSPACE: \${GITHUB_WORKSPACE:-not set}"
+          echo "📁 Current directory: \$(pwd)"
 
-          echo "⏳ Waiting for Android system to finish booting (timeout: ${BOOT_TIMEOUT}s)..."
-          for i in $(seq 1 "${BOOT_TIMEOUT}"); do
+          echo "⏳ Waiting for Android system to finish booting (timeout: \${BOOT_TIMEOUT}s)..."
+          for i in \$(seq 1 "\${BOOT_TIMEOUT}"); do
             if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
-              echo "✅ Device reported sys.boot_completed after ${i}s"
+              echo "✅ Device reported sys.boot_completed after \${i}s"
               break
             fi
             sleep 1
@@ -123,8 +139,10 @@ jobs:
 
           echo "📱 Running connected tests sequentially..."
 
+          # Create ART_DIR at the start to ensure it exists
+          mkdir -p "\${ART_DIR}/reports" "\${ART_DIR}/outputs" "\${ART_DIR}/logs" || true
+
           # Dynamically disable any flavor based on environment variables
-          first_flavor=true
           for flavor in local mock remote; do
             upper_flavor=$(printf '%s' "$flavor" | tr '[:lower:]' '[:upper:]')
             var_name="DISABLE_${upper_flavor}_TESTS"
@@ -142,58 +160,66 @@ jobs:
               remote) FLV=Remote ;;
               *) FLV=Local ;;
             esac
-            # Run Gradle tests and redirect all output to gradle-build.log
-            # First flavor overwrites, subsequent flavors append
-            # add --info for more detailed information
-            if [ "$first_flavor" = "true" ]; then
-              redirect_op=">"
-              first_flavor=false
-            else
-              redirect_op=">>"
-            fi
-            if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc "
+            # Generate log filename based on flavor
+            LOG_FILE="gradle-build-\${flavor}.log"
+            # Run Gradle tests and redirect all output to flavor-specific log file
+            if ! timeout "\${GRADLE_TIMEOUT_MIN}m" bash -lc "
               cd truth-android-client && \
-              ./gradlew connected${FLV}DebugAndroidTest --build-cache \
+              ./gradlew connected\${FLV}DebugAndroidTest --build-cache \
               --continue --stacktrace --info -Pkotlin.warningsAsErrors=true \
-              ${redirect_op} ../gradle-build.log 2>&1
+              > ../\${LOG_FILE} 2>&1
            "; then
-              echo "⚠️ Tests for $flavor failed or timed out." | tee -a ../gradle-build.log
+              echo "⚠️ Tests for \${flavor} failed or timed out." | tee -a ../\${LOG_FILE}
+            fi
+
+            # Copy flavor-specific log to ART_DIR
+            if [ -f "../\${LOG_FILE}" ]; then
+              cp -f "../\${LOG_FILE}" "\${ART_DIR}/logs/\${LOG_FILE}" || true
             fi
 
             # Collect per-flavor reports (best-effort)
-            mkdir -p \"\${ART_DIR}/reports/\$flavor\" || true
-            mkdir -p \"\${ART_DIR}/outputs/\$flavor\" || true
-            cp -R truth-android-client/app/build/reports/androidTests/connected \"\${ART_DIR}/reports/\$flavor/\" 2>/dev/null || true
-            cp -R truth-android-client/app/build/outputs/androidTest-results \"\${ART_DIR}/outputs/\$flavor/\" 2>/dev/null || true
+            mkdir -p "\${ART_DIR}/reports/\$flavor" || true
+            mkdir -p "\${ART_DIR}/outputs/\$flavor" || true
+            cp -R truth-android-client/app/build/reports/androidTests/connected "\${ART_DIR}/reports/\$flavor/" 2>/dev/null || true
+            cp -R truth-android-client/app/build/outputs/androidTest-results "\${ART_DIR}/outputs/\$flavor/" 2>/dev/null || true
             # Clear build outputs to avoid report overwrites in next flavor
             rm -rf truth-android-client/app/build/reports/androidTests/connected || true
             rm -rf truth-android-client/app/build/outputs/androidTest-results || true
           done
 
-          echo "🚀 Running performance tests (timeout ${GRADLE_TIMEOUT_MIN}m)..."
-          # add --info for more detailed information
-          if ! timeout "${GRADLE_TIMEOUT_MIN}m" bash -lc '
+          echo "🚀 Running performance tests (timeout \${GRADLE_TIMEOUT_MIN}m)..."
+          PERF_LOG_FILE="gradle-build-perf.log"
+          if ! timeout "\${GRADLE_TIMEOUT_MIN}m" bash -lc "
             cd truth-android-client && \
             ./gradlew connectedAndroidTest --build-cache \
             -Pandroid.testInstrumentationRunnerArguments=package=com.truth.training.client.performance \
             --continue --stacktrace --info -Pkotlin.warningsAsErrors=true \
-            >> ../gradle-build.log 2>&1
-          '; then
-            echo "⚠️ Performance tests failed or timed out." | tee -a ../gradle-build.log
+            > ../\${PERF_LOG_FILE} 2>&1
+          "; then
+            echo "⚠️ Performance tests failed or timed out." | tee -a ../\${PERF_LOG_FILE}
+          fi
+
+          # Copy performance log to ART_DIR
+          if [ -f "../\${PERF_LOG_FILE}" ]; then
+            cp -f "../\${PERF_LOG_FILE}" "\${ART_DIR}/logs/\${PERF_LOG_FILE}" || true
           fi
 
           echo "📦 Collecting Gradle logs and logcat..."
-          mkdir -p "\${ART_DIR}/logs" || true
-          # Copy gradle build log from workspace root if present
-          if [ -f "gradle-build.log" ]; then
-            cp -f "gradle-build.log" "\${ART_DIR}/logs/gradle-build.log" || true
-          elif [ -f "\${GITHUB_WORKSPACE}/gradle-build.log" ]; then
-            cp -f "\${GITHUB_WORKSPACE}/gradle-build.log" "\${ART_DIR}/logs/gradle-build.log" || true
-          else
-            echo "⚠️ No gradle-build.log found in workspace root"
-          fi
           adb logcat -d > "\${ART_DIR}/logs/logcat.txt" 2>/dev/null || echo "⚠️ logcat dump failed"
           du -h "\${ART_DIR}/logs/logcat.txt" || true
+          
+          # Final summary of collected artifacts
+          echo ""
+          echo "📊 Summary of collected artifacts:"
+          echo "📁 ART_DIR: \${ART_DIR}"
+          if [ -d "\${ART_DIR}" ]; then
+            echo "✅ Artifacts directory exists"
+            echo "📂 Directory contents:"
+            find "\${ART_DIR}" -type f | head -20 || echo "⚠️ No files found"
+            echo "Total files collected: $(find "\${ART_DIR}" -type f 2>/dev/null | wc -l | tr -d ' ' || echo 0)"
+          else
+            echo "❌ Artifacts directory does not exist: \${ART_DIR}"
+          fi
           EOF
 
           chmod +x "${SCRIPT_PATH}"
@@ -225,8 +251,18 @@ jobs:
         if: always()
         run: |
           echo "✅ Listing collected test reports..."
-          find "${{ env.ART_DIR }}" -type f | head -20 || echo "⚠️ No files found"
-          echo "Total files: $(find "${{ env.ART_DIR }}" -type f 2>/dev/null | wc -l || echo 0)"
+          ART_DIR="${{ env.ART_DIR }}"
+          if [ -d "$ART_DIR" ]; then
+            echo "📁 Artifacts directory exists: $ART_DIR"
+            find "$ART_DIR" -type f | head -20 || echo "⚠️ No files found"
+            echo "Total files: $(find "$ART_DIR" -type f 2>/dev/null | wc -l || echo 0)"
+            echo "📂 Directory structure:"
+            ls -laR "$ART_DIR" | head -50 || true
+          else
+            echo "⚠️ Artifacts directory not found: $ART_DIR"
+            echo "Checking workspace root..."
+            ls -la "${{ github.workspace }}" | grep -E "(android-test|artifacts|gradle-build)" || echo "No matching directories found"
+          fi
       
       - name: Upload test results
         if: always()
@@ -234,7 +270,7 @@ jobs:
         with:
           name: test-results
           path: |
-            ${{ env.ART_DIR }}/**/*.*
+            ${{ env.ART_DIR }}/**/*
           retention-days: 7
           if-no-files-found: warn
 
