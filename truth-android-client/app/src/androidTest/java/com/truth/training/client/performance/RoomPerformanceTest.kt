@@ -130,17 +130,14 @@ class RoomPerformanceTest {
      */
     private suspend fun populateDatabase(size: Int) {
         database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=OFF")
-        database.runInTransaction {
-            kotlinx.coroutines.runBlocking {
-                repeat(size) { index ->
-                    val event = createTestEvent(
-                        id = "event_$index",
-                        title = "Event $index",
-                        status = if (index % 2 == 0) "active" else "completed"
-                    )
-                    eventDao.insertEvent(event)
-                }
-            }
+        // Execute inserts sequentially (for performance tests, transaction overhead is acceptable)
+        repeat(size) { index ->
+            val event = createTestEvent(
+                id = "event_$index",
+                title = "Event $index",
+                status = if (index % 2 == 0) "active" else "completed"
+            )
+            eventDao.insertEvent(event)
         }
         database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=ON")
     }
@@ -296,11 +293,10 @@ class RoomPerformanceTest {
         
         val (_, time) = measureTime {
             database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=OFF")
-            database.runInTransaction {
-                kotlinx.coroutines.runBlocking {
-                    events.forEach { event ->
-                        eventDao.insertEvent(event)
-                    }
+            // Execute inserts sequentially (for performance tests)
+            kotlinx.coroutines.runBlocking {
+                events.forEach { event ->
+                    eventDao.insertEvent(event)
                 }
             }
             database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=ON")

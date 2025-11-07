@@ -7,7 +7,7 @@ import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.repository.EventRepository
 import com.truth.training.client.data.network.dto.CreateEventRequest
 import com.truth.training.client.data.network.dto.EventResponse
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -38,7 +38,7 @@ class CrossPlatformSyncTest {
     }
 
     @Test
-    fun eventsCreatedInAndroidMatchDesktopV100Schema() = runBlocking {
+    fun eventsCreatedInAndroidMatchDesktopV100Schema() = runTest {
         // Step 1: Create event with all embedded fields (v1.0.0 schema)
         val request = CreateEventRequest(
             title = "Cross-Platform Event",
@@ -100,7 +100,7 @@ class CrossPlatformSyncTest {
     }
 
     @Test
-    fun eventsWithPartialContextFieldsAreValid() = runBlocking {
+    fun eventsWithPartialContextFieldsAreValid() = runTest {
         // Event with only some context fields
         val request = CreateEventRequest(
             title = "Partial Context Event",
