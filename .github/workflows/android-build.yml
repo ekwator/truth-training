@@ -215,13 +215,9 @@ jobs:
           
           # Final summary of collected artifacts
           echo ""
-          echo "📊 Summary of collected artifacts:"
           echo "📁 ART_DIR: \${ART_DIR}"
           if [ -d "\${ART_DIR}" ]; then
             echo "✅ Artifacts directory exists"
-            echo "📂 Directory contents:"
-            find "\${ART_DIR}" -type f | head -20 || echo "⚠️ No files found"
-            echo "Total files collected: \$(find "\${ART_DIR}" -type f 2>/dev/null | wc -l | tr -d ' ' || echo 0)"
           else
             echo "❌ Artifacts directory does not exist: \${ART_DIR}"
           fi
@@ -259,14 +255,8 @@ jobs:
           ART_DIR="${{ env.ART_DIR }}"
           if [ -d "$ART_DIR" ]; then
             echo "📁 Artifacts directory exists: $ART_DIR"
-            find "$ART_DIR" -type f | head -20 || echo "⚠️ No files found"
-            echo "Total files: $(find "$ART_DIR" -type f 2>/dev/null | wc -l || echo 0)"
-            echo "📂 Directory structure:"
-            ls -laR "$ART_DIR" | head -50 || true
           else
             echo "⚠️ Artifacts directory not found: $ART_DIR"
-            echo "Checking workspace root..."
-            ls -la "${{ github.workspace }}" | grep -E "(android-test|artifacts|gradle-build)" || echo "No matching directories found"
           fi
       
       - name: Upload test results
