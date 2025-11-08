@@ -8,6 +8,8 @@ import com.truth.training.client.data.database.daos.EventDao
 import com.truth.training.client.data.database.entities.EventEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -127,17 +129,24 @@ class RoomPerformanceTest {
 
     /**
      * Populate database with specified number of events.
+     * Optimized for large datasets by using batch inserts in transactions.
      */
     private suspend fun populateDatabase(size: Int) {
         database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=OFF")
-        // Execute inserts sequentially (for performance tests, transaction overhead is acceptable)
-        repeat(size) { index ->
-            val event = createTestEvent(
-                id = "event_$index",
-                title = "Event $index",
-                status = if (index % 2 == 0) "active" else "completed"
-            )
-            eventDao.insertEvent(event)
+        database.openHelper.writableDatabase.beginTransaction()
+        try {
+            // Batch inserts in transaction for better performance
+            repeat(size) { index ->
+                val event = createTestEvent(
+                    id = "event_$index",
+                    title = "Event $index",
+                    status = if (index % 2 == 0) "active" else "completed"
+                )
+                eventDao.insertEvent(event)
+            }
+            database.openHelper.writableDatabase.setTransactionSuccessful()
+        } finally {
+            database.openHelper.writableDatabase.endTransaction()
         }
         database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=ON")
     }
@@ -224,7 +233,7 @@ class RoomPerformanceTest {
     }
 
     @Test
-    fun benchmarkPaginationQueryWith10000Events() = runTest {
+    fun benchmarkPaginationQueryWith10000Events() = runTest(timeout = 5.minutes) {
         populateDatabase(10000)
         warmUpDatabase()
         
@@ -294,10 +303,8 @@ class RoomPerformanceTest {
         val (_, time) = measureTime {
             database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=OFF")
             // Execute inserts sequentially (for performance tests)
-            kotlinx.coroutines.runBlocking {
-                events.forEach { event ->
-                    eventDao.insertEvent(event)
-                }
+            events.forEach { event ->
+                eventDao.insertEvent(event)
             }
             database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=ON")
         }

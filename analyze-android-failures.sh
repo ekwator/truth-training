@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # analyze-android-failures.sh
 # Scans Android test artifacts directory and extracts failed tests, warnings and log snippets.
-# Produces analysis into OUT_DIR and a Cursor AI prompt at cursor-prompt.md.
+# Produces comprehensive analysis into OUT_DIR and a self-contained Cursor AI prompt at cursor-prompt.md.
+#
+# Merged from old and new versions to combine:
+# - Sophisticated XML parsing and flavor statistics (new)
+# - Context lines around exceptions/warnings (old)
+# - Failed test name extraction (old)
+# - Comprehensive logcat sampling (merged)
 #
 # Usage:
 #   ./analyze-android-failures.sh
@@ -24,6 +30,8 @@ FAIL_SUM="${OUT_DIR}/failures-summary.txt"
 WARN_SUM="${OUT_DIR}/warnings-summary.txt"
 TOP_ERR="${OUT_DIR}/top-errors.txt"
 FLAVOR_STATS="${OUT_DIR}/flavor-statistics.txt"
+FAILED_TEST_NAMES="${OUT_DIR}/failed-test-names.txt"
+LOGCAT_SAMPLE="${OUT_DIR}/sample-logcat.txt.log"
 CURSOR_PROMPT="${OUT_DIR}/cursor-prompt.md"
 
 # Helpers
@@ -35,9 +43,11 @@ sep() { printf '\n==== %s ====\n\n' "$1"; }
 : > "${WARN_SUM}"
 : > "${TOP_ERR}"
 : > "${FLAVOR_STATS}"
+: > "${FAILED_TEST_NAMES}"
+: > "${LOGCAT_SAMPLE}"
 : > "${CURSOR_PROMPT}"
 
-ech "Starting analysis of test artifacts in: ${ART_DIR}"
+ech "🧪 Starting analysis of test artifacts in: ${ART_DIR}"
 ech "Output -> ${OUT_DIR}"
 sep "Found TEST XML files"
 
@@ -85,7 +95,7 @@ for f in "${TEST_XMLS[@]}"; do
   FLAVOR_FAIL_COUNT["${flavor}"]=$((prev_fails + failures_here))
   
   if [ "${failures_here}" -gt 0 ]; then
-    ech "  failures: ${failures_here}" >> "${FAIL_SUM}"
+    ech "  ❌ failures: ${failures_here}" >> "${FAIL_SUM}"
     ech "File: ${f} (flavor: ${flavor})" >> "${FAIL_SUM}"
     # Extract testcase entries and their failure text (works without xmllint)
     # We capture testcase start to end and then print classname/name and first lines of failure
@@ -112,8 +122,13 @@ for f in "${TEST_XMLS[@]}"; do
       }
     ' "${f}" >> "${FAIL_SUM}" || true
 
+    # Extract failed test names (from old script logic)
+    grep -E "<testcase|Test" "${f}" 2>/dev/null | \
+      grep -E "failure|Exception|Assertion" -B1 2>/dev/null | \
+      grep -E "name=" | \
+      sed -E 's/.*name="([^"]+)".*/• \1/' | sort -u >> "${FAILED_TEST_NAMES}" || true
+
     # Also append whole <failure> sections to separate file for deeper inspection
-    # Extract with sed: between <testcase ...> and </testcase> that contains <failure>
     awk 'BEGIN{RS="</testcase>";ORS="\n\n----\n\n"} /<testcase/ && /<failure|<error/ {print $0}' "${f}" >> "${OUT_DIR}/raw-failures.log" || true
     fail_count=$((fail_count+failures_here))
   fi
@@ -168,9 +183,24 @@ else
   done
 fi
 
-# Search logcat and utp logs
-mapfile -t LOGFILES < <(find "${ART_DIR}" -type f \( -iname 'logcat*.txt' -o -iname 'utp.*.log' -o -iname '*.log' -o -iname 'testlog' \) 2>/dev/null || true)
-ech "Found ${#LOGFILES[@]} log files to scan (logcat/utp/testlog/...)"
+# Search logcat and utp logs (enhanced from old script)
+mapfile -t LOGCAT_FILES < <(find "${ART_DIR}" -type f -iname 'logcat*.txt' 2>/dev/null | sort || true)
+mapfile -t LOGFILES < <(find "${ART_DIR}" -type f \( -iname 'utp.*.log' -o -iname '*.log' -o -iname 'testlog' \) 2>/dev/null | sort || true)
+
+ech "Found ${#LOGCAT_FILES[@]} logcat files and ${#LOGFILES[@]} other log files to scan"
+
+# Create logcat sample file (merged feature)
+if [ "${#LOGCAT_FILES[@]}" -gt 0 ]; then
+  ech "Creating logcat sample from first logcat file..."
+  first_logcat="${LOGCAT_FILES[0]}"
+  filesize=$(wc -c < "${first_logcat}" || echo 0)
+  if [ "${filesize}" -gt $((1024*1024*5)) ]; then
+    # Sample first and last 2000 lines for huge files
+    ( head -n 2000 "${first_logcat}"; echo -e "\n...SKIP (file too large, showing first/last 2000 lines)...\n"; tail -n 2000 "${first_logcat}" ) > "${LOGCAT_SAMPLE}" || true
+  else
+    cp "${first_logcat}" "${LOGCAT_SAMPLE}" || true
+  fi
+fi
 
 # Aggregate top error/warning messages across logs
 declare -A ERRCOUNT
@@ -201,7 +231,48 @@ for gl in "${GRADLE_LOGS[@]}"; do
   done < <(grep -I -E 'WARN|WARNING' "${scanfile}" 2>/dev/null || true)
 done
 
-# Process other log files (logcat, utp, etc.)
+# Process logcat files with context lines (from old script)
+# Limit to first 20 logcat files to avoid hanging
+ech "Processing logcat files with context lines (limited to first 20 files)..."
+logcat_count=0
+for lf in "${LOGCAT_FILES[@]}"; do
+  if [ "${logcat_count}" -ge 20 ]; then
+    break
+  fi
+  logcat_count=$((logcat_count + 1))
+  # Extract exceptions with context (from old script: -A3 -B1)
+  grep -E "Exception|AssertionFailed|Error:" "${lf}" -A3 -B1 2>/dev/null | \
+    sed 's/^/🔥 /' >> "${TOP_ERR}" || true
+  
+  # Extract warnings with context
+  grep -E "WARN|Deprecated|timeout|slow|Skipped" "${lf}" -A1 -B1 2>/dev/null | \
+    sed 's/^/⚠️ /' >> "${WARN_SUM}" || true
+  
+  # Aggregate for pattern counting
+  filesize=$(wc -c < "${lf}" || echo 0)
+  if [ "${filesize}" -gt $((1024*1024*5)) ]; then
+    tmp="${OUT_DIR}/sample-$(basename "${lf}").log"
+    ( head -n 2000 "${lf}"; echo -e "\n...SKIP...\n"; tail -n 2000 "${lf}" ) > "${tmp}" || true
+    scanfile="${tmp}"
+  else
+    scanfile="${lf}"
+  fi
+
+  # find ERROR/Exception/FATAL lines for pattern counting
+  while IFS= read -r line; do
+    key=$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//' | sed -E 's/(:[[:space:]].*)$//' | cut -c1-200)
+    key="${key:-<empty>}"
+    ERRCOUNT["$key"]=$((${ERRCOUNT["$key"]:-0} + 1))
+  done < <(grep -I -E 'Exception|ERROR|FATAL|Caused by:' "${scanfile}" 2>/dev/null || true)
+
+  # find WARNING lines for pattern counting
+  while IFS= read -r line; do
+    key=$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//' | cut -c1-240)
+    WARNCOUNT["$key"]=$((${WARNCOUNT["$key"]:-0} + 1))
+  done < <(grep -I -E 'WARN|WARNING' "${scanfile}" 2>/dev/null || true)
+done
+
+# Process other log files (utp, etc.)
 for lf in "${LOGFILES[@]}"; do
   # Skip gradle logs as they're already processed
   if [[ "$lf" =~ gradle-build ]]; then
@@ -234,7 +305,7 @@ for lf in "${LOGFILES[@]}"; do
   done < <(grep -I -E 'WARN|WARNING' "${scanfile}" 2>/dev/null || true)
 done
 
-# Write top errors
+# Write top errors (enhanced with pattern counts)
 ech "Top error patterns (sample) -> ${TOP_ERR}"
 {
   echo "Top error/exception patterns across logs (count:pattern). Sample lines follow."
@@ -244,7 +315,7 @@ ech "Top error patterns (sample) -> ${TOP_ERR}"
   done | sort -rn -t'|' -k1 | head -n 60
 } >> "${TOP_ERR}"
 
-# Warnings summary
+# Warnings summary (enhanced)
 {
   echo "Top warnings (count:message)"
   echo
@@ -260,12 +331,13 @@ sep "SUMMARY"
 ech "Detected test xml files: ${total_tests_found}"
 ech "Detected failed assertions (approx): ${fail_count}"
 ech "Gradle log files processed: ${#GRADLE_LOGS[@]}"
+ech "Logcat files processed: ${#LOGCAT_FILES[@]}"
 ech "Other log files processed: ${#LOGFILES[@]}"
 ech "Analysis written to: ${OUT_DIR}"
 ech ""
 
-# Build cursor prompt
-sep "Generating Cursor AI prompt -> ${CURSOR_PROMPT}"
+# Build comprehensive cursor prompt (self-contained with actual content)
+sep "Generating comprehensive Cursor AI prompt -> ${CURSOR_PROMPT}"
 
 # Build list of gradle logs found
 GRADLE_LOG_LIST=""
@@ -275,135 +347,174 @@ else
   GRADLE_LOG_LIST="none found"
 fi
 
-# Read flavor statistics into variable
+# Read all summary files into variables for embedding
 FLAVOR_STATS_CONTENT=""
-if [ -f "${FLAVOR_STATS}" ]; then
+if [ -f "${FLAVOR_STATS}" ] && [ -s "${FLAVOR_STATS}" ]; then
   FLAVOR_STATS_CONTENT=$(cat "${FLAVOR_STATS}")
+else
+  FLAVOR_STATS_CONTENT="(no flavor statistics available)"
+fi
+
+FAIL_SUM_CONTENT=""
+if [ -f "${FAIL_SUM}" ] && [ -s "${FAIL_SUM}" ]; then
+  FAIL_SUM_CONTENT=$(head -n 100 "${FAIL_SUM}")
+else
+  FAIL_SUM_CONTENT="(no failures found)"
+fi
+
+TOP_ERR_CONTENT=""
+if [ -f "${TOP_ERR}" ] && [ -s "${TOP_ERR}" ]; then
+  TOP_ERR_CONTENT=$(head -n 150 "${TOP_ERR}")
+else
+  TOP_ERR_CONTENT="(no errors found)"
+fi
+
+WARN_SUM_CONTENT=""
+if [ -f "${WARN_SUM}" ] && [ -s "${WARN_SUM}" ]; then
+  WARN_SUM_CONTENT=$(head -n 100 "${WARN_SUM}")
+else
+  WARN_SUM_CONTENT="(no warnings found)"
+fi
+
+FAILED_TEST_NAMES_CONTENT=""
+if [ -f "${FAILED_TEST_NAMES}" ] && [ -s "${FAILED_TEST_NAMES}" ]; then
+  FAILED_TEST_NAMES_CONTENT=$(cat "${FAILED_TEST_NAMES}" | head -n 50)
+else
+  FAILED_TEST_NAMES_CONTENT="(no failed test names extracted)"
+fi
+
+LOGCAT_SAMPLE_CONTENT=""
+if [ -f "${LOGCAT_SAMPLE}" ] && [ -s "${LOGCAT_SAMPLE}" ]; then
+  LOGCAT_SAMPLE_CONTENT=$(head -n 100 "${LOGCAT_SAMPLE}")
+else
+  LOGCAT_SAMPLE_CONTENT="(no logcat sample available)"
 fi
 
 # Get repository name
 REPO_NAME=$(basename "$(pwd)")
 
 {
-  cat <<MD
-# Cursor AI prompt: fix Android instrumented tests & CI (auto-generated)
-Repository: ${REPO_NAME}
-Workflow: android-build.yml (emulator-runner)
-Artifacts dir: ${ART_DIR}
-Analysis dir: ${OUT_DIR}
+  # Use printf to avoid heredoc issues with backticks
+  printf '%s\n' "# Cursor AI prompt: fix Android instrumented tests & CI (auto-generated)" > "${CURSOR_PROMPT}"
+  printf 'Repository: %s\n' "${REPO_NAME}" >> "${CURSOR_PROMPT}"
+  printf 'Workflow: android-build.yml (emulator-runner)\n' >> "${CURSOR_PROMPT}"
+  printf 'Artifacts dir: %s\n' "${ART_DIR}" >> "${CURSOR_PROMPT}"
+  printf 'Analysis dir: %s\n' "${OUT_DIR}" >> "${CURSOR_PROMPT}"
+  printf 'Generated: %s\n' "$(date -u +"%Y-%m-%d %H:%M:%SZ")" >> "${CURSOR_PROMPT}"
+  printf '\n' >> "${CURSOR_PROMPT}"
+  printf '## TL;DR\n' >> "${CURSOR_PROMPT}"
+  printf 'There are **%s** test failures across flavors. This document contains a comprehensive self-contained analysis with actual content from all summary files. We need Cursor AI to:\n' "${fail_count}" >> "${CURSOR_PROMPT}"
+  printf '1. Inspect the failed tests and their stack traces\n' >> "${CURSOR_PROMPT}"
+  printf '2. Propose and apply fixes (test stability, coroutine usage, Espresso waits)\n' >> "${CURSOR_PROMPT}"
+  printf '3. Ensure CI workflow collects per-flavor reports reliably\n' >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Test Statistics by Flavor\n\n' >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '%s\n' "${FLAVOR_STATS_CONTENT}" >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Failed Test Names\n\n' >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '%s\n' "${FAILED_TEST_NAMES_CONTENT}" >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Failures Summary (first 100 lines)\n\n' >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '%s\n' "${FAIL_SUM_CONTENT}" >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Top Errors (first 150 lines)\n\n' >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '%s\n' "${TOP_ERR_CONTENT}" >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Warnings Summary (first 100 lines)\n\n' >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '%s\n' "${WARN_SUM_CONTENT}" >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Logcat Sample (first 100 lines)\n\n' >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '%s\n' "${LOGCAT_SAMPLE_CONTENT}" >> "${CURSOR_PROMPT}"
+  printf '%s\n' '```' >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Files to inspect (priority)\n\n' >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Failed test details: \`${OUT_DIR}/failures-summary.txt\`" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Raw failure dumps: \`${OUT_DIR}/raw-failures.log\`" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Flavor statistics: \`${OUT_DIR}/flavor-statistics.txt\`" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Failed test names: \`${OUT_DIR}/failed-test-names.txt\`" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Logcat sample: \`${OUT_DIR}/sample-logcat.txt.log\`" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Gradle logs: ${GRADLE_LOG_LIST}" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Collected logs: \`${OUT_DIR}/top-errors.txt\`, \`${OUT_DIR}/warnings-summary.txt\`" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Per-flavor report dirs: \`${ART_DIR}/outputs/*\` and \`${ART_DIR}/reports/*\`" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Workflow file: \`.github/workflows/android-build.yml\` (emulator step / script generation)" >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Suggested fixes (high level)\n\n' >> "${CURSOR_PROMPT}"
+  printf '### Tests:\n' >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Convert blocking uses to \`runTest\` from \`kotlinx.coroutines.test\` where appropriate." >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Wrap suspend DAO calls in proper coroutine contexts or \`database.runInTransaction\` with \`runBlocking\` only if absolutely necessary; prefer \`runTest\`." >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Add warm-up runs for DB/Room performance tests to avoid first-run variability." >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Add small \`Thread.sleep(500)\` or \`IdlingResource\` waits where Espresso interacts with Activity startup to avoid focus/race flakiness." >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Ensure instrumentation tests use \`ActivityScenario.launch()\` before interactions." >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- For performance tests, measure median instead of mean and run multiple warm-ups.\n" >> "${CURSOR_PROMPT}"
+  printf '### CI / workflow:\n' >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Ensure gradle output is fully redirected to per-flavor \`gradle-build-<flavor>.log\` files:" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "  \`cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest ... > ../gradle-build-local.log 2>&1\`" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "  Each flavor (local, mock, remote) and performance tests should have separate log files." >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Enable Gradle build cache for performance: pass \`--build-cache\` to gradle invocations and ensure \`~/.gradle\` is cached with \`actions/cache\`." >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- After each flavor run, **move/copy** per-flavor reports into \`\${ART_DIR}\` and **clear** \`truth-android-client/app/build/outputs/androidTest-results\` and \`.../reports/androidTests/connected\` to avoid subsequent flavors overwriting previous reports." >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Keep \`adb logcat -d\` executed **before** emulator kill." >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Use an explicit \`shell: bash\` on steps that use advanced shell features." >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- Use a generated script (e.g., \`run_tests.sh\`) as the single entrypoint (already present) and call it via \`script: ./run_tests.sh\` in emulator action.\n" >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Concrete PR tasks for Cursor AI (apply via single PR)\n\n' >> "${CURSOR_PROMPT}"
+  printf '1. **Tests**: update identified failing test files (see failed test names above) to use `runTest`, add warm-ups and small waits, and fix coroutine usage.\n' >> "${CURSOR_PROMPT}"
+  printf '   - Example change: change `runBlocking { ... }` -> `runTest { ... }`, make DAO operations suspend inside `runTest`.\n\n' >> "${CURSOR_PROMPT}"
+  printf '2. **CI**: update `.github/workflows/android-build.yml`:\n' >> "${CURSOR_PROMPT}"
+  printf '   - Ensure gradle invocations use `--build-cache` and redirect stdout/stderr to per-flavor `gradle-build-<flavor>.log`.\n' >> "${CURSOR_PROMPT}"
+  printf '   - After each flavor run, copy per-flavor reports into `${ART_DIR}/outputs/<flavor>` and then `rm -rf` the build outputs in the project so next flavor does not overwrite.\n' >> "${CURSOR_PROMPT}"
+  printf '   - Ensure `adb logcat -d` is executed (and saved) before emulator termination.\n' >> "${CURSOR_PROMPT}"
+  printf '   - Set `shell: bash` for the step generating and running scripts.\n\n' >> "${CURSOR_PROMPT}"
+  printf '3. **Scripts**: Add the script `./analyze-android-failures.sh` (this file) and a `README` entry describing how to use analysis artifacts.\n\n' >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Priority (1..3)\n\n' >> "${CURSOR_PROMPT}"
+  printf '1. Capture full gradle logs per-flavor and persist.\n' >> "${CURSOR_PROMPT}"
+  printf '2. Fix tests that fail consistently (see failures-summary above).\n' >> "${CURSOR_PROMPT}"
+  printf '3. Improve CI behavior to preserve per-flavor reports and enable build-cache.\n\n' >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Next Steps for Cursor AI\n\n' >> "${CURSOR_PROMPT}"
+  printf '1. **Review the failures summary above** to identify patterns (e.g., RootViewWithoutFocusException, UncompletedCoroutinesError, performance threshold violations).\n\n' >> "${CURSOR_PROMPT}"
+  printf '2. **Check the failed test names** to locate the specific test methods that need fixes.\n\n' >> "${CURSOR_PROMPT}"
+  printf '3. **Examine the top errors** to understand common exception types and their stack traces.\n\n' >> "${CURSOR_PROMPT}"
+  printf '4. **Review warnings** for potential performance issues or deprecated API usage.\n\n' >> "${CURSOR_PROMPT}"
+  printf '5. **Inspect logcat sample** for runtime errors that might not appear in test XML files.\n\n' >> "${CURSOR_PROMPT}"
+  printf '6. **Open the actual test files** (paths can be inferred from class names in failures-summary) and apply fixes:\n' >> "${CURSOR_PROMPT}"
+  printf '   - Replace `runBlocking` with `runTest`\n' >> "${CURSOR_PROMPT}"
+  printf '   - Add proper waits for Espresso interactions\n' >> "${CURSOR_PROMPT}"
+  printf '   - Fix coroutine context issues\n' >> "${CURSOR_PROMPT}"
+  printf '   - Adjust performance thresholds if needed\n\n' >> "${CURSOR_PROMPT}"
+  printf '7. **Verify fixes** by running tests locally or checking CI results.\n\n' >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+  printf '## Artifacts produced by this analysis\n\n' >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- \`${FAIL_SUM}\` - Detailed failure information" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- \`${TOP_ERR}\` - Top error patterns and exceptions" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- \`${WARN_SUM}\` - Warning summary" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- \`${FLAVOR_STATS}\` - Statistics per flavor" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- \`${FAILED_TEST_NAMES}\` - List of failed test names" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- \`${LOGCAT_SAMPLE}\` - Sample logcat output" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- \`${OUT_DIR}/raw-failures.log\` - Raw failure XML dumps" >> "${CURSOR_PROMPT}"
+  printf '%s\n' "- \`${CURSOR_PROMPT}\` - This file (self-contained prompt)" >> "${CURSOR_PROMPT}"
+  printf '\n---\n\n' >> "${CURSOR_PROMPT}"
+}
 
-## TL;DR
-There are **${fail_count}** test failures across flavors (see failures-summary.txt) and many log entries (see top-errors.txt and warnings-summary.txt). We need Cursor AI to:
-1. Inspect the failed tests and their stack traces
-2. Propose and apply fixes (test stability, coroutine usage, Espresso waits)
-3. Ensure CI workflow collects per-flavor reports reliably (avoid overwriting outputs between flavors), enable Gradle build cache, and ensure gradle output is captured to gradle-build-<flavor>.log for debugging.
-
-## Test Statistics by Flavor
-${FLAVOR_STATS_CONTENT}
-
-## Files to inspect (priority)
-- Failed test details: \`${OUT_DIR}/failures-summary.txt\`
-- Raw failure dumps: \`${OUT_DIR}/raw-failures.log\`
-- Flavor statistics: \`${OUT_DIR}/flavor-statistics.txt\`
-- Gradle logs: ${GRADLE_LOG_LIST}
-- Collected logs: \`${OUT_DIR}/top-errors.txt\`, \`${OUT_DIR}/warnings-summary.txt\`
-- Per-flavor report dirs: \`${ART_DIR}/outputs/*\` and \`${ART_DIR}/reports/*\`
-- Workflow file: \`.github/workflows/android-build.yml\` (emulator step / script generation)
-
-## Observed failure examples (auto-extract samples)
-<EXTRACTED_FAILURES_SNIPPET>
-
-## Suggested fixes (high level)
-- **Tests**:
-  - Convert blocking uses to \`runTest\` from \`kotlinx.coroutines.test\` where appropriate.
-  - Wrap suspend DAO calls in proper coroutine contexts or \`database.runInTransaction\` with \`runBlocking\` only if absolutely necessary; prefer \`runTest\`.
-  - Add warm-up runs for DB/Room performance tests to avoid first-run variability.
-  - Add small \`Thread.sleep(500)\` or \`IdlingResource\` waits where Espresso interacts with Activity startup to avoid focus/race flakiness.
-  - Ensure instrumentation tests use \`ActivityScenario.launch()\` before interactions.
-  - For performance tests, measure median instead of mean and run multiple warm-ups.
-
-- **CI / workflow**:
-  - Ensure gradle output is fully redirected to per-flavor \`gradle-build-<flavor>.log\` files:
-    \`cd truth-android-client && ./gradlew connectedLocalDebugAndroidTest ... > ../gradle-build-local.log 2>&1\`
-    Each flavor (local, mock, remote) and performance tests should have separate log files.
-  - Enable Gradle build cache for performance: pass \`--build-cache\` to gradle invocations and ensure \`~/.gradle\` is cached with \`actions/cache\`.
-  - After each flavor run, **move/copy** per-flavor reports into \`\${ART_DIR}\` and **clear** \`truth-android-client/app/build/outputs/androidTest-results\` and \`.../reports/androidTests/connected\` to avoid subsequent flavors overwriting previous reports.
-  - Keep \`adb logcat -d\` executed **before** emulator kill.
-  - Use an explicit \`shell: bash\` on steps that use advanced shell features.
-  - Use a generated script (e.g., \`run_tests.sh\`) as the single entrypoint (already present) and call it via \`script: ./run_tests.sh\` in emulator action.
-
-## Concrete PR tasks for Cursor AI (apply via single PR)
-1. Tests: update identified failing test files (list below) to use \`runTest\`, add warm-ups and small waits, and fix coroutine usage.
-   - Files: __FAILED_TEST_FILES__
-   - Example change: change \`runBlocking { ... }\` -> \`runTest { ... }\`, make DAO operations suspend inside \`runTest\`.
-2. CI: update \`.github/workflows/android-build.yml\`:
-   - Ensure gradle invocations use \`--build-cache\` and redirect stdout/stderr to per-flavor \`gradle-build-<flavor>.log\`.
-   - After each flavor run, copy per-flavor reports into \`\${{ env.ART_DIR }}/outputs/<flavor>\` and then \`rm -rf\` the build outputs in the project so next flavor does not overwrite.
-   - Ensure \`adb logcat -d\` is executed (and saved) before emulator termination.
-   - Set \`shell: bash\` for the step generating and running scripts.
-3. Add the new script \`./.github/scripts/analyze-android-failures.sh\` (this file) and a \`README\` entry describing how to use analysis artifacts.
-
-## Priority (1..3)
-1. Capture full gradle logs per-flavor and persist.
-2. Fix tests that fail consistently (see failures-summary).
-3. Improve CI behavior to preserve per-flavor reports and enable build-cache.
-
----
-
-Please open the files listed above, inspect the traces from \`${OUT_DIR}/raw-failures.log\` and \`${OUT_DIR}/failures-summary.txt\`, and create a PR implementing the three groups of changes. If you need, run the CI locally with the same emulator options to reproduce.
-
-MD
-} > "${CURSOR_PROMPT}"
-
-# Inject dynamic snippets and counts
-# Add failure snippet (first N lines)
-if [ -s "${FAIL_SUM}" ]; then
-  ech "" >> "${CURSOR_PROMPT}"
-  ech "## Auto-extracted failures (first 80 lines):" >> "${CURSOR_PROMPT}"
-  echo '```' >> "${CURSOR_PROMPT}"
-  head -n 80 "${FAIL_SUM}" >> "${CURSOR_PROMPT}" || true
-  echo '```' >> "${CURSOR_PROMPT}"
-else
-  ech "No failures found to include in the prompt." >> "${CURSOR_PROMPT}"
-fi
-
-# Attach top errors sample
-if [ -s "${TOP_ERR}" ]; then
-  ech "" >> "${CURSOR_PROMPT}"
-  ech "## Top error patterns (sample):" >> "${CURSOR_PROMPT}"
-  echo '```' >> "${CURSOR_PROMPT}"
-  head -n 120 "${TOP_ERR}" >> "${CURSOR_PROMPT}" || true
-  echo '```' >> "${CURSOR_PROMPT}"
-fi
-
-# Add list of candidate failed test files
-ech "" >> "${CURSOR_PROMPT}"
-ech "## Candidate files with failing tests (paths):" >> "${CURSOR_PROMPT}"
-if [ -f "${OUT_DIR}/raw-failures.log" ]; then
-  # try to extract classname or filename hints
-  grep -oE 'File: .*' "${FAIL_SUM}" | sed 's/^  File: //' | sort -u >> "${CURSOR_PROMPT}" || true
-else
-  ech "(no raw failure file captured)" >> "${CURSOR_PROMPT}"
-fi
-
-# footer with where to find outputs
-ech "" >> "${CURSOR_PROMPT}"
-ech "## Artifacts produced by this analysis:" >> "${CURSOR_PROMPT}"
-echo "- ${FAIL_SUM}" >> "${CURSOR_PROMPT}"
-echo "- ${TOP_ERR}" >> "${CURSOR_PROMPT}"
-echo "- ${WARN_SUM}" >> "${CURSOR_PROMPT}"
-echo "- ${FLAVOR_STATS}" >> "${CURSOR_PROMPT}"
-echo "- raw failures: ${OUT_DIR}/raw-failures.log" >> "${CURSOR_PROMPT}"
-echo "" >> "${CURSOR_PROMPT}"
-echo "----" >> "${CURSOR_PROMPT}"
-echo "Generated at: $(date -u +"%Y-%m-%d %H:%M:%SZ")" >> "${CURSOR_PROMPT}"
-
-ech "Analysis complete."
+ech "✅ Analysis complete."
 ech "Summary files:"
 ech " - ${FAIL_SUM}"
 ech " - ${WARN_SUM}"
 ech " - ${TOP_ERR}"
 ech " - ${FLAVOR_STATS}"
+ech " - ${FAILED_TEST_NAMES}"
+ech " - ${LOGCAT_SAMPLE}"
 ech " - ${CURSOR_PROMPT}"
 ech ""
 ech "To run locally: ./analyze-android-failures.sh"

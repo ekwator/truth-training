@@ -6,7 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.entities.ContextTemplateEntity
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -36,7 +36,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun insertAndGetTemplateById() = runBlocking {
+    fun insertAndGetTemplateById() = runTest {
         val template = createTestTemplate(name = "Template 1")
         val id = templateDao.insertTemplate(template)
         
@@ -47,7 +47,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun getTemplateByName() = runBlocking {
+    fun getTemplateByName() = runTest {
         val template = createTestTemplate(name = "Unique Template")
         templateDao.insertTemplate(template)
         
@@ -57,7 +57,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun listTemplatesFlow() = runBlocking {
+    fun listTemplatesFlow() = runTest {
         repeat(5) { i ->
             templateDao.insertTemplate(createTestTemplate(name = "Template $i"))
         }
@@ -69,7 +69,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun matchTemplateWithExactFields() = runBlocking {
+    fun matchTemplateWithExactFields() = runTest {
         templateDao.insertTemplate(createTestTemplate(name = "Matched", categoryId = 1, formaId = 2))
         
         val matched = templateDao.matchTemplate(
@@ -84,7 +84,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun matchTemplateWithPartialFields() = runBlocking {
+    fun matchTemplateWithPartialFields() = runTest {
         templateDao.insertTemplate(createTestTemplate(name = "Partial", categoryId = 1, formaId = null))
         
         val matched = templateDao.matchTemplate(
@@ -99,7 +99,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun countDuplicateTemplates() = runBlocking {
+    fun countDuplicateTemplates() = runTest {
         val template1 = createTestTemplate(name = "Template 1", categoryId = 1, formaId = 2)
         val id1 = templateDao.insertTemplate(template1).toInt()
         
@@ -126,7 +126,7 @@ class ContextTemplateDaoTest {
     }
 
     @Test
-    fun updateAndDeleteTemplate() = runBlocking {
+    fun updateAndDeleteTemplate() = runTest {
         val template = createTestTemplate(name = "Original")
         val id = templateDao.insertTemplate(template).toInt()
         

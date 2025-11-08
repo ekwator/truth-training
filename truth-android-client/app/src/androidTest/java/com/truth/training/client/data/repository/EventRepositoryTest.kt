@@ -9,8 +9,10 @@ import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.entities.EventEntity
 import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Before
@@ -226,9 +228,12 @@ class EventRepositoryTest {
                 .setBody(gson.toJson(listResponse))
         )
 
-        val result = repository.syncFromServer()
+        // Use Dispatchers.IO for network calls in instrumentation tests
+        val result = withContext(Dispatchers.IO) {
+            repository.syncFromServer()
+        }
         
-        assertTrue(result.isSuccess)
+        assertTrue("syncFromServer should succeed, but got: ${result.exceptionOrNull()?.message}", result.isSuccess)
         assertEquals(1, result.getOrNull())
         
         // Verify event synced to local database
