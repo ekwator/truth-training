@@ -16,43 +16,157 @@ impl Db {
         let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
         conn.execute_batch(
             r#"
+            PRAGMA foreign_keys = ON;
             PRAGMA journal_mode=WAL;
+
+            -- knowledge_base tables
+            CREATE TABLE IF NOT EXISTS category (
+                id          INTEGER PRIMARY KEY,
+                name        TEXT NOT NULL,
+                description TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS cause (
+                id          INTEGER PRIMARY KEY,
+                name        TEXT NOT NULL,
+                quality     INTEGER NOT NULL,
+                description TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS develop (
+                id          INTEGER PRIMARY KEY,
+                name        TEXT NOT NULL,
+                quality     INTEGER NOT NULL,
+                description TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS effect (
+                id          INTEGER PRIMARY KEY,
+                name        TEXT NOT NULL,
+                quality     INTEGER NOT NULL,
+                description TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS forma (
+                id          INTEGER PRIMARY KEY,
+                name        TEXT NOT NULL,
+                quality     INTEGER NOT NULL,
+                description TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS context (
+                id          INTEGER PRIMARY KEY,
+                name        TEXT NOT NULL,
+                category_id INTEGER,
+                forma_id    INTEGER,
+                cause_id    INTEGER,
+                develop_id  INTEGER,
+                effect_id   INTEGER,
+                description TEXT,
+                FOREIGN KEY(category_id) REFERENCES category(id),
+                FOREIGN KEY(forma_id)    REFERENCES forma(id),
+                FOREIGN KEY(cause_id)    REFERENCES cause(id),
+                FOREIGN KEY(develop_id)  REFERENCES develop(id),
+                FOREIGN KEY(effect_id)   REFERENCES effect(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS impact_type (
+                id          INTEGER PRIMARY KEY,
+                name        TEXT NOT NULL,
+                description TEXT
+            );
+
+            -- base tables (v1.0.0 schema with embedded context fields)
+            CREATE TABLE IF NOT EXISTS truth_events (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                description     TEXT NOT NULL,
+                category_id     INTEGER,
+                forma_id        INTEGER,
+                cause_id        INTEGER,
+                develop_id      INTEGER,
+                effect_id       INTEGER,
+                vector          INTEGER NOT NULL,
+                detected        INTEGER,
+                corrected       INTEGER NOT NULL DEFAULT 0,
+                timestamp_start INTEGER NOT NULL,
+                timestamp_end   INTEGER,
+                code            INTEGER NOT NULL DEFAULT 1,
+                collective_score REAL,
+                FOREIGN KEY(category_id) REFERENCES category(id),
+                FOREIGN KEY(forma_id) REFERENCES forma(id),
+                FOREIGN KEY(cause_id) REFERENCES cause(id),
+                FOREIGN KEY(develop_id) REFERENCES develop(id),
+                FOREIGN KEY(effect_id) REFERENCES effect(id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_truth_events_category ON truth_events(category_id);
+            CREATE INDEX IF NOT EXISTS idx_truth_events_forma ON truth_events(forma_id);
+            CREATE INDEX IF NOT EXISTS idx_truth_events_cause ON truth_events(cause_id);
+            CREATE INDEX IF NOT EXISTS idx_truth_events_develop ON truth_events(develop_id);
+            CREATE INDEX IF NOT EXISTS idx_truth_events_effect ON truth_events(effect_id);
+
+            CREATE TABLE IF NOT EXISTS impact (
+                id          TEXT PRIMARY KEY,
+                event_id    INTEGER NOT NULL,
+                type_id     INTEGER NOT NULL,
+                value       INTEGER NOT NULL,
+                notes       TEXT,
+                created_at  INTEGER NOT NULL,
+                FOREIGN KEY(event_id) REFERENCES truth_events(id),
+                FOREIGN KEY(type_id) REFERENCES impact_type(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS progress_metrics (
+                id                           INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp                    INTEGER NOT NULL,
+                total_events                 INTEGER NOT NULL,
+                total_events_group           INTEGER NOT NULL,
+                total_positive_impact        REAL    NOT NULL,
+                total_positive_impact_group  REAL    NOT NULL,
+                total_negative_impact        REAL    NOT NULL,
+                total_negative_impact_group  REAL    NOT NULL,
+                trend                        REAL    NOT NULL,
+                trend_group                  REAL    NOT NULL
+            );
+
+            -- Legacy tables for backward compatibility (will be migrated)
             CREATE TABLE IF NOT EXISTS events (
               id TEXT PRIMARY KEY,
               title TEXT NOT NULL,
               description TEXT,
-              context_id TEXT NOT NULL,
+              context_id TEXT,
               start_date TEXT,
               end_date TEXT,
               created_at TEXT NOT NULL,
               updated_at TEXT,
               status TEXT NOT NULL
             );
+
             CREATE TABLE IF NOT EXISTS impacts (
               id TEXT PRIMARY KEY,
               event_id TEXT NOT NULL,
               impact_level INTEGER NOT NULL CHECK(impact_level >= 1 AND impact_level <= 5),
               notes TEXT,
-              created_at TEXT NOT NULL,
-              FOREIGN KEY(event_id) REFERENCES events(id)
+              created_at TEXT NOT NULL
             );
+
             CREATE TABLE IF NOT EXISTS summaries (
               id TEXT PRIMARY KEY,
               event_id TEXT NOT NULL UNIQUE,
               summary_text TEXT,
               recommendations TEXT,
-              updated_at TEXT NOT NULL,
-              FOREIGN KEY(event_id) REFERENCES events(id)
+              updated_at TEXT NOT NULL
             );
+
             CREATE TABLE IF NOT EXISTS judgments (
               id TEXT PRIMARY KEY,
               event_id TEXT NOT NULL,
               assessment TEXT NOT NULL,
               confidence_level REAL NOT NULL,
               reasoning TEXT,
-              submitted_at TEXT NOT NULL,
-              FOREIGN KEY(event_id) REFERENCES events(id)
+              submitted_at TEXT NOT NULL
             );
+
             CREATE TABLE IF NOT EXISTS logs (
               id TEXT PRIMARY KEY,
               timestamp TEXT NOT NULL,
@@ -64,7 +178,157 @@ impl Db {
         )
         .map_err(|e| e.to_string())?;
 
+        // Run migrations
+        Self::run_migrations(&conn)?;
+        
+        // Seed knowledge base if empty
+        Self::seed_knowledge_base(&conn)?;
+
         Ok(Db(Mutex::new(conn)))
+    }
+
+    fn run_migrations(conn: &Connection) -> Result<(), String> {
+        // Check if migration from v0.2.0 to v1.0.0 is needed
+        let has_old_events = conn
+            .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='events' AND sql LIKE '%context_id%'", [], |row| row.get::<_, i64>(0))
+            .unwrap_or(0) > 0;
+        
+        if has_old_events {
+            // Migration will be handled by application logic when needed
+            // For now, we keep both schemas for compatibility
+        }
+        Ok(())
+    }
+
+    fn seed_knowledge_base(conn: &Connection) -> Result<(), String> {
+        // Seed categories
+        let categories: &[(i64, &str, &str)] = &[
+            (1, "Social", "Communication, reputation, trust"),
+            (2, "Financial", "Money, property, contracts"),
+            (3, "Political", "State, treaties, international relations"),
+            (4, "Legal", "Law, compliance, courts"),
+            (5, "Personal", "Self-assessment, inner decisions"),
+            (6, "Organizational", "Teams, companies, processes"),
+            (7, "Media", "Information, press, platforms"),
+            (8, "Technological", "IT systems, data, security"),
+        ];
+        for (id, name, desc) in categories {
+            conn.execute(
+                "INSERT OR IGNORE INTO category (id, name, description) VALUES (?1, ?2, ?3)",
+                params![id, name, desc],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        // Seed causes
+        let causes: &[(i64, &str, i64, &str)] = &[
+            (1, "Fear", 0, "Avoidance of punishment or blame"),
+            (2, "Benefit", 0, "Material/personal interest"),
+            (3, "Mercy", 1, "Compassion, care for others"),
+            (4, "Ignorance", 0, "Lack of knowledge, mistakes"),
+            (5, "Duty", 1, "Obligation, responsibility"),
+            (6, "Curiosity", 1, "Search for truth, inquiry"),
+            (7, "Pressure", 0, "Coercion, conformism"),
+            (8, "Care", 1, "Protecting another's good"),
+        ];
+        for (id, name, q, desc) in causes {
+            conn.execute(
+                "INSERT OR IGNORE INTO cause (id, name, quality, description) VALUES (?1, ?2, ?3, ?4)",
+                params![id, name, q, desc],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        // Seed develops
+        let develops: &[(i64, &str, i64, &str)] = &[
+            (1, "Concealment", 0, "Intentional omission/withholding"),
+            (2, "Manipulation", 0, "Distortion, pressure, context switch"),
+            (3, "Transparency", 1, "Openness, factual availability"),
+            (4, "Verification", 1, "Cross-checking sources"),
+            (5, "Exaggeration", 0, "Overstatement, false salience"),
+            (6, "Confession", 1, "Owning mistakes, remediation"),
+        ];
+        for (id, name, q, desc) in develops {
+            conn.execute(
+                "INSERT OR IGNORE INTO develop (id, name, quality, description) VALUES (?1, ?2, ?3, ?4)",
+                params![id, name, q, desc],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        // Seed effects
+        let effects: &[(i64, &str, i64, &str)] = &[
+            (1, "Distrust", 0, "Erodes trust and ties"),
+            (2, "Trust", 1, "Strengthens cooperation"),
+            (3, "Conflict", 0, "Escalation, confrontation"),
+            (4, "Reconciliation", 1, "Reduced tension, alignment"),
+            (5, "Sanctions", 0, "Legal/reputational penalties"),
+            (6, "Learning", 1, "Competence growth, insights"),
+            (7, "Reputation Loss", 0, "Status decrease"),
+            (8, "Reputation Gain", 1, "Status increase"),
+        ];
+        for (id, name, q, desc) in effects {
+            conn.execute(
+                "INSERT OR IGNORE INTO effect (id, name, quality, description) VALUES (?1, ?2, ?3, ?4)",
+                params![id, name, q, desc],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        // Seed formas
+        let formas: &[(i64, &str, i64, &str)] = &[
+            (1, "Deception", 0, "Conscious distortion of reality"),
+            (2, "Truth", 1, "Conformance to facts and checks"),
+            (3, "Self-deception", 0, "Distortion to reassure oneself"),
+            (4, "Half-truth", 0, "Partial truth with distortions"),
+            (5, "Silence", 0, "Withholding significant info"),
+            (6, "Openness", 1, "Proactive disclosure of facts"),
+        ];
+        for (id, name, q, desc) in formas {
+            conn.execute(
+                "INSERT OR IGNORE INTO forma (id, name, quality, description) VALUES (?1, ?2, ?3, ?4)",
+                params![id, name, q, desc],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        // Seed impact_types
+        let impact_types: &[(i64, &str, &str)] = &[
+            (1, "Reputation", "Social capital, trust"),
+            (2, "Finance", "Money, assets, liabilities"),
+            (3, "Emotions", "Stress, confidence, motivation"),
+            (4, "Law", "Legal risks, sanctions"),
+            (5, "Health", "Physical/mental condition"),
+            (6, "Time", "Time losses/gains"),
+        ];
+        for (id, name, desc) in impact_types {
+            conn.execute(
+                "INSERT OR IGNORE INTO impact_type (id, name, description) VALUES (?1, ?2, ?3)",
+                params![id, name, desc],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        // Seed context templates
+        let contexts: &[(i64, &str, i64, i64, i64, i64, i64, &str)] = &[
+            (1, "Interpersonal: openness", 1, 2, 5, 3, 2, "Honest dialogue, strengthening trust"),
+            (2, "Interpersonal: concealment", 1, 1, 1, 1, 1, "Withholding a significant fact, trust erosion"),
+            (3, "Finance: fraud", 2, 1, 2, 2, 5, "Deception for profit, legal consequences"),
+            (4, "Finance: transparent reporting", 2, 2, 5, 4, 8, "Verifiable facts, reputation growth"),
+            (5, "Politics: treaty breach", 3, 1, 2, 1, 1, "Hidden violations, loss of trust"),
+            (6, "Politics: treaty compliance", 3, 2, 5, 4, 2, "Confirmed execution of obligations"),
+            (7, "Organization: admitting a mistake", 6, 2, 5, 6, 6, "Admission and correction improve learning"),
+            (8, "Media: disinformation", 7, 1, 7, 2, 3, "Manipulations leading to conflict"),
+        ];
+        for (id, name, cat, forma, cause, develop, effect, desc) in contexts {
+            conn.execute(
+                "INSERT OR IGNORE INTO context (id, name, category_id, forma_id, cause_id, develop_id, effect_id, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![id, name, cat, forma, cause, develop, effect, desc],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        Ok(())
     }
 
     pub fn insert_event(
