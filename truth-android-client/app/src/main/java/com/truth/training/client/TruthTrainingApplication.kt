@@ -25,6 +25,8 @@ class TruthTrainingApplication : Application(), Configuration.Provider {
             TruthDatabase::class.java,
             TruthDatabase.DATABASE_NAME
         )
+            // Migration from v1 to v2: Added knowledge base entities (category, cause, develop, effect, forma, impact_type, progress_metrics)
+            // TODO: Add proper Migration(1, 2) object for production instead of fallbackToDestructiveMigration
             .fallbackToDestructiveMigration() // For development - remove in production
             .build()
     }
