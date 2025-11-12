@@ -577,7 +577,7 @@ pub fn reconcile(conn: &Connection, remote: &SyncData) -> anyhow::Result<SyncRes
                 conn,
                 "insert",
                 "impact",
-                &im.id,
+                &im.id.to_string(),
                 im.signature.clone(),
                 im.public_key.clone(),
             )?;
