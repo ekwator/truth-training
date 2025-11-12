@@ -475,7 +475,7 @@ impl Db {
     pub fn get_overall_metrics(&self) -> Result<(i64, f64, Option<String>), String> {
         let conn = self.0.lock();
         let total_events: i64 = conn
-            .query_row("SELECT COUNT(1) FROM events", [], |r| r.get(0))
+            .query_row("SELECT COUNT(1) FROM truth_events", [], |r| r.get(0))
             .unwrap_or(0);
         let avg_impact: f64 = conn
             .query_row(
@@ -487,7 +487,7 @@ impl Db {
         let last_updated: Option<String> = conn
             .query_row(
                 "SELECT ts FROM (
-                   SELECT MAX(datetime(created_at)) as ts FROM events
+                   SELECT datetime(MAX(timestamp_start), 'unixepoch') as ts FROM truth_events
                    UNION ALL
                    SELECT MAX(datetime(submitted_at)) as ts FROM judgments
                  ) ORDER BY datetime(ts) DESC LIMIT 1",
@@ -503,11 +503,11 @@ impl Db {
         let conn = self.0.lock();
         let mut stmt = conn
             .prepare(
-                "SELECT e.title, COALESCE(e.description,''),
-                        (SELECT AVG(confidence_level) FROM judgments j WHERE j.event_id = e.id),
-                        e.created_at
-                 FROM events e
-                 ORDER BY datetime(e.created_at) DESC",
+                "SELECT e.description, COALESCE(e.description,''),
+                        (SELECT AVG(confidence_level) FROM judgments j WHERE j.event_id = CAST(e.id AS TEXT)),
+                        datetime(e.timestamp_start, 'unixepoch')
+                 FROM truth_events e
+                 ORDER BY e.timestamp_start DESC",
             )
             .map_err(|e| e.to_string())?;
         let mut rows = stmt.query([]).map_err(|e| e.to_string())?;
@@ -521,6 +521,134 @@ impl Db {
             ));
         }
         Ok(out)
+    }
+
+    pub fn insert_truth_event(
+        &self,
+        description: &str,
+        category_id: Option<i64>,
+        forma_id: Option<i64>,
+        cause_id: Option<i64>,
+        develop_id: Option<i64>,
+        effect_id: Option<i64>,
+        vector: bool,
+        timestamp_start: i64,
+    ) -> Result<i64, String> {
+        let conn = self.0.lock();
+        conn.execute(
+            r#"INSERT INTO truth_events (description, category_id, forma_id, cause_id, develop_id, effect_id, vector, detected, corrected, timestamp_start, timestamp_end, code, collective_score)
+               VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, 0, ?8, NULL, 1, NULL)"#,
+            params![
+                description,
+                category_id,
+                forma_id,
+                cause_id,
+                develop_id,
+                effect_id,
+                if vector { 1 } else { 0 },
+                timestamp_start,
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(conn.last_insert_rowid())
+    }
+
+    pub fn get_truth_event_with_names(&self, event_id: i64) -> Option<crate::commands::events::Event> {
+        use crate::commands::events::Event;
+        let conn = self.0.lock();
+        let mut stmt = conn.prepare(
+            r#"SELECT 
+                e.id, e.description, e.category_id, e.forma_id, e.cause_id, e.develop_id, e.effect_id,
+                e.vector, e.detected, e.corrected, e.timestamp_start, e.timestamp_end, e.code, e.collective_score,
+                cat.name, f.name, c.name, d.name, eff.name
+               FROM truth_events e
+               LEFT JOIN category cat ON e.category_id = cat.id
+               LEFT JOIN forma f ON e.forma_id = f.id
+               LEFT JOIN cause c ON e.cause_id = c.id
+               LEFT JOIN develop d ON e.develop_id = d.id
+               LEFT JOIN effect eff ON e.effect_id = eff.id
+               WHERE e.id = ?1"#
+        ).ok()?;
+        
+        let mut rows = stmt.query(params![event_id]).ok()?;
+        if let Some(row) = rows.next().ok()? {
+            Some(Event {
+                id: row.get(0).ok()?,
+                description: row.get(1).ok()?,
+                category_id: row.get(2).ok()?,
+                forma_id: row.get(3).ok()?,
+                cause_id: row.get(4).ok()?,
+                develop_id: row.get(5).ok()?,
+                effect_id: row.get(6).ok()?,
+                vector: row.get::<_, i64>(7).ok()? != 0,
+                detected: row.get::<_, Option<i64>>(8).ok()?.map(|v| v != 0),
+                corrected: row.get::<_, i64>(9).ok()? != 0,
+                timestamp_start: row.get(10).ok()?,
+                timestamp_end: row.get(11).ok()?,
+                code: row.get::<_, i64>(12).ok()? as u8,
+                collective_score: row.get(13).ok()?,
+                category_name: row.get(14).ok()?,
+                forma_name: row.get(15).ok()?,
+                cause_name: row.get(16).ok()?,
+                develop_name: row.get(17).ok()?,
+                effect_name: row.get(18).ok()?,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn list_truth_events_with_names(&self, page: u32, per_page: u32) -> Result<crate::commands::events::ListEventsResponse, String> {
+        use crate::commands::events::{Event, ListEventsResponse};
+        let conn = self.0.lock();
+        
+        let total: i64 = conn
+            .query_row("SELECT COUNT(1) FROM truth_events", [], |row| row.get(0))
+            .map_err(|e| e.to_string())?;
+
+        let offset = (page.saturating_sub(1) as i64) * (per_page as i64);
+        let mut stmt = conn.prepare(
+            r#"SELECT 
+                e.id, e.description, e.category_id, e.forma_id, e.cause_id, e.develop_id, e.effect_id,
+                e.vector, e.detected, e.corrected, e.timestamp_start, e.timestamp_end, e.code, e.collective_score,
+                cat.name, f.name, c.name, d.name, eff.name
+               FROM truth_events e
+               LEFT JOIN category cat ON e.category_id = cat.id
+               LEFT JOIN forma f ON e.forma_id = f.id
+               LEFT JOIN cause c ON e.cause_id = c.id
+               LEFT JOIN develop d ON e.develop_id = d.id
+               LEFT JOIN effect eff ON e.effect_id = eff.id
+               ORDER BY e.timestamp_start DESC LIMIT ?1 OFFSET ?2"#
+        )
+        .map_err(|e| e.to_string())?;
+
+        let mut rows = stmt.query(params![per_page as i64, offset]).map_err(|e| e.to_string())?;
+        let mut data: Vec<Event> = Vec::new();
+        while let Some(row) = rows.next().map_err(|e| e.to_string())? {
+            data.push(Event {
+                id: row.get(0).map_err(|e| e.to_string())?,
+                description: row.get(1).map_err(|e| e.to_string())?,
+                category_id: row.get(2).ok().unwrap_or(None),
+                forma_id: row.get(3).ok().unwrap_or(None),
+                cause_id: row.get(4).ok().unwrap_or(None),
+                develop_id: row.get(5).ok().unwrap_or(None),
+                effect_id: row.get(6).ok().unwrap_or(None),
+                vector: row.get::<_, i64>(7).map_err(|e| e.to_string())? != 0,
+                detected: row.get::<_, Option<i64>>(8).map_err(|e| e.to_string())?.map(|v| v != 0),
+                corrected: row.get::<_, i64>(9).map_err(|e| e.to_string())? != 0,
+                timestamp_start: row.get(10).map_err(|e| e.to_string())?,
+                timestamp_end: row.get(11).ok().unwrap_or(None),
+                code: row.get::<_, i64>(12).map_err(|e| e.to_string())? as u8,
+                collective_score: row.get(13).ok().unwrap_or(None),
+                category_name: row.get(14).ok().unwrap_or(None),
+                forma_name: row.get(15).ok().unwrap_or(None),
+                cause_name: row.get(16).ok().unwrap_or(None),
+                develop_name: row.get(17).ok().unwrap_or(None),
+                effect_name: row.get(18).ok().unwrap_or(None),
+            });
+        }
+
+        Ok(ListEventsResponse { data, total })
     }
 }
 

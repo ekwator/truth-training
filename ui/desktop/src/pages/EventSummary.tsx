@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ApiService } from '@/services/api';
 
 interface EventDisplay {
-  id: string;
-  title: string;
+  id: number;
+  title: string;  // Display helper - maps to description
   description: string;
   context?: string;
   results?: string;
@@ -33,18 +33,18 @@ export const EventSummary: React.FC = () => {
     }
   }, []);
 
-  const fetchEventDetails = useCallback(async (id: string) => {
+  const fetchEventDetails = useCallback(async (id: number) => {
     try {
       const event = await ApiService.getEvent(id);
       const display: EventDisplay = {
         id: event.id,
-        title: event.title,
+        title: event.description,
         description: event.description || '',
         results: (event as any).results,
         notes: (event as any).notes,
         recommendations: (event as any).recommendations,
-        createdAt: event.created_at,
-        updatedAt: event.updated_at,
+        createdAt: event.timestamp_start ? new Date(event.timestamp_start * 1000).toISOString() : undefined,
+        updatedAt: event.timestamp_end ? new Date(event.timestamp_end * 1000).toISOString() : undefined,
       };
       setSelectedEvent(display);
       setFormData({
@@ -203,9 +203,9 @@ export const EventSummary: React.FC = () => {
                 onClick={() => handleSelectEvent(event)}
                 className="bg-white rounded-lg shadow p-4 hover:bg-gray-50 cursor-pointer"
               >
-                <h3 className="text-lg font-semibold">{event.title}</h3>
+                <h3 className="text-lg font-semibold">{event.description}</h3>
                 <p className="text-sm text-gray-600">{event.description || 'No description'}</p>
-                <p className="text-xs text-gray-500 mt-2">Created: {event.created_at ? new Date(event.created_at).toLocaleString() : 'Unknown'}</p>
+                <p className="text-xs text-gray-500 mt-2">Created: {event.timestamp_start ? new Date(event.timestamp_start * 1000).toLocaleString() : 'Unknown'}</p>
               </div>
             ))}
           </div>

@@ -65,7 +65,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <div className="flex justify-between items-center py-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Truth Training</h1>
-              <p className="text-sm text-gray-600">Collective Intelligence Dashboard • UI Desktop v0.2.0</p>
+              <p className="text-sm text-gray-600">Collective Intelligence Dashboard • UI Desktop v1.0.0</p>
             </div>
             <div className="flex items-center space-x-4">
               <SyncStatus 

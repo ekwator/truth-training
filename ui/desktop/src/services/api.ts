@@ -193,7 +193,7 @@ export class ApiService {
     }
   }
 
-  static async getEvent(id: string): Promise<TruthEvent> {
+  static async getEvent(id: number): Promise<TruthEvent> {
     if (isTauri()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
