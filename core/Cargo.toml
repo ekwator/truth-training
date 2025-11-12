@@ -17,6 +17,7 @@ serde_json = "1.0"
 thiserror = "1.0"
 time = "0.3"
 statrs = "0.16"
+log = "0.4"
 
 # Exclude problematic dependencies for Android
 [target.'cfg(not(target_os = "android"))'.dependencies]

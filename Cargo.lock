@@ -961,6 +961,7 @@ dependencies = [
  "chrono",
  "ed25519-dalek",
  "getrandom 0.2.16",
+ "log",
  "rand 0.8.5",
  "ring",
  "rusqlite",

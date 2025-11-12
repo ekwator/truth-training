@@ -16,7 +16,6 @@ use crate::collective_intelligence::models as ci_models;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 // serde_json используется через полные пути
-use uuid::Uuid;
 use chrono::Utc;
 use std::fs;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -292,7 +291,7 @@ fn validate_schema(conn: &Connection) -> Result<(), CoreError> {
         )?;
         
         if exists == 0 {
-            return Err(CoreError::InvalidState(format!("Required table '{}' is missing", table)));
+            return Err(CoreError::InvalidArg(format!("Required table '{}' is missing", table)));
         }
     }
     
