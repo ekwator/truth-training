@@ -143,15 +143,15 @@ describe('EventsStore', () => {
 
   describe('filters and sorting', () => {
     it('should set filters correctly', () => {
-      const filters = { status: 'active' as const };
+      const filters = { detected: true };
       useEventsStore.getState().setFilters(filters);
       
       const state = useEventsStore.getState();
-      expect(state.filters.status).toBe('active');
+      expect(state.filters.detected).toBe(true);
     });
 
     it('should set sort options correctly', () => {
-      const sortOptions = { field: 'title' as const, direction: 'asc' as const };
+      const sortOptions = { field: 'timestamp_start' as const, direction: 'asc' as const };
       useEventsStore.getState().setSortOptions(sortOptions);
       
       const state = useEventsStore.getState();
@@ -159,7 +159,7 @@ describe('EventsStore', () => {
     });
 
     it('should clear filters', () => {
-      useEventsStore.getState().setFilters({ status: 'active' });
+      useEventsStore.getState().setFilters({ detected: true });
       useEventsStore.getState().clearFilters();
       
       const state = useEventsStore.getState();
