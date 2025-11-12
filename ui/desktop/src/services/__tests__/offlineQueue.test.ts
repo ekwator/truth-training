@@ -163,7 +163,7 @@ describe('OfflineQueueService', () => {
       const validOperations = [
         { type: 'create_event', data: { description: 'Test', vector: true }, maxRetries: 3 },
         { type: 'add_impact', data: { event_id: 1, impact_level: 3 }, maxRetries: 3 },
-        { type: 'submit_judgment', data: { event_id: 1, assessment: 'confirm', confidence_level: 0.8 }, maxRetries: 3 },
+        { type: 'submit_judgment', data: { event_id: 1, assessment: 'confirm', confidence_level: 0.8, signature: 'sig' }, maxRetries: 3 },
         { type: 'update_event', data: { id: 1, description: 'Updated', vector: true }, maxRetries: 3 }
       ];
 

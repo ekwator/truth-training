@@ -1,6 +1,12 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { config } from '@/config/env';
 import { AppConfig, ConnectionTestResult } from '@/types/api';
+// Import shared domain types
+import type { Event as TruthEvent, EventDetails, CreateEventRequest } from '@/types/events';
+import type { Judgment, CreateJudgmentRequest } from '@/types/judgments';
+
+export type { TruthEvent as Event, EventDetails, CreateEventRequest };
+export type { Judgment, CreateJudgmentRequest };
 
 // API Configuration
 const API_BASE_URL = config.API_BASE_URL;
@@ -80,13 +86,6 @@ export interface PaginatedResponse<T> {
   pagination: PaginationMeta;
 }
 
-// Events API
-// Import types from types/events.ts to avoid conflicts with native Event type
-import type { Event as TruthEvent, EventDetails, CreateEventRequest } from '@/types/events';
-
-// Re-export with alias to avoid native Event type conflict
-export type { TruthEvent as Event, EventDetails, CreateEventRequest };
-
 // Impact API
 export interface Impact {
   id: string;
@@ -118,26 +117,6 @@ export interface LogItem {
   source: string;
   level: string;
   message: string;
-}
-
-// Judgments API
-export interface Judgment {
-  id: string;
-  participant_id: string;
-  event_id: string;
-  assessment: 'confirm' | 'reject' | 'abstain';
-  confidence_level: number;
-  reasoning?: string;
-  submitted_at: string;
-  signature: string;
-}
-
-export interface CreateJudgmentRequest {
-  event_id: number;
-  assessment: 'confirm' | 'reject' | 'abstain';
-  confidence_level: number;
-  reasoning?: string;
-  signature: string;
 }
 
 // Consensus API
@@ -240,9 +219,13 @@ export class ApiService {
     if (isTauri()) {
       const { invoke } = await import('@tauri-apps/api/core');
       const res = await invoke('judgments_list_fast', { eventId: eventId ? eventId.toString() : '', page, perPage });
-      const { data, total } = res as { data: Judgment[]; total: number };
+      const { data, total } = res as { data: any[]; total: number };
+      const normalized = data.map((item) => ({
+        ...item,
+        event_id: typeof item.event_id === 'string' ? Number(item.event_id) : item.event_id,
+      })) as Judgment[];
       return {
-        data,
+        data: normalized,
         pagination: { page, per_page: perPage, total, total_pages: Math.max(1, Math.ceil(total / perPage)) }
       };
     } else {
@@ -263,8 +246,11 @@ export class ApiService {
           confidenceLevel: judgmentData.confidence_level,
           reasoning: judgmentData.reasoning ?? null,
         }
-      });
-      return res as Judgment;
+      }) as any;
+      return {
+        ...res,
+        event_id: typeof res.event_id === 'string' ? Number(res.event_id) : res.event_id,
+      } as Judgment;
     } else {
       const response = await apiClient.post('/judgments', judgmentData);
       return response.data;
