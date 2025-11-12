@@ -27,10 +27,10 @@ interface EventsState {
   
   // Actions
   fetchEvents: (page?: number, perPage?: number) => Promise<void>;
-  fetchEvent: (id: string) => Promise<void>;
+  fetchEvent: (id: number) => Promise<void>;
   createEvent: (eventData: CreateEventRequest) => Promise<Event | null>;
-  updateEvent: (id: string, eventData: Partial<CreateEventRequest>) => Promise<void>;
-  deleteEvent: (id: string) => Promise<void>;
+  updateEvent: (id: number, eventData: Partial<CreateEventRequest>) => Promise<void>;
+  deleteEvent: (id: number) => Promise<void>;
   
   // Filter and sort actions
   setFilters: (filters: Partial<EventFilters>) => void;
@@ -45,7 +45,7 @@ interface EventsState {
 
 const defaultFilters: EventFilters = {};
 const defaultSortOptions: EventSortOptions = {
-  field: 'created_at',
+  field: 'timestamp_start',
   direction: 'desc'
 };
 
@@ -95,7 +95,7 @@ export const useEventsStore = create<EventsState>()(
         }
       },
 
-      fetchEvent: async (id: string) => {
+      fetchEvent: async (id: number) => {
         set({ loading: true, error: null });
         
         try {
@@ -152,7 +152,7 @@ export const useEventsStore = create<EventsState>()(
         }
       },
 
-      updateEvent: async (id: string, eventData: Partial<CreateEventRequest>) => {
+      updateEvent: async (id: number, eventData: Partial<CreateEventRequest>) => {
         set({ loading: true, error: null });
         
         try {
@@ -162,9 +162,9 @@ export const useEventsStore = create<EventsState>()(
           // For now, just update local state
           set((state) => ({
             events: state.events.map(event => 
-              event.id === id ? { ...event, ...eventData } : event
+              event.id === Number(id) ? { ...event, ...eventData } : event
             ),
-            currentEvent: state.currentEvent?.id === id 
+            currentEvent: state.currentEvent?.id === Number(id) 
               ? { ...state.currentEvent, ...eventData }
               : state.currentEvent,
             loading: false
@@ -177,7 +177,7 @@ export const useEventsStore = create<EventsState>()(
         }
       },
 
-      deleteEvent: async (id: string) => {
+      deleteEvent: async (id: number) => {
         set({ loading: true, error: null });
         
         try {
@@ -186,8 +186,8 @@ export const useEventsStore = create<EventsState>()(
           
           // For now, just remove from local state
           set((state) => ({
-            events: state.events.filter(event => event.id !== id),
-            currentEvent: state.currentEvent?.id === id ? null : state.currentEvent,
+            events: state.events.filter(event => event.id !== Number(id)),
+            currentEvent: state.currentEvent?.id === Number(id) ? null : state.currentEvent,
             loading: false
           }));
         } catch (error: any) {

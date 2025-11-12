@@ -4,29 +4,35 @@ import { useEventsStore } from '@/stores/events';
 export const CreateEventButton: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
-    title: '',
     description: '',
-    start_date: '',
-    end_date: ''
+    category_id: undefined as number | undefined,
+    forma_id: undefined as number | undefined,
+    cause_id: undefined as number | undefined,
+    develop_id: undefined as number | undefined,
+    effect_id: undefined as number | undefined,
+    vector: true
   });
   const [loading, setLoading] = useState(false);
   const { createEvent } = useEventsStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim()) return;
+    if (!formData.description.trim()) return;
 
     setLoading(true);
     try {
       await createEvent({
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        start_date: formData.start_date || undefined,
-        end_date: formData.end_date || undefined
+        description: formData.description.trim(),
+        category_id: formData.category_id,
+        forma_id: formData.forma_id,
+        cause_id: formData.cause_id,
+        develop_id: formData.develop_id,
+        effect_id: formData.effect_id,
+        vector: formData.vector
       });
       
       // Reset form and close modal
-      setFormData({ title: '', description: '', start_date: '', end_date: '' });
+      setFormData({ description: '', category_id: undefined, forma_id: undefined, cause_id: undefined, develop_id: undefined, effect_id: undefined, vector: true });
       setIsOpen(false);
     } catch (error) {
       console.error('Failed to create event:', error);
@@ -36,7 +42,7 @@ export const CreateEventButton: React.FC = () => {
   };
 
   const handleCancel = () => {
-    setFormData({ title: '', description: '', start_date: '', end_date: '' });
+    setFormData({ description: '', category_id: undefined, forma_id: undefined, cause_id: undefined, develop_id: undefined, effect_id: undefined, vector: true });
     setIsOpen(false);
   };
 
@@ -58,23 +64,8 @@ export const CreateEventButton: React.FC = () => {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter event title"
-                    required
-                  />
-                </div>
-
-                <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
+                    Description *
                   </label>
                   <textarea
                     id="description"
@@ -82,36 +73,23 @@ export const CreateEventButton: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter event description (optional)"
+                    placeholder="Enter event description"
+                    required
                   />
                 </div>
 
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="start_date" className="block text-sm font-medium text-gray-700 mb-1">
-                      Start Date
-                    </label>
-                    <input
-                      type="date"
-                      id="start_date"
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="end_date" className="block text-sm font-medium text-gray-700 mb-1">
-                      End Date
-                    </label>
-                    <input
-                      type="date"
-                      id="end_date"
-                      value={formData.end_date}
-                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Vector
+                  </label>
+                  <select
+                    value={formData.vector ? 'outgoing' : 'incoming'}
+                    onChange={(e) => setFormData({ ...formData, vector: e.target.value === 'outgoing' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="outgoing">Outgoing (from user)</option>
+                    <option value="incoming">Incoming (to user)</option>
+                  </select>
                 </div>
 
                 <div className="flex justify-end space-x-3 pt-4">
@@ -124,7 +102,7 @@ export const CreateEventButton: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    disabled={loading || !formData.title.trim()}
+                    disabled={loading || !formData.description.trim()}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                   >
                     {loading ? 'Creating...' : 'Create Event'}

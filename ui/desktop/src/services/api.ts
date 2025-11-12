@@ -222,13 +222,13 @@ export class ApiService {
     } else {
       // Map UI request to core API: use embedded context fields
       const payload = {
-        description: eventData.description || eventData.title,
+        description: eventData.description,
         category_id: eventData.category_id,
         forma_id: eventData.forma_id,
         cause_id: eventData.cause_id,
         develop_id: eventData.develop_id,
         effect_id: eventData.effect_id,
-        vector: true
+        vector: eventData.vector
       };
       const response = await apiClient.post('/events', payload);
       return response.data as TruthEvent;

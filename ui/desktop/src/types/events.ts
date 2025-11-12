@@ -33,31 +33,35 @@ export interface EventDetails extends Event {
 }
 
 export interface CreateEventRequest {
-  title: string;
+  description: string;
+  category_id?: number;
+  forma_id?: number;
+  cause_id?: number;
+  develop_id?: number;
+  effect_id?: number;
+  vector: boolean;
+}
+
+export interface UpdateEventRequest {
   description?: string;
   category_id?: number;
   forma_id?: number;
   cause_id?: number;
   develop_id?: number;
   effect_id?: number;
-  start_date?: string;
-  end_date?: string;
-}
-
-export interface UpdateEventRequest {
-  title?: string;
-  description?: string;
-  category?: string;
-  tags?: string[];
-  status?: EventStatus;
+  vector?: boolean;
+  detected?: boolean;
+  corrected?: boolean;
 }
 
 export interface EventFilters {
-  status?: EventStatus;
-  category?: string;
-  tags?: string[];
-  date_from?: string;
-  date_to?: string;
+  category_id?: number;
+  forma_id?: number;
+  cause_id?: number;
+  develop_id?: number;
+  effect_id?: number;
+  vector?: boolean;
+  detected?: boolean;
   search?: string;
   recognition?: 'confirm' | 'reject' | 'abstain';
 }
@@ -102,7 +106,7 @@ export interface EventValidation {
 }
 
 // Event sorting options
-export type EventSortField = 'created_at' | 'updated_at' | 'title' | 'status' | 'participant_count';
+export type EventSortField = 'timestamp_start' | 'timestamp_end' | 'description' | 'detected' | 'collective_score';
 export type SortDirection = 'asc' | 'desc';
 
 export interface EventSortOptions {

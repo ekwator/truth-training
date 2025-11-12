@@ -34,8 +34,8 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onNavigate }) => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -114,16 +114,18 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onNavigate }) => {
                 Confession
               </span>
             )}
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
-              {event.status}
-            </span>
+            {event.detected !== undefined && (
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${event.detected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {event.detected ? 'Detected' : 'Not Detected'}
+              </span>
+            )}
           </div>
         </div>
 
         <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-          <span>Created {formatDate(event.created_at)}</span>
-          {event.updated_at && (
-            <span>Updated {formatDate(event.updated_at)}</span>
+          <span>Created {formatDate(event.timestamp_start)}</span>
+          {event.timestamp_end && (
+            <span>Ended {formatDate(event.timestamp_end)}</span>
           )}
         </div>
 
@@ -166,10 +168,9 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onNavigate }) => {
       <Modal open={openView} onClose={() => setOpenView(false)} title="Event Details">
         <div className="space-y-2">
           <div className="text-sm text-gray-500">ID: {event.id}</div>
-          <div className="text-base font-semibold">{event.title}</div>
-          <div className="text-sm text-gray-700">{event.description}</div>
-          <div className="text-xs text-gray-500">Status: {event.status}</div>
-          <div className="text-xs text-gray-500">Created: {new Date(event.created_at).toLocaleString()}</div>
+          <div className="text-base font-semibold">{event.description}</div>
+          <div className="text-xs text-gray-500">Vector: {event.vector ? 'Outgoing' : 'Incoming'}</div>
+          <div className="text-xs text-gray-500">Created: {new Date(event.timestamp_start * 1000).toLocaleString()}</div>
         </div>
       </Modal>
       <Modal open={openJudge} onClose={() => setOpenJudge(false)} title="Submit Judgment" footer={

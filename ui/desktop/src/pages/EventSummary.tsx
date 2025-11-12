@@ -90,7 +90,7 @@ export const EventSummary: React.FC = () => {
           </button>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <h1 className="text-2xl font-bold mb-4">{selectedEvent.title}</h1>
+            <h1 className="text-2xl font-bold mb-4">{selectedEvent.description}</h1>
 
             {isEditing ? (
               <>
