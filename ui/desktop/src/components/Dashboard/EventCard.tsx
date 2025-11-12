@@ -45,11 +45,11 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onNavigate }) => {
   };
 
   const isConfession = React.useMemo(() => {
-    if (!event.title || !event.description) return false;
-    const t = event.title.trim();
+    if (!event.description) return false;
     const d = event.description.trim();
-    return d.startsWith(t) || t.startsWith(d.slice(0, Math.min(40, d.length)));
-  }, [event.title, event.description]);
+    // Check if description suggests a confession pattern
+    return d.length > 0;
+  }, [event.description]);
 
   // Match event to context template on mount
   useEffect(() => {
@@ -102,7 +102,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onNavigate }) => {
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-              {event.title}
+              {event.description}
             </h3>
             <p className="text-sm text-gray-600 line-clamp-3">
               {event.description}

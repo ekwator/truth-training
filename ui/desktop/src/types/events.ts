@@ -1,22 +1,27 @@
-// Event-related types based on data-model.md
+// Event-related types based on Data_Schema.md v1.0.0
 
 export interface Event {
-  id: string;
-  title: string;
-  description?: string;
-  category_id?: number;
-  forma_id?: number;
-  cause_id?: number;
-  develop_id?: number;
-  effect_id?: number;
-  start_date?: string;
-  end_date?: string;
-  created_at: string;
-  updated_at?: string;
-  status: EventStatus;
+  id: number;  // INTEGER PRIMARY KEY AUTOINCREMENT
+  description: string;  // TEXT NOT NULL
+  category_id?: number;  // INTEGER FK → category.id, nullable
+  forma_id?: number;  // INTEGER FK → forma.id, nullable
+  cause_id?: number;  // INTEGER FK → cause.id, nullable
+  develop_id?: number;  // INTEGER FK → develop.id, nullable
+  effect_id?: number;  // INTEGER FK → effect.id, nullable
+  vector: boolean;  // BOOLEAN - true = outgoing, false = incoming
+  detected?: boolean;  // BOOLEAN nullable - whether event was identified as truth or lie
+  corrected: boolean;  // BOOLEAN - event correction indicator
+  timestamp_start: number;  // INTEGER (UNIX timestamp)
+  timestamp_end?: number;  // INTEGER nullable (UNIX timestamp)
+  code: number;  // INTEGER - event classification code (default: 1)
+  collective_score?: number;  // REAL nullable - Collective truth score (0–1)
+  // Display helpers (loaded via JOIN)
+  category_name?: string;
+  forma_name?: string;
+  cause_name?: string;
+  develop_name?: string;
+  effect_name?: string;
 }
-
-export type EventStatus = 'active' | 'inactive' | 'archived' | 'pending';
 
 export interface EventDetails extends Event {
   consensus?: any | null;

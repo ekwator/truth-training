@@ -133,13 +133,14 @@ CREATE TABLE IF NOT EXISTS statements (
 );
 
 CREATE TABLE IF NOT EXISTS impact (
-            id TEXT PRIMARY KEY,
-            event_id TEXT NOT NULL,
-type_id INTEGER NOT NULL,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id INTEGER NOT NULL,
+            type_id INTEGER NOT NULL,
             value INTEGER NOT NULL,      -- SQLite bool (0/1)
-notes TEXT,
+            notes TEXT,
             created_at INTEGER NOT NULL,
-            FOREIGN KEY(event_id) REFERENCES truth_events(id)
+            FOREIGN KEY(event_id) REFERENCES truth_events(id),
+            FOREIGN KEY(type_id) REFERENCES impact_type(id)
 );
 
 CREATE TABLE IF NOT EXISTS progress_metrics (
@@ -259,13 +260,68 @@ pub fn open_db(path: &str) -> Result<Connection, CoreError> {
 
 /// Инициализация базы: создаёт таблицы, если их нет
 pub fn init_db(conn: &Connection) -> Result<(), CoreError> {
+    // Create schema_version table first
+    conn.execute_batch(
+        r#"
+        CREATE TABLE IF NOT EXISTS schema_version (
+            version TEXT PRIMARY KEY,
+            applied_at INTEGER NOT NULL,
+            description TEXT
+        );
+        "#
+    )?;
+    
     conn.execute_batch(SCHEMA_SQL)?;
     run_migrations(conn)?;
+    validate_schema(conn)?;
+    Ok(())
+}
+
+/// Validate that all required tables and foreign keys exist
+fn validate_schema(conn: &Connection) -> Result<(), CoreError> {
+    let required_tables = vec![
+        "category", "cause", "develop", "effect", "forma", "context", "impact_type",
+        "truth_events", "impact", "progress_metrics"
+    ];
+    
+    for table in required_tables {
+        let exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+            [table],
+            |row| row.get(0)
+        )?;
+        
+        if exists == 0 {
+            return Err(CoreError::InvalidState(format!("Required table '{}' is missing", table)));
+        }
+    }
+    
+    // Check for legacy tables and warn
+    let legacy_tables = vec!["events", "impacts", "summaries", "judgments", "logs"];
+    for table in legacy_tables {
+        let exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+            [table],
+            |row| row.get(0)
+        ).unwrap_or(0);
+        
+        if exists > 0 {
+            log::warn!("Legacy table '{}' detected. Consider migrating data to v1.0.0 schema.", table);
+        }
+    }
+    
     Ok(())
 }
 
 /// Выполнить миграции: добавить недостающие колонки и служебные таблицы
 pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
+    // Record schema version
+    let current_version = "1.0.0";
+    let timestamp = chrono::Utc::now().timestamp();
+    conn.execute(
+        "INSERT OR IGNORE INTO schema_version (version, applied_at, description) VALUES (?1, ?2, ?3)",
+        params![current_version, timestamp, "Truth Training v1.0.0 schema with embedded context fields"]
+    )?;
     // Проверка наличия колонки в таблице
     fn has_column(conn: &Connection, table: &str, column: &str) -> Result<bool, rusqlite::Error> {
         let mut stmt = conn.prepare(&format!("PRAGMA table_info('{}')", table))?;
@@ -1297,16 +1353,15 @@ pub fn add_impact(
     type_id: i64,
     value: bool,
     notes: Option<String>,
-) -> Result<String, CoreError> {
-    let id = Uuid::new_v4().to_string();
+) -> Result<i64, CoreError> {
     let created_at = Utc::now().timestamp();
 
     conn.execute(
-        r#"INSERT INTO impact (id, event_id, type_id, value, notes, created_at)
-          VALUES (?1, ?2, ?3, ?4, ?5, ?6)"#,
-        params![id, event_id, type_id, if value { 1 } else { 0 }, notes, created_at],
+        r#"INSERT INTO impact (event_id, type_id, value, notes, created_at)
+          VALUES (?1, ?2, ?3, ?4, ?5)"#,
+        params![event_id, type_id, if value { 1 } else { 0 }, notes, created_at],
     )?;
-    Ok(id)
+    Ok(conn.last_insert_rowid())
 }
 
 /// Пересчёт агрегатов для progress_metrics (MVP-версия)

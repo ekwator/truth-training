@@ -130,12 +130,12 @@ pub timestamp_start: i64,
 /// Воздействие (таблица: impact)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Impact {
-    pub id: String,
-    pub event_id: String, // FK → truth_events.id
-    pub type_id: i64,  // FK → impact_type.id
-    pub value: bool,   // true = позитивное, false = негативное
-pub notes: Option<String>,
-    pub created_at: i64,
+    pub id: i64,  // INTEGER PRIMARY KEY AUTOINCREMENT
+    pub event_id: i64, // INTEGER FK → truth_events.id
+    pub type_id: i64,  // INTEGER FK → impact_type.id
+    pub value: bool,   // BOOLEAN (0/1) - true = позитивное, false = негативное
+    pub notes: Option<String>,  // TEXT nullable
+    pub created_at: i64,  // INTEGER (UNIX timestamp)
     pub signature: Option<String>,  // Подпись записи влияния
     pub public_key: Option<String>, // Публичный ключ автора
 }

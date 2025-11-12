@@ -24,13 +24,13 @@ export const Events: React.FC<EventsProps> = ({ onNavigate }) => {
   const filteredEvents = events.filter(event => {
     // Search filter
     if (searchTerm) {
-      const hit = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const hit = event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (event.description || '').toLowerCase().includes(searchTerm.toLowerCase());
       if (!hit) return false;
     }
     // Recognition filter (heuristic: look for keywords in description/title)
     if (filters.recognition) {
-      const text = `${event.title} ${(event.description||'')}`.toLowerCase();
+      const text = `${event.description || ''}`.toLowerCase();
       if (!text.includes(filters.recognition)) return false;
     }
     return true;
