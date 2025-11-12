@@ -567,7 +567,7 @@ async fn add_impact(pool: web::Data<DbPool>, payload: web::Json<Impact>) -> impl
 
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
-        storage::add_impact(&_conn, im_copy.event_id.parse().unwrap_or(0), im_copy.type_id, im_copy.value, im_copy.notes)
+        storage::add_impact(&_conn, im_copy.event_id, im_copy.type_id, im_copy.value, im_copy.notes)
     })
     .await;
 
