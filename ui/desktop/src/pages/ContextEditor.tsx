@@ -5,7 +5,7 @@ import { CreateContextRequest } from '@/types/contexts';
 import { useContextEditorStore } from '@/stores/contextEditor';
 
 interface ContextEditorProps {
-  eventId?: string;
+  eventId?: number;
   prefilledData?: {
     category_id?: number;
     forma_id?: number;
@@ -46,7 +46,7 @@ export const ContextEditor: React.FC<ContextEditorProps> = ({ eventId, prefilled
         description: '',
       });
       setPrefilledData(null); // Clear after using
-    } else if (eventId) {
+    } else if (eventId !== undefined) {
       // Fetch event to get embedded fields
       ApiService.getEvent(eventId)
         .then((event) => {

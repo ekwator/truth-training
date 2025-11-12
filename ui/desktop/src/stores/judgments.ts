@@ -22,7 +22,7 @@ interface JudgmentsState {
   sortOptions: JudgmentSortOptions;
   
   // Actions
-  fetchJudgments: (eventId?: string, page?: number, perPage?: number) => Promise<void>;
+  fetchJudgments: (eventId?: number, page?: number, perPage?: number) => Promise<void>;
   createJudgment: (judgmentData: CreateJudgmentRequest) => Promise<Judgment | null>;
   updateJudgment: (id: string, judgmentData: Partial<CreateJudgmentRequest>) => Promise<void>;
   deleteJudgment: (id: string) => Promise<void>;
@@ -61,7 +61,7 @@ export const useJudgmentsStore = create<JudgmentsState>()(
       sortOptions: defaultSortOptions,
 
       // Actions
-      fetchJudgments: async (eventId?: string, page = 1, perPage = 20) => {
+      fetchJudgments: async (eventId?: number, page = 1, perPage = 20) => {
         set({ loading: true, error: null });
         
         try {

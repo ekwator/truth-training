@@ -3,7 +3,7 @@
 export interface Judgment {
   id: string;
   participant_id: string;
-  event_id: string;
+  event_id: number;
   assessment: JudgmentAssessment;
   confidence_level: number;
   reasoning?: string;
@@ -15,7 +15,7 @@ export interface Judgment {
 export type JudgmentAssessment = 'confirm' | 'reject' | 'abstain';
 
 export interface CreateJudgmentRequest {
-  event_id: string;
+  event_id: number;
   assessment: JudgmentAssessment;
   confidence_level: number;
   reasoning?: string;
@@ -30,7 +30,7 @@ export interface UpdateJudgmentRequest {
 }
 
 export interface JudgmentFilters {
-  event_id?: string;
+  event_id?: number;
   participant_id?: string;
   assessment?: JudgmentAssessment;
   confidence_min?: number;

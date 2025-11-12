@@ -48,7 +48,7 @@ describe('OfflineQueueService', () => {
     test('should add operations to queue', () => {
       const operation = {
         type: 'create_event' as const,
-        data: { title: 'Test Event', context_id: 'kb:test' },
+        data: { description: 'Test Event', vector: true },
         maxRetries: 3
       };
 
@@ -61,7 +61,7 @@ describe('OfflineQueueService', () => {
     test('should persist queue to localStorage', () => {
       const operation = {
         type: 'add_impact' as const,
-        data: { event_id: 'event-1', impact_level: 3 },
+        data: { event_id: 1, impact_level: 3 },
         maxRetries: 3
       };
 
@@ -102,7 +102,7 @@ describe('OfflineQueueService', () => {
 
       offlineQueue.addOperation({
         type: 'create_event',
-        data: { title: 'Test', context_id: 'kb:test' },
+        data: { description: 'Test', vector: true },
         maxRetries: 3
       });
 
@@ -126,7 +126,7 @@ describe('OfflineQueueService', () => {
 
       offlineQueue.addOperation({
         type: 'create_event',
-        data: { title: 'Test', context_id: 'kb:test' },
+        data: { description: 'Test', vector: true },
         maxRetries: 3
       });
     });
@@ -140,7 +140,7 @@ describe('OfflineQueueService', () => {
 
       offlineQueue.addOperation({
         type: 'create_event',
-        data: { title: 'Test', context_id: 'kb:test' },
+        data: { description: 'Test', vector: true },
         maxRetries: 3
       });
 
@@ -150,7 +150,7 @@ describe('OfflineQueueService', () => {
 
       offlineQueue.addOperation({
         type: 'add_impact',
-        data: { event_id: 'event-1', impact_level: 2 },
+        data: { event_id: 1, impact_level: 2 },
         maxRetries: 3
       });
 
@@ -161,10 +161,10 @@ describe('OfflineQueueService', () => {
   describe('Operation Validation', () => {
     test('should validate operation types', () => {
       const validOperations = [
-        { type: 'create_event', data: { title: 'Test', context_id: 'kb:test' }, maxRetries: 3 },
-        { type: 'add_impact', data: { event_id: 'event-1', impact_level: 3 }, maxRetries: 3 },
-        { type: 'submit_judgment', data: { event_id: 'event-1', assessment: 'true', confidence_level: 0.8 }, maxRetries: 3 },
-        { type: 'update_event', data: { id: 'event-1', title: 'Updated' }, maxRetries: 3 }
+        { type: 'create_event', data: { description: 'Test', vector: true }, maxRetries: 3 },
+        { type: 'add_impact', data: { event_id: 1, impact_level: 3 }, maxRetries: 3 },
+        { type: 'submit_judgment', data: { event_id: 1, assessment: 'confirm', confidence_level: 0.8 }, maxRetries: 3 },
+        { type: 'update_event', data: { id: 1, description: 'Updated', vector: true }, maxRetries: 3 }
       ];
 
       validOperations.forEach(operation => {
@@ -177,7 +177,7 @@ describe('OfflineQueueService', () => {
     test('should handle operations with default maxRetries', () => {
       const operation = {
         type: 'create_event' as const,
-        data: { title: 'Test', context_id: 'kb:test' }
+        data: { description: 'Test', vector: true }
         // maxRetries not specified
       };
 
@@ -201,7 +201,7 @@ describe('OfflineQueueService', () => {
       expect(() => {
         offlineQueue.addOperation({
           type: 'create_event',
-          data: { title: 'Test', context_id: 'kb:test' },
+          data: { description: 'Test', vector: true },
           maxRetries: 3
         });
       }).not.toThrow();
@@ -225,12 +225,12 @@ describe('OfflineQueueService', () => {
       // Add some operations
       offlineQueue.addOperation({
         type: 'create_event',
-        data: { title: 'Test 1', context_id: 'kb:test' },
+        data: { description: 'Test 1', vector: true },
         maxRetries: 3
       });
       offlineQueue.addOperation({
         type: 'add_impact',
-        data: { event_id: 'event-1', impact_level: 2 },
+        data: { event_id: 1, impact_level: 2 },
         maxRetries: 3
       });
 
@@ -244,12 +244,12 @@ describe('OfflineQueueService', () => {
     test('should get pending operations', () => {
       const operation1 = {
         type: 'create_event' as const,
-        data: { title: 'Test 1', context_id: 'kb:test' },
+        data: { description: 'Test 1', vector: true },
         maxRetries: 3
       };
       const operation2 = {
         type: 'add_impact' as const,
-        data: { event_id: 'event-1', impact_level: 2 },
+        data: { event_id: 1, impact_level: 2 },
         maxRetries: 3
       };
 

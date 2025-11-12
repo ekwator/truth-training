@@ -50,11 +50,12 @@ describe('EventsStore', () => {
     it('should fetch events successfully', async () => {
       const mockEvents = [
         {
-          id: '1',
-          title: 'Test Event 1',
-          description: 'Test Description 1',
-          created_at: '2024-01-01T00:00:00Z',
-          status: 'active'
+          id: 1,
+          description: 'Test Event 1',
+          vector: true,
+          corrected: false,
+          timestamp_start: 1_700_000_000,
+          code: 1
         }
       ];
 
@@ -99,11 +100,12 @@ describe('EventsStore', () => {
   describe('createEvent', () => {
     it('should create event successfully', async () => {
       const mockEvent = {
-        id: '1',
-        title: 'New Event',
+        id: 1,
         description: 'New Description',
-        created_at: '2024-01-01T00:00:00Z',
-        status: 'active'
+        vector: true,
+        corrected: false,
+        timestamp_start: 1_700_000_100,
+        code: 1
       };
 
       jest.mocked(ApiService.createEvent).mockResolvedValue(mockEvent);
@@ -111,8 +113,8 @@ describe('EventsStore', () => {
         .mockImplementation(async (name, fn) => fn());
 
       const result = await useEventsStore.getState().createEvent({
-        title: 'New Event',
-        description: 'New Description'
+        description: 'New Description',
+        vector: true
       });
 
       expect(result).toEqual(mockEvent);
@@ -129,8 +131,8 @@ describe('EventsStore', () => {
         .mockImplementation(async (name, fn) => fn());
 
       const result = await useEventsStore.getState().createEvent({
-        title: 'New Event',
-        description: 'New Description'
+        description: 'New Description',
+        vector: true
       });
 
       expect(result).toBeNull();

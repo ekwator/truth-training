@@ -4,19 +4,19 @@ import { JudgmentCard } from '@/components/JudgmentPanel/JudgmentCard';
 
 export const Judgments: React.FC = () => {
   const { judgments, loading, error, fetchJudgments, filters, setFilters } = useJudgmentsStore();
-  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchJudgments();
   }, [fetchJudgments]);
 
-  const handleEventFilter = (eventId: string) => {
+  const handleEventFilter = (eventId: number | null) => {
     setSelectedEventId(eventId);
-    setFilters({ event_id: eventId || undefined });
+    setFilters({ event_id: eventId ?? undefined });
   };
 
   const filteredJudgments = judgments.filter(judgment => {
-    if (!selectedEventId) return true;
+    if (selectedEventId === null) return true;
     return judgment.event_id === selectedEventId;
   });
 
@@ -71,14 +71,15 @@ export const Judgments: React.FC = () => {
                 </label>
                 <select
                   id="event-filter"
-                  value={selectedEventId}
-                  onChange={(e) => handleEventFilter(e.target.value)}
+                  value={selectedEventId !== null ? selectedEventId.toString() : ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    handleEventFilter(value === '' ? null : Number(value));
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Events</option>
-                  {/* This would be populated with actual events */}
-                  <option value="event-1">Sample Event 1</option>
-                  <option value="event-2">Sample Event 2</option>
+                  {/* TODO: Populate with actual events from store */}
                 </select>
               </div>
               <div>
@@ -88,7 +89,7 @@ export const Judgments: React.FC = () => {
                 <select
                   id="assessment-filter"
                   value={filters.assessment || ''}
-                  onChange={(e) => setFilters({ assessment: e.target.value as any || undefined })}
+                  onChange={(e) => setFilters({ assessment: (e.target.value as any) || undefined })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Assessments</option>
@@ -103,7 +104,7 @@ export const Judgments: React.FC = () => {
                 </label>
                 <select
                   id="confidence-filter"
-                  value={filters.confidence_min || ''}
+                  value={filters.confidence_min !== undefined ? filters.confidence_min.toString() : ''}
                   onChange={(e) => setFilters({ confidence_min: e.target.value ? parseFloat(e.target.value) : undefined })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
@@ -134,7 +135,7 @@ export const Judgments: React.FC = () => {
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No judgments found</h3>
                 <p className="text-gray-500">
-                  {selectedEventId ? 'No judgments for the selected event.' : 'No judgments have been submitted yet.'}
+                  {selectedEventId !== null ? 'No judgments for the selected event.' : 'No judgments have been submitted yet.'}
                 </p>
               </div>
             ) : (
