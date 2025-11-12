@@ -13,6 +13,7 @@ export const NewEvent: React.FC = () => {
   const [formData, setFormData] = useState({
     event_name: '',
     description: '',
+    vector: true,
     category_id: undefined as number | undefined,
     forma_id: undefined as number | undefined,
     cause_id: undefined as number | undefined,
@@ -39,7 +40,7 @@ export const NewEvent: React.FC = () => {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  const handleChange = (field: string, value: string | number | undefined) => {
+  const handleChange = (field: string, value: string | number | boolean | undefined) => {
     setFormData({ ...formData, [field]: value });
   };
 
@@ -92,6 +93,8 @@ export const NewEvent: React.FC = () => {
       return;
     }
 
+    const description = formData.description.trim() || eventName;
+
     // Context fields are optional - no validation required
 
     if (formData.start_date && formData.end_date && formData.start_date > formData.end_date) {
@@ -106,15 +109,13 @@ export const NewEvent: React.FC = () => {
     setLoading(true);
     try {
       await ApiService.createEvent({
-        title: eventName,
-        description: formData.description || undefined,
+        description,
         category_id: formData.category_id,
         forma_id: formData.forma_id,
         cause_id: formData.cause_id,
         develop_id: formData.develop_id,
         effect_id: formData.effect_id,
-        start_date: formData.start_date || undefined,
-        end_date: formData.end_date || undefined,
+        vector: formData.vector
       });
       addToast({
         type: 'success',
@@ -139,6 +140,7 @@ export const NewEvent: React.FC = () => {
     setFormData({
       event_name: '',
       description: '',
+      vector: true,
       category_id: undefined,
       forma_id: undefined,
       cause_id: undefined,
@@ -197,8 +199,22 @@ export const NewEvent: React.FC = () => {
               rows={4}
             />
             {confessionMode && (
-              <p className="mt-2 text-xs text-gray-500">Tip: Paste confession text here. Title will be derived if left empty.</p>
+              <p className="mt-1 text-xs text-gray-500">
+                Description is optional in confession mode; if left blank, the event name will be used.
+              </p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Vector</label>
+            <select
+              value={formData.vector ? 'outgoing' : 'incoming'}
+              onChange={(e) => handleChange('vector', e.target.value === 'outgoing')}
+              className="w-full px-3 py-2 border rounded"
+            >
+              <option value="outgoing">Outgoing (from user)</option>
+              <option value="incoming">Incoming (to user)</option>
+            </select>
           </div>
 
           <div>
