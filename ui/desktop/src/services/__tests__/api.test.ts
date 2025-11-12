@@ -44,11 +44,12 @@ describe('ApiService', () => {
         data: {
           data: [
             {
-              id: '1',
-              title: 'Test Event',
-              description: 'Test Description',
-              created_at: '2024-01-01T00:00:00Z',
-              status: 'active'
+              id: 1,
+              description: 'Test Event',
+              vector: true,
+              corrected: false,
+              timestamp_start: 1_700_000_000,
+              code: 1
             }
           ],
           pagination: {
@@ -101,11 +102,12 @@ describe('ApiService', () => {
   describe('createEvent', () => {
     it('should create event successfully', async () => {
       const mockEvent = {
-        id: '1',
-        title: 'New Event',
+        id: 1,
         description: 'New Description',
-        created_at: '2024-01-01T00:00:00Z',
-        status: 'active'
+        vector: true,
+        corrected: false,
+        timestamp_start: 1_700_000_100,
+        code: 1
       };
 
       const mockApiClient = {
@@ -122,8 +124,8 @@ describe('ApiService', () => {
       setApiClient(mockApiClient as any);
 
       const result = await ApiService.createEvent({
-        title: 'New Event',
-        description: 'New Description'
+        description: 'New Description',
+        vector: true
       });
       
       expect(result).toEqual(mockEvent);
@@ -138,8 +140,8 @@ describe('ApiService', () => {
             {
               id: '1',
               participant_id: 'p1',
-              event_id: 'e1',
-              assessment: 'true',
+              event_id: 1,
+              assessment: 'confirm',
               confidence_level: 0.8,
               submitted_at: '2024-01-01T00:00:00Z',
               signature: 'sig1'
@@ -167,7 +169,7 @@ describe('ApiService', () => {
 
       setApiClient(mockApiClient as any);
 
-      const result = await ApiService.getJudgments('e1', 1, 20);
+      const result = await ApiService.getJudgments(1, 1, 20);
       
       expect(result.data).toEqual(mockResponse.data.data);
       expect(result.pagination).toEqual(mockResponse.data.pagination);

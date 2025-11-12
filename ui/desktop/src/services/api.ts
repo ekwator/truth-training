@@ -90,14 +90,14 @@ export type { TruthEvent as Event, EventDetails, CreateEventRequest };
 // Impact API
 export interface Impact {
   id: string;
-  event_id: string;
+  event_id: string | number;
   impact_level: number; // 1-5
   notes?: string;
   created_at: string;
 }
 
 export interface AddImpactRequest {
-  event_id: string;
+  event_id: string | number;
   impact_level: number;
   notes?: string;
 }
@@ -105,7 +105,7 @@ export interface AddImpactRequest {
 // Summary API
 export interface Summary {
   id: string;
-  event_id: string;
+  event_id: string | number;
   summary_text?: string;
   recommendations?: string;
   updated_at: string;
@@ -133,7 +133,7 @@ export interface Judgment {
 }
 
 export interface CreateJudgmentRequest {
-  event_id: string;
+  event_id: number;
   assessment: 'confirm' | 'reject' | 'abstain';
   confidence_level: number;
   reasoning?: string;
@@ -236,10 +236,10 @@ export class ApiService {
   }
 
   // Judgments endpoints
-  static async getJudgments(eventId?: string, page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Judgment>> {
+  static async getJudgments(eventId?: number, page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Judgment>> {
     if (isTauri()) {
       const { invoke } = await import('@tauri-apps/api/core');
-        const res = await invoke('judgments_list_fast', { eventId: eventId || '', page, perPage });
+      const res = await invoke('judgments_list_fast', { eventId: eventId ? eventId.toString() : '', page, perPage });
       const { data, total } = res as { data: Judgment[]; total: number };
       return {
         data,
@@ -247,7 +247,7 @@ export class ApiService {
       };
     } else {
       const params = new URLSearchParams({ page: page.toString(), per_page: perPage.toString() });
-      if (eventId) params.append('event_id', eventId);
+      if (eventId !== undefined) params.append('event_id', eventId.toString());
       const response = await apiClient.get(`/judgments?${params.toString()}`);
       return response.data;
     }
@@ -258,7 +258,7 @@ export class ApiService {
       const { invoke } = await import('@tauri-apps/api/core');
       const res = await invoke('submit_judgment_fast', {
         request: {
-          eventId: judgmentData.event_id,
+          eventId: judgmentData.event_id.toString(),
           assessment: judgmentData.assessment,
           confidenceLevel: judgmentData.confidence_level,
           reasoning: judgmentData.reasoning ?? null,
@@ -272,7 +272,7 @@ export class ApiService {
   }
 
   // Consensus endpoints
-  static async getConsensus(eventId: string): Promise<Consensus | null> {
+  static async getConsensus(eventId: number): Promise<Consensus | null> {
     try {
       const response = await apiClient.get(`/consensus/${eventId}`);
       return response.data;
@@ -284,7 +284,7 @@ export class ApiService {
     }
   }
 
-  static async calculateConsensus(eventId: string, request: CalculateConsensusRequest = {}): Promise<Consensus> {
+  static async calculateConsensus(eventId: number, request: CalculateConsensusRequest = {}): Promise<Consensus> {
     const response = await apiClient.post(`/consensus/${eventId}/calculate`, request);
     return response.data;
   }
