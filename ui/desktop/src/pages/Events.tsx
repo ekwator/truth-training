@@ -24,14 +24,19 @@ export const Events: React.FC<EventsProps> = ({ onNavigate }) => {
   const filteredEvents = events.filter(event => {
     // Search filter
     if (searchTerm) {
-      const hit = event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (event.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      if (!hit) return false;
+      const searchLower = searchTerm.toLowerCase();
+      if (!event.description.toLowerCase().includes(searchLower)) {
+        return false;
+      }
     }
-    // Recognition filter (heuristic: look for keywords in description/title)
+    // Recognition filter (heuristic: look for keywords in description)
     if (filters.recognition) {
-      const text = `${event.description || ''}`.toLowerCase();
+      const text = event.description.toLowerCase();
       if (!text.includes(filters.recognition)) return false;
+    }
+    // Detected filter
+    if (filters.detected !== undefined) {
+      if (event.detected !== filters.detected) return false;
     }
     return true;
   });
@@ -91,24 +96,26 @@ export const Events: React.FC<EventsProps> = ({ onNavigate }) => {
                   id="search"
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
-                  placeholder="Search by title or description..."
+                  placeholder="Search by description..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div className="sm:w-48">
-                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
+                <label htmlFor="detected" className="block text-sm font-medium text-gray-700 mb-2">
+                  Detected
                 </label>
                 <select
-                  id="status"
-                  value={filters.status || ''}
-                  onChange={(e) => setFilters({ status: e.target.value as any || undefined })}
+                  id="detected"
+                  value={filters.detected === undefined ? '' : filters.detected ? 'true' : 'false'}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFilters({ detected: value === '' ? undefined : value === 'true' });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="archived">Archived</option>
+                  <option value="">All</option>
+                  <option value="true">Detected</option>
+                  <option value="false">Not Detected</option>
                 </select>
               </div>
               <div className="sm:w-48">

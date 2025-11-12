@@ -162,9 +162,9 @@ export const useEventsStore = create<EventsState>()(
           // For now, just update local state
           set((state) => ({
             events: state.events.map(event => 
-              event.id === Number(id) ? { ...event, ...eventData } : event
+              event.id === id ? { ...event, ...eventData } : event
             ),
-            currentEvent: state.currentEvent?.id === Number(id) 
+            currentEvent: state.currentEvent?.id === id 
               ? { ...state.currentEvent, ...eventData }
               : state.currentEvent,
             loading: false
@@ -186,8 +186,8 @@ export const useEventsStore = create<EventsState>()(
           
           // For now, just remove from local state
           set((state) => ({
-            events: state.events.filter(event => event.id !== Number(id)),
-            currentEvent: state.currentEvent?.id === Number(id) ? null : state.currentEvent,
+            events: state.events.filter(event => event.id !== id),
+            currentEvent: state.currentEvent?.id === id ? null : state.currentEvent,
             loading: false
           }));
         } catch (error: any) {
