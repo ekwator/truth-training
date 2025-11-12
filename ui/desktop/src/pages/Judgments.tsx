@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useJudgmentsStore } from '@/stores/judgments';
 import { JudgmentCard } from '@/components/JudgmentPanel/JudgmentCard';
+import type { JudgmentAssessment } from '@/types/judgments';
 
 export const Judgments: React.FC = () => {
   const { judgments, loading, error, fetchJudgments, filters, setFilters } = useJudgmentsStore();
@@ -89,7 +90,10 @@ export const Judgments: React.FC = () => {
                 <select
                   id="assessment-filter"
                   value={filters.assessment || ''}
-                  onChange={(e) => setFilters({ assessment: (e.target.value as any) || undefined })}
+                  onChange={(e) => {
+                    const value = e.target.value as JudgmentAssessment | '';
+                    setFilters({ assessment: value === '' ? undefined : value });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Assessments</option>
@@ -105,7 +109,10 @@ export const Judgments: React.FC = () => {
                 <select
                   id="confidence-filter"
                   value={filters.confidence_min !== undefined ? filters.confidence_min.toString() : ''}
-                  onChange={(e) => setFilters({ confidence_min: e.target.value ? parseFloat(e.target.value) : undefined })}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFilters({ confidence_min: value ? parseFloat(value) : undefined });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Levels</option>
