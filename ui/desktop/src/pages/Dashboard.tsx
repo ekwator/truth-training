@@ -85,8 +85,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <div className="space-y-2 text-sm text-gray-800">
             <div>• Total Events: {events.length}</div>
-            <div>• Active Events: {events.filter(e => e.status === 'active').length}</div>
-            <div>• With Consensus: {events.filter(e => e.status === 'active').length}</div>
+            <div>• Detected Events: {events.filter(e => e.detected === true).length}</div>
+            <div>• With Consensus: {events.filter(e => e.collective_score !== null && e.collective_score !== undefined).length}</div>
             <div>• Participants: -</div>
           </div>
         </div>
