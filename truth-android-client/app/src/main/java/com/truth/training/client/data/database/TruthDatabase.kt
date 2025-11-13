@@ -40,19 +40,19 @@ import com.truth.training.client.data.database.entities.*
     exportSchema = true  // Schema export enabled for migration validation
 )
 abstract class TruthDatabase : RoomDatabase() {
-    // Knowledge base DAOs (to be created)
-    // abstract fun categoryDao(): CategoryDao
-    // abstract fun causeDao(): CauseDao
-    // abstract fun developDao(): DevelopDao
-    // abstract fun effectDao(): EffectDao
-    // abstract fun formaDao(): FormaDao
+    // Knowledge base DAOs
+    abstract fun categoryDao(): CategoryDao
+    abstract fun causeDao(): CauseDao
+    abstract fun developDao(): DevelopDao
+    abstract fun effectDao(): EffectDao
+    abstract fun formaDao(): FormaDao
     abstract fun contextTemplateDao(): ContextTemplateDao
-    // abstract fun impactTypeDao(): ImpactTypeDao
+    abstract fun impactTypeDao(): ImpactTypeDao
     
     // Base DAOs
     abstract fun eventDao(): EventDao
     abstract fun impactDao(): ImpactDao
-    // abstract fun progressMetricsDao(): ProgressMetricsDao
+    abstract fun progressMetricsDao(): ProgressMetricsDao
     
     // Legacy DAOs
     abstract fun judgmentDao(): JudgmentDao
@@ -60,7 +60,7 @@ abstract class TruthDatabase : RoomDatabase() {
     abstract fun syncQueueDao(): SyncQueueDao
     
     companion object {
-        const val DATABASE_NAME = "truth_training.db"
+        const val DATABASE_NAME = "truth_training.sqlite"
     }
 }
 

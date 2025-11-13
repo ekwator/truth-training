@@ -55,9 +55,9 @@ import androidx.room.ColumnInfo
     ]
 )
 data class EventEntity(
-    @PrimaryKey(autoGenerate = true)
+    @PrimaryKey
     @ColumnInfo(name = "id")
-    val id: Long = 0,  // INTEGER PRIMARY KEY AUTOINCREMENT
+    val id: String,  // TEXT PRIMARY KEY - для совместимости с legacy UUIDs и CLI/Desktop
     
     @ColumnInfo(name = "description")
     val description: String,  // TEXT NOT NULL

@@ -7,16 +7,16 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ImpactDao {
     @Query("SELECT * FROM impact WHERE event_id = :eventId ORDER BY created_at DESC")
-    suspend fun listImpactsForEvent(eventId: Long): List<ImpactEntity>
+    suspend fun listImpactsForEvent(eventId: String): List<ImpactEntity>
     
     @Query("SELECT * FROM impact WHERE event_id = :eventId ORDER BY created_at DESC")
-    fun listImpactsForEventFlow(eventId: Long): Flow<List<ImpactEntity>>
+    fun listImpactsForEventFlow(eventId: String): Flow<List<ImpactEntity>>
     
     @Query("SELECT * FROM impact WHERE id = :id")
     suspend fun getImpactById(id: Long): ImpactEntity?
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertImpact(impact: ImpactEntity): Long
+    suspend fun insertImpact(impact: ImpactEntity)
     
     @Update
     suspend fun updateImpact(impact: ImpactEntity)
