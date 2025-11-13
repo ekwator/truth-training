@@ -31,10 +31,16 @@ Android клиент обновлен с v0.3.0 (pre-release) до v1.0.0, до�
 - `data/database/entities/` - 6 entity классов (Event, ContextTemplate, Judgment, Impact, Summary, SyncQueue)
 - `data/database/daos/` - 6 DAO интерфейсов с Flow поддержкой
 
+**Версии схемы Room Database:**
+- **Version 1**: Базовая схема с основными таблицами (events, contexts, judgments, impacts, summaries, sync_queue)
+- **Version 2**: Добавлены knowledge base entities (category, cause, develop, effect, forma, impact_type, progress_metrics) и обновлена структура EventEntity для использования embedded context fields
+- Миграция 1→2 определена в `TruthDatabaseMigrations.kt` (MIGRATION_1_2)
+
 **Миграция:**
 - Старые SharedPreferences остаются для токенов
 - Все данные событий, шаблонов, суждений хранятся в Room
 - Автоматическая синхронизация с сервером через WorkManager
+- Room автоматически применяет миграции при обновлении схемы
 
 ### Offline-First Architecture
 
