@@ -22,9 +22,10 @@ object TruthDatabaseMigrations {
     val MIGRATION_1_2 = object : Migration(1, 2) {
         override fun migrate(database: SupportSQLiteDatabase) {
             // Create knowledge base tables
+            // Note: No AUTOINCREMENT - these tables are populated from seed data with explicit IDs
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS `category` (
-                    `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER NOT NULL PRIMARY KEY,
                     `name` TEXT NOT NULL,
                     `description` TEXT
                 )
@@ -32,39 +33,43 @@ object TruthDatabaseMigrations {
             
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS `cause` (
-                    `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER NOT NULL PRIMARY KEY,
                     `name` TEXT NOT NULL,
+                    `quality` INTEGER NOT NULL,
                     `description` TEXT
                 )
             """.trimIndent())
             
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS `develop` (
-                    `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER NOT NULL PRIMARY KEY,
                     `name` TEXT NOT NULL,
+                    `quality` INTEGER NOT NULL,
                     `description` TEXT
                 )
             """.trimIndent())
             
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS `effect` (
-                    `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER NOT NULL PRIMARY KEY,
                     `name` TEXT NOT NULL,
+                    `quality` INTEGER NOT NULL,
                     `description` TEXT
                 )
             """.trimIndent())
             
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS `forma` (
-                    `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER NOT NULL PRIMARY KEY,
                     `name` TEXT NOT NULL,
+                    `quality` INTEGER NOT NULL,
                     `description` TEXT
                 )
             """.trimIndent())
             
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS `impact_type` (
-                    `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER NOT NULL PRIMARY KEY,
                     `name` TEXT NOT NULL,
                     `description` TEXT
                 )
@@ -73,18 +78,23 @@ object TruthDatabaseMigrations {
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS `progress_metrics` (
                     `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                    `event_id` INTEGER NOT NULL,
-                    `metric_name` TEXT NOT NULL,
-                    `metric_value` REAL NOT NULL,
                     `timestamp` INTEGER NOT NULL,
-                    FOREIGN KEY(`event_id`) REFERENCES `truth_events`(`id`) ON DELETE CASCADE
+                    `total_events` INTEGER NOT NULL,
+                    `total_events_group` INTEGER NOT NULL,
+                    `total_positive_impact` REAL NOT NULL,
+                    `total_positive_impact_group` REAL NOT NULL,
+                    `total_negative_impact` REAL NOT NULL,
+                    `total_negative_impact_group` REAL NOT NULL,
+                    `trend` REAL NOT NULL,
+                    `trend_group` REAL NOT NULL
                 )
             """.trimIndent())
             
             // Create truth_events table (new structure with embedded context fields)
+            // Note: Using TEXT for id to stay compatible with legacy UUIDs from v0.3.0
             database.execSQL("""
                 CREATE TABLE IF NOT EXISTS `truth_events` (
-                    `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    `id` TEXT NOT NULL PRIMARY KEY,
                     `description` TEXT NOT NULL,
                     `category_id` INTEGER,
                     `forma_id` INTEGER,
@@ -114,15 +124,33 @@ object TruthDatabaseMigrations {
             database.execSQL("CREATE INDEX IF NOT EXISTS `index_truth_events_effect_id` ON `truth_events`(`effect_id`)")
             database.execSQL("CREATE INDEX IF NOT EXISTS `index_truth_events_timestamp_start` ON `truth_events`(`timestamp_start`)")
             
+            // Create impact table (matches CLI schema)
+            database.execSQL("""
+                CREATE TABLE IF NOT EXISTS `impact` (
+                    `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    `event_id` TEXT NOT NULL,
+                    `type_id` INTEGER NOT NULL,
+                    `value` INTEGER NOT NULL,
+                    `notes` TEXT,
+                    `created_at` INTEGER NOT NULL,
+                    FOREIGN KEY(`event_id`) REFERENCES `truth_events`(`id`) ON DELETE CASCADE,
+                    FOREIGN KEY(`type_id`) REFERENCES `impact_type`(`id`) ON DELETE CASCADE
+                )
+            """.trimIndent())
+            
+            // Create indices for impact
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_impact_event_id` ON `impact`(`event_id`)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_impact_type_id` ON `impact`(`type_id`)")
+            
             // Migrate data from old events table to truth_events if it exists
-            // Note: This is a simplified migration - in production, you may need more complex data transformation
+            // Note: id is kept as TEXT for compatibility with legacy UUIDs
             database.execSQL("""
                 INSERT OR IGNORE INTO `truth_events` (
                     `id`, `description`, `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`,
                     `vector`, `detected`, `corrected`, `timestamp_start`, `timestamp_end`, `code`, `collective_score`
                 )
                 SELECT 
-                    CAST(`id` AS INTEGER),
+                    `id`,  -- Keep as TEXT (UUID)
                     COALESCE(`title`, '') || COALESCE(' ' || `description`, ''),
                     `category_id`,
                     `forma_id`,
@@ -139,6 +167,9 @@ object TruthDatabaseMigrations {
                 FROM `events`
                 WHERE EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='events')
             """.trimIndent())
+            
+            // Ensure legacy tables are preserved for backward compatibility
+            // (events, impacts, summaries, judgments, logs tables should already exist from version 1)
         }
     }
 }

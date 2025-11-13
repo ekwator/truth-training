@@ -37,7 +37,7 @@ data class ImpactEntity(
     val id: Long = 0,  // INTEGER PRIMARY KEY AUTOINCREMENT
     
     @ColumnInfo(name = "event_id")
-    val eventId: Long,  // INTEGER FK → truth_events.id
+    val eventId: String,  // TEXT FK → truth_events.id (TEXT для совместимости)
     
     @ColumnInfo(name = "type_id")
     val typeId: Int,  // INTEGER FK → impact_type.id
