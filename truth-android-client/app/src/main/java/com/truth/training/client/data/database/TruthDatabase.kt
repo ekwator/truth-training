@@ -37,7 +37,7 @@ import com.truth.training.client.data.database.entities.*
         SyncQueueEntity::class
     ],
     version = 2,  // Incremented to add knowledge base entities
-    exportSchema = true
+    exportSchema = true  // Schema export enabled for migration validation
 )
 abstract class TruthDatabase : RoomDatabase() {
     // Knowledge base DAOs (to be created)
