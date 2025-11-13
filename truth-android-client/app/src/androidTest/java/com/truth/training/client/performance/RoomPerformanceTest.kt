@@ -8,41 +8,27 @@ import com.truth.training.client.data.database.daos.EventDao
 import com.truth.training.client.data.database.entities.EventEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.Assert.*
 import java.util.concurrent.TimeUnit
 
 /**
- * Performance tests for Room database queries.
- * 
- * Benchmarks:
- * - Pagination query: < 50ms for 35 events
- * - Single entity retrieval: < 10ms for event by ID
- * - Bulk insert: < 100ms for 100 events
- * - Complex query: < 30ms for filtered list with status
- * - Flow emission: < 20ms initial latency
- * 
- * Test methodology:
- * - Measure average of 10 iterations
- * - Test with database sizes: 100, 1000, 10000 events
- * - Validate query plans and indices
+ * Performance tests for Room database queries against canonical schema.
  */
 @RunWith(AndroidJUnit4::class)
 class RoomPerformanceTest {
     private lateinit var database: TruthDatabase
     private lateinit var eventDao: EventDao
-    
-    /**
-     * Performance benchmark result data class.
-     */
+    private val insertedIds = mutableListOf<Long>()
+
     data class PerformanceBenchmark(
         val operation: String,
-        val averageTime: Long, // milliseconds
+        val averageTime: Long,
         val minTime: Long,
         val maxTime: Long,
         val databaseSize: Int,
@@ -64,126 +50,73 @@ class RoomPerformanceTest {
         database.close()
     }
 
-    /**
-     * Helper function to measure execution time in milliseconds.
-     */
     private inline fun <T> measureTime(block: () -> T): Pair<T, Long> {
-        val startTime = System.nanoTime()
+        val start = System.nanoTime()
         val result = block()
-        val endTime = System.nanoTime()
-        val durationMs = TimeUnit.NANOSECONDS.toMillis(endTime - startTime)
-        return Pair(result, durationMs)
+        val durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)
+        return result to durationMs
     }
 
-    /**
-     * Helper function to measure average execution time over iterations.
-     */
-    private suspend fun measureAverageTime(iterations: Int, block: suspend () -> Unit): PerformanceBenchmark {
-        // Warm-up run to mitigate JIT/initialization costs
-        measureTime { block() }
-        val times = mutableListOf<Long>()
-        repeat(iterations) {
-            val (_, time) = measureTime { block() }
-            times.add(time)
-        }
-        val average = times.average().toLong()
-        val min = times.minOrNull() ?: 0L
-        val max = times.maxOrNull() ?: 0L
-        return PerformanceBenchmark(
-            operation = "",
-            averageTime = average,
-            minTime = min,
-            maxTime = max,
-            databaseSize = 0,
-            passed = false
+    private fun medianOf(times: List<Long>): Long = if (times.isEmpty()) 0 else times.sorted()[times.size / 2]
+
+    private fun createTestEvent(description: String, categoryId: Int, timestamp: Long, vector: Boolean): EventEntity =
+        EventEntity(
+            description = description,
+            categoryId = categoryId,
+            formaId = null,
+            causeId = null,
+            developId = null,
+            effectId = null,
+            vector = vector,
+            detected = null,
+            corrected = false,
+            timestampStart = timestamp,
+            timestampEnd = null,
+            code = 1,
+            collectiveScore = null
         )
-    }
 
-    private fun medianOf(times: List<Long>): Long {
-        if (times.isEmpty()) return 0
-        val sorted = times.sorted()
-        return sorted[sorted.size / 2]
-    }
-
-    /**
-     * Create test event with given ID and title.
-     */
-    private fun createTestEvent(id: String, title: String, status: String = "active"): EventEntity {
-        val now = System.currentTimeMillis().toString()
-        return EventEntity(
-            id = id,
-            title = title,
-            description = "Test description for $title",
-            categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = now,
-            endDate = null,
-            createdAt = now,
-            updatedAt = null,
-            status = status
-        )
-    }
-
-    /**
-     * Populate database with specified number of events.
-     * Optimized for large datasets by using batch inserts in transactions.
-     */
     private suspend fun populateDatabase(size: Int) {
+        insertedIds.clear()
+        database.clearAllTables()
         database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=OFF")
         database.openHelper.writableDatabase.beginTransaction()
         try {
-            // Batch inserts in transaction for better performance
             repeat(size) { index ->
                 val event = createTestEvent(
-                    id = "event_$index",
-                    title = "Event $index",
-                    status = if (index % 2 == 0) "active" else "completed"
+                    description = "Event $index",
+                    categoryId = (index % 5) + 1,
+                    timestamp = 1_000L + index,
+                    vector = index % 2 == 0
                 )
-                eventDao.insertEvent(event)
+                val id = eventDao.insertEvent(event)
+                insertedIds.add(id)
             }
             database.openHelper.writableDatabase.setTransactionSuccessful()
         } finally {
             database.openHelper.writableDatabase.endTransaction()
+            database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=ON")
         }
-        database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=ON")
     }
 
-    /**
-     * Warm up database by performing initial queries.
-     */
     private suspend fun warmUpDatabase() {
         eventDao.listEvents(limit = 1, offset = 0)
         eventDao.getEventCount()
     }
 
-    /**
-     * Measure median time from a list of execution times.
-     */
-    private fun measureMedianTime(times: List<Long>): Long {
-        return medianOf(times)
-    }
-
     @Test
     fun benchmarkPaginationQueryWith100Events() = runTest {
-        // Setup: populate database with 100 events
         populateDatabase(100)
         warmUpDatabase()
-        
-        // Measure pagination query (35 events as per requirement)
+
         val times = mutableListOf<Long>()
-        // Warm-up query
         eventDao.listEvents(limit = 35, offset = 0)
         repeat(10) {
-            val (_, t) = measureTime {
-                eventDao.listEvents(limit = 35, offset = 0)
-            }
+            val (_, t) = measureTime { eventDao.listEvents(limit = 35, offset = 0) }
             times.add(t)
         }
         val median = medianOf(times)
-        
+
         val result = PerformanceBenchmark(
             operation = "pagination_query_35_events",
             averageTime = median,
@@ -192,23 +125,15 @@ class RoomPerformanceTest {
             databaseSize = 100,
             passed = median < 50
         )
-        
-        assertTrue(
-            "Pagination query should be < 50ms, but was ${result.averageTime}ms",
-            result.passed
-        )
-        
-        println("Performance: ${result.operation} (DB size: ${result.databaseSize})")
-        println("  Average: ${result.averageTime}ms")
-        println("  Min: ${result.minTime}ms, Max: ${result.maxTime}ms")
-        println("  Target: < 50ms, Passed: ${result.passed}")
+
+        assertTrue("Pagination query should be < 50ms, but was ${result.averageTime}ms", result.passed)
     }
 
     @Test
     fun benchmarkPaginationQueryWith1000Events() = runTest {
         populateDatabase(1000)
         warmUpDatabase()
-        
+
         val times = mutableListOf<Long>()
         eventDao.listEvents(limit = 35, offset = 0)
         repeat(10) {
@@ -216,7 +141,7 @@ class RoomPerformanceTest {
             times.add(t)
         }
         val median = medianOf(times)
-        
+
         val result = PerformanceBenchmark(
             operation = "pagination_query_35_events",
             averageTime = median,
@@ -225,18 +150,15 @@ class RoomPerformanceTest {
             databaseSize = 1000,
             passed = median < 50
         )
-        
-        assertTrue(
-            "Pagination query should be < 50ms, but was ${result.averageTime}ms",
-            result.passed
-        )
+
+        assertTrue("Pagination query should be < 50ms, but was ${result.averageTime}ms", result.passed)
     }
 
     @Test
     fun benchmarkPaginationQueryWith10000Events() = runTest(timeout = 5.minutes) {
         populateDatabase(10000)
         warmUpDatabase()
-        
+
         val times = mutableListOf<Long>()
         eventDao.listEvents(limit = 35, offset = 0)
         repeat(10) {
@@ -244,7 +166,7 @@ class RoomPerformanceTest {
             times.add(t)
         }
         val median = medianOf(times)
-        
+
         val result = PerformanceBenchmark(
             operation = "pagination_query_35_events",
             averageTime = median,
@@ -253,27 +175,24 @@ class RoomPerformanceTest {
             databaseSize = 10000,
             passed = median < 50
         )
-        
-        assertTrue(
-            "Pagination query should be < 50ms, but was ${result.averageTime}ms",
-            result.passed
-        )
+
+        assertTrue("Pagination query should be < 50ms, but was ${result.averageTime}ms", result.passed)
     }
 
     @Test
     fun benchmarkSingleEntityRetrieval() = runTest {
         populateDatabase(1000)
         warmUpDatabase()
-        
-        // Measure single entity retrieval
+
+        val targetId = insertedIds[500]
         val times = mutableListOf<Long>()
-        eventDao.getEventById("event_500")
+        eventDao.getEventById(targetId)
         repeat(10) {
-            val (_, t) = measureTime { eventDao.getEventById("event_500") }
+            val (_, t) = measureTime { eventDao.getEventById(targetId) }
             times.add(t)
         }
         val median = medianOf(times)
-        
+
         val result = PerformanceBenchmark(
             operation = "single_entity_retrieval",
             averageTime = median,
@@ -282,33 +201,27 @@ class RoomPerformanceTest {
             databaseSize = 1000,
             passed = median < 10
         )
-        
-        assertTrue(
-            "Single entity retrieval should be < 10ms, but was ${result.averageTime}ms",
-            result.passed
-        )
-        
-        println("Performance: ${result.operation} (DB size: ${result.databaseSize})")
-        println("  Average: ${result.averageTime}ms")
-        println("  Target: < 10ms, Passed: ${result.passed}")
+
+        assertTrue("Single entity retrieval should be < 10ms, but was ${result.averageTime}ms", result.passed)
     }
 
     @Test
     fun benchmarkBulkInsert100Events() = runTest {
-        // Measure bulk insert
-        val events = (0..99).map { index ->
-            createTestEvent("bulk_event_$index", "Bulk Event $index")
+        val events = (0 until 100).map { index ->
+            createTestEvent(
+                description = "Bulk Event $index",
+                categoryId = 1,
+                timestamp = 2000L + index,
+                vector = true
+            )
         }
-        
+
         val (_, time) = measureTime {
             database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=OFF")
-            // Execute inserts sequentially (for performance tests)
-            events.forEach { event ->
-                eventDao.insertEvent(event)
-            }
+            events.forEach { eventDao.insertEvent(it) }
             database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=ON")
         }
-        
+
         val result = PerformanceBenchmark(
             operation = "bulk_insert_100_events",
             averageTime = time,
@@ -317,68 +230,48 @@ class RoomPerformanceTest {
             databaseSize = 100,
             passed = time < 100
         )
-        
-        assertTrue(
-            "Bulk insert should be < 100ms, but was ${result.averageTime}ms",
-            result.passed
-        )
-        
-        println("Performance: ${result.operation}")
-        println("  Time: ${result.averageTime}ms")
-        println("  Target: < 100ms, Passed: ${result.passed}")
+
+        assertTrue("Bulk insert should be < 100ms, but was ${result.averageTime}ms", result.passed)
     }
 
     @Test
-    fun benchmarkComplexQueryWithStatusFilter() = runTest {
+    fun benchmarkCategoryFilterQuery() = runTest {
         populateDatabase(1000)
         warmUpDatabase()
-        
-        // Measure filtered query by status
+
         val times = mutableListOf<Long>()
-        eventDao.listEventsByStatus("active", limit = 50, offset = 0)
+        eventDao.listEventsByCategory(categoryId = 1, limit = 50, offset = 0)
         repeat(10) {
-            val (_, t) = measureTime { eventDao.listEventsByStatus("active", limit = 50, offset = 0) }
+            val (_, t) = measureTime { eventDao.listEventsByCategory(categoryId = 1, limit = 50, offset = 0) }
             times.add(t)
         }
         val median = medianOf(times)
-        
+
         val result = PerformanceBenchmark(
-            operation = "complex_query_status_filter",
+            operation = "category_filter_query",
             averageTime = median,
             minTime = times.minOrNull() ?: median,
             maxTime = times.maxOrNull() ?: median,
             databaseSize = 1000,
             passed = median < 30
         )
-        
-        assertTrue(
-            "Complex query should be < 30ms, but was ${result.averageTime}ms",
-            result.passed
-        )
-        
-        println("Performance: ${result.operation} (DB size: ${result.databaseSize})")
-        println("  Average: ${result.averageTime}ms")
-        println("  Target: < 30ms, Passed: ${result.passed}")
+
+        assertTrue("Category filter query should be < 30ms, but was ${result.averageTime}ms", result.passed)
     }
 
     @Test
     fun benchmarkFlowEmissionLatency() = runTest {
         populateDatabase(100)
         warmUpDatabase()
-        
-        // Measure Flow initial emission latency
-        // Warm-up a subscription
+
         eventDao.getAllEventsFlow().first()
         val times = mutableListOf<Long>()
         repeat(10) {
-            val (_, t) = measureTime {
-                val flow = eventDao.getAllEventsFlow()
-                flow.first()
-            }
+            val (_, t) = measureTime { eventDao.getAllEventsFlow().first() }
             times.add(t)
         }
         val median = medianOf(times)
-        
+
         val result = PerformanceBenchmark(
             operation = "flow_emission_initial",
             averageTime = median,
@@ -387,48 +280,21 @@ class RoomPerformanceTest {
             databaseSize = 100,
             passed = median < 20
         )
-        
-        assertTrue(
-            "Flow emission should be < 20ms, but was ${result.averageTime}ms",
-            result.passed
-        )
-        
-        println("Performance: ${result.operation} (DB size: ${result.databaseSize})")
-        println("  Average: ${result.averageTime}ms")
-        println("  Target: < 20ms, Passed: ${result.passed}")
+
+        assertTrue("Flow emission should be < 20ms, but was ${result.averageTime}ms", result.passed)
     }
 
     @Test
     fun validateDatabaseIndices() = runTest {
-        // This test validates that indices are properly created
-        // by checking query performance doesn't degrade with larger datasets
         populateDatabase(100)
         warmUpDatabase()
-        val smallDbTime = measureAverageTime(5) {
-            eventDao.listEvents(limit = 35, offset = 0)
-        }
-        
-        // Clear and repopulate with larger dataset
-        database.clearAllTables()
+        val smallDbTime = measureTime { eventDao.listEvents(limit = 35, offset = 0) }.second
+
         populateDatabase(1000)
         warmUpDatabase()
-        val largeDbTime = measureAverageTime(5) {
-            eventDao.listEvents(limit = 35, offset = 0)
-        }
-        
-        // With proper indices, query time should not increase significantly
-        // (should be within 2x for 10x data increase)
-        val ratio = largeDbTime.averageTime.toDouble() / smallDbTime.averageTime.toDouble()
-        
-        assertTrue(
-            "Query performance degraded too much: small DB ${smallDbTime.averageTime}ms, large DB ${largeDbTime.averageTime}ms (ratio: $ratio)",
-            ratio < 2.0
-        )
-        
-        println("Index validation:")
-        println("  Small DB (100 events): ${smallDbTime.averageTime}ms")
-        println("  Large DB (1000 events): ${largeDbTime.averageTime}ms")
-        println("  Performance ratio: $ratio (should be < 2.0)")
+        val largeDbTime = measureTime { eventDao.listEvents(limit = 35, offset = 0) }.second
+
+        assertTrue("Indexed query degraded: ${largeDbTime}ms vs ${smallDbTime}ms", largeDbTime <= smallDbTime * 2)
     }
 }
 

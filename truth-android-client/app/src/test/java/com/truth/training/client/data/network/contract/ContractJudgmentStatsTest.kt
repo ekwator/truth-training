@@ -1,20 +1,18 @@
 package com.truth.training.client.data.network.contract
 
+import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.JudgmentStatsResponse
+import com.google.gson.Gson
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import com.truth.training.client.data.network.TruthApi
-import com.google.gson.Gson
-import org.junit.Assert.*
 
-/**
- * Contract test for GET /api/v1/judgments/stats/{event_id} endpoint.
- */
 class ContractJudgmentStatsTest {
     private lateinit var mockWebServer: MockWebServer
     private lateinit var api: TruthApi
@@ -22,14 +20,13 @@ class ContractJudgmentStatsTest {
 
     @Before
     fun setup() {
-        mockWebServer = MockWebServer()
-        mockWebServer.start()
+        mockWebServer = MockWebServer().apply { start() }
         gson = Gson()
-        val retrofit = Retrofit.Builder()
+        api = Retrofit.Builder()
             .baseUrl(mockWebServer.url("/"))
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
-        api = retrofit.create(TruthApi::class.java)
+            .create(TruthApi::class.java)
     }
 
     @After
@@ -46,15 +43,15 @@ class ContractJudgmentStatsTest {
             avgConfidence = 0.75,
             lastSubmittedAt = "2024-01-01T12:00:00Z"
         )
-        
+
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(200)
                 .setBody(gson.toJson(expectedResponse))
         )
 
-        val response = api.getJudgmentStats("event_123")
-        
+        val response = api.getJudgmentStats(123L)
+
         assertTrue(response.isSuccessful)
         val body = response.body()
         assertNotNull(body)
@@ -62,14 +59,10 @@ class ContractJudgmentStatsTest {
         assertEquals(2, body.falseCount)
         assertEquals(1, body.uncertainCount)
         assertEquals(0.75, body.avgConfidence, 0.01)
-        
+
         val request = mockWebServer.takeRequest()
         assertEquals("GET", request.method)
-        assertEquals("/api/v1/judgments/stats/event_123", request.path)
+        assertEquals("/api/v1/judgments/stats/123", request.path)
     }
-}
-
-private fun <T> runBlocking(block: suspend () -> T): T {
-    return kotlinx.coroutines.runBlocking { block() }
 }
 

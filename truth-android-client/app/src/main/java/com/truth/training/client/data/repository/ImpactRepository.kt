@@ -4,83 +4,55 @@ import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.daos.ImpactDao
 import com.truth.training.client.data.database.entities.ImpactEntity
 import com.truth.training.client.data.network.TruthApi
-import com.truth.training.client.data.network.dto.*
+import com.truth.training.client.data.network.dto.CreateImpactRequest
+import com.truth.training.client.data.network.dto.Impact
 import kotlinx.coroutines.flow.Flow
-import java.util.UUID
 
-/**
- * Repository for Impacts with offline-first architecture.
- */
 class ImpactRepository(
     private val database: TruthDatabase,
     private val api: TruthApi
 ) {
     private val impactDao: ImpactDao = database.impactDao()
 
-    /**
-     * Get impacts for an event as Flow.
-     */
-    fun getImpactsForEventFlow(eventId: String): Flow<List<ImpactEntity>> =
+    fun getImpactsForEventFlow(eventId: Long): Flow<List<ImpactEntity>> =
         impactDao.listImpactsForEventFlow(eventId)
 
-    /**
-     * List impacts for an event.
-     */
-    suspend fun listImpactsForEvent(eventId: String): List<ImpactEntity> {
-        return impactDao.listImpactsForEvent(eventId)
-    }
+    suspend fun listImpactsForEvent(eventId: Long): List<ImpactEntity> =
+        impactDao.listImpactsForEvent(eventId)
 
-    /**
-     * Add impact locally, then queue for sync.
-     */
     suspend fun addImpact(request: CreateImpactRequest): Result<ImpactEntity> {
         return try {
-            // Validate impact level
-            if (request.impactLevel < 1 || request.impactLevel > 5) {
-                return Result.failure(IllegalArgumentException("Impact level must be between 1 and 5"))
-            }
-            
-            val id = "impact_${UUID.randomUUID()}"
-            val now = java.time.Instant.now().toString()
-            
             val entity = ImpactEntity(
-                id = id,
                 eventId = request.eventId,
-                impactLevel = request.impactLevel,
+                typeId = 1, // default type until expanded API support
+                value = request.value,
                 notes = request.notes,
-                createdAt = now
+                createdAt = System.currentTimeMillis()
             )
-            
-            impactDao.insertImpact(entity)
-            // TODO: Add to sync queue
-            
-            Result.success(entity)
+
+            val id = impactDao.insertImpact(entity)
+            Result.success(entity.copy(id = id))
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    /**
-     * Sync impacts from server (via event details endpoint).
-     */
-    suspend fun syncImpactsForEvent(eventId: String, impacts: List<Impact>): Result<Int> {
+    suspend fun syncImpactsForEvent(eventId: Long, impacts: List<Impact>): Result<Int> {
         return try {
-            var syncedCount = 0
-            
-            impacts.forEach { impactDto ->
+            var synced = 0
+            impacts.forEach { dto ->
                 val entity = ImpactEntity(
-                    id = impactDto.id,
-                    eventId = impactDto.eventId,
-                    impactLevel = impactDto.impactLevel,
-                    notes = impactDto.notes,
-                    createdAt = impactDto.createdAt
+                    id = dto.id,
+                    eventId = dto.eventId,
+                    typeId = 1,
+                    value = dto.value,
+                    notes = dto.notes,
+                    createdAt = dto.createdAt
                 )
-                
-                impactDao.insertImpact(entity) // REPLACE strategy handles updates
-                syncedCount++
+                impactDao.insertImpact(entity)
+                synced++
             }
-            
-            Result.success(syncedCount)
+            Result.success(synced)
         } catch (e: Exception) {
             Result.failure(e)
         }

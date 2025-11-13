@@ -71,8 +71,9 @@ class SyncQueueManager(private val database: TruthDatabase) {
     /**
      * Get pending operations for processing.
      */
-    suspend fun getPendingOperations(): List<SyncQueueEntity> {
-        return syncQueueDao.getPendingOperations("PENDING")
+    suspend fun getPendingOperations(status: String = "PENDING", limit: Int = Int.MAX_VALUE, offset: Int = 0): List<SyncQueueEntity> {
+        val operations = syncQueueDao.getPendingOperations(status)
+        return operations.drop(offset).take(limit)
     }
 
     /**
@@ -146,8 +147,9 @@ class SyncQueueManager(private val database: TruthDatabase) {
      */
     suspend fun cleanupFailedOperations(): Result<Int> {
         return try {
+            val failed = syncQueueDao.getPendingOperations("FAILED")
             syncQueueDao.deleteFailedOperations("FAILED")
-            Result.success(0) // Return count if needed
+            Result.success(failed.size)
         } catch (e: Exception) {
             Result.failure(e)
         }

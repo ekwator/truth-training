@@ -23,7 +23,7 @@ class P2PSyncManager(
     /**
      * Propagate event to all discovered peers.
      */
-    suspend fun propagateEvent(eventId: String): Result<Int> = withContext(Dispatchers.IO) {
+    suspend fun propagateEvent(eventId: Long): Result<Int> = withContext(Dispatchers.IO) {
         try {
             val event = eventRepository.getEventById(eventId)
                 ?: return@withContext Result.failure(IllegalArgumentException("Event not found: $eventId"))
@@ -35,21 +35,22 @@ class P2PSyncManager(
             
             Ed25519CryptoManager.init(context)
             
-            // Create event message
             val eventPayload = JSONObject().apply {
                 put("type", "EVENT_SYNC")
                 put("event_id", event.id)
-                put("title", event.title)
                 put("description", event.description)
                 put("category_id", event.categoryId)
                 put("forma_id", event.formaId)
                 put("cause_id", event.causeId)
                 put("develop_id", event.developId)
                 put("effect_id", event.effectId)
-                put("start_date", event.startDate)
-                put("end_date", event.endDate)
-                put("created_at", event.createdAt)
-                put("status", event.status)
+                put("vector", event.vector)
+                put("detected", event.detected)
+                put("corrected", event.corrected)
+                put("timestamp_start", event.timestampStart)
+                put("timestamp_end", event.timestampEnd)
+                put("code", event.code)
+                put("collective_score", event.collectiveScore)
             }
             
             val signature = Ed25519CryptoManager.signJsonPayload(eventPayload)

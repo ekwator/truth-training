@@ -42,7 +42,7 @@ data class MatchContextResponse(
 
 data class CreateContextFromEventRequest(
     val name: String,
-    @SerializedName("event_id") val eventId: String,
+    @SerializedName("event_id") val eventId: Long,
     val description: String? = null
 )
 

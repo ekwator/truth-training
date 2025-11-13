@@ -1,21 +1,19 @@
 package com.truth.training.client.data.network.contract
 
+import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.CreateEventRequest
 import com.truth.training.client.data.network.dto.EventResponse
+import com.google.gson.Gson
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import com.truth.training.client.data.network.TruthApi
-import com.google.gson.Gson
-import org.junit.Assert.*
 
-/**
- * Contract test for POST /api/v1/events endpoint (v1.0.0 with embedded fields).
- */
 class ContractEventCreateTest {
     private lateinit var mockWebServer: MockWebServer
     private lateinit var api: TruthApi
@@ -23,16 +21,13 @@ class ContractEventCreateTest {
 
     @Before
     fun setup() {
-        mockWebServer = MockWebServer()
-        mockWebServer.start()
-        
+        mockWebServer = MockWebServer().apply { start() }
         gson = Gson()
-        val retrofit = Retrofit.Builder()
+        api = Retrofit.Builder()
             .baseUrl(mockWebServer.url("/"))
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
-        
-        api = retrofit.create(TruthApi::class.java)
+            .create(TruthApi::class.java)
     }
 
     @After
@@ -41,82 +36,65 @@ class ContractEventCreateTest {
     }
 
     @Test
-    fun `POST events creates event with embedded context fields`() = runBlocking {
-        // Arrange
+    fun `POST events creates event with canonical fields`() = runBlocking {
         val request = CreateEventRequest(
-            title = "New Event",
-            description = "Event Description",
+            description = "New Event",
             categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = "2024-01-01T00:00:00Z",
-            endDate = "2024-01-02T00:00:00Z"
+            timestampStart = 1_000L,
+            vector = true,
+            timestampEnd = 2_000L
         )
-        
+
         val expectedResponse = EventResponse(
-            id = "event_new",
-            title = request.title,
+            id = 42L,
             description = request.description,
             categoryId = request.categoryId,
             formaId = request.formaId,
             causeId = request.causeId,
             developId = request.developId,
             effectId = request.effectId,
-            startDate = request.startDate,
-            endDate = request.endDate,
-            createdAt = "2024-01-01T00:00:00Z",
-            updatedAt = null,
-            status = "active"
+            vector = request.vector,
+            detected = null,
+            corrected = false,
+            timestampStart = request.timestampStart,
+            timestampEnd = request.timestampEnd,
+            code = request.code,
+            collectiveScore = request.collectiveScore
         )
-        
+
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(200)
                 .setBody(gson.toJson(expectedResponse))
         )
 
-        // Act
         val response = api.createEvent(request)
-        
-        // Assert
+
         assertTrue(response.isSuccessful)
         val body = response.body()
         assertNotNull(body)
-        assertEquals("New Event", body!!.title)
+        assertEquals(42L, body!!.id)
+        assertEquals("New Event", body.description)
         assertEquals(1, body.categoryId)
-        assertEquals(2, body.formaId)
-        
-        // Validate request schema
+
         val httpRequest = mockWebServer.takeRequest()
         assertEquals("POST", httpRequest.method)
         assertEquals("/api/v1/events", httpRequest.path)
     }
 
     @Test
-    fun `POST events with invalid title returns 400`() = runBlocking {
-        // Arrange
+    fun `POST events with missing description returns 400`() = runBlocking {
         val request = CreateEventRequest(
-            title = "", // Invalid: empty title
-            description = null
-        )
-        
-        mockWebServer.enqueue(
-            MockResponse()
-                .setResponseCode(400)
+            description = "",
+            timestampStart = 1_000L
         )
 
-        // Act
+        mockWebServer.enqueue(MockResponse().setResponseCode(400))
+
         val response = api.createEvent(request)
-        
-        // Assert
+
         assertFalse(response.isSuccessful)
         assertEquals(400, response.code())
     }
-}
-
-private fun <T> runBlocking(block: suspend () -> T): T {
-    return kotlinx.coroutines.runBlocking { block() }
 }
 

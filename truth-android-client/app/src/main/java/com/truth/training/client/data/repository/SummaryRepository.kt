@@ -18,20 +18,19 @@ class SummaryRepository(
     /**
      * Get summary for an event as Flow.
      */
-    fun getSummaryForEventFlow(eventId: String): Flow<SummaryEntity?> =
+    fun getSummaryForEventFlow(eventId: Long): Flow<SummaryEntity?> =
         summaryDao.getSummaryForEventFlow(eventId)
 
     /**
      * Get summary for an event.
      */
-    suspend fun getSummaryForEvent(eventId: String): SummaryEntity? {
-        return summaryDao.getSummaryForEvent(eventId)
-    }
+    suspend fun getSummaryForEvent(eventId: Long): SummaryEntity? =
+        summaryDao.getSummaryForEvent(eventId)
 
     /**
      * Save or update summary locally.
      */
-    suspend fun saveSummary(eventId: String, summaryText: String?, recommendations: String?): Result<SummaryEntity> {
+    suspend fun saveSummary(eventId: Long, summaryText: String?, recommendations: String?): Result<SummaryEntity> {
         return try {
             val existing = summaryDao.getSummaryForEvent(eventId)
             
@@ -64,7 +63,7 @@ class SummaryRepository(
     /**
      * Sync summary from server (via event details endpoint).
      */
-    suspend fun syncSummaryForEvent(eventId: String, summary: Summary?): Result<Unit> {
+    suspend fun syncSummaryForEvent(eventId: Long, summary: Summary?): Result<Unit> {
         return try {
             if (summary != null) {
                 val entity = SummaryEntity(

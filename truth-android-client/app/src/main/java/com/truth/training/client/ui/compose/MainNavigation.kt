@@ -65,15 +65,17 @@ fun MainNavigation(
         }
         
         composable("judgments/{eventId}") { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
-            // JudgmentListScreen will be provided via ViewModel state
-            // Placeholder for now
+            val eventId = backStackEntry.arguments?.getString("eventId")?.toLongOrNull()
+            if (eventId != null) {
+                // TODO: Provide JudgmentListScreen with ViewModel data for eventId
+            }
         }
         
         composable("judgment/submit/{eventId}") { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
-            // JudgmentSubmissionScreen will be provided via ViewModel
-            // Placeholder for now
+            val eventId = backStackEntry.arguments?.getString("eventId")?.toLongOrNull()
+            if (eventId != null) {
+                // TODO: Provide JudgmentSubmissionScreen with ViewModel data for eventId
+            }
         }
     }
 }

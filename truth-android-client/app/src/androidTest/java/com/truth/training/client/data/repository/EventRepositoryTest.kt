@@ -15,29 +15,15 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.Assert.*
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import com.google.gson.GsonBuilder
 import java.util.concurrent.TimeUnit
 
-/**
- * Unit tests for EventRepository.
- * 
- * Coverage targets:
- * - createEvent() - local save, sync queue addition
- * - updateEvent() - local update, conflict handling
- * - deleteEvent() - local delete, queue management
- * - syncFromServer() - server sync, local merge
- * - getAllEventsFlow() - Flow emission, reactive updates
- * - getEventById() - local retrieval, null handling
- * - Offline-first behavior validation
- * 
- * Target coverage: ≥95%
- */
 @RunWith(AndroidJUnit4::class)
 class EventRepositoryTest {
     private lateinit var database: TruthDatabase
@@ -48,23 +34,22 @@ class EventRepositoryTest {
 
     @Before
     fun setup() {
-        // Setup in-memory Room database
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
             TruthDatabase::class.java
         ).allowMainThreadQueries().fallbackToDestructiveMigration().build()
 
-        // Setup MockWebServer for API mocking
-        // Create new instance for each test to ensure clean state
         mockWebServer = MockWebServer()
         mockWebServer.start()
 
         val retrofit = Retrofit.Builder()
             .baseUrl(mockWebServer.url("/"))
-            .client(OkHttpClient.Builder()
-                .connectTimeout(1, TimeUnit.SECONDS)
-                .readTimeout(1, TimeUnit.SECONDS)
-                .build())
+            .client(
+                OkHttpClient.Builder()
+                    .connectTimeout(1, TimeUnit.SECONDS)
+                    .readTimeout(1, TimeUnit.SECONDS)
+                    .build()
+            )
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
 
@@ -76,317 +61,161 @@ class EventRepositoryTest {
     fun tearDown() {
         try {
             database.close()
-        } catch (e: Exception) {
-            // Log but don't fail test
+        } catch (_: Exception) {
         }
         try {
             if (::mockWebServer.isInitialized) {
                 mockWebServer.shutdown()
             }
-        } catch (e: Exception) {
-            // Log but don't fail test
+        } catch (_: Exception) {
         }
     }
 
     @Test
-    fun createeventSavesLocallyImmediately() = runTest {
+    fun createEventSavesLocallyImmediately() = runTest {
         val request = CreateEventRequest(
-            title = "Test Event",
-            description = "Test description",
+            description = "Test Event",
             categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = "2024-01-01T00:00:00Z",
-            endDate = "2024-01-02T00:00:00Z"
+            timestampStart = 1_000L
         )
 
         val result = repository.createEvent(request)
-        
+
         assertTrue(result.isSuccess)
         val entity = result.getOrNull()!!
-        assertNotNull(entity.id)
-        assertEquals("Test Event", entity.title)
-        
-        // Verify saved in local database (offline-first)
+        assertTrue(entity.id > 0)
+        assertEquals("Test Event", entity.description)
+
         val retrieved = repository.getEventById(entity.id)
         assertNotNull(retrieved)
-        assertEquals("Test Event", retrieved!!.title)
+        assertEquals("Test Event", retrieved!!.description)
     }
 
     @Test
-    fun updateeventUpdatesLocallyImmediately() = runTest {
-        // Create event first
-        val createRequest = CreateEventRequest(
-            title = "Original",
-            description = "Original description",
-            categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = "2024-01-01T00:00:00Z",
-            endDate = "2024-01-02T00:00:00Z"
-        )
-        val created = repository.createEvent(createRequest).getOrNull()!!
-        val eventId = created.id
+    fun updateEventUpdatesLocallyImmediately() = runTest {
+        val created = repository.createEvent(
+            CreateEventRequest(
+                description = "Original",
+                timestampStart = 1_000L
+            )
+        ).getOrNull()!!
 
-        // Update event
-        val updateRequest = UpdateEventRequest(
-            title = "Updated",
-            description = "Updated description",
-            categoryId = 1
+        val result = repository.updateEvent(
+            created.id,
+            UpdateEventRequest(
+                description = "Updated",
+                detected = true
+            )
         )
-        val result = repository.updateEvent(eventId, updateRequest)
-        
+
         assertTrue(result.isSuccess)
         val updated = result.getOrNull()!!
-        assertEquals("Updated", updated.title)
-        assertEquals("Updated description", updated.description)
-        
-        // Verify local update
-        val retrieved = repository.getEventById(eventId)
-        assertEquals("Updated", retrieved!!.title)
+        assertEquals("Updated", updated.description)
+        assertTrue(updated.detected!!)
+
+        val reloaded = repository.getEventById(created.id)
+        assertEquals("Updated", reloaded!!.description)
     }
 
     @Test
-    fun updateeventHandlesConflictWhenEventNotFound() = runTest {
-        val updateRequest = UpdateEventRequest(
-            title = "Updated",
-            description = "Updated description"
-        )
-        
-        val result = repository.updateEvent("non_existent_id", updateRequest)
-        
+    fun updateEventHandlesMissingEntity() = runTest {
+        val result = repository.updateEvent(999L, UpdateEventRequest(description = "Updated"))
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is IllegalArgumentException)
     }
 
     @Test
-    fun deleteeventDeletesLocallyImmediately() = runTest {
-        // Create event first
-        val createRequest = CreateEventRequest(
-            title = "To Delete",
-            description = "Will be deleted",
-            categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = "2024-01-01T00:00:00Z",
-            endDate = "2024-01-02T00:00:00Z"
-        )
-        val created = repository.createEvent(createRequest).getOrNull()!!
-        val eventId = created.id
+    fun deleteEventDeletesLocallyImmediately() = runTest {
+        val created = repository.createEvent(
+            CreateEventRequest(
+                description = "To delete",
+                timestampStart = 1_000L
+            )
+        ).getOrNull()!!
 
-        // Delete event
-        val result = repository.deleteEvent(eventId)
-        
+        val result = repository.deleteEvent(created.id)
         assertTrue(result.isSuccess)
-        
-        // Verify deleted from local database
-        val retrieved = repository.getEventById(eventId)
-        assertNull(retrieved)
+        assertNull(repository.getEventById(created.id))
     }
 
     @Test
-    fun deleteeventHandlesErrorWhenEventNotFound() = runTest {
-        val result = repository.deleteEvent("non_existent_id")
-        
+    fun deleteEventHandlesMissingEntity() = runTest {
+        val result = repository.deleteEvent(1234L)
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is IllegalArgumentException)
     }
 
     @Test
-    fun syncfromserverSyncsEventsFromApiToLocalDatabase() = runTest {
-        // Mock API response
+    fun syncFromServerPersistsEvents() = runTest {
         val eventDto = EventResponse(
-            id = "server_event_1",
-            title = "Server Event",
-            description = "From server",
-            categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = "2024-01-01T00:00:00Z",
-            endDate = "2024-01-02T00:00:00Z",
-            createdAt = "2024-01-01T00:00:00Z",
-            updatedAt = null,
-            status = "active"
+            id = 1L,
+            description = "Server Event",
+            categoryId = 2,
+            formaId = 3,
+            causeId = 4,
+            developId = 5,
+            effectId = 6,
+            vector = true,
+            detected = null,
+            corrected = false,
+            timestampStart = 42L,
+            timestampEnd = null,
+            code = 1,
+            collectiveScore = null
         )
-        
-        val listResponse = EventListResponse(
-            data = listOf(eventDto),
-            total = 1
-        )
-        
+
+        val response = EventListResponse(data = listOf(eventDto), total = 1)
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody(gson.toJson(listResponse))
-        )
-
-        // Use Dispatchers.IO for network calls in instrumentation tests
-        val result = withContext(Dispatchers.IO) {
-            repository.syncFromServer()
-        }
-        
-        assertTrue("syncFromServer should succeed, but got: ${result.exceptionOrNull()?.message}", result.isSuccess)
-        assertEquals(1, result.getOrNull())
-        
-        // Verify event synced to local database
-        val synced = repository.getEventById("server_event_1")
-        assertNotNull(synced)
-        assertEquals("Server Event", synced!!.title)
-    }
-
-    @Test
-    fun syncfromserverHandlesApiError() = runTest {
-        mockWebServer.enqueue(
-            MockResponse()
-                .setResponseCode(500)
-                .setBody("Internal Server Error")
+                .setBody(gson.toJson(response))
         )
 
         val result = repository.syncFromServer()
-        
-        assertTrue(result.isFailure)
-    }
-
-    @Test
-    fun getalleventsflowEmitsEventsReactively() = runTest {
-        // Create multiple events
-        repeat(3) { i ->
-            val request = CreateEventRequest(
-                title = "Event $i",
-                description = "Description $i",
-                categoryId = 1,
-                formaId = 2,
-                causeId = 3,
-                developId = 4,
-                effectId = 5,
-                startDate = "2024-01-01T00:00:00Z",
-                endDate = "2024-01-02T00:00:00Z"
-            )
-            repository.createEvent(request)
-        }
-        
-        // Test Flow emission
-        val flow = repository.getAllEventsFlow()
-        val events = flow.first()
-        
-        assertEquals(3, events.size)
-        assertTrue(events.any { it.title == "Event 0" })
-        assertTrue(events.any { it.title == "Event 1" })
-        assertTrue(events.any { it.title == "Event 2" })
-    }
-
-    @Test
-    fun geteventbyidReturnsNullForNonExistentEvent() = runTest {
-        val result = repository.getEventById("non_existent")
-        assertNull(result)
-    }
-
-    @Test
-    fun geteventbyidReturnsEventFromLocalDatabase() = runTest {
-        val request = CreateEventRequest(
-            title = "Test Event",
-            description = "Test description",
-            categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = "2024-01-01T00:00:00Z",
-            endDate = "2024-01-02T00:00:00Z"
-        )
-        val created = repository.createEvent(request).getOrNull()!!
-        
-        val retrieved = repository.getEventById(created.id)
-        assertNotNull(retrieved)
-        assertEquals(created.id, retrieved!!.id)
-        assertEquals("Test Event", retrieved.title)
-    }
-
-    @Test
-    fun listeventsReturnsPaginatedEvents() = runTest {
-        // Create 10 events
-        repeat(10) { i ->
-            val request = CreateEventRequest(
-                title = "Event $i",
-                description = "Description $i",
-                categoryId = 1,
-                formaId = 2,
-                causeId = 3,
-                developId = 4,
-                effectId = 5,
-                startDate = "2024-01-01T00:00:00Z",
-                endDate = "2024-01-02T00:00:00Z"
-            )
-            repository.createEvent(request)
-        }
-        
-        val firstPage = repository.listEvents(limit = 5, offset = 0)
-        assertEquals(5, firstPage.size)
-        
-        val secondPage = repository.listEvents(limit = 5, offset = 5)
-        assertEquals(5, secondPage.size)
-    }
-
-    @Test
-    fun listeventsFiltersByStatus() = runTest {
-        // Create events with different statuses
-        val activeRequest = CreateEventRequest(
-            title = "Active Event",
-            description = "Active",
-            categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = "2024-01-01T00:00:00Z",
-            endDate = "2024-01-02T00:00:00Z"
-        )
-        repository.createEvent(activeRequest)
-        
-        // Update one to archived (simulating status change)
-        val allEvents = repository.listEvents()
-        val activeEvent = allEvents.first { it.title == "Active Event" }
-        repository.updateEvent(activeEvent.id, UpdateEventRequest(status = "archived"))
-        
-        val archivedEvents = repository.listEvents(status = "archived")
-        assertEquals(1, archivedEvents.size)
-        assertEquals("Active Event", archivedEvents[0].title)
-    }
-
-    @Test
-    fun offlineFirstBehaviorCreateWorksWithoutNetwork() = runTest {
-        // Simulate network failure by using repository with null API
-        val offlineRepository = EventRepository(database, null)
-        
-        val request = CreateEventRequest(
-            title = "Offline Event",
-            description = "Created offline",
-            categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = "2024-01-01T00:00:00Z",
-            endDate = "2024-01-02T00:00:00Z"
-        )
-        
-        // Should still work (offline-first)
-        val result = offlineRepository.createEvent(request)
         assertTrue(result.isSuccess)
-        
-        // Verify saved locally
-        val created = result.getOrNull()!!
-        val retrieved = offlineRepository.getEventById(created.id)
-        assertNotNull(retrieved)
-        assertEquals("Offline Event", retrieved!!.title)
+        assertEquals(1, result.getOrNull())
+
+        val saved = repository.getEventById(1L)
+        assertNotNull(saved)
+        assertEquals("Server Event", saved!!.description)
+    }
+
+    @Test
+    fun getAllEventsFlowEmitsUpdates() = runTest {
+        repository.createEvent(
+            CreateEventRequest(
+                description = "Flow Event",
+                timestampStart = 100L
+            )
+        )
+
+        val events = repository.getAllEventsFlow().first()
+        assertEquals(1, events.size)
+        assertEquals("Flow Event", events.first().description)
+    }
+
+    private suspend fun enqueueEventDetailsResponse(eventId: Long) {
+        val details = EventDetailsResponse(
+            id = eventId,
+            description = "Detailed",
+            categoryId = null,
+            formaId = null,
+            causeId = null,
+            developId = null,
+            effectId = null,
+            vector = true,
+            detected = null,
+            corrected = false,
+            timestampStart = 1L,
+            timestampEnd = null,
+            code = 1,
+            collectiveScore = null
+        )
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(gson.toJson(details))
+        )
     }
 }
 

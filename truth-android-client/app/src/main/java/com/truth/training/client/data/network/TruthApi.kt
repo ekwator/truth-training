@@ -7,10 +7,8 @@ import retrofit2.http.*
 
 /**
  * Truth Training API v1.0.0 interface.
- * All endpoints require JWT authentication via Authorization header.
  */
 interface TruthApi {
-    // Authentication (existing)
     @POST("/api/v1/auth")
     suspend fun authenticate(@Body body: AuthRequest): Response<AuthResponse>
 
@@ -30,26 +28,25 @@ interface TruthApi {
     @GET("/api/v1/events")
     suspend fun listEvents(
         @Query("limit") limit: Int = 35,
-        @Query("offset") offset: Int = 0,
-        @Query("status") status: String? = null
+        @Query("offset") offset: Int = 0
     ): Response<EventListResponse>
 
     @POST("/api/v1/events")
     suspend fun createEvent(@Body body: CreateEventRequest): Response<EventResponse>
 
     @GET("/api/v1/events/{id}")
-    suspend fun getEvent(@Path("id") id: String): Response<EventDetailsResponse>
+    suspend fun getEvent(@Path("id") id: Long): Response<EventDetailsResponse>
 
     @PUT("/api/v1/events/{id}")
     suspend fun updateEvent(
-        @Path("id") id: String,
+        @Path("id") id: Long,
         @Body body: UpdateEventRequest
     ): Response<EventResponse>
 
     @DELETE("/api/v1/events/{id}")
-    suspend fun deleteEvent(@Path("id") id: String): Response<Unit>
+    suspend fun deleteEvent(@Path("id") id: Long): Response<Unit>
 
-    // Context Templates API (v1.0.0)
+    // Context API
     @GET("/api/v1/contexts")
     suspend fun listContexts(): Response<ContextListResponse>
 
@@ -68,7 +65,7 @@ interface TruthApi {
     // Judgments API
     @GET("/api/v1/judgments")
     suspend fun listJudgments(
-        @Query("event_id") eventId: String,
+        @Query("event_id") eventId: Long,
         @Query("limit") limit: Int = 35,
         @Query("offset") offset: Int = 0
     ): Response<JudgmentListResponse>
@@ -77,7 +74,7 @@ interface TruthApi {
     suspend fun submitJudgment(@Body body: CreateJudgmentRequest): Response<Judgment>
 
     @GET("/api/v1/judgments/stats/{event_id}")
-    suspend fun getJudgmentStats(@Path("event_id") eventId: String): Response<JudgmentStatsResponse>
+    suspend fun getJudgmentStats(@Path("event_id") eventId: Long): Response<JudgmentStatsResponse>
 
     // Impacts API
     @POST("/api/v1/impacts")

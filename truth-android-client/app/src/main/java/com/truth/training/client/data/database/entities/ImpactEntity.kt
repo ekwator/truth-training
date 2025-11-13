@@ -1,14 +1,13 @@
 package com.truth.training.client.data.database.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room.ColumnInfo
 
 /**
- * Represents an impact assessment for an event (v1.0.0).
- * Matches impact table schema from Data_Schema.md.
+ * Represents a recorded impact for a truth event.
  */
 @Entity(
     tableName = "impact",
@@ -34,21 +33,21 @@ import androidx.room.ColumnInfo
 data class ImpactEntity(
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "id")
-    val id: Long = 0,  // INTEGER PRIMARY KEY AUTOINCREMENT
-    
+    val id: Long = 0L,
+
     @ColumnInfo(name = "event_id")
-    val eventId: String,  // TEXT FK → truth_events.id (TEXT для совместимости)
-    
+    val eventId: Long,
+
     @ColumnInfo(name = "type_id")
-    val typeId: Int,  // INTEGER FK → impact_type.id
-    
+    val typeId: Int,
+
     @ColumnInfo(name = "value")
-    val value: Boolean,  // BOOLEAN (0/1) - true = positive, false = negative
-    
+    val value: Boolean,
+
     @ColumnInfo(name = "notes")
-    val notes: String? = null,  // TEXT nullable
-    
+    val notes: String? = null,
+
     @ColumnInfo(name = "created_at")
-    val createdAt: Long  // INTEGER (UNIX timestamp) - not in schema but useful for tracking
+    val createdAt: Long
 )
 

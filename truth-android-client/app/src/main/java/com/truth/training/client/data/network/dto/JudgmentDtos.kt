@@ -8,7 +8,7 @@ import com.google.gson.annotations.SerializedName
 
 data class Judgment(
     val id: String,
-    @SerializedName("event_id") val eventId: String,
+    @SerializedName("event_id") val eventId: Long,
     val assessment: String,  // "true" | "false" | "uncertain"
     @SerializedName("confidence_level") val confidenceLevel: Double,  // 0.0-1.0
     val reasoning: String? = null,
@@ -16,7 +16,7 @@ data class Judgment(
 )
 
 data class CreateJudgmentRequest(
-    @SerializedName("event_id") val eventId: String,
+    @SerializedName("event_id") val eventId: Long,
     val assessment: String,  // "true" | "false" | "uncertain"
     @SerializedName("confidence_level") val confidenceLevel: Double,  // 0.0-1.0
     val reasoning: String? = null

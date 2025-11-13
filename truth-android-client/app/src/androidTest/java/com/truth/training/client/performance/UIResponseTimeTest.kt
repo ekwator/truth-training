@@ -111,23 +111,23 @@ class UIResponseTimeTest {
      */
     private suspend fun populateDatabase(db: TruthDatabase, count: Int) {
         val eventDao = db.eventDao()
-        val now = System.currentTimeMillis().toString()
-        
+        val baseTimestamp = System.currentTimeMillis()
+
         repeat(count) { index ->
             val event = EventEntity(
-                id = "event_$index",
-                title = "Event $index",
-                description = "Test description for event $index",
-                categoryId = 1,
-                formaId = 2,
-                causeId = 3,
-                developId = 4,
-                effectId = 5,
-                startDate = now,
-                endDate = null,
-                createdAt = now,
-                updatedAt = null,
-                status = if (index % 2 == 0) "active" else "completed"
+                description = "Event $index",
+                categoryId = (index % 5) + 1,
+                formaId = null,
+                causeId = null,
+                developId = null,
+                effectId = null,
+                vector = index % 2 == 0,
+                detected = null,
+                corrected = false,
+                timestampStart = baseTimestamp + index,
+                timestampEnd = null,
+                code = 1,
+                collectiveScore = null
             )
             eventDao.insertEvent(event)
         }

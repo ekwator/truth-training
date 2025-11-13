@@ -1,21 +1,19 @@
 package com.truth.training.client.data.network.contract
 
-import com.truth.training.client.data.network.dto.UpdateEventRequest
+import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.EventResponse
+import com.truth.training.client.data.network.dto.UpdateEventRequest
+import com.google.gson.Gson
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import com.truth.training.client.data.network.TruthApi
-import com.google.gson.Gson
-import org.junit.Assert.*
 
-/**
- * Contract test for PUT /api/v1/events/{id} endpoint.
- */
 class ContractEventUpdateTest {
     private lateinit var mockWebServer: MockWebServer
     private lateinit var api: TruthApi
@@ -23,14 +21,13 @@ class ContractEventUpdateTest {
 
     @Before
     fun setup() {
-        mockWebServer = MockWebServer()
-        mockWebServer.start()
+        mockWebServer = MockWebServer().apply { start() }
         gson = Gson()
-        val retrofit = Retrofit.Builder()
+        api = Retrofit.Builder()
             .baseUrl(mockWebServer.url("/"))
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
-        api = retrofit.create(TruthApi::class.java)
+            .create(TruthApi::class.java)
     }
 
     @After
@@ -39,52 +36,50 @@ class ContractEventUpdateTest {
     }
 
     @Test
-    fun `PUT event updates event with embedded context fields`() = runBlocking {
+    fun `PUT event updates canonical fields`() = runBlocking {
         val request = UpdateEventRequest(
-            title = "Updated Title",
             description = "Updated Description",
             categoryId = 10,
-            status = "archived"
+            vector = false,
+            timestampEnd = 3_000L
         )
-        
+
         val expectedResponse = EventResponse(
-            id = "event_123",
-            title = request.title ?: "Updated Title",
-            description = request.description,
+            id = 123L,
+            description = request.description ?: "Updated Description",
             categoryId = request.categoryId,
             formaId = null,
             causeId = null,
             developId = null,
             effectId = null,
-            startDate = null,
-            endDate = null,
-            createdAt = "2024-01-01T00:00:00Z",
-            updatedAt = "2024-01-02T00:00:00Z",
-            status = request.status ?: "archived"
+            vector = request.vector ?: true,
+            detected = null,
+            corrected = false,
+            timestampStart = 1_000L,
+            timestampEnd = request.timestampEnd,
+            code = 1,
+            collectiveScore = null
         )
-        
+
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(200)
                 .setBody(gson.toJson(expectedResponse))
         )
 
-        val response = api.updateEvent("event_123", request)
-        
+        val response = api.updateEvent(123L, request)
+
         assertTrue(response.isSuccessful)
         val body = response.body()
         assertNotNull(body)
-        assertEquals("Updated Title", body!!.title)
+        assertEquals(123L, body!!.id)
+        assertEquals("Updated Description", body.description)
         assertEquals(10, body.categoryId)
-        assertEquals("archived", body.status)
-        
+        assertFalse(body.vector)
+
         val httpRequest = mockWebServer.takeRequest()
         assertEquals("PUT", httpRequest.method)
-        assertEquals("/api/v1/events/event_123", httpRequest.path)
+        assertEquals("/api/v1/events/123", httpRequest.path)
     }
-}
-
-private fun <T> runBlocking(block: suspend () -> T): T {
-    return kotlinx.coroutines.runBlocking { block() }
 }
 

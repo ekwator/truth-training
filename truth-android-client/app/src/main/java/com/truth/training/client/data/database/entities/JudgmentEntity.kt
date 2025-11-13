@@ -1,10 +1,10 @@
 package com.truth.training.client.data.database.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room.ColumnInfo
 
 /**
  * Represents a user's assessment of an event.
@@ -27,21 +27,21 @@ import androidx.room.ColumnInfo
 data class JudgmentEntity(
     @PrimaryKey
     @ColumnInfo(name = "id")
-    val id: String,  // Format: "judg_{uuid}"
-    
+    val id: String,
+
     @ColumnInfo(name = "event_id")
-    val eventId: String,  // FK to events
-    
+    val eventId: Long,
+
     @ColumnInfo(name = "assessment")
-    val assessment: String,  // "true" | "false" | "uncertain"
-    
+    val assessment: String,
+
     @ColumnInfo(name = "confidence_level")
-    val confidenceLevel: Double,  // Range: 0.0-1.0
-    
+    val confidenceLevel: Double,
+
     @ColumnInfo(name = "reasoning")
     val reasoning: String? = null,
-    
+
     @ColumnInfo(name = "submitted_at")
-    val submittedAt: String  // ISO 8601 format, required
+    val submittedAt: String
 )
 

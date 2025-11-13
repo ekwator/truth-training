@@ -12,27 +12,27 @@ import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.database.entities.EventEntity
 import com.truth.training.client.data.network.dto.UpdateEventRequest
 
-/**
- * Event Edit Screen (Compose) - Form for editing existing events.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventEditScreen(
     event: EventEntity,
-    onSave: (String, UpdateEventRequest) -> Unit,
+    onSave: (Long, UpdateEventRequest) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var title by remember { mutableStateOf(event.title) }
-    var description by remember { mutableStateOf(event.description ?: "") }
+    var description by remember { mutableStateOf(event.description) }
     var categoryId by remember { mutableStateOf(event.categoryId?.toString() ?: "") }
     var formaId by remember { mutableStateOf(event.formaId?.toString() ?: "") }
     var causeId by remember { mutableStateOf(event.causeId?.toString() ?: "") }
     var developId by remember { mutableStateOf(event.developId?.toString() ?: "") }
     var effectId by remember { mutableStateOf(event.effectId?.toString() ?: "") }
-    var startDate by remember { mutableStateOf(event.startDate ?: "") }
-    var endDate by remember { mutableStateOf(event.endDate ?: "") }
-    var status by remember { mutableStateOf(event.status) }
+    var timestampStart by remember { mutableStateOf(event.timestampStart.toString()) }
+    var timestampEnd by remember { mutableStateOf(event.timestampEnd?.toString() ?: "") }
+    var vector by remember { mutableStateOf(event.vector) }
+    var detected by remember { mutableStateOf(event.detected ?: false) }
+    var corrected by remember { mutableStateOf(event.corrected) }
+
+    val canSave = description.isNotBlank() && timestampStart.toLongOrNull() != null
 
     Scaffold(
         topBar = {
@@ -40,10 +40,7 @@ fun EventEditScreen(
                 title = { Text("Edit Event") },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Cancel"
-                        )
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel")
                     }
                 },
                 actions = {
@@ -52,20 +49,23 @@ fun EventEditScreen(
                             onSave(
                                 event.id,
                                 UpdateEventRequest(
-                                    title = title.takeIf { it != event.title },
-                                    description = description.takeIf { it.isNotEmpty() },
-                                    categoryId = categoryId.toIntOrNull() ?: event.categoryId,
-                                    formaId = formaId.toIntOrNull() ?: event.formaId,
-                                    causeId = causeId.toIntOrNull() ?: event.causeId,
-                                    developId = developId.toIntOrNull() ?: event.developId,
-                                    effectId = effectId.toIntOrNull() ?: event.effectId,
-                                    startDate = startDate.takeIf { it.isNotEmpty() },
-                                    endDate = endDate.takeIf { it.isNotEmpty() },
-                                    status = status.takeIf { it != event.status }
+                                    description = description.takeIf { it != event.description },
+                                    categoryId = categoryId.toIntOrNull()?.takeIf { it != event.categoryId },
+                                    formaId = formaId.toIntOrNull()?.takeIf { it != event.formaId },
+                                    causeId = causeId.toIntOrNull()?.takeIf { it != event.causeId },
+                                    developId = developId.toIntOrNull()?.takeIf { it != event.developId },
+                                    effectId = effectId.toIntOrNull()?.takeIf { it != event.effectId },
+                                    vector = vector.takeIf { it != event.vector },
+                                    detected = detected.takeIf { event.detected != it },
+                                    corrected = corrected.takeIf { event.corrected != it },
+                                    timestampStart = timestampStart.toLongOrNull()?.takeIf { it != event.timestampStart },
+                                    timestampEnd = timestampEnd.toLongOrNull()?.takeIf { it != event.timestampEnd },
+                                    code = null,
+                                    collectiveScore = null
                                 )
                             )
                         },
-                        enabled = title.isNotEmpty()
+                        enabled = canSave
                     ) {
                         Text("Save")
                     }
@@ -82,67 +82,45 @@ fun EventEditScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title *") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text("Description") },
+                label = { Text("Description *") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
-                maxLines = 5
+                maxLines = 6
             )
 
             HorizontalDivider()
 
-            Text(
-                text = "Context Fields (optional)",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Text("Context Fields", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = categoryId,
                     onValueChange = { categoryId = it },
                     label = { Text("Category ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                    modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
                     value = formaId,
                     onValueChange = { formaId = it },
                     label = { Text("Forma ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                    modifier = Modifier.weight(1f)
                 )
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = causeId,
                     onValueChange = { causeId = it },
                     label = { Text("Cause ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                    modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
                     value = developId,
                     onValueChange = { developId = it },
                     label = { Text("Develop ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -150,94 +128,37 @@ fun EventEditScreen(
                 value = effectId,
                 onValueChange = { effectId = it },
                 label = { Text("Effect ID") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("ID") }
+                modifier = Modifier.fillMaxWidth()
             )
 
             HorizontalDivider()
 
-            Text(
-                text = "Dates (optional)",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary
+            Text("Timestamps", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+
+            OutlinedTextField(
+                value = timestampStart,
+                onValueChange = { timestampStart = it },
+                label = { Text("Start Timestamp (epoch ms) *") },
+                modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
-                value = startDate,
-                onValueChange = { startDate = it },
-                label = { Text("Start Date (ISO 8601)") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("2024-01-01T00:00:00Z") }
+                value = timestampEnd,
+                onValueChange = { timestampEnd = it },
+                label = { Text("End Timestamp (epoch ms)") },
+                modifier = Modifier.fillMaxWidth()
             )
 
-            OutlinedTextField(
-                value = endDate,
-                onValueChange = { endDate = it },
-                label = { Text("End Date (ISO 8601)") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("2024-01-02T00:00:00Z") }
-            )
-
-            HorizontalDivider()
-
-            Text(
-                text = "Status",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = status == "active",
-                    onClick = { status = "active" },
-                    label = { Text("Active") }
-                )
-                FilterChip(
-                    selected = status == "completed",
-                    onClick = { status = "completed" },
-                    label = { Text("Completed") }
-                )
-                FilterChip(
-                    selected = status == "archived",
-                    onClick = { status = "archived" },
-                    label = { Text("Archived") }
-                )
+            Text("Direction", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = vector, onClick = { vector = true }, label = { Text("Outgoing") })
+                FilterChip(selected = !vector, onClick = { vector = false }, label = { Text("Incoming") })
             }
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = "Event Information",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "ID: ${event.id}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = "Created: ${event.createdAt}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                    event.updatedAt?.let {
-                        Text(
-                            text = "Updated: $it",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
-                    }
-                }
+            Text("Flags", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = detected, onClick = { detected = !detected }, label = { Text("Detected") })
+                FilterChip(selected = corrected, onClick = { corrected = !corrected }, label = { Text("Corrected") })
             }
         }
     }
