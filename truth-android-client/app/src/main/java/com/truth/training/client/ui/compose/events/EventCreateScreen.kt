@@ -22,15 +22,17 @@ fun EventCreateScreen(
     selectedTemplateContext: ContextFields? = null,
     modifier: Modifier = Modifier
 ) {
-    var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var categoryId by remember { mutableStateOf(selectedTemplateContext?.categoryId?.toString() ?: "") }
     var formaId by remember { mutableStateOf(selectedTemplateContext?.formaId?.toString() ?: "") }
     var causeId by remember { mutableStateOf(selectedTemplateContext?.causeId?.toString() ?: "") }
     var developId by remember { mutableStateOf(selectedTemplateContext?.developId?.toString() ?: "") }
     var effectId by remember { mutableStateOf(selectedTemplateContext?.effectId?.toString() ?: "") }
-    var startDate by remember { mutableStateOf("") }
-    var endDate by remember { mutableStateOf("") }
+    var timestampStart by remember { mutableStateOf("") }
+    var timestampEnd by remember { mutableStateOf("") }
+    var vector by remember { mutableStateOf(true) }
+
+    val canSave = description.isNotBlank() && timestampStart.toLongOrNull() != null
 
     Scaffold(
         topBar = {
@@ -49,19 +51,19 @@ fun EventCreateScreen(
                         onClick = {
                             onSave(
                                 CreateEventRequest(
-                                    title = title,
-                                    description = description.takeIf { it.isNotEmpty() },
+                                    description = description,
                                     categoryId = categoryId.toIntOrNull(),
                                     formaId = formaId.toIntOrNull(),
                                     causeId = causeId.toIntOrNull(),
                                     developId = developId.toIntOrNull(),
                                     effectId = effectId.toIntOrNull(),
-                                    startDate = startDate.takeIf { it.isNotEmpty() },
-                                    endDate = endDate.takeIf { it.isNotEmpty() }
+                                    vector = vector,
+                                    timestampStart = timestampStart.toLong(),
+                                    timestampEnd = timestampEnd.toLongOrNull()
                                 )
                             )
                         },
-                        enabled = title.isNotEmpty()
+                        enabled = canSave
                     ) {
                         Text("Save")
                     }
@@ -78,20 +80,12 @@ fun EventCreateScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title *") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text("Description") },
+                label = { Text("Description *") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
-                maxLines = 5
+                maxLines = 6
             )
 
             HorizontalDivider()
@@ -110,15 +104,13 @@ fun EventCreateScreen(
                     value = categoryId,
                     onValueChange = { categoryId = it },
                     label = { Text("Category ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                    modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
                     value = formaId,
                     onValueChange = { formaId = it },
                     label = { Text("Forma ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -130,15 +122,13 @@ fun EventCreateScreen(
                     value = causeId,
                     onValueChange = { causeId = it },
                     label = { Text("Cause ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                    modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
                     value = developId,
                     onValueChange = { developId = it },
                     label = { Text("Develop ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -146,33 +136,51 @@ fun EventCreateScreen(
                 value = effectId,
                 onValueChange = { effectId = it },
                 label = { Text("Effect ID") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("ID") }
+                modifier = Modifier.fillMaxWidth()
             )
 
             HorizontalDivider()
 
             Text(
-                text = "Dates (optional)",
+                text = "Timeline",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
 
             OutlinedTextField(
-                value = startDate,
-                onValueChange = { startDate = it },
-                label = { Text("Start Date (ISO 8601)") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("2024-01-01T00:00:00Z") }
+                value = timestampStart,
+                onValueChange = { timestampStart = it },
+                label = { Text("Start Timestamp (epoch ms) *") },
+                modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
-                value = endDate,
-                onValueChange = { endDate = it },
-                label = { Text("End Date (ISO 8601)") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("2024-01-02T00:00:00Z") }
+                value = timestampEnd,
+                onValueChange = { timestampEnd = it },
+                label = { Text("End Timestamp (epoch ms)") },
+                modifier = Modifier.fillMaxWidth()
             )
+
+            HorizontalDivider()
+
+            Text(
+                text = "Direction",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = vector,
+                    onClick = { vector = true },
+                    label = { Text("Outgoing") }
+                )
+                FilterChip(
+                    selected = !vector,
+                    onClick = { vector = false },
+                    label = { Text("Incoming") }
+                )
+            }
 
             if (selectedTemplateContext != null) {
                 Card(

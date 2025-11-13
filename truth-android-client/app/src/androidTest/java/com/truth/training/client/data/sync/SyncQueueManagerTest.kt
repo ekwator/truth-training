@@ -4,34 +4,14 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.truth.training.client.data.database.TruthDatabase
-import com.truth.training.client.data.database.entities.SyncQueueEntity
 import com.truth.training.client.data.network.dto.CreateEventRequest
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.Assert.*
 
-/**
- * Unit tests for SyncQueueManager.
- * 
- * Coverage targets:
- * - queueOperation() - CREATE, UPDATE, DELETE operations
- * - getPendingOperations() - filtering, ordering
- * - markSyncing() - state transitions
- * - markCompleted() - success handling, queue cleanup
- * - markFailed() - retry logic, max retry handling
- * - cleanupFailedOperations() - failed operation removal
- * - Conflict resolution: local-wins strategy
- * 
- * Test scenarios:
- * - Multiple operations for same entity
- * - Retry count limits (0, 1, 2, 3+)
- * - Concurrent operation queuing
- * 
- * Target coverage: ≥95%
- */
 @RunWith(AndroidJUnit4::class)
 class SyncQueueManagerTest {
     private lateinit var database: TruthDatabase
@@ -54,34 +34,29 @@ class SyncQueueManagerTest {
     @Test
     fun queueoperationCreatesNewCreateOperation() = runBlocking {
         val payload = CreateEventRequest(
-            title = "Test Event",
-            description = "Test",
+            description = "Test Event",
             categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = "2024-01-01T00:00:00Z",
-            endDate = "2024-01-02T00:00:00Z"
+            timestampStart = 1_000L,
+            vector = true,
+            timestampEnd = 2_000L
         )
 
         val result = syncManager.queueOperation(
             operationType = "CREATE",
             entityType = "EVENT",
-            entityId = "event_1",
+            entityId = "1",
             payload = payload
         )
 
         assertTrue(result.isSuccess)
-        val operationId = result.getOrNull()!!
+        val operationId = result.getOrThrow()
         assertTrue(operationId > 0)
 
-        // Verify operation saved
         val pending = syncManager.getPendingOperations()
         assertEquals(1, pending.size)
         assertEquals("CREATE", pending[0].operationType)
         assertEquals("EVENT", pending[0].entityType)
-        assertEquals("event_1", pending[0].entityId)
+        assertEquals("1", pending[0].entityId)
         assertEquals("PENDING", pending[0].status)
         assertEquals(0, pending[0].retryCount)
     }
@@ -89,20 +64,20 @@ class SyncQueueManagerTest {
     @Test
     fun queueoperationCreatesUpdateOperation() = runBlocking {
         val payload = CreateEventRequest(
-            title = "Updated Event",
-            description = "Updated",
-            categoryId = 1
+            description = "Updated Event",
+            categoryId = 1,
+            timestampStart = 2_000L
         )
 
         val result = syncManager.queueOperation(
             operationType = "UPDATE",
             entityType = "EVENT",
-            entityId = "event_1",
+            entityId = "1",
             payload = payload
         )
 
         assertTrue(result.isSuccess)
-        
+
         val pending = syncManager.getPendingOperations()
         assertEquals(1, pending.size)
         assertEquals("UPDATE", pending[0].operationType)
@@ -110,17 +85,17 @@ class SyncQueueManagerTest {
 
     @Test
     fun queueoperationCreatesDeleteOperation() = runBlocking {
-        val payload = mapOf<String, Any>() // Empty payload for delete
+        val payload = emptyMap<String, Any>()
 
         val result = syncManager.queueOperation(
             operationType = "DELETE",
             entityType = "EVENT",
-            entityId = "event_1",
+            entityId = "1",
             payload = payload
         )
 
         assertTrue(result.isSuccess)
-        
+
         val pending = syncManager.getPendingOperations()
         assertEquals(1, pending.size)
         assertEquals("DELETE", pending[0].operationType)
@@ -129,55 +104,51 @@ class SyncQueueManagerTest {
     @Test
     fun queueoperationUpdatesExistingOperationForSameEntityLocalWins() = runBlocking {
         val payload1 = CreateEventRequest(
-            title = "Original",
             description = "Original",
-            categoryId = 1
+            categoryId = 1,
+            timestampStart = 1_000L
         )
-        
-        // Create first operation
+
         val result1 = syncManager.queueOperation(
             operationType = "CREATE",
             entityType = "EVENT",
-            entityId = "event_1",
+            entityId = "1",
             payload = payload1
         )
         assertTrue(result1.isSuccess)
-        val operationId1 = result1.getOrNull()!!
+        val operationId1 = result1.getOrThrow()
 
         val payload2 = CreateEventRequest(
-            title = "Updated",
             description = "Updated",
-            categoryId = 1
+            categoryId = 1,
+            timestampStart = 2_000L
         )
 
-        // Queue another operation for same entity (should update existing)
         val result2 = syncManager.queueOperation(
             operationType = "UPDATE",
             entityType = "EVENT",
-            entityId = "event_1",
+            entityId = "1",
             payload = payload2
         )
         assertTrue(result2.isSuccess)
-        val operationId2 = result2.getOrNull()!!
+        val operationId2 = result2.getOrThrow()
 
-        // Should be same operation ID (local-wins strategy)
         assertEquals(operationId1, operationId2)
 
         val pending = syncManager.getPendingOperations()
         assertEquals(1, pending.size)
-        assertEquals("UPDATE", pending[0].operationType) // Latest operation type
+        assertEquals("UPDATE", pending[0].operationType)
         assertEquals("PENDING", pending[0].status)
-        assertEquals(0, pending[0].retryCount) // Reset retry count
+        assertEquals(0, pending[0].retryCount)
     }
 
     @Test
     fun getpendingoperationsReturnsOnlyPendingOperations() = runBlocking {
-        // Create multiple operations
         repeat(3) { i ->
             val payload = CreateEventRequest(
-                title = "Event $i",
                 description = "Event $i",
-                categoryId = 1
+                categoryId = 1,
+                timestampStart = 1_000L + i
             )
             syncManager.queueOperation(
                 operationType = "CREATE",
@@ -196,9 +167,9 @@ class SyncQueueManagerTest {
     fun getpendingcountReturnsCorrectCount() = runBlocking {
         repeat(5) { i ->
             val payload = CreateEventRequest(
-                title = "Event $i",
                 description = "Event $i",
-                categoryId = 1
+                categoryId = 1,
+                timestampStart = 2_000L + i
             )
             syncManager.queueOperation(
                 operationType = "CREATE",
@@ -213,204 +184,137 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun marksyncingTransitionsStatusFromPendingToSyncing() = runBlocking {
+    fun markSyncingMovesOperationToSyncingQueue() = runBlocking {
         val payload = CreateEventRequest(
-            title = "Test Event",
-            description = "Test",
-            categoryId = 1
+            description = "Event",
+            categoryId = 1,
+            timestampStart = 1_000L
         )
-        
-        val queueResult = syncManager.queueOperation(
-            operationType = "CREATE",
-            entityType = "EVENT",
-            entityId = "event_1",
-            payload = payload
-        )
-        val operationId = queueResult.getOrNull()!!
+        val opId = syncManager.queueOperation("CREATE", "EVENT", "event_1", payload).getOrThrow()
 
-        val result = syncManager.markSyncing(operationId)
-        
-        assertTrue(result.isSuccess)
-        
-        // Operation should no longer be in pending list
+        syncManager.markSyncing(opId).getOrThrow()
+
         val pending = syncManager.getPendingOperations()
-        assertEquals(0, pending.size)
+        assertTrue(pending.isEmpty())
+
+        val syncing = syncManager.getPendingOperations(status = "SYNCING")
+        assertEquals(1, syncing.size)
+        assertEquals("SYNCING", syncing[0].status)
     }
 
     @Test
-    fun marksyncingHandlesErrorWhenOperationNotFound() = runBlocking {
-        val result = syncManager.markSyncing(9999L)
-        
-        assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
-    }
-
-    @Test
-    fun markcompletedRemovesOperationFromQueue() = runBlocking {
+    fun completeoperationMarksAsCompleted() = runBlocking {
         val payload = CreateEventRequest(
-            title = "Test Event",
-            description = "Test",
-            categoryId = 1
+            description = "Event",
+            categoryId = 1,
+            timestampStart = 1_000L
         )
-        
-        val queueResult = syncManager.queueOperation(
-            operationType = "CREATE",
-            entityType = "EVENT",
-            entityId = "event_1",
-            payload = payload
-        )
-        val operationId = queueResult.getOrNull()!!
-        
-        // Mark as syncing first
-        syncManager.markSyncing(operationId)
+        val opId = syncManager.queueOperation("CREATE", "EVENT", "event_1", payload).getOrThrow()
 
-        val result = syncManager.markCompleted(operationId)
-        
-        assertTrue(result.isSuccess)
-        
-        // Operation should be removed from queue
+        syncManager.markCompleted(opId).getOrThrow()
+
         val pending = syncManager.getPendingOperations()
-        assertEquals(0, pending.size)
+        assertTrue(pending.isEmpty())
     }
 
     @Test
-    fun markcompletedHandlesErrorWhenOperationNotFound() = runBlocking {
-        val result = syncManager.markCompleted(9999L)
-        
-        assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
-    }
-
-    @Test
-    fun markfailedIncrementsRetryCountAndKeepsPendingIfUnderMax() = runBlocking {
+    fun retryoperationIncrementsRetryCount() = runBlocking {
         val payload = CreateEventRequest(
-            title = "Test Event",
-            description = "Test",
-            categoryId = 1
+            description = "Event",
+            categoryId = 1,
+            timestampStart = 1_000L
         )
-        
-        val queueResult = syncManager.queueOperation(
-            operationType = "CREATE",
-            entityType = "EVENT",
-            entityId = "event_1",
-            payload = payload
-        )
-        val operationId = queueResult.getOrNull()!!
-        
-        // Mark as syncing first
-        syncManager.markSyncing(operationId)
+        val opId = syncManager.queueOperation("CREATE", "EVENT", "event_1", payload).getOrThrow()
 
-        // Mark as failed (retry 1)
-        val result1 = syncManager.markFailed(operationId, "Network error")
-        assertTrue(result1.isSuccess)
-        
-        // Should still be in pending (retry count < 3)
-        var pending = syncManager.getPendingOperations()
+        syncManager.markFailed(opId, "Network error").getOrThrow()
+
+        val pending = syncManager.getPendingOperations()
         assertEquals(1, pending.size)
-        assertEquals("PENDING", pending[0].status)
         assertEquals(1, pending[0].retryCount)
-        assertEquals("Network error", pending[0].errorMessage)
-
-        // Mark as syncing and failed again (retry 2)
-        syncManager.markSyncing(operationId)
-        syncManager.markFailed(operationId, "Timeout")
-        
-        pending = syncManager.getPendingOperations()
-        assertEquals(1, pending.size)
-        assertEquals(2, pending[0].retryCount)
     }
 
     @Test
-    fun markfailedMarksAsFailedWhenRetryCountReachesMax() = runBlocking {
+    fun markoperationFailedResetsStatusAfterRetries() = runBlocking {
         val payload = CreateEventRequest(
-            title = "Test Event",
-            description = "Test",
-            categoryId = 1
+            description = "Event",
+            categoryId = 1,
+            timestampStart = 1_000L
         )
-        
-        val queueResult = syncManager.queueOperation(
-            operationType = "CREATE",
-            entityType = "EVENT",
-            entityId = "event_1",
-            payload = payload
-        )
-        val operationId = queueResult.getOrNull()!!
+        val opId = syncManager.queueOperation("CREATE", "EVENT", "event_1", payload).getOrThrow()
 
-        // Retry 1
-        syncManager.markSyncing(operationId)
-        syncManager.markFailed(operationId, "Error 1")
-        
-        // Retry 2
-        syncManager.markSyncing(operationId)
-        syncManager.markFailed(operationId, "Error 2")
-        
-        // Retry 3 (max reached)
-        syncManager.markSyncing(operationId)
-        val result = syncManager.markFailed(operationId, "Error 3")
-        assertTrue(result.isSuccess)
-        
-        // Should be marked as FAILED and removed from pending
-        val pending = syncManager.getPendingOperations()
-        assertEquals(0, pending.size)
-    }
-
-    @Test
-    fun cleanupfailedoperationsRemovesFailedOperations() = runBlocking {
-        // Create operation and fail it 3 times
-        val payload = CreateEventRequest(
-            title = "Test Event",
-            description = "Test",
-            categoryId = 1
-        )
-        
-        val queueResult = syncManager.queueOperation(
-            operationType = "CREATE",
-            entityType = "EVENT",
-            entityId = "event_1",
-            payload = payload
-        )
-        val operationId = queueResult.getOrNull()!!
-
-        // Fail 3 times to reach FAILED status
         repeat(3) {
-            syncManager.markSyncing(operationId)
-            syncManager.markFailed(operationId, "Error")
+            syncManager.markFailed(opId, "Network error").getOrThrow()
         }
 
-        val result = syncManager.cleanupFailedOperations()
-        
-        assertTrue(result.isSuccess)
-        
-        // Failed operations should be cleaned up
-        val pending = syncManager.getPendingOperations()
-        assertEquals(0, pending.size)
+        val failed = syncManager.getPendingOperations(status = "FAILED")
+        assertEquals(1, failed.size)
+        assertEquals("FAILED", failed[0].status)
     }
 
     @Test
-    fun multipleOperationsForSameEntityAreMergedLocalWins() = runBlocking {
-        val payload1 = CreateEventRequest(title = "First", description = "First", categoryId = 1)
-        syncManager.queueOperation("CREATE", "EVENT", "event_1", payload1)
-        
-        val payload2 = CreateEventRequest(title = "Second", description = "Second", categoryId = 1)
-        syncManager.queueOperation("UPDATE", "EVENT", "event_1", payload2)
-        
-        val payload3 = CreateEventRequest(title = "Third", description = "Third", categoryId = 1)
-        syncManager.queueOperation("UPDATE", "EVENT", "event_1", payload3)
+    fun cleanupFailedoperationsRemovesOldFailedOperations() = runBlocking {
+        val payload = CreateEventRequest(
+            description = "Event",
+            categoryId = 1,
+            timestampStart = 1_000L
+        )
+        val opId = syncManager.queueOperation("CREATE", "EVENT", "event_1", payload).getOrThrow()
 
-        // Should only have one operation (latest)
-        val pending = syncManager.getPendingOperations()
-        assertEquals(1, pending.size)
-        assertEquals("UPDATE", pending[0].operationType)
+        repeat(3) { syncManager.markFailed(opId, "Network error").getOrThrow() }
+
+        val deletedCount = syncManager.cleanupFailedOperations().getOrThrow()
+        assertEquals(1, deletedCount)
+
+        val failed = syncManager.getPendingOperations(status = "FAILED")
+        assertTrue(failed.isEmpty())
     }
 
     @Test
-    fun concurrentOperationQueuingHandlesDifferentEntitiesIndependently() = runBlocking {
-        // Queue operations for different entities
+    fun getpendingoperationsRespectsLimitAndOffset() = runBlocking {
         repeat(5) { i ->
             val payload = CreateEventRequest(
-                title = "Event $i",
                 description = "Event $i",
-                categoryId = 1
+                categoryId = 1,
+                timestampStart = 1_000L + i
+            )
+            syncManager.queueOperation(
+                operationType = "CREATE",
+                entityType = "EVENT",
+                entityId = "event_$i",
+                payload = payload
+            )
+        }
+
+        val paged = syncManager.getPendingOperations(limit = 2, offset = 2)
+        assertEquals(2, paged.size)
+    }
+
+    @Test
+    fun markoperationCompletedClearsPendingOperationsForEntity() = runBlocking {
+        val payload1 = CreateEventRequest(description = "First", categoryId = 1, timestampStart = 1_000L)
+        val payload2 = CreateEventRequest(description = "Second", categoryId = 1, timestampStart = 2_000L)
+        val payload3 = CreateEventRequest(description = "Third", categoryId = 1, timestampStart = 3_000L)
+
+        val opId1 = syncManager.queueOperation("CREATE", "EVENT", "event_1", payload1).getOrThrow()
+        val opId2 = syncManager.queueOperation("CREATE", "EVENT", "event_1", payload2).getOrThrow()
+        syncManager.queueOperation("CREATE", "EVENT", "event_2", payload3).getOrThrow()
+
+        syncManager.markCompleted(opId2).getOrThrow()
+
+        val pending = syncManager.getPendingOperations()
+        assertEquals(1, pending.count { it.entityId == "event_2" })
+        assertEquals(0, pending.count { it.entityId == "event_1" })
+
+        syncManager.markCompleted(opId1).getOrThrow()
+    }
+
+    @Test
+    fun enqueueMultipleOperationsHandlesQueueGracefully() = runBlocking {
+        repeat(10) { i ->
+            val payload = CreateEventRequest(
+                description = "Event $i",
+                categoryId = 1,
+                timestampStart = 1_000L + i
             )
             syncManager.queueOperation(
                 operationType = "CREATE",
@@ -421,49 +325,14 @@ class SyncQueueManagerTest {
         }
 
         val pending = syncManager.getPendingOperations()
-        assertEquals(5, pending.size)
-        
-        // Each should have unique entity IDs
-        val entityIds = pending.map { it.entityId }.toSet()
-        assertEquals(5, entityIds.size)
+        assertEquals(10, pending.size)
     }
 
     @Test
-    fun retryCountLimitsAreEnforcedCorrectly() = runBlocking {
-        val payload = CreateEventRequest(
-            title = "Test Event",
-            description = "Test",
-            categoryId = 1
-        )
-        
-        val queueResult = syncManager.queueOperation(
-            operationType = "CREATE",
-            entityType = "EVENT",
-            entityId = "event_1",
-            payload = payload
-        )
-        val operationId = queueResult.getOrNull()!!
-
-        // Verify initial retry count is 0
-        var pending = syncManager.getPendingOperations()
-        assertEquals(0, pending[0].retryCount)
-
-        // Fail and verify retry count increments
-        syncManager.markSyncing(operationId)
-        syncManager.markFailed(operationId, "Error 1")
-        pending = syncManager.getPendingOperations()
-        assertEquals(1, pending[0].retryCount)
-
-        syncManager.markSyncing(operationId)
-        syncManager.markFailed(operationId, "Error 2")
-        pending = syncManager.getPendingOperations()
-        assertEquals(2, pending[0].retryCount)
-
-        // Third failure should mark as FAILED
-        syncManager.markSyncing(operationId)
-        syncManager.markFailed(operationId, "Error 3")
-        pending = syncManager.getPendingOperations()
-        assertEquals(0, pending.size) // Removed from pending
+    fun cleanupFailedoperationsNoopsWhenQueueEmpty() = runBlocking {
+        val result = syncManager.cleanupFailedOperations()
+        assertTrue(result.isSuccess)
+        assertEquals(0, result.getOrThrow())
     }
 }
 

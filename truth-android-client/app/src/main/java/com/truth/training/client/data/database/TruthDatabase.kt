@@ -1,9 +1,12 @@
 package com.truth.training.client.data.database
 
+import android.content.Context
 import androidx.room.Database
+import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.truth.training.client.data.database.daos.*
 import com.truth.training.client.data.database.entities.*
+import com.truth.training.client.data.database.TruthDatabaseMigrations
 
 /**
  * Room database for Truth Training Android v1.0.0.
@@ -61,6 +64,23 @@ abstract class TruthDatabase : RoomDatabase() {
     
     companion object {
         const val DATABASE_NAME = "truth_training.sqlite"
+
+        @Volatile
+        private var INSTANCE: TruthDatabase? = null
+
+        fun getInstance(context: Context): TruthDatabase {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: Room.databaseBuilder(
+                    context.applicationContext,
+                    TruthDatabase::class.java,
+                    DATABASE_NAME
+                )
+                    .addMigrations(TruthDatabaseMigrations.MIGRATION_1_2)
+                    .fallbackToDestructiveMigration()
+                    .build()
+                    .also { INSTANCE = it }
+            }
+        }
     }
 }
 

@@ -3,19 +3,21 @@ package com.truth.training.client.ui.compose.events
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.database.entities.EventEntity
 
-/**
- * Event Detail Screen (Compose) - Displays full event details with judgments and impacts.
- */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EventDetailScreen(
     event: EventEntity?,
@@ -25,10 +27,7 @@ fun EventDetailScreen(
     modifier: Modifier = Modifier
 ) {
     if (event == null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = androidx.compose.ui.Alignment.Center
-        ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         return
@@ -40,16 +39,10 @@ fun EventDetailScreen(
                 title = { Text("Event Details") },
                 actions = {
                     IconButton(onClick = onEdit) {
-                        Icon(
-                            imageVector = Icons.Filled.Edit,
-                            contentDescription = "Edit"
-                        )
+                        Icon(imageVector = Icons.Filled.Edit, contentDescription = "Edit")
                     }
                     IconButton(onClick = onDelete) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Delete"
-                        )
+                        Icon(imageVector = Icons.Filled.Delete, contentDescription = "Delete")
                     }
                 }
             )
@@ -63,42 +56,19 @@ fun EventDetailScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Title
             Text(
-                text = event.title,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                text = event.description,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis
             )
 
-            // Status chip
             AssistChip(
                 onClick = {},
-                label = { Text(event.status) },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = when (event.status) {
-                        "active" -> MaterialTheme.colorScheme.primaryContainer
-                        "inactive" -> MaterialTheme.colorScheme.surfaceVariant
-                        "archived" -> MaterialTheme.colorScheme.surfaceVariant
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    }
-                )
+                label = { Text(if (event.vector) "Outgoing" else "Incoming") }
             )
 
-            // Description
-            if (!event.description.isNullOrEmpty()) {
-                Text(
-                    text = "Description",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = event.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            // Context fields
             val contextFields = listOfNotNull(
                 event.categoryId?.let { "Category: $it" },
                 event.formaId?.let { "Forma: $it" },
@@ -106,76 +76,54 @@ fun EventDetailScreen(
                 event.developId?.let { "Develop: $it" },
                 event.effectId?.let { "Effect: $it" }
             )
-
             if (contextFields.isNotEmpty()) {
                 Text(
                     text = "Context Fields",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     contextFields.forEach { field ->
-                        AssistChip(
-                            onClick = {},
-                            label = { Text(field) }
-                        )
+                        AssistChip(onClick = {}, label = { Text(field) })
                     }
                 }
             }
 
-            // Dates
-            if (event.startDate != null || event.endDate != null) {
+            Text(
+                text = "Timestamps",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Start: ${event.timestampStart}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            event.timestampEnd?.let {
                 Text(
-                    text = "Dates",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    text = "End: $it",
+                    style = MaterialTheme.typography.bodyMedium
                 )
-                if (event.startDate != null) {
-                    Text(
-                        text = "Start: ${event.startDate}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                if (event.endDate != null) {
-                    Text(
-                        text = "End: ${event.endDate}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+            }
+
+            val stateChips = listOfNotNull(
+                event.detected?.let { if (it) "Detected" else "Not Detected" },
+                if (event.corrected) "Corrected" else null
+            )
+            if (stateChips.isNotEmpty()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    stateChips.forEach { label ->
+                        AssistChip(onClick = {}, label = { Text(label) })
+                    }
                 }
             }
 
             Divider()
 
-            // Actions
-            Button(
-                onClick = onNavigateToJudgments,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Button(onClick = onNavigateToJudgments, modifier = Modifier.fillMaxWidth()) {
                 Text("View Judgments")
             }
-
-            OutlinedButton(
-                onClick = onEdit,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
                 Text("Edit Event")
-            }
-
-            // Metadata
-            Text(
-                text = "Created: ${event.createdAt}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (event.updatedAt != null) {
-                Text(
-                    text = "Updated: ${event.updatedAt}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }

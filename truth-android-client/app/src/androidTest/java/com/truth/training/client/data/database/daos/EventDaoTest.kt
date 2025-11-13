@@ -8,14 +8,11 @@ import com.truth.training.client.data.database.entities.EventEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.Assert.*
 
-/**
- * Unit tests for EventDao.
- */
 @RunWith(AndroidJUnit4::class)
 class EventDaoTest {
     private lateinit var database: TruthDatabase
@@ -37,115 +34,101 @@ class EventDaoTest {
 
     @Test
     fun insertAndGetEventById() = runBlocking {
-        val event = createTestEvent("event_1", "Test Event")
-        eventDao.insertEvent(event)
-        
-        val retrieved = eventDao.getEventById("event_1")
+        val id = eventDao.insertEvent(testEvent(description = "Test Event"))
+        val retrieved = eventDao.getEventById(id)
         assertNotNull(retrieved)
-        assertEquals("Test Event", retrieved!!.title)
-        assertEquals("event_1", retrieved.id)
+        assertEquals("Test Event", retrieved!!.description)
     }
 
     @Test
-    fun getEventByIdFlow() = runBlocking {
-        val event = createTestEvent("event_2", "Flow Test")
-        eventDao.insertEvent(event)
-        
-        val flow = eventDao.getEventByIdFlow("event_2")
-        val retrieved = flow.first()
-        assertNotNull(retrieved)
-        assertEquals("Flow Test", retrieved!!.title)
+    fun getEventByIdFlowEmitsInsertedEntity() = runBlocking {
+        val id = eventDao.insertEvent(testEvent(description = "Flow Event"))
+        val entity = eventDao.getEventByIdFlow(id).first()
+        assertEquals("Flow Event", entity?.description)
     }
 
     @Test
-    fun listEventsWithPagination() = runBlocking {
-        // Insert multiple events
-        repeat(10) { i ->
-            eventDao.insertEvent(createTestEvent("event_$i", "Event $i"))
+    fun listEventsRespectsPagination() = runBlocking {
+        repeat(10) { index ->
+            eventDao.insertEvent(
+                testEvent(
+                    description = "Event $index",
+                    timestampStart = 1_000L + index
+                )
+            )
         }
-        
-        val events = eventDao.listEvents(limit = 5, offset = 0)
-        assertEquals(5, events.size)
-        
-        val nextPage = eventDao.listEvents(limit = 5, offset = 5)
-        assertEquals(5, nextPage.size)
+
+        val firstPage = eventDao.listEvents(limit = 4, offset = 0)
+        val secondPage = eventDao.listEvents(limit = 4, offset = 4)
+        assertEquals(4, firstPage.size)
+        assertEquals(4, secondPage.size)
     }
 
     @Test
-    fun listEventsByStatus() = runBlocking {
-        eventDao.insertEvent(createTestEvent("event_active", "Active", "active"))
-        eventDao.insertEvent(createTestEvent("event_inactive", "Inactive", "inactive"))
-        
-        val activeEvents = eventDao.listEventsByStatus("active", limit = 10, offset = 0)
-        assertEquals(1, activeEvents.size)
-        assertEquals("Active", activeEvents[0].title)
-    }
+    fun updateEventPersistsChanges() = runBlocking {
+        val id = eventDao.insertEvent(testEvent(description = "Original", detected = null))
+        val existing = eventDao.getEventById(id)!!
+        val updated = existing.copy(description = "Updated", detected = true)
 
-    @Test
-    fun updateEvent() = runBlocking {
-        val event = createTestEvent("event_3", "Original")
-        eventDao.insertEvent(event)
-        
-        val updated = event.copy(title = "Updated", status = "archived")
         eventDao.updateEvent(updated)
-        
-        val retrieved = eventDao.getEventById("event_3")
-        assertEquals("Updated", retrieved!!.title)
-        assertEquals("archived", retrieved.status)
+        val reloaded = eventDao.getEventById(id)!!
+        assertEquals("Updated", reloaded.description)
+        assertTrue(reloaded.detected!!)
     }
 
     @Test
-    fun deleteEvent() = runBlocking {
-        val event = createTestEvent("event_4", "To Delete")
-        eventDao.insertEvent(event)
-        
-        eventDao.deleteEvent(event)
-        
-        val retrieved = eventDao.getEventById("event_4")
-        assertNull(retrieved)
+    fun deleteEventRemovesRow() = runBlocking {
+        val id = eventDao.insertEvent(testEvent(description = "To delete"))
+        val entity = eventDao.getEventById(id)!!
+        eventDao.deleteEvent(entity)
+        assertNull(eventDao.getEventById(id))
     }
 
     @Test
-    fun getEventCount() = runBlocking {
-        repeat(5) { i ->
-            eventDao.insertEvent(createTestEvent("event_$i", "Event $i"))
+    fun countMatchesInsertedRows() = runBlocking {
+        repeat(3) {
+            eventDao.insertEvent(testEvent(description = "Event $it"))
         }
-        
-        val count = eventDao.getEventCount()
-        assertEquals(5, count)
+        assertEquals(3, eventDao.getEventCount())
     }
 
     @Test
-    fun getAllEventsFlow() = runBlocking {
-        repeat(3) { i ->
-            eventDao.insertEvent(createTestEvent("event_$i", "Event $i"))
+    fun allEventsFlowEmitsLatestSnapshot() = runBlocking {
+        repeat(2) {
+            eventDao.insertEvent(testEvent(description = "Event $it"))
         }
-        
-        val flow = eventDao.getAllEventsFlow()
-        val events = flow.first()
-        assertEquals(3, events.size)
+        val snapshot = eventDao.getAllEventsFlow().first()
+        assertEquals(2, snapshot.size)
     }
 
-    private fun createTestEvent(
-        id: String = "event_test",
-        title: String = "Test Event",
-        status: String = "active"
-    ): EventEntity {
-        return EventEntity(
-            id = id,
-            title = title,
-            description = "Test description",
-            categoryId = 1,
-            formaId = 2,
-            causeId = 3,
-            developId = 4,
-            effectId = 5,
-            startDate = "2024-01-01T00:00:00Z",
-            endDate = "2024-01-02T00:00:00Z",
-            createdAt = "2024-01-01T00:00:00Z",
-            updatedAt = null,
-            status = status
-        )
-    }
+    private fun testEvent(
+        description: String,
+        categoryId: Int? = null,
+        formaId: Int? = null,
+        causeId: Int? = null,
+        developId: Int? = null,
+        effectId: Int? = null,
+        vector: Boolean = true,
+        detected: Boolean? = null,
+        corrected: Boolean = false,
+        timestampStart: Long = System.currentTimeMillis(),
+        timestampEnd: Long? = null,
+        code: Int = 1,
+        collectiveScore: Double? = null
+    ): EventEntity = EventEntity(
+        description = description,
+        categoryId = categoryId,
+        formaId = formaId,
+        causeId = causeId,
+        developId = developId,
+        effectId = effectId,
+        vector = vector,
+        detected = detected,
+        corrected = corrected,
+        timestampStart = timestampStart,
+        timestampEnd = timestampEnd,
+        code = code,
+        collectiveScore = collectiveScore
+    )
 }
 

@@ -44,17 +44,17 @@ class JudgmentConsensusTest {
     fun submitJudgmentsAndCalculateConsensusStatistics() = runBlocking {
         // Step 1: Create event
         val eventResult = eventRepository.createEvent(
-            CreateEventRequest("Test Event", "Description", null, null, null, null, null, null, null)
+            CreateEventRequest(description = "Test Event", timestampStart = 1_000L)
         )
         assertTrue(eventResult.isSuccess)
         val event = eventResult.getOrNull()!!
         val eventId = event.id
 
         // Step 2: Submit multiple judgments
-        val judgment1 = CreateJudgmentRequest(eventId, "true", 0.9, "Strong evidence")
-        val judgment2 = CreateJudgmentRequest(eventId, "true", 0.8, "Moderate evidence")
-        val judgment3 = CreateJudgmentRequest(eventId, "false", 0.7, "Conflicting evidence")
-        val judgment4 = CreateJudgmentRequest(eventId, "uncertain", 0.5, "Insufficient data")
+        val judgment1 = CreateJudgmentRequest(eventId = eventId, assessment = "true", confidenceLevel = 0.9, reasoning = "Strong evidence")
+        val judgment2 = CreateJudgmentRequest(eventId = eventId, assessment = "true", confidenceLevel = 0.8, reasoning = "Moderate evidence")
+        val judgment3 = CreateJudgmentRequest(eventId = eventId, assessment = "false", confidenceLevel = 0.7, reasoning = "Conflicting evidence")
+        val judgment4 = CreateJudgmentRequest(eventId = eventId, assessment = "uncertain", confidenceLevel = 0.5, reasoning = "Insufficient data")
 
         val result1 = judgmentRepository.submitJudgment(judgment1)
         val result2 = judgmentRepository.submitJudgment(judgment2)

@@ -3,20 +3,22 @@ package com.truth.training.client.data.network.dto
 import com.google.gson.annotations.SerializedName
 
 /**
- * DTOs for Impacts API v1.0.0.
+ * DTOs for Impacts API v1.0.0 aligned with canonical schema.
  */
 
 data class Impact(
-    val id: String,
-    @SerializedName("event_id") val eventId: String,
-    @SerializedName("impact_level") val impactLevel: Int,  // 1-5
+    val id: Long,
+    @SerializedName("event_id") val eventId: Long,
+    val value: Boolean,
     val notes: String? = null,
-    @SerializedName("created_at") val createdAt: String
+    @SerializedName("created_at") val createdAt: Long,
+    val signature: String? = null,
+    @SerializedName("public_key") val publicKey: String? = null
 )
 
 data class CreateImpactRequest(
-    @SerializedName("event_id") val eventId: String,
-    @SerializedName("impact_level") val impactLevel: Int,  // 1-5
+    @SerializedName("event_id") val eventId: Long,
+    val value: Boolean,
     val notes: String? = null
 )
 
@@ -25,7 +27,7 @@ data class CreateImpactRequest(
  */
 data class Summary(
     val id: String,
-    @SerializedName("event_id") val eventId: String,
+    @SerializedName("event_id") val eventId: Long,
     @SerializedName("summary_text") val summaryText: String? = null,
     val recommendations: String? = null,
     @SerializedName("updated_at") val updatedAt: String

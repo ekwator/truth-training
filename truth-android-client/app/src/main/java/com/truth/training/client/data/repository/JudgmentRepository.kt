@@ -4,7 +4,10 @@ import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.daos.JudgmentDao
 import com.truth.training.client.data.database.entities.JudgmentEntity
 import com.truth.training.client.data.network.TruthApi
-import com.truth.training.client.data.network.dto.*
+import com.truth.training.client.data.network.dto.CreateJudgmentRequest
+import com.truth.training.client.data.network.dto.Judgment
+import com.truth.training.client.data.network.dto.JudgmentListResponse
+import com.truth.training.client.data.network.dto.JudgmentStatsResponse
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
@@ -20,15 +23,14 @@ class JudgmentRepository(
     /**
      * Get judgments for an event as Flow.
      */
-    fun getJudgmentsForEventFlow(eventId: String): Flow<List<JudgmentEntity>> =
+    fun getJudgmentsForEventFlow(eventId: Long): Flow<List<JudgmentEntity>> =
         judgmentDao.listJudgmentsForEventFlow(eventId)
 
     /**
      * List judgments for an event with pagination.
      */
-    suspend fun listJudgmentsForEvent(eventId: String, limit: Int = 35, offset: Int = 0): List<JudgmentEntity> {
-        return judgmentDao.listJudgmentsForEvent(eventId, limit, offset)
-    }
+    suspend fun listJudgmentsForEvent(eventId: Long, limit: Int = 35, offset: Int = 0): List<JudgmentEntity> =
+        judgmentDao.listJudgmentsForEvent(eventId, limit, offset)
 
     /**
      * Submit a judgment locally, then queue for sync.
@@ -45,16 +47,13 @@ class JudgmentRepository(
                 return Result.failure(IllegalArgumentException("Confidence level must be between 0.0 and 1.0"))
             }
             
-            val id = "judg_${UUID.randomUUID()}"
-            val now = java.time.Instant.now().toString()
-            
             val entity = JudgmentEntity(
-                id = id,
+                id = "judg_${UUID.randomUUID()}",
                 eventId = request.eventId,
                 assessment = request.assessment,
                 confidenceLevel = request.confidenceLevel,
                 reasoning = request.reasoning,
-                submittedAt = now
+                submittedAt = java.time.Instant.now().toString()
             )
             
             judgmentDao.insertJudgment(entity)
@@ -69,12 +68,12 @@ class JudgmentRepository(
     /**
      * Get judgment statistics for consensus calculation.
      */
-    suspend fun getJudgmentStats(eventId: String): Result<JudgmentStatsResponse> {
+    suspend fun getJudgmentStats(eventId: Long): Result<JudgmentStatsResponse> {
         return try {
             val trueCount = judgmentDao.countJudgmentsByAssessment(eventId, "true")
             val falseCount = judgmentDao.countJudgmentsByAssessment(eventId, "false")
             val uncertainCount = judgmentDao.countJudgmentsByAssessment(eventId, "uncertain")
-            val avgConfidence = judgmentDao.getAverageConfidence(eventId) ?: 0.0
+            val avgConfidence = judgmentDao.averageConfidence(eventId) ?: 0.0
             
             val stats = JudgmentStatsResponse(
                 trueCount = trueCount,
@@ -93,31 +92,30 @@ class JudgmentRepository(
     /**
      * Sync judgments from server.
      */
-    suspend fun syncJudgmentsForEvent(eventId: String): Result<Int> {
+    suspend fun syncJudgmentsForEvent(eventId: Long): Result<Int> {
         return try {
-            val response = api?.listJudgments(eventId, limit = 100, offset = 0) ?: return Result.failure(Exception("API not available"))
-            if (!response.isSuccessful || response.body() == null) {
+            val response = api?.listJudgments(eventId, limit = 200, offset = 0)
+                ?: return Result.failure(Exception("API not available"))
+            if (!response.isSuccessful) {
                 return Result.failure(Exception("Failed to sync judgments: ${response.code()}"))
             }
-            
-            val judgments = response.body()!!.data
-            var syncedCount = 0
-            
-            judgments.forEach { judgmentDto ->
+            val body: JudgmentListResponse = response.body()
+                ?: return Result.failure(Exception("Empty judgment list"))
+
+            var synced = 0
+            body.data.forEach { dto: Judgment ->
                 val entity = JudgmentEntity(
-                    id = judgmentDto.id,
-                    eventId = judgmentDto.eventId,
-                    assessment = judgmentDto.assessment,
-                    confidenceLevel = judgmentDto.confidenceLevel,
-                    reasoning = judgmentDto.reasoning,
-                    submittedAt = judgmentDto.submittedAt
+                    id = dto.id,
+                    eventId = dto.eventId,
+                    assessment = dto.assessment,
+                    confidenceLevel = dto.confidenceLevel,
+                    reasoning = dto.reasoning,
+                    submittedAt = dto.submittedAt
                 )
-                
-                judgmentDao.insertJudgment(entity) // REPLACE strategy handles updates
-                syncedCount++
+                judgmentDao.insertJudgment(entity)
+                synced++
             }
-            
-            Result.success(syncedCount)
+            Result.success(synced)
         } catch (e: Exception) {
             Result.failure(e)
         }

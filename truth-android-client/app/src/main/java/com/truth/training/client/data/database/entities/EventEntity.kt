@@ -1,15 +1,13 @@
 package com.truth.training.client.data.database.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room.ColumnInfo
 
 /**
- * Represents a training event with embedded context fields (v1.0.0).
- * Matches truth_events table schema from Data_Schema.md.
- * Replaces legacy context_id with embedded fields: category_id, forma_id, cause_id, develop_id, effect_id.
+ * Truth events table aligned with core/desktop schema.
  */
 @Entity(
     tableName = "truth_events",
@@ -55,48 +53,47 @@ import androidx.room.ColumnInfo
     ]
 )
 data class EventEntity(
-    @PrimaryKey
+    @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "id")
-    val id: String,  // TEXT PRIMARY KEY - для совместимости с legacy UUIDs и CLI/Desktop
-    
+    val id: Long = 0L,
+
     @ColumnInfo(name = "description")
-    val description: String,  // TEXT NOT NULL
-    
-    // Embedded context fields (v1.0.0 - replaces context_id)
+    val description: String,
+
     @ColumnInfo(name = "category_id")
-    val categoryId: Int? = null,  // FK → category.id, nullable
-    
+    val categoryId: Int? = null,
+
     @ColumnInfo(name = "forma_id")
-    val formaId: Int? = null,  // FK → forma.id, nullable
-    
+    val formaId: Int? = null,
+
     @ColumnInfo(name = "cause_id")
-    val causeId: Int? = null,  // FK → cause.id, nullable
-    
+    val causeId: Int? = null,
+
     @ColumnInfo(name = "develop_id")
-    val developId: Int? = null,  // FK → develop.id, nullable
-    
+    val developId: Int? = null,
+
     @ColumnInfo(name = "effect_id")
-    val effectId: Int? = null,  // FK → effect.id, nullable
-    
+    val effectId: Int? = null,
+
     @ColumnInfo(name = "vector")
-    val vector: Boolean,  // BOOLEAN (0/1) - true = outgoing, false = incoming
-    
+    val vector: Boolean = true,
+
     @ColumnInfo(name = "detected")
-    val detected: Boolean? = null,  // BOOLEAN nullable - whether event was identified as truth or lie
-    
+    val detected: Boolean? = null,
+
     @ColumnInfo(name = "corrected")
-    val corrected: Boolean = false,  // BOOLEAN - event correction indicator
-    
+    val corrected: Boolean = false,
+
     @ColumnInfo(name = "timestamp_start")
-    val timestampStart: Long,  // INTEGER (UNIX timestamp)
-    
+    val timestampStart: Long,
+
     @ColumnInfo(name = "timestamp_end")
-    val timestampEnd: Long? = null,  // INTEGER nullable (UNIX timestamp)
-    
+    val timestampEnd: Long? = null,
+
     @ColumnInfo(name = "code")
-    val code: Int = 1,  // INTEGER - event classification code (default: 1)
-    
+    val code: Int = 1,
+
     @ColumnInfo(name = "collective_score")
-    val collectiveScore: Double? = null  // REAL nullable - Collective truth score (0–1)
+    val collectiveScore: Double? = null
 )
 

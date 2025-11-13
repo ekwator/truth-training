@@ -38,12 +38,11 @@ class P2PMessageHandler(
             }
             
             // Process message based on type
-            val messageType = payload.optString("type", "")
-            when (messageType) {
+            when (payload.optString("type", "")) {
                 "EVENT_SYNC" -> handleEventSync(payload, peer)
                 else -> {
                     // Unknown message type - log but don't fail
-                    android.util.Log.w("P2PMessageHandler", "Unknown message type: $messageType")
+                    android.util.Log.w("P2PMessageHandler", "Unknown message type: ${payload.optString("type")}")
                     Result.success(Unit)
                 }
             }
@@ -57,7 +56,7 @@ class P2PMessageHandler(
      */
     private suspend fun handleEventSync(payload: JSONObject, peer: P2PPeer): Result<Unit> {
         return try {
-            val eventId = payload.getString("event_id")
+            val eventId = payload.getLong("event_id")
             
             // Check if event already exists (local-wins conflict resolution)
             val existing = eventRepository.getEventById(eventId)
@@ -69,18 +68,19 @@ class P2PMessageHandler(
             // Create event entity from P2P message
             val entity = EventEntity(
                 id = eventId,
-                title = payload.getString("title"),
-                description = payload.optString("description").takeIf { !it.isNullOrEmpty() },
+                description = payload.getString("description"),
                 categoryId = payload.optInt("category_id").takeIf { it > 0 },
                 formaId = payload.optInt("forma_id").takeIf { it > 0 },
                 causeId = payload.optInt("cause_id").takeIf { it > 0 },
                 developId = payload.optInt("develop_id").takeIf { it > 0 },
                 effectId = payload.optInt("effect_id").takeIf { it > 0 },
-                startDate = payload.optString("start_date").takeIf { !it.isNullOrEmpty() },
-                endDate = payload.optString("end_date").takeIf { !it.isNullOrEmpty() },
-                createdAt = payload.getString("created_at"),
-                updatedAt = null,
-                status = payload.optString("status", "active")
+                vector = payload.optBoolean("vector", true),
+                detected = payload.opt("detected")?.let { if (!payload.isNull("detected")) payload.getBoolean("detected") else null },
+                corrected = payload.optBoolean("corrected", false),
+                timestampStart = payload.getLong("timestamp_start"),
+                timestampEnd = payload.optLong("timestamp_end").takeIf { payload.has("timestamp_end") && !payload.isNull("timestamp_end") },
+                code = payload.optInt("code", 1),
+                collectiveScore = payload.optDouble("collective_score").takeIf { payload.has("collective_score") && !payload.isNull("collective_score") }
             )
             
             // Save to local database

@@ -1,45 +1,42 @@
 package com.truth.training.client.integration
 
-import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.work.Configuration
+import androidx.work.ListenableWorker
+import androidx.work.testing.SynchronousExecutor
+import androidx.work.testing.TestListenableWorkerBuilder
+import androidx.work.testing.WorkManagerTestInitHelper
 import com.truth.training.client.data.database.TruthDatabase
-import com.truth.training.client.data.repository.EventRepository
-import com.truth.training.client.data.repository.JudgmentRepository
-import com.truth.training.client.data.repository.ContextTemplateRepository
-import com.truth.training.client.data.sync.SyncQueueManager
+import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.CreateEventRequest
-import com.truth.training.client.data.network.dto.CreateJudgmentRequest
-import com.truth.training.client.data.network.dto.CreateContextRequest
+import com.truth.training.client.data.repository.EventRepository
+import com.truth.training.client.data.sync.SyncWorker
 import kotlinx.coroutines.runBlocking
+import okhttp3.ResponseBody
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.Assert.*
+import retrofit2.Response
 
-/**
- * Integration test: Scenario 4 - Offline-first operation with sync queue.
- * Validates that operations are saved locally and queued for sync.
- */
 @RunWith(AndroidJUnit4::class)
 class OfflineFirstTest {
     private lateinit var database: TruthDatabase
     private lateinit var eventRepository: EventRepository
-    private lateinit var judgmentRepository: JudgmentRepository
-    private lateinit var templateRepository: ContextTemplateRepository
-    private lateinit var syncManager: SyncQueueManager
 
     @Before
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        database = Room.inMemoryDatabaseBuilder(context, TruthDatabase::class.java)
-            .allowMainThreadQueries()
+        val testConfig = Configuration.Builder()
+            .setMinimumLoggingLevel(android.util.Log.DEBUG)
+            .setExecutor(SynchronousExecutor())
             .build()
+        WorkManagerTestInitHelper.initializeTestWorkManager(context, testConfig)
+
+        database = TruthDatabase.getInstance(context)
         eventRepository = EventRepository(database, null)
-        judgmentRepository = JudgmentRepository(database, null)
-        templateRepository = ContextTemplateRepository(database, null)
-        syncManager = SyncQueueManager(database)
     }
 
     @After
@@ -48,86 +45,35 @@ class OfflineFirstTest {
     }
 
     @Test
-    fun offlineOperationsAreSavedLocallyAndQueuedForSync() = runBlocking {
-        // Step 1: Create event offline (no API)
-        val eventResult = eventRepository.createEvent(
-            CreateEventRequest("Offline Event", "Created offline", null, null, null, null, null, null, null)
-        )
-        assertTrue(eventResult.isSuccess)
-        val event = eventResult.getOrNull()!!
-        
-        // Verify event saved locally
+    fun offlineEventCreationAndSync() = runBlocking {
+        val event = eventRepository.createEvent(
+            CreateEventRequest(
+                description = "Offline Event",
+                timestampStart = 1_000L
+            )
+        ).getOrThrow()
+
         val savedEvent = eventRepository.getEventById(event.id)
-        assertNotNull(savedEvent)
-        assertEquals("Offline Event", savedEvent!!.title)
+        assertEquals("Offline Event", savedEvent!!.description)
 
-        // Step 2: Submit judgment offline
-        val judgmentResult = judgmentRepository.submitJudgment(
-            CreateJudgmentRequest(event.id, "true", 0.8, "Offline judgment")
-        )
-        assertTrue(judgmentResult.isSuccess)
-        
-        // Verify judgment saved locally
-        val judgments = judgmentRepository.listJudgmentsForEvent(event.id, 10, 0)
-        assertEquals(1, judgments.size)
+        val worker = TestListenableWorkerBuilder<SyncWorker>(
+            context = ApplicationProvider.getApplicationContext()
+        ).build()
 
-        // Step 3: Create template offline
-        val templateResult = templateRepository.createTemplate(
-            CreateContextRequest("Offline Template", 1, 2, 3, 4, 5, null)
-        )
-        assertTrue(templateResult.isSuccess)
-        
-        // Verify template saved locally
-        val templates = templateRepository.listTemplates()
-        assertEquals(1, templates.size)
+        val result = worker.doWork()
+        assertEquals(ListenableWorker.Result.success(), result)
 
-        // Step 4: Verify sync queue has pending operations
-        // Note: In actual implementation, repositories would call syncManager.queueOperation()
-        // For now, we verify local storage works correctly
-        val pendingCount = syncManager.getPendingCount()
-        val pendingOps = syncManager.getPendingOperations()
-        
-        // Verify sync queue infrastructure is working
-        assertNotNull(pendingOps)
-        assertTrue("Sync queue should be accessible", pendingCount >= 0)
-        
-        // This will be 0 because we're not actually queuing operations in the test
-        // But the infrastructure is ready for when repositories are updated
-        assertEquals("Sync queue should be empty until repositories are updated", 0, pendingCount)
-    }
+        val beforeRestart = eventRepository.getEventById(event.id)
+        assertEquals("Offline Event", beforeRestart!!.description)
 
-    @Test
-    fun localDataPersistsAcrossAppRestarts() = runBlocking {
-        // Step 1: Create data
-        val eventResult = eventRepository.createEvent(
-            CreateEventRequest("Persistent Event", null, null, null, null, null, null, null, null)
-        )
-        assertTrue(eventResult.isSuccess)
-        val eventId = eventResult.getOrNull()!!.id
-        
-        // Verify event exists before restart simulation
-        val beforeRestart = eventRepository.getEventById(eventId)
-        assertNotNull(beforeRestart)
-        assertEquals("Persistent Event", beforeRestart!!.title)
-
-        // Step 2: Simulate app restart (close and reopen database)
         database.close()
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val newDatabase = Room.inMemoryDatabaseBuilder(context, TruthDatabase::class.java)
-            .allowMainThreadQueries()
-            .build()
-        
-        // Note: In-memory database doesn't persist between instances
-        // This test validates the pattern for persistent databases
-        val newEventRepository = EventRepository(newDatabase, null)
-        
-        // In a real scenario with persistent database, event would be found
-        // For in-memory test, we verify the repository pattern works
-        val afterRestart = newEventRepository.getEventById(eventId)
-        // In-memory DB: null, but pattern is correct for persistent DB
-        assertNull("In-memory DB doesn't persist, but pattern is correct", afterRestart)
-        
-        newDatabase.close()
+
+        database = TruthDatabase.getInstance(ApplicationProvider.getApplicationContext())
+        eventRepository = EventRepository(database, null)
+
+        val afterRestart = eventRepository.getEventById(event.id)
+        assertNotNull(afterRestart)
+        assertEquals("Offline Event", afterRestart!!.description)
     }
 }
 

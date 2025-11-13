@@ -6,9 +6,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.database.entities.EventEntity
 
@@ -19,7 +20,7 @@ import com.truth.training.client.data.database.entities.EventEntity
 @Composable
 fun EventListScreen(
     events: List<EventEntity>,
-    onEventClick: (String) -> Unit,
+    onEventClick: (Long) -> Unit,
     onNewEventClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -86,60 +87,28 @@ private fun EventCard(
                 .padding(16.dp)
         ) {
             Text(
-                text = event.title,
+                text = event.description,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
-            
-            if (!event.description.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = event.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
-                )
-            }
-            
-            if (event.categoryId != null || event.formaId != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (event.categoryId != null) {
-                        AssistChip(
-                            onClick = {},
-                            label = { Text("Cat: ${event.categoryId}") }
-                        )
-                    }
-                    if (event.formaId != null) {
-                        AssistChip(
-                            onClick = {},
-                            label = { Text("Form: ${event.formaId}") }
-                        )
-                    }
-                }
-            }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = event.status,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = when (event.status) {
-                        "active" -> MaterialTheme.colorScheme.primary
-                        "inactive" -> MaterialTheme.colorScheme.onSurfaceVariant
-                        "archived" -> MaterialTheme.colorScheme.onSurfaceVariant
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(if (event.vector) "Outgoing" else "Incoming")
                     }
                 )
                 Text(
-                    text = event.createdAt.take(10), // Show date only
+                    text = "t=${event.timestampStart}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
