@@ -18,8 +18,8 @@ import com.truth.training.client.data.network.dto.CreateJudgmentRequest
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JudgmentSubmissionScreen(
-    eventId: String,
-    eventTitle: String,
+    eventId: Long,
+    eventDescription: String,
     onSubmit: (CreateJudgmentRequest) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
@@ -86,7 +86,7 @@ fun JudgmentSubmissionScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = eventTitle,
+                        text = eventDescription,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
