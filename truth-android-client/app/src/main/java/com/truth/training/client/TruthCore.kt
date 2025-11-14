@@ -27,26 +27,44 @@ object TruthCore {
             Log.i(TAG, "initNode skipped (native library not loaded)")
             return
         }
-        nativeInitNode()
+        try {
+            nativeInitNode()
+        } catch (e: UnsatisfiedLinkError) {
+            Log.w(TAG, "Native method nativeInitNode not found, skipping", e)
+        }
     }
 
     fun getInfo(): String {
         if (!nativeLoaded) {
             return """{"status":"unavailable"}"""
         }
-        return nativeGetInfo()
+        return try {
+            nativeGetInfo()
+        } catch (e: UnsatisfiedLinkError) {
+            Log.w(TAG, "Native method nativeGetInfo not found, returning unavailable", e)
+            """{"status":"unavailable"}"""
+        }
     }
 
     fun freeString(ptr: Long) {
         if (!nativeLoaded) return
-        nativeFreeString(ptr)
+        try {
+            nativeFreeString(ptr)
+        } catch (e: UnsatisfiedLinkError) {
+            Log.w(TAG, "Native method nativeFreeString not found, skipping", e)
+        }
     }
 
     fun processJsonRequest(request: String): String {
         if (!nativeLoaded) {
             return """{"status":"unavailable","echo":$request}"""
         }
-        return nativeProcessJsonRequest(request)
+        return try {
+            nativeProcessJsonRequest(request)
+        } catch (e: UnsatisfiedLinkError) {
+            Log.w(TAG, "Native method nativeProcessJsonRequest not found, returning echo", e)
+            """{"status":"unavailable","echo":$request}"""
+        }
     }
 
     fun processJson(request: String): String = synchronized(lock) {
