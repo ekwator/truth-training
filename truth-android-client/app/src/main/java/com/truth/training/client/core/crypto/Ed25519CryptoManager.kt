@@ -11,22 +11,35 @@ object Ed25519CryptoManager {
     private const val PUB = "pub"
     private const val PRIV = "priv"
     private var inited = false
+    private const val PROVIDER = BouncyCastleProvider.PROVIDER_NAME
 
     private fun ensureProvider() {
         if (inited) return
-        // Try to add BouncyCastle if available; otherwise rely on default JDK provider (SunEC on JDK17+)
-        runCatching {
-            if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
-                Security.addProvider(BouncyCastleProvider())
+        synchronized(this) {
+            if (inited) return
+            runCatching {
+                val existing = Security.getProvider(PROVIDER)
+                if (existing == null || existing::class.java != BouncyCastleProvider::class.java) {
+                    Security.removeProvider(PROVIDER)
+                    Security.insertProviderAt(BouncyCastleProvider(), 1)
+                }
             }
+            inited = true
         }
-        inited = true
     }
+
+    private fun keyPairGenerator(): KeyPairGenerator =
+        KeyPairGenerator.getInstance("Ed25519", PROVIDER)
+
+    private fun keyFactory(): KeyFactory =
+        KeyFactory.getInstance("Ed25519", PROVIDER)
+
+    private fun signature(): Signature =
+        Signature.getInstance("Ed25519", PROVIDER)
 
     fun generateKeyPair(): KeyPair {
         ensureProvider()
-        val kpg = KeyPairGenerator.getInstance("Ed25519")
-        return kpg.generateKeyPair()
+        return keyPairGenerator().generateKeyPair()
     }
 
     @Volatile private var cachedKeys: KeyPair? = null
@@ -49,7 +62,7 @@ object Ed25519CryptoManager {
         val pubB64 = prefs.getString(PUB, null)
         val privB64 = prefs.getString(PRIV, null)
         return if (pubB64 != null && privB64 != null) {
-            val keyFactory = KeyFactory.getInstance("Ed25519")
+            val keyFactory = keyFactory()
             val pub = keyFactory.generatePublic(X509EncodedKeySpec(Base64.getDecoder().decode(pubB64)))
             val priv = java.security.spec.PKCS8EncodedKeySpec(Base64.getDecoder().decode(privB64)).let {
                 keyFactory.generatePrivate(it)
@@ -69,7 +82,7 @@ object Ed25519CryptoManager {
 
     fun signMessage(privateKey: PrivateKey, message: String): String {
         ensureProvider()
-        val sig = Signature.getInstance("Ed25519")
+        val sig = signature()
         sig.initSign(privateKey)
         sig.update(message.toByteArray(Charsets.UTF_8))
         return base64EncodeNoPad(sig.sign())
@@ -78,7 +91,7 @@ object Ed25519CryptoManager {
     fun verifySignature(publicKey: PublicKey, message: String, signatureB64: String): Boolean {
         return try {
             ensureProvider()
-            val sig = Signature.getInstance("Ed25519")
+            val sig = signature()
             sig.initVerify(publicKey)
             sig.update(message.toByteArray(Charsets.UTF_8))
             sig.verify(Base64.getDecoder().decode(signatureB64))
@@ -96,7 +109,7 @@ object Ed25519CryptoManager {
         ensureProvider()
         val bytes = Base64.getDecoder().decode(b64)
         val spec = X509EncodedKeySpec(bytes)
-        return KeyFactory.getInstance("Ed25519").generatePublic(spec)
+        return keyFactory().generatePublic(spec)
     }
 
     fun signJsonPayload(payload: org.json.JSONObject, context: Context? = null): String {

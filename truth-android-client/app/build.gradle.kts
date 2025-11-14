@@ -163,6 +163,7 @@ dependencies {
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     androidTestImplementation("androidx.work:work-testing:2.9.0")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 }
 
 

@@ -68,17 +68,39 @@ abstract class TruthDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: TruthDatabase? = null
 
+        private fun buildDatabase(context: Context): TruthDatabase {
+            return Room.databaseBuilder(
+                context.applicationContext,
+                TruthDatabase::class.java,
+                DATABASE_NAME
+            )
+                .addMigrations(TruthDatabaseMigrations.MIGRATION_1_2)
+                .fallbackToDestructiveMigration()
+                .build()
+        }
+
         fun getInstance(context: Context): TruthDatabase {
-            return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    TruthDatabase::class.java,
-                    DATABASE_NAME
-                )
-                    .addMigrations(TruthDatabaseMigrations.MIGRATION_1_2)
-                    .fallbackToDestructiveMigration()
-                    .build()
-                    .also { INSTANCE = it }
+            val current = INSTANCE
+            if (current != null && current.isOpen) {
+                return current
+            }
+            return synchronized(this) {
+                val existing = INSTANCE
+                if (existing != null && existing.isOpen) {
+                    existing
+                } else {
+                    existing?.close()
+                    val db = buildDatabase(context)
+                    INSTANCE = db
+                    db
+                }
+            }
+        }
+
+        fun closeInstance() {
+            synchronized(this) {
+                INSTANCE?.close()
+                INSTANCE = null
             }
         }
     }

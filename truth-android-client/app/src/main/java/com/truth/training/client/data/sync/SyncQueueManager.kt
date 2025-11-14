@@ -4,7 +4,6 @@ import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.daos.SyncQueueDao
 import com.truth.training.client.data.database.entities.SyncQueueEntity
 import com.google.gson.Gson
-import java.util.UUID
 
 /**
  * Manages offline operation queue for background synchronization.
@@ -72,8 +71,12 @@ class SyncQueueManager(private val database: TruthDatabase) {
      * Get pending operations for processing.
      */
     suspend fun getPendingOperations(status: String = "PENDING", limit: Int = Int.MAX_VALUE, offset: Int = 0): List<SyncQueueEntity> {
-        val operations = syncQueueDao.getPendingOperations(status)
-        return operations.drop(offset).take(limit)
+        return if (limit == Int.MAX_VALUE && offset == 0) {
+            syncQueueDao.getPendingOperations(status)
+        } else {
+            val safeLimit = if (limit == Int.MAX_VALUE) Int.MAX_VALUE else limit
+            syncQueueDao.getPendingOperationsPaged(status, safeLimit, offset)
+        }
     }
 
     /**

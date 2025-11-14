@@ -56,7 +56,7 @@ interface ContextTemplateDao {
           AND (:causeId IS NULL OR cause_id = :causeId)
           AND (:developId IS NULL OR develop_id = :developId)
           AND (:effectId IS NULL OR effect_id = :effectId)
-          AND id != :excludeId
+          AND (:excludeId = 0 OR id != :excludeId)
         """
     )
     suspend fun countDuplicateTemplates(

@@ -297,6 +297,7 @@ class SyncQueueManagerTest {
 
         val opId1 = syncManager.queueOperation("CREATE", "EVENT", "event_1", payload1).getOrThrow()
         val opId2 = syncManager.queueOperation("CREATE", "EVENT", "event_1", payload2).getOrThrow()
+        assertEquals(opId1, opId2)
         syncManager.queueOperation("CREATE", "EVENT", "event_2", payload3).getOrThrow()
 
         syncManager.markCompleted(opId2).getOrThrow()
@@ -304,8 +305,6 @@ class SyncQueueManagerTest {
         val pending = syncManager.getPendingOperations()
         assertEquals(1, pending.count { it.entityId == "event_2" })
         assertEquals(0, pending.count { it.entityId == "event_1" })
-
-        syncManager.markCompleted(opId1).getOrThrow()
     }
 
     @Test

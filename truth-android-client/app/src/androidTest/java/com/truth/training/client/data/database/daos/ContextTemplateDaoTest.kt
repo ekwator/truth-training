@@ -5,7 +5,13 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.entities.ContextTemplateEntity
+import com.truth.training.client.data.database.entities.CategoryEntity
+import com.truth.training.client.data.database.entities.CauseEntity
+import com.truth.training.client.data.database.entities.DevelopEntity
+import com.truth.training.client.data.database.entities.EffectEntity
+import com.truth.training.client.data.database.entities.FormaEntity
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -28,6 +34,7 @@ class ContextTemplateDaoTest {
             TruthDatabase::class.java
         ).allowMainThreadQueries().build()
         templateDao = database.contextTemplateDao()
+        seedReferenceData()
     }
 
     @After
@@ -161,6 +168,30 @@ class ContextTemplateDaoTest {
             effectId = effectId,
             description = description
         )
+    }
+
+    private fun seedReferenceData() = runBlocking {
+        val categories = listOf(1, 10).map { id ->
+            CategoryEntity(id = id, name = "Category $id", description = null)
+        }
+        val formas = listOf(2, 20).map { id ->
+            FormaEntity(id = id, name = "Forma $id", quality = id % 2 == 0, description = null)
+        }
+        val causes = listOf(3, 30).map { id ->
+            CauseEntity(id = id, name = "Cause $id", quality = id % 2 == 0, description = null)
+        }
+        val develops = listOf(4, 40).map { id ->
+            DevelopEntity(id = id, name = "Develop $id", quality = true, description = null)
+        }
+        val effects = listOf(5, 50).map { id ->
+            EffectEntity(id = id, name = "Effect $id", quality = id % 2 == 0, description = null)
+        }
+
+        categories.forEach { database.categoryDao().insertCategory(it) }
+        formas.forEach { database.formaDao().insertForma(it) }
+        causes.forEach { database.causeDao().insertCause(it) }
+        develops.forEach { database.developDao().insertDevelop(it) }
+        effects.forEach { database.effectDao().insertEffect(it) }
     }
 }
 

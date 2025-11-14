@@ -16,6 +16,14 @@ class ContextTemplateRepository(
 ) {
     private val templateDao: ContextTemplateDao = database.contextTemplateDao()
 
+    private fun hasContextFields(
+        categoryId: Int?,
+        formaId: Int?,
+        causeId: Int?,
+        developId: Int?,
+        effectId: Int?
+    ): Boolean = listOf(categoryId, formaId, causeId, developId, effectId).any { it != null }
+
     /**
      * Get all templates as Flow.
      */
@@ -42,14 +50,25 @@ class ContextTemplateRepository(
     suspend fun createTemplate(request: CreateContextRequest): Result<ContextTemplateEntity> {
         return try {
             // Check for duplicates locally first
-            val duplicateCount = templateDao.countDuplicateTemplates(
-                request.categoryId,
-                request.formaId,
-                request.causeId,
-                request.developId,
-                request.effectId,
-                excludeId = 0
-            )
+            val duplicateCount = if (hasContextFields(
+                    request.categoryId,
+                    request.formaId,
+                    request.causeId,
+                    request.developId,
+                    request.effectId
+                )
+            ) {
+                templateDao.countDuplicateTemplates(
+                    request.categoryId,
+                    request.formaId,
+                    request.causeId,
+                    request.developId,
+                    request.effectId,
+                    excludeId = 0
+                )
+            } else {
+                0
+            }
             
             if (duplicateCount > 0) {
                 return Result.failure(Exception("Template with identical fields already exists (409 Conflict)"))
@@ -87,14 +106,25 @@ class ContextTemplateRepository(
             )
             
             // Check for duplicates (excluding current template)
-            val duplicateCount = templateDao.countDuplicateTemplates(
-                request.categoryId,
-                request.formaId,
-                request.causeId,
-                request.developId,
-                request.effectId,
-                excludeId = id
-            )
+            val duplicateCount = if (hasContextFields(
+                    request.categoryId,
+                    request.formaId,
+                    request.causeId,
+                    request.developId,
+                    request.effectId
+                )
+            ) {
+                templateDao.countDuplicateTemplates(
+                    request.categoryId,
+                    request.formaId,
+                    request.causeId,
+                    request.developId,
+                    request.effectId,
+                    excludeId = id
+                )
+            } else {
+                0
+            }
             
             if (duplicateCount > 0) {
                 return Result.failure(Exception("Template with identical fields already exists (409 Conflict)"))
