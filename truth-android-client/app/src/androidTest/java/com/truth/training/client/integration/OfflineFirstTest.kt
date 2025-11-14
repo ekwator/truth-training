@@ -42,6 +42,7 @@ class OfflineFirstTest {
     @After
     fun tearDown() {
         database.close()
+        TruthDatabase.closeInstance()
     }
 
     @Test
@@ -67,6 +68,7 @@ class OfflineFirstTest {
         assertEquals("Offline Event", beforeRestart!!.description)
 
         database.close()
+        TruthDatabase.closeInstance()
 
         database = TruthDatabase.getInstance(ApplicationProvider.getApplicationContext())
         eventRepository = EventRepository(database, null)

@@ -9,8 +9,14 @@ import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.entities.ContextTemplateEntity
 import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.*
+import com.truth.training.client.data.database.entities.CategoryEntity
+import com.truth.training.client.data.database.entities.CauseEntity
+import com.truth.training.client.data.database.entities.DevelopEntity
+import com.truth.training.client.data.database.entities.EffectEntity
+import com.truth.training.client.data.database.entities.FormaEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -71,6 +77,7 @@ class ContextTemplateRepositoryTest {
 
         api = retrofit.create(TruthApi::class.java)
         repository = ContextTemplateRepository(database, api)
+        seedReferenceData()
     }
 
     @After
@@ -496,6 +503,27 @@ class ContextTemplateRepositoryTest {
         
         val templates = repository.listTemplates()
         assertEquals("Should have 5 templates", 5, templates.size)
+    }
+
+    private fun seedReferenceData() = runBlocking {
+        val ids = listOf(1, 2, 3, 4, 5, 10, 20, 30, 40, 50)
+        ids.forEach { id ->
+            database.categoryDao().insertCategory(
+                CategoryEntity(id = id, name = "Category $id", description = null)
+            )
+            database.formaDao().insertForma(
+                FormaEntity(id = id, name = "Forma $id", quality = id % 2 == 0, description = null)
+            )
+            database.causeDao().insertCause(
+                CauseEntity(id = id, name = "Cause $id", quality = id % 2 == 0, description = null)
+            )
+            database.developDao().insertDevelop(
+                DevelopEntity(id = id, name = "Develop $id", quality = true, description = null)
+            )
+            database.effectDao().insertEffect(
+                EffectEntity(id = id, name = "Effect $id", quality = id % 2 == 0, description = null)
+            )
+        }
     }
 }
 

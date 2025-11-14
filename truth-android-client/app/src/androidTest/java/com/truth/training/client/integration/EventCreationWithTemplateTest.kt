@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.entities.ContextTemplateEntity
 import com.truth.training.client.data.repository.EventRepository
+import com.truth.training.client.testing.TestDataSeeder
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -22,11 +23,13 @@ class EventCreationWithTemplateTest {
     fun setup() {
         database = TruthDatabase.getInstance(ApplicationProvider.getApplicationContext())
         eventRepository = EventRepository(database, null)
+        runBlocking { TestDataSeeder.seedKnowledgeBase(database) }
     }
 
     @After
     fun tearDown() {
         database.close()
+        TruthDatabase.closeInstance()
     }
 
     @Test

@@ -17,6 +17,9 @@ interface SyncQueueDao {
     
     @Query("SELECT * FROM sync_queue WHERE id = :id")
     suspend fun getOperationById(id: Long): SyncQueueEntity?
+
+    @Query("SELECT * FROM sync_queue WHERE status = :status ORDER BY created_at ASC LIMIT :limit OFFSET :offset")
+    suspend fun getPendingOperationsPaged(status: String, limit: Int, offset: Int): List<SyncQueueEntity>
     
     @Insert
     suspend fun insertOperation(operation: SyncQueueEntity): Long

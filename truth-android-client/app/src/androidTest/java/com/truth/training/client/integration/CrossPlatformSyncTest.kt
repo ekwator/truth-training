@@ -46,6 +46,7 @@ class CrossPlatformSyncTest {
         discoveryService.stopDiscovery()
         testScope.cancel()
         database.close()
+        TruthDatabase.closeInstance()
     }
 
     @Test

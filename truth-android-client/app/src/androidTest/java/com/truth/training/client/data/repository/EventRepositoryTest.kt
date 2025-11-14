@@ -9,8 +9,10 @@ import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.entities.EventEntity
 import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.*
+import com.truth.training.client.testing.TestDataSeeder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -38,6 +40,9 @@ class EventRepositoryTest {
             ApplicationProvider.getApplicationContext(),
             TruthDatabase::class.java
         ).allowMainThreadQueries().fallbackToDestructiveMigration().build()
+        runBlocking {
+            TestDataSeeder.seedKnowledgeBase(database, ids = setOf(1, 2, 3, 4, 5, 6))
+        }
 
         mockWebServer = MockWebServer()
         mockWebServer.start()

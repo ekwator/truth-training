@@ -4,6 +4,11 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.truth.training.client.data.database.TruthDatabase
+import com.truth.training.client.data.database.entities.CategoryEntity
+import com.truth.training.client.data.database.entities.CauseEntity
+import com.truth.training.client.data.database.entities.DevelopEntity
+import com.truth.training.client.data.database.entities.EffectEntity
+import com.truth.training.client.data.database.entities.FormaEntity
 import com.truth.training.client.data.repository.ContextTemplateRepository
 import com.truth.training.client.data.network.dto.CreateContextRequest
 import kotlinx.coroutines.runBlocking
@@ -29,6 +34,7 @@ class ContextTemplateDuplicateTest {
             .allowMainThreadQueries()
             .build()
         templateRepository = ContextTemplateRepository(database, null)
+        seedReferenceData()
     }
 
     @After
@@ -96,6 +102,17 @@ class ContextTemplateDuplicateTest {
         // Both should succeed (NULL fields don't count as duplicates)
         assertTrue(result1.isSuccess)
         assertTrue(result2.isSuccess)
+    }
+
+    private fun seedReferenceData() = runBlocking {
+        val ids = listOf(1, 2, 3, 4, 5)
+        ids.forEach { id ->
+            database.categoryDao().insertCategory(CategoryEntity(id, "Category $id", null))
+            database.formaDao().insertForma(FormaEntity(id, "Forma $id", id % 2 == 0, null))
+            database.causeDao().insertCause(CauseEntity(id, "Cause $id", id % 2 == 0, null))
+            database.developDao().insertDevelop(DevelopEntity(id, "Develop $id", true, null))
+            database.effectDao().insertEffect(EffectEntity(id, "Effect $id", id % 2 == 0, null))
+        }
     }
 }
 
