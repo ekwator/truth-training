@@ -4,13 +4,18 @@
     "ui/desktop/dist",
     "ui/desktop/.vite",
     "target",
-    ".git"
+    ".git",
+    "truth-android-client",
+    "truth-ios-client"
   ],
   "files.watcher.exclude": {
     "ui/desktop/node_modules/**": true,
     "ui/desktop/dist/**": true,
     "ui/desktop/.vite/**": true,
     "target/**": true,
-    ".git/**": true
-  }
+    ".git/**": true,
+    "truth-android-client/**": true,
+    "truth-ios-client/**": true
+  },
+  "rust-analyzer.checkOnSave": false
 }

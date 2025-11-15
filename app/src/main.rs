@@ -2,9 +2,10 @@ use chrono::Utc;
 use clap::{Parser, Subcommand};
 use core_lib::expert_simple::{evaluate_answers, questions_for_context};
 use core_lib::{
-    NewTruthEvent, NewStatement, add_impact, add_truth_event, add_statement, get_truth_event, get_statement,
+    CoreError, NewTruthEvent, NewStatement, add_impact, add_truth_event, add_statement, get_truth_event, get_statement,
     init_db, open_db, recalc_progress_metrics, seed_knowledge_base, set_event_detected,
 };
+use rusqlite;
 use std::collections::HashMap;
 
 /// Simple CLI over core for local testing
@@ -129,11 +130,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             vector,
             start,
         } => {
+            // Fetch the context by ID to extract category_id, forma_id, cause_id, develop_id, effect_id
+            let context_record: Option<(Option<i64>, Option<i64>, Option<i64>, Option<i64>, Option<i64>)> =
+                conn.query_row(
+                    "SELECT category_id, forma_id, cause_id, develop_id, effect_id FROM context WHERE id = ?1",
+                    rusqlite::params![context],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+                ).optional()?;
+
+            let (category_id, forma_id, cause_id, develop_id, effect_id) = match context_record {
+                Some((cat_id, form_id, c_id, dev_id, eff_id)) => (cat_id, form_id, c_id, dev_id, eff_id),
+                None => {
+                    return Err(CoreError::InvalidArg(format!("Context with id {} not found", context)).into());
+                }
+            };
+
             let id = add_truth_event(
                 &conn,
                 NewTruthEvent {
                     description,
-                    context_id: context,
+                    category_id,
+                    forma_id,
+                    cause_id,
+                    develop_id,
+                    effect_id,
                     vector,
                     timestamp_start: start.unwrap_or_else(|| Utc::now().timestamp()),
                     code: 1, // Default code for CLI added events
