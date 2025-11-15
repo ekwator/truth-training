@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tauri::{command, State};
 use crate::storage::Db;
-use rusqlite::params;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Event {
