@@ -6,6 +6,7 @@ use core_lib::{
     init_db, open_db, recalc_progress_metrics, seed_knowledge_base, set_event_detected,
 };
 use rusqlite;
+use rusqlite::OptionalExtension;
 use std::collections::HashMap;
 
 /// Simple CLI over core for local testing
