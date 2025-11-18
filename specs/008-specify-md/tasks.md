@@ -85,7 +85,7 @@ Integration tests (Quickstart scenarios → [P]):
 - [x] T064 Update CI to run desktop feature tests (`cargo test --features desktop`).
 
 ## Phase 3.5: Polish & Documentation
-- [ ] T051 [P] Update documentation (`README.md`, `docs/Data_Schema.md`, `docs/CLI_Usage.md`, `docs/architecture.md`) with schema, discovery flow, CLI usage, and Android/Desktop behaviors.
+- [x] T051 [P] Update documentation (`README.md`, `docs/Data_Schema.md`, `docs/CLI_Usage.md`, `docs/architecture.md`) with schema, discovery flow, CLI usage, and Android/Desktop behaviors.
 - [ ] T052 [P] Add performance regression tests/benchmarks for discovery + merge in `tests/perf/test_discovery_perf.rs` ensuring targets (<5s scan, <100ms merge).
 - [ ] T053 [P] Execute quickstart scenarios end-to-end and capture results in `test-results/reports/node_discovery.md`, attaching logs/screenshots from each platform.
 - [ ] T054 Run final CLI-driven verification (fresh DB, migrations, sync across modules) and record evidence in `test-results/reports/final_validation.md`.
