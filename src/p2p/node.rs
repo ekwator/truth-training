@@ -256,7 +256,7 @@ impl Node {
 
 /// Payload for LAN/Wi-Fi discovery announcements.
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct LanAnnouncement {
+pub struct LanAnnouncement {
     node_id: String,
     address: String,
     node_type: NodeType,
