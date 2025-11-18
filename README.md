@@ -246,6 +246,49 @@ Truth Core supports Android integration through FFI bindings and JSON signature 
 cargo build --release --target aarch64-linux-android --features mobile
 ```
 
+### Running Tests
+
+**Desktop Feature Tests:**
+```bash
+# Run all desktop feature tests
+cargo test --features desktop
+
+# Run specific test (e.g., LAN announcement roundtrip)
+cargo test --features desktop lan_announcement_roundtrip
+
+# Run with verbose output
+cargo test --features desktop -- --nocapture
+```
+
+**CLI End-to-End Tests:**
+```bash
+# Run CLI sync tests
+cargo test --test cli_sync --features p2p-client-sync --package app --bin truthctl
+
+# Run all tests
+cargo test --all
+```
+
+**Android Instrumentation Tests:**
+```bash
+cd truth-android-client
+
+# Run on connected device
+./gradlew connectedDebugAndroidTest
+
+# Run specific test class
+./gradlew connectedDebugAndroidTest --tests "com.truth.training.client.NodeDiscoveryTest"
+```
+
+**Cross-Platform Integration Tests:**
+```bash
+# TTL consistency tests
+cargo test --test test_ttl_consistency
+
+# JSON enum serialization tests
+cargo test --test test_json_enum_serialization
+```
+
 **Example JNI Integration:**
 ```kotlin
 // Native function call

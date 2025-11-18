@@ -37,9 +37,11 @@ import com.truth.training.client.data.database.TruthDatabaseMigrations
         // Legacy entities (for backward compatibility)
         JudgmentEntity::class,
         SummaryEntity::class,
-        SyncQueueEntity::class
+        SyncQueueEntity::class,
+        // Discovery entities
+        NodeEntity::class
     ],
-    version = 2,  // Incremented to add knowledge base entities
+    version = 3,  // Incremented to add nodes table for discovery
     exportSchema = true  // Schema export enabled for migration validation
 )
 abstract class TruthDatabase : RoomDatabase() {
@@ -62,6 +64,9 @@ abstract class TruthDatabase : RoomDatabase() {
     abstract fun summaryDao(): SummaryDao
     abstract fun syncQueueDao(): SyncQueueDao
     
+    // Discovery DAOs
+    abstract fun nodeDao(): NodeDao
+    
     companion object {
         const val DATABASE_NAME = "truth_training.sqlite"
 
@@ -74,7 +79,10 @@ abstract class TruthDatabase : RoomDatabase() {
                 TruthDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(TruthDatabaseMigrations.MIGRATION_1_2)
+                .addMigrations(
+                    TruthDatabaseMigrations.MIGRATION_1_2,
+                    TruthDatabaseMigrations.MIGRATION_2_3
+                )
                 .fallbackToDestructiveMigration()
                 .build()
         }

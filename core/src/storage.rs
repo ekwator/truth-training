@@ -1,27 +1,66 @@
-use crate::{
-    CoreError,
-    Impact,
-    NewTruthEvent,
-    ProgressMetrics,
-    TruthEvent,
-    Statement,
-    NewStatement,
-    NodeRating,
-    GroupRating,
-    GraphData,
-    GraphNode,
-    GraphLink,
-};
 use crate::collective_intelligence::models as ci_models;
-use rusqlite::{Connection, OptionalExtension, params};
+use crate::{
+    CoreError, GraphData, GraphLink, GraphNode, GroupRating, Impact, NewNode, NewStatement,
+    NewTruthEvent, Node, NodeFilter, NodePatch, NodeRating, NodeSource, NodeType, ProgressMetrics,
+    Statement, TruthEvent,
+};
+use rusqlite::{params, Connection, OptionalExtension, ToSql};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 // serde_json используется через полные пути
-use chrono::Utc;
-use std::fs;
-use std::collections::{HashMap, HashSet, VecDeque};
-use crate::models::SyncLog;
-use crate::trust_propagation::{compute_quality_index, compute_propagation_priority, propagate_from_remote};
 use crate::models::RbacUser;
+use crate::models::SyncLog;
+use crate::trust_propagation::{
+    compute_propagation_priority, compute_quality_index, propagate_from_remote,
+};
+use chrono::Utc;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::fs;
+
+fn bool_to_int(value: bool) -> i64 {
+    if value {
+        1
+    } else {
+        0
+    }
+}
+
+fn int_to_bool(value: i64) -> bool {
+    value != 0
+}
+
+struct RawNodeRow {
+    id: i64,
+    address: String,
+    node_type: String,
+    reachable: i64,
+    last_seen: i64,
+    ttl: i64,
+    source: Option<String>,
+    node_id: Option<String>,
+    created_at: i64,
+    updated_at: i64,
+}
+
+impl RawNodeRow {
+    fn into_node(self) -> Result<Node, CoreError> {
+        Ok(Node {
+            id: self.id,
+            address: self.address,
+            node_type: NodeType::from_str(&self.node_type)?,
+            reachable: int_to_bool(self.reachable),
+            last_seen: self.last_seen,
+            ttl: self.ttl,
+            source: match self.source {
+                Some(src) => Some(NodeSource::from_str(&src)?),
+                None => None,
+            },
+            node_id: self.node_id,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+        })
+    }
+}
 
 /// Создать соединение с базой данных и инициализировать схему
 pub fn create_db_connection(db_path: &str) -> Result<Connection, CoreError> {
@@ -90,6 +129,23 @@ CREATE TABLE IF NOT EXISTS impact_type (
     name        TEXT NOT NULL,
 description TEXT
 );
+
+CREATE TABLE IF NOT EXISTS nodes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT NOT NULL UNIQUE,
+    type TEXT NOT NULL,
+    reachable INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL,
+    ttl INTEGER NOT NULL,
+    source TEXT,
+    node_id TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nodes_address ON nodes(address);
+CREATE INDEX IF NOT EXISTS idx_nodes_last_seen ON nodes(last_seen);
+CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type);
+CREATE INDEX IF NOT EXISTS idx_nodes_reachable ON nodes(reachable);
 
 -- base
 CREATE TABLE IF NOT EXISTS truth_events (
@@ -267,9 +323,9 @@ pub fn init_db(conn: &Connection) -> Result<(), CoreError> {
             applied_at INTEGER NOT NULL,
             description TEXT
         );
-        "#
+        "#,
     )?;
-    
+
     conn.execute_batch(SCHEMA_SQL)?;
     run_migrations(conn)?;
     validate_schema(conn)?;
@@ -279,36 +335,52 @@ pub fn init_db(conn: &Connection) -> Result<(), CoreError> {
 /// Validate that all required tables and foreign keys exist
 fn validate_schema(conn: &Connection) -> Result<(), CoreError> {
     let required_tables = vec![
-        "category", "cause", "develop", "effect", "forma", "context", "impact_type",
-        "truth_events", "impact", "progress_metrics"
+        "category",
+        "cause",
+        "develop",
+        "effect",
+        "forma",
+        "context",
+        "impact_type",
+        "truth_events",
+        "impact",
+        "progress_metrics",
     ];
-    
+
     for table in required_tables {
         let exists: i64 = conn.query_row(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
             [table],
-            |row| row.get(0)
+            |row| row.get(0),
         )?;
-        
+
         if exists == 0 {
-            return Err(CoreError::InvalidArg(format!("Required table '{}' is missing", table)));
+            return Err(CoreError::InvalidArg(format!(
+                "Required table '{}' is missing",
+                table
+            )));
         }
     }
-    
+
     // Check for legacy tables and warn
     let legacy_tables = vec!["events", "impacts", "summaries", "judgments", "logs"];
     for table in legacy_tables {
-        let exists: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
-            [table],
-            |row| row.get(0)
-        ).unwrap_or(0);
-        
+        let exists: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+                [table],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
         if exists > 0 {
-            log::warn!("Legacy table '{}' detected. Consider migrating data to v1.0.0 schema.", table);
+            log::warn!(
+                "Legacy table '{}' detected. Consider migrating data to v1.0.0 schema.",
+                table
+            );
         }
     }
-    
+
     Ok(())
 }
 
@@ -343,7 +415,10 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
     }
     // Добавить collective_score для truth_events
     if !has_column(conn, "truth_events", "collective_score")? {
-        conn.execute("ALTER TABLE truth_events ADD COLUMN collective_score REAL", [])?;
+        conn.execute(
+            "ALTER TABLE truth_events ADD COLUMN collective_score REAL",
+            [],
+        )?;
     }
 
     // Добавить подписи/ключи для statements
@@ -499,9 +574,18 @@ pub fn run_migrations(conn: &Connection) -> Result<(), CoreError> {
 /// Вычислить недавнюю активность узла как долю нормализованной активности за последние 7 суток.
 /// На текущем этапе используется прокси: нормализация по сумме событий/валидаций/переиспользований.
 #[allow(dead_code)]
-fn compute_recent_activity(events_true: i64, events_false: i64, validations: i64, reused_events: i64) -> f32 {
+fn compute_recent_activity(
+    events_true: i64,
+    events_false: i64,
+    validations: i64,
+    reused_events: i64,
+) -> f32 {
     let total = events_true + events_false + validations + reused_events;
-    if total <= 0 { 0.0 } else { ((total as f32).log10() / 3.0).clamp(0.0, 1.0) }
+    if total <= 0 {
+        0.0
+    } else {
+        ((total as f32).log10() / 3.0).clamp(0.0, 1.0)
+    }
 }
 
 /// Обновить колонку propagation_priority для всех записей node_ratings
@@ -519,9 +603,8 @@ fn refresh_propagation_priority(conn: &Connection) -> Result<(), CoreError> {
         "#,
     )?;
     let mut rows = sel.query([])?;
-    let mut upd_ratings = conn.prepare(
-        r#"UPDATE node_ratings SET propagation_priority=?2 WHERE node_id=?1"#,
-    )?;
+    let mut upd_ratings =
+        conn.prepare(r#"UPDATE node_ratings SET propagation_priority=?2 WHERE node_id=?1"#)?;
     while let Some(r) = rows.next()? {
         let node_id: String = r.get(0)?;
         let trust: f32 = r.get::<_, f64>(1)? as f32;
@@ -529,7 +612,8 @@ fn refresh_propagation_priority(conn: &Connection) -> Result<(), CoreError> {
         let relay_success_rate: f32 = r.get::<_, f64>(3)? as f32;
         let prev_p: f32 = r.get::<_, f64>(4)? as f32;
 
-        let p = compute_propagation_priority(trust, quality_index, relay_success_rate, Some(prev_p));
+        let p =
+            compute_propagation_priority(trust, quality_index, relay_success_rate, Some(prev_p));
 
         // Обновляем в node_ratings
         upd_ratings.execute(rusqlite::params![node_id, p as f64])?;
@@ -549,9 +633,8 @@ fn refresh_propagation_priority(conn: &Connection) -> Result<(), CoreError> {
 
 /// Получить приоритет распространения по публичному ключу (node_id)
 pub fn get_propagation_priority(conn: &Connection, pubkey: &str) -> Result<f32, CoreError> {
-    let mut stmt = conn.prepare(
-        r#"SELECT propagation_priority FROM node_ratings WHERE node_id = ?1"#,
-    )?;
+    let mut stmt =
+        conn.prepare(r#"SELECT propagation_priority FROM node_ratings WHERE node_id = ?1"#)?;
     let prio: Option<f64> = stmt.query_row(params![pubkey], |r| r.get(0)).optional()?;
     Ok(prio.unwrap_or(0.5) as f32)
 }
@@ -576,9 +659,8 @@ pub fn find_session_by_refresh(
     conn: &Connection,
     refresh_token: &str,
 ) -> Result<Option<(String, i64)>, CoreError> {
-    let mut stmt = conn.prepare(
-        r#"SELECT public_key, expires_at FROM active_tokens WHERE refresh_token = ?1"#,
-    )?;
+    let mut stmt = conn
+        .prepare(r#"SELECT public_key, expires_at FROM active_tokens WHERE refresh_token = ?1"#)?;
     let row = stmt
         .query_row(params![refresh_token], |r| Ok((r.get(0)?, r.get(1)?)))
         .optional()?;
@@ -607,10 +689,14 @@ pub fn cleanup_expired_tokens(conn: &Connection, now_ts: i64) -> Result<usize, C
 pub fn load_app_config(conn: &Connection) -> Result<(bool, u64), CoreError> {
     let mut stmt = conn.prepare("SELECT value FROM app_config WHERE key=?1")?;
     // nearby_sync
-    let nearby_sync_str: Option<String> = stmt.query_row(params!["nearby_sync"], |r| r.get(0)).optional()?;
+    let nearby_sync_str: Option<String> = stmt
+        .query_row(params!["nearby_sync"], |r| r.get(0))
+        .optional()?;
     let nearby_sync = nearby_sync_str.as_deref() == Some("true");
     // nearby_interval_ms
-    let nearby_interval_ms_str: Option<String> = stmt.query_row(params!["nearby_interval_ms"], |r| r.get(0)).optional()?;
+    let nearby_interval_ms_str: Option<String> = stmt
+        .query_row(params!["nearby_interval_ms"], |r| r.get(0))
+        .optional()?;
     let nearby_interval_ms: u64 = nearby_interval_ms_str
         .and_then(|s| s.parse::<u64>().ok())
         .unwrap_or(3000);
@@ -618,7 +704,11 @@ pub fn load_app_config(conn: &Connection) -> Result<(bool, u64), CoreError> {
 }
 
 /// Save application config (nearby sync settings)
-pub fn save_app_config(conn: &Connection, nearby_sync: bool, nearby_interval_ms: u64) -> Result<(), CoreError> {
+pub fn save_app_config(
+    conn: &Connection,
+    nearby_sync: bool,
+    nearby_interval_ms: u64,
+) -> Result<(), CoreError> {
     conn.execute(
         "INSERT INTO app_config(key, value) VALUES('nearby_sync', ?1)
          ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -1099,19 +1189,19 @@ pub fn get_truth_event(conn: &Connection, id: i64) -> Result<Option<TruthEvent>,
 
     let row_opt = stmt
         .query_row(params![id], |row| {
-        Ok(TruthEvent {
-            id: row.get(0)?,
-            description: row.get(1)?,
-            category_id: row.get(2)?,
-            forma_id: row.get(3)?,
-            cause_id: row.get(4)?,
-            develop_id: row.get(5)?,
-            effect_id: row.get(6)?,
+            Ok(TruthEvent {
+                id: row.get(0)?,
+                description: row.get(1)?,
+                category_id: row.get(2)?,
+                forma_id: row.get(3)?,
+                cause_id: row.get(4)?,
+                develop_id: row.get(5)?,
+                effect_id: row.get(6)?,
                 vector: row.get::<_, i64>(7)? != 0,
-            detected: row.get::<_, Option<i64>>(8)?.map(|v| v != 0),
-            corrected: row.get::<_, i64>(9)? != 0,
-            timestamp_start: row.get(10)?,
-            timestamp_end: row.get::<_, Option<i64>>(11)?,
+                detected: row.get::<_, Option<i64>>(8)?.map(|v| v != 0),
+                corrected: row.get::<_, i64>(9)? != 0,
+                timestamp_start: row.get(10)?,
+                timestamp_end: row.get::<_, Option<i64>>(11)?,
                 code: row.get(12)?,
                 signature: row.get(13)?,
                 public_key: row.get(14)?,
@@ -1129,7 +1219,11 @@ Foreign Key Validation
 
 /// Validate foreign key reference exists
 /// Returns error if non-NULL ID doesn't exist in the referenced table
-pub fn validate_foreign_key(conn: &Connection, table: &str, field_id: Option<i64>) -> Result<bool, CoreError> {
+pub fn validate_foreign_key(
+    conn: &Connection,
+    table: &str,
+    field_id: Option<i64>,
+) -> Result<bool, CoreError> {
     let Some(id) = field_id else {
         // NULL is valid (nullable FK)
         return Ok(true);
@@ -1147,7 +1241,10 @@ pub fn validate_foreign_key(conn: &Connection, table: &str, field_id: Option<i64
 
     let count: i64 = conn.query_row(query, params![id], |row| row.get(0))?;
     if count == 0 {
-        return Err(CoreError::InvalidArg(format!("Foreign key {}={} does not exist in table {}", table, id, table)));
+        return Err(CoreError::InvalidArg(format!(
+            "Foreign key {}={} does not exist in table {}",
+            table, id, table
+        )));
     }
 
     Ok(true)
@@ -1185,7 +1282,10 @@ pub fn get_all_contexts(conn: &Connection) -> Result<Vec<crate::models::Context>
 }
 
 /// Get context template by name
-pub fn get_context_by_name(conn: &Connection, name: &str) -> Result<Option<crate::models::Context>, CoreError> {
+pub fn get_context_by_name(
+    conn: &Connection,
+    name: &str,
+) -> Result<Option<crate::models::Context>, CoreError> {
     let mut stmt = conn.prepare(
         r#"SELECT id, name, category_id, forma_id, cause_id, develop_id, effect_id, description
            FROM context WHERE name = ?1"#,
@@ -1212,7 +1312,10 @@ pub fn get_context_by_name(conn: &Connection, name: &str) -> Result<Option<crate
 /// Check if context template with identical non-NULL fields already exists
 /// Returns true if duplicate found, false otherwise
 /// Only compares non-NULL fields; NULL values are ignored
-pub fn check_duplicate_context(conn: &Connection, new_ctx: &crate::models::NewContext) -> Result<bool, CoreError> {
+pub fn check_duplicate_context(
+    conn: &Connection,
+    new_ctx: &crate::models::NewContext,
+) -> Result<bool, CoreError> {
     // Build WHERE clause for non-NULL field comparison
     // Logic: For each field where new_ctx has non-NULL, existing template must have same non-NULL value
     // If new_ctx field is NULL, ignore that field in comparison
@@ -1288,7 +1391,10 @@ pub fn match_context_template(
 
 /// Add a new context template
 /// Validates FK references and checks for duplicates before inserting
-pub fn add_context(conn: &Connection, new_ctx: crate::models::NewContext) -> Result<i64, CoreError> {
+pub fn add_context(
+    conn: &Connection,
+    new_ctx: crate::models::NewContext,
+) -> Result<i64, CoreError> {
     if new_ctx.name.trim().is_empty() {
         return Err(CoreError::InvalidArg("name is empty".into()));
     }
@@ -1302,7 +1408,9 @@ pub fn add_context(conn: &Connection, new_ctx: crate::models::NewContext) -> Res
 
     // Check for duplicate (non-NULL field comparison)
     if check_duplicate_context(conn, &new_ctx)? {
-        return Err(CoreError::InvalidArg("Template with identical non-NULL fields already exists".into()));
+        return Err(CoreError::InvalidArg(
+            "Template with identical non-NULL fields already exists".into(),
+        ));
     }
 
     // Insert new template
@@ -1358,7 +1466,13 @@ pub fn add_impact(
     conn.execute(
         r#"INSERT INTO impact (event_id, type_id, value, notes, created_at)
           VALUES (?1, ?2, ?3, ?4, ?5)"#,
-        params![event_id, type_id, if value { 1 } else { 0 }, notes, created_at],
+        params![
+            event_id,
+            type_id,
+            if value { 1 } else { 0 },
+            notes,
+            created_at
+        ],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -1514,7 +1628,9 @@ pub fn recalc_ratings(conn: &Connection, ts: i64) -> Result<(), CoreError> {
     let mut stmt_nodes = conn.prepare("SELECT node_id FROM node_ratings ORDER BY node_id")?;
     let rows = stmt_nodes.query_map([], |row| row.get::<_, String>(0))?;
     let mut members: Vec<String> = Vec::new();
-    for r in rows { members.push(r?); }
+    for r in rows {
+        members.push(r?);
+    }
     let members_json = serde_json::to_string(&members)?;
 
     // Средний скор
@@ -1554,7 +1670,9 @@ pub fn recalc_ratings(conn: &Connection, ts: i64) -> Result<(), CoreError> {
 
     let coherence: f64 = if total_votes > 0 {
         (agree_votes as f64) / (total_votes as f64)
-    } else { 0.0 };
+    } else {
+        0.0
+    };
 
     // UPSERT глобальной группы
     conn.execute(
@@ -1618,7 +1736,9 @@ pub fn load_node_ratings(conn: &Connection) -> Result<Vec<NodeRating>, CoreError
         })
     })?;
     let mut out = Vec::new();
-    for r in rows { out.push(r?); }
+    for r in rows {
+        out.push(r?);
+    }
     Ok(out)
 }
 
@@ -1639,7 +1759,9 @@ pub fn load_group_ratings(conn: &Connection) -> Result<Vec<GroupRating>, CoreErr
         })
     })?;
     let mut out = Vec::new();
-    for r in rows { out.push(r?); }
+    for r in rows {
+        out.push(r?);
+    }
     Ok(out)
 }
 
@@ -1700,7 +1822,9 @@ pub fn list_users(conn: &Connection) -> Result<Vec<RbacUser>, CoreError> {
         })
     })?;
     let mut out = Vec::new();
-    for r in rows { out.push(r?); }
+    for r in rows {
+        out.push(r?);
+    }
     Ok(out)
 }
 
@@ -1760,9 +1884,15 @@ Collective Intelligence (CI) helpers
 
 pub fn ci_ensure_participant(conn: &Connection, public_key: &str) -> Result<uuid::Uuid, CoreError> {
     // Try find by public_key
-    if let Ok(mut stmt) = conn.prepare("SELECT id FROM participants WHERE public_key = ?1 LIMIT 1") {
-        if let Ok(Some(id_str)) = stmt.query_row(rusqlite::params![public_key], |r| r.get::<_, String>(0)).optional() {
-            if let Ok(id) = uuid::Uuid::parse_str(&id_str) { return Ok(id); }
+    if let Ok(mut stmt) = conn.prepare("SELECT id FROM participants WHERE public_key = ?1 LIMIT 1")
+    {
+        if let Ok(Some(id_str)) = stmt
+            .query_row(rusqlite::params![public_key], |r| r.get::<_, String>(0))
+            .optional()
+        {
+            if let Ok(id) = uuid::Uuid::parse_str(&id_str) {
+                return Ok(id);
+            }
         }
     }
     // Insert new participant
@@ -1798,49 +1928,73 @@ pub fn ci_insert_judgment(
         r#"UPDATE participants
            SET total_judgments = total_judgments + 1, last_activity = ?2
            WHERE id = ?1"#,
-        rusqlite::params![judgment.participant_id.to_string(), judgment.submitted_at.timestamp()],
+        rusqlite::params![
+            judgment.participant_id.to_string(),
+            judgment.submitted_at.timestamp()
+        ],
     )?;
     Ok(())
 }
 
-pub fn ci_get_judgments_by_event(conn: &Connection, event_id: &uuid::Uuid) -> Result<Vec<ci_models::Judgment>, CoreError> {
+pub fn ci_get_judgments_by_event(
+    conn: &Connection,
+    event_id: &uuid::Uuid,
+) -> Result<Vec<ci_models::Judgment>, CoreError> {
     let mut stmt = conn.prepare(
         r#"SELECT id, participant_id, event_id, assessment, confidence_level, reasoning, submitted_at, signature
            FROM judgments_ci WHERE event_id = ?1 ORDER BY submitted_at ASC"#,
     )?;
     let rows = stmt.query_map(rusqlite::params![event_id.to_string()], |row| {
         Ok(ci_models::Judgment {
-            id: uuid::Uuid::parse_str(&row.get::<_, String>(0)?).unwrap_or_else(|_| uuid::Uuid::nil()),
-            participant_id: uuid::Uuid::parse_str(&row.get::<_, String>(1)?).unwrap_or_else(|_| uuid::Uuid::nil()),
-            event_id: uuid::Uuid::parse_str(&row.get::<_, String>(2)?).unwrap_or_else(|_| uuid::Uuid::nil()),
+            id: uuid::Uuid::parse_str(&row.get::<_, String>(0)?)
+                .unwrap_or_else(|_| uuid::Uuid::nil()),
+            participant_id: uuid::Uuid::parse_str(&row.get::<_, String>(1)?)
+                .unwrap_or_else(|_| uuid::Uuid::nil()),
+            event_id: uuid::Uuid::parse_str(&row.get::<_, String>(2)?)
+                .unwrap_or_else(|_| uuid::Uuid::nil()),
             assessment: row.get(3)?,
             confidence_level: row.get::<_, f64>(4)? as f32,
             reasoning: row.get(5)?,
-            submitted_at: chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH + std::time::Duration::from_secs(row.get::<_, i64>(6)? as u64)),
+            submitted_at: chrono::DateTime::<chrono::Utc>::from(
+                std::time::UNIX_EPOCH
+                    + std::time::Duration::from_secs(row.get::<_, i64>(6)? as u64),
+            ),
             signature: row.get(7)?,
         })
     })?;
     let mut out = Vec::new();
-    for r in rows { out.push(r?); }
+    for r in rows {
+        out.push(r?);
+    }
     Ok(out)
 }
 
-pub fn ci_get_consensus_by_event(conn: &Connection, event_id: &uuid::Uuid) -> Result<Option<ci_models::Consensus>, CoreError> {
+pub fn ci_get_consensus_by_event(
+    conn: &Connection,
+    event_id: &uuid::Uuid,
+) -> Result<Option<ci_models::Consensus>, CoreError> {
     let mut stmt = conn.prepare(
         r#"SELECT id, event_id, consensus_value, confidence_score, participant_count, calculated_at, algorithm_version
            FROM consensus_ci WHERE event_id = ?1 LIMIT 1"#,
     )?;
-    let row = stmt.query_row(rusqlite::params![event_id.to_string()], |row| {
-        Ok(ci_models::Consensus {
-            id: uuid::Uuid::parse_str(&row.get::<_, String>(0)?).unwrap_or_else(|_| uuid::Uuid::nil()),
-            event_id: uuid::Uuid::parse_str(&row.get::<_, String>(1)?).unwrap_or_else(|_| uuid::Uuid::nil()),
-            consensus_value: row.get(2)?,
-            confidence_score: row.get::<_, f64>(3)? as f32,
-            participant_count: row.get::<_, i64>(4)? as u32,
-            calculated_at: chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH + std::time::Duration::from_secs(row.get::<_, i64>(5)? as u64)),
-            algorithm_version: row.get(6)?,
+    let row = stmt
+        .query_row(rusqlite::params![event_id.to_string()], |row| {
+            Ok(ci_models::Consensus {
+                id: uuid::Uuid::parse_str(&row.get::<_, String>(0)?)
+                    .unwrap_or_else(|_| uuid::Uuid::nil()),
+                event_id: uuid::Uuid::parse_str(&row.get::<_, String>(1)?)
+                    .unwrap_or_else(|_| uuid::Uuid::nil()),
+                consensus_value: row.get(2)?,
+                confidence_score: row.get::<_, f64>(3)? as f32,
+                participant_count: row.get::<_, i64>(4)? as u32,
+                calculated_at: chrono::DateTime::<chrono::Utc>::from(
+                    std::time::UNIX_EPOCH
+                        + std::time::Duration::from_secs(row.get::<_, i64>(5)? as u64),
+                ),
+                algorithm_version: row.get(6)?,
+            })
         })
-    }).optional()?;
+        .optional()?;
     Ok(row)
 }
 
@@ -1862,7 +2016,10 @@ pub fn ci_upsert_consensus(conn: &Connection, c: &ci_models::Consensus) -> Resul
     Ok(())
 }
 
-pub fn ci_calculate_and_upsert_consensus(conn: &Connection, event_id: &uuid::Uuid) -> Result<ci_models::Consensus, CoreError> {
+pub fn ci_calculate_and_upsert_consensus(
+    conn: &Connection,
+    event_id: &uuid::Uuid,
+) -> Result<ci_models::Consensus, CoreError> {
     let js = ci_get_judgments_by_event(conn, event_id)?;
     if js.is_empty() {
         return Err(CoreError::InvalidArg("no judgments for event".into()));
@@ -1878,20 +2035,29 @@ pub fn ci_calculate_and_upsert_consensus(conn: &Connection, event_id: &uuid::Uui
     Ok(c)
 }
 
-pub fn ci_get_reputation_by_participant(conn: &Connection, participant_id: &str) -> Result<Option<serde_json::Value>, CoreError> {
+pub fn ci_get_reputation_by_participant(
+    conn: &Connection,
+    participant_id: &str,
+) -> Result<Option<serde_json::Value>, CoreError> {
     let mut stmt = conn.prepare("SELECT reputation_score, total_judgments, accurate_judgments, last_activity FROM participants WHERE id=?1")?;
-    let row = stmt.query_row(rusqlite::params![participant_id], |r| {
-        Ok(serde_json::json!({
-            "reputation_score": r.get::<_, f64>(0)? as f32,
-            "total_judgments": r.get::<_, i64>(1)?,
-            "accurate_judgments": r.get::<_, i64>(2)?,
-            "last_activity": r.get::<_, Option<i64>>(3)?
-        }))
-    }).optional()?;
+    let row = stmt
+        .query_row(rusqlite::params![participant_id], |r| {
+            Ok(serde_json::json!({
+                "reputation_score": r.get::<_, f64>(0)? as f32,
+                "total_judgments": r.get::<_, i64>(1)?,
+                "accurate_judgments": r.get::<_, i64>(2)?,
+                "last_activity": r.get::<_, Option<i64>>(3)?
+            }))
+        })
+        .optional()?;
     Ok(row)
 }
 
-pub fn ci_get_reputation_leaderboard(conn: &Connection, min_judgments: i64, limit: i64) -> Result<Vec<serde_json::Value>, CoreError> {
+pub fn ci_get_reputation_leaderboard(
+    conn: &Connection,
+    min_judgments: i64,
+    limit: i64,
+) -> Result<Vec<serde_json::Value>, CoreError> {
     let mut stmt = conn.prepare("SELECT id, reputation_score, total_judgments, (CASE WHEN total_judgments>0 THEN CAST(accurate_judgments AS REAL)/CAST(total_judgments AS REAL) ELSE 0.0 END) AS accuracy FROM participants WHERE total_judgments >= ?1 ORDER BY reputation_score DESC LIMIT ?2")?;
     let rows = stmt.query_map(rusqlite::params![min_judgments, limit], |r| {
         Ok(serde_json::json!({
@@ -1902,7 +2068,9 @@ pub fn ci_get_reputation_leaderboard(conn: &Connection, min_judgments: i64, limi
         }))
     })?;
     let mut leaderboard: Vec<serde_json::Value> = Vec::new();
-    for row in rows { leaderboard.push(row?); }
+    for row in rows {
+        leaderboard.push(row?);
+    }
     Ok(leaderboard)
 }
 
@@ -1965,7 +2133,9 @@ pub fn merge_ratings(
         let total_events = (node.events_true + node.events_false) as f32;
         let conflict_free_ratio = if total_events > 0.0 {
             (node.events_true as f32) / total_events
-        } else { 1.0 };
+        } else {
+            1.0
+        };
         // Стабильность trust: 1.0 как базовое значение (улучшим в будущем с хранением истории)
         let trust_score_stability: f32 = 1.0;
 
@@ -1980,7 +2150,14 @@ pub fn merge_ratings(
         // Обновить/вставить метрики с пересчётом приоритета
         let prev_p = load_node_metrics(conn, &node.node_id)?.map(|m| m.propagation_priority);
         let p = compute_propagation_priority(node.trust_score, q, relay_success_rate, prev_p);
-        let _ = upsert_node_metrics_with_quality_and_priority(conn, &node.node_id, node.last_updated, relay_success_rate, q, p);
+        let _ = upsert_node_metrics_with_quality_and_priority(
+            conn,
+            &node.node_id,
+            node.last_updated,
+            relay_success_rate,
+            q,
+            p,
+        );
     }
 
     Ok(trust_diffs)
@@ -1998,8 +2175,8 @@ pub fn load_graph(conn: &Connection) -> Result<GraphData, CoreError> {
         "#,
     )?;
     let node_rows = stmt_nodes.query_map([], |row| {
-        Ok(GraphNode { 
-            id: row.get(0)?, 
+        Ok(GraphNode {
+            id: row.get(0)?,
             score: row.get(1)?,
             propagation_priority: row.get(2)?,
             last_seen: row.get(3)?,
@@ -2008,7 +2185,9 @@ pub fn load_graph(conn: &Connection) -> Result<GraphData, CoreError> {
         })
     })?;
     let mut nodes: Vec<GraphNode> = Vec::new();
-    for r in node_rows { nodes.push(r?); }
+    for r in node_rows {
+        nodes.push(r?);
+    }
 
     // Рёбра между валидаторами и авторами
     let mut stmt_links = conn.prepare(
@@ -2035,15 +2214,17 @@ pub fn load_graph(conn: &Connection) -> Result<GraphData, CoreError> {
         let total = (pos + neg).max(1) as f32;
         let signed = (pos as f32 - neg as f32) / total; // -1..1
         let weight = (signed + 1.0) / 2.0; // 0..1
-        Ok(GraphLink { 
-            source, 
-            target, 
+        Ok(GraphLink {
+            source,
+            target,
             weight,
             latency_ms: latency_ms.map(|l| l as u32),
         })
     })?;
     let mut links: Vec<GraphLink> = Vec::new();
-    for r in link_rows { links.push(r?); }
+    for r in link_rows {
+        links.push(r?);
+    }
 
     Ok(GraphData { nodes, links })
 }
@@ -2071,8 +2252,8 @@ pub fn load_graph_filtered(
         "#,
     )?;
     let node_rows = stmt_nodes.query_map(params![min_score], |row| {
-        Ok(GraphNode { 
-            id: row.get(0)?, 
+        Ok(GraphNode {
+            id: row.get(0)?,
             score: row.get(1)?,
             propagation_priority: row.get(2)?,
             last_seen: row.get(3)?,
@@ -2081,11 +2262,16 @@ pub fn load_graph_filtered(
         })
     })?;
     let mut nodes: Vec<GraphNode> = Vec::new();
-    for r in node_rows { nodes.push(r?); }
+    for r in node_rows {
+        nodes.push(r?);
+    }
 
     // Быстрый выход, если узлов нет
     if nodes.is_empty() {
-        return Ok(GraphData { nodes, links: Vec::new() });
+        return Ok(GraphData {
+            nodes,
+            links: Vec::new(),
+        });
     }
 
     // Множество допустимых узлов для фильтрации рёбер
@@ -2116,15 +2302,17 @@ pub fn load_graph_filtered(
         let total = (pos + neg).max(1) as f32;
         let signed = (pos as f32 - neg as f32) / total; // -1..1
         let weight = (signed + 1.0) / 2.0; // 0..1
-        Ok(GraphLink { 
-            source, 
-            target, 
+        Ok(GraphLink {
+            source,
+            target,
             weight,
             latency_ms: latency_ms.map(|l| l as u32),
         })
     })?;
     let mut all_links: Vec<GraphLink> = Vec::new();
-    for r in link_rows { all_links.push(r?); }
+    for r in link_rows {
+        all_links.push(r?);
+    }
 
     // Фильтруем рёбра по доступным узлам
     let mut filtered_links: Vec<GraphLink> = all_links
@@ -2139,7 +2327,11 @@ pub fn load_graph_filtered(
     }
     let mut limited: Vec<GraphLink> = Vec::new();
     for (_src, mut links) in by_source.into_iter() {
-        links.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap_or(std::cmp::Ordering::Equal));
+        links.sort_by(|a, b| {
+            b.weight
+                .partial_cmp(&a.weight)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         let take_n = links.len().min(max_links);
         limited.extend(links.into_iter().take(take_n));
     }
@@ -2154,11 +2346,15 @@ pub fn load_graph_filtered(
             filtered_links.clear();
         } else {
             let center_id = nodes[0].id.clone(); // узел с максимальным score (nodes отсортированы DESC)
-            // Построим неориентированную смежность
+                                                 // Построим неориентированную смежность
             let mut adj: HashMap<String, Vec<String>> = HashMap::new();
             for l in &filtered_links {
-                adj.entry(l.source.clone()).or_default().push(l.target.clone());
-                adj.entry(l.target.clone()).or_default().push(l.source.clone());
+                adj.entry(l.source.clone())
+                    .or_default()
+                    .push(l.target.clone());
+                adj.entry(l.target.clone())
+                    .or_default()
+                    .push(l.source.clone());
             }
             // BFS до depth_limit
             let mut visited: HashSet<String> = HashSet::new();
@@ -2166,7 +2362,9 @@ pub fn load_graph_filtered(
             visited.insert(center_id.clone());
             q.push_back((center_id.clone(), 0));
             while let Some((node, d)) = q.pop_front() {
-                if d >= depth_limit { continue; }
+                if d >= depth_limit {
+                    continue;
+                }
                 if let Some(nei) = adj.get(&node) {
                     for nxt in nei {
                         if visited.insert(nxt.clone()) {
@@ -2182,9 +2380,16 @@ pub fn load_graph_filtered(
     }
 
     // Финальная сортировка рёбер по весу убыв.
-    filtered_links.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap_or(std::cmp::Ordering::Equal));
+    filtered_links.sort_by(|a, b| {
+        b.weight
+            .partial_cmp(&a.weight)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
-    Ok(GraphData { nodes, links: filtered_links })
+    Ok(GraphData {
+        nodes,
+        links: filtered_links,
+    })
 }
 
 #[derive(Serialize, Deserialize)]
@@ -2330,7 +2535,10 @@ pub fn get_statement(conn: &Connection, id: i64) -> Result<Option<Statement>, Co
 }
 
 /// Получить все утверждения для события
-pub fn get_statements_for_event(conn: &Connection, event_id: i64) -> Result<Vec<Statement>, CoreError> {
+pub fn get_statements_for_event(
+    conn: &Connection,
+    event_id: i64,
+) -> Result<Vec<Statement>, CoreError> {
     let mut stmt = conn.prepare(
         r#"SELECT id, event_id, text, context, truth_score, created_at, updated_at, signature, public_key
            FROM statements WHERE event_id = ?1 ORDER BY created_at DESC"#,
@@ -2385,7 +2593,11 @@ pub fn load_statements(conn: &Connection) -> Result<Vec<Statement>, CoreError> {
 }
 
 /// Обновить оценку правдивости утверждения
-pub fn update_statement_score(conn: &Connection, id: i64, truth_score: f32) -> Result<(), CoreError> {
+pub fn update_statement_score(
+    conn: &Connection,
+    id: i64,
+    truth_score: f32,
+) -> Result<(), CoreError> {
     let now = chrono::Utc::now().timestamp();
     conn.execute(
         r#"UPDATE statements SET truth_score = ?2, updated_at = ?3 WHERE id = ?1"#,
@@ -2430,7 +2642,9 @@ pub fn load_truth_events(conn: &Connection) -> Result<Vec<TruthEvent>, CoreError
 
 /// Загружаем все записи влияния
 pub fn load_impacts(conn: &Connection) -> Result<Vec<Impact>, CoreError> {
-    let mut stmt = conn.prepare("SELECT id, event_id, type_id, value, notes, created_at, signature, public_key FROM impact")?;
+    let mut stmt = conn.prepare(
+        "SELECT id, event_id, type_id, value, notes, created_at, signature, public_key FROM impact",
+    )?;
 
     let rows = stmt.query_map([], |row| {
         Ok(Impact {
@@ -2531,7 +2745,9 @@ pub fn get_recent_sync_logs(conn: &Connection, limit: usize) -> Result<Vec<SyncL
         })
     })?;
     let mut out = Vec::new();
-    for r in rows { out.push(r?); }
+    for r in rows {
+        out.push(r?);
+    }
     Ok(out)
 }
 
@@ -2539,6 +2755,242 @@ pub fn get_recent_sync_logs(conn: &Connection, limit: usize) -> Result<Vec<SyncL
 pub fn clear_sync_logs(conn: &Connection) -> Result<(), CoreError> {
     conn.execute("DELETE FROM sync_logs", [])?;
     Ok(())
+}
+
+/// --------------------------
+/// Node repository (nodes table)
+/// --------------------------
+
+pub fn insert_node(conn: &Connection, node: NewNode) -> Result<Node, CoreError> {
+    node.validate()?;
+    conn.execute(
+        r#"INSERT INTO nodes (address, type, reachable, last_seen, ttl, source, node_id, created_at, updated_at)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)"#,
+        params![
+            node.address,
+            node.node_type.as_str(),
+            bool_to_int(node.reachable),
+            node.last_seen,
+            node.ttl,
+            node.source.map(|s| s.as_str().to_string()),
+            node.node_id,
+            node.created_at,
+            node.updated_at
+        ],
+    )?;
+    let id = conn.last_insert_rowid();
+    get_node(conn, id)?
+        .ok_or_else(|| CoreError::NotFound(format!("failed to load inserted node {id}")))
+}
+
+pub fn upsert_node_by_address(conn: &Connection, node: &Node) -> Result<Node, CoreError> {
+    conn.execute(
+        r#"INSERT INTO nodes (address, type, reachable, last_seen, ttl, source, node_id, created_at, updated_at)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+           ON CONFLICT(address) DO UPDATE SET
+               type=excluded.type,
+               reachable=excluded.reachable,
+               last_seen=excluded.last_seen,
+               ttl=excluded.ttl,
+               source=excluded.source,
+               node_id=COALESCE(excluded.node_id, nodes.node_id),
+               updated_at=excluded.updated_at"#,
+        params![
+            node.address,
+            node.node_type.as_str(),
+            bool_to_int(node.reachable),
+            node.last_seen,
+            node.ttl,
+            node.source.map(|s| s.as_str().to_string()),
+            node.node_id.clone(),
+            node.created_at,
+            node.updated_at
+        ],
+    )?;
+    get_node_by_address(conn, &node.address)?
+        .ok_or_else(|| CoreError::NotFound(format!("node {} missing after upsert", node.address)))
+}
+
+pub fn get_node(conn: &Connection, id: i64) -> Result<Option<Node>, CoreError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, address, type, reachable, last_seen, ttl, source, node_id, created_at, updated_at FROM nodes WHERE id=?1",
+    )?;
+    let row = stmt
+        .query_map(params![id], |row| {
+            Ok(RawNodeRow {
+                id: row.get(0)?,
+                address: row.get(1)?,
+                node_type: row.get(2)?,
+                reachable: row.get(3)?,
+                last_seen: row.get(4)?,
+                ttl: row.get(5)?,
+                source: row.get(6)?,
+                node_id: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
+            })
+        })?
+        .next();
+    match row {
+        Some(raw) => Ok(Some(raw?.into_node()?)),
+        None => Ok(None),
+    }
+}
+
+pub fn get_node_by_address(conn: &Connection, address: &str) -> Result<Option<Node>, CoreError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, address, type, reachable, last_seen, ttl, source, node_id, created_at, updated_at FROM nodes WHERE address=?1",
+    )?;
+    let row = stmt
+        .query_map(params![address], |row| {
+            Ok(RawNodeRow {
+                id: row.get(0)?,
+                address: row.get(1)?,
+                node_type: row.get(2)?,
+                reachable: row.get(3)?,
+                last_seen: row.get(4)?,
+                ttl: row.get(5)?,
+                source: row.get(6)?,
+                node_id: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
+            })
+        })?
+        .next();
+    match row {
+        Some(raw) => Ok(Some(raw?.into_node()?)),
+        None => Ok(None),
+    }
+}
+
+pub fn list_nodes(conn: &Connection, filter: &NodeFilter) -> Result<Vec<Node>, CoreError> {
+    let mut sql = String::from(
+        "SELECT id, address, type, reachable, last_seen, ttl, source, node_id, created_at, updated_at FROM nodes",
+    );
+    let mut clauses = Vec::new();
+    let mut params: Vec<Box<dyn ToSql>> = Vec::new();
+
+    if let Some(node_type) = filter.node_type {
+        clauses.push("type = ?");
+        params.push(Box::new(node_type.as_str().to_string()));
+    }
+    if let Some(reachable) = filter.reachable {
+        clauses.push("reachable = ?");
+        params.push(Box::new(bool_to_int(reachable)));
+    }
+    if let Some(address) = &filter.address {
+        clauses.push("address = ?");
+        params.push(Box::new(address.clone()));
+    }
+    if !clauses.is_empty() {
+        sql.push_str(" WHERE ");
+        sql.push_str(&clauses.join(" AND "));
+    }
+    sql.push_str(" ORDER BY last_seen DESC");
+    if let Some(limit) = filter.limit {
+        sql.push_str(" LIMIT ?");
+        params.push(Box::new(limit));
+    }
+
+    let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(&*param_refs, |row| {
+        Ok(RawNodeRow {
+            id: row.get(0)?,
+            address: row.get(1)?,
+            node_type: row.get(2)?,
+            reachable: row.get(3)?,
+            last_seen: row.get(4)?,
+            ttl: row.get(5)?,
+            source: row.get(6)?,
+            node_id: row.get(7)?,
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
+        })
+    })?;
+
+    let mut nodes = Vec::new();
+    for raw in rows {
+        nodes.push(raw?.into_node()?);
+    }
+    Ok(nodes)
+}
+
+pub fn update_node(conn: &Connection, id: i64, patch: &NodePatch) -> Result<Node, CoreError> {
+    let Some(existing) = get_node(conn, id)? else {
+        return Err(CoreError::NotFound(format!("node {id} not found")));
+    };
+
+    if let Some(ttl) = patch.ttl {
+        if ttl < existing.node_type.min_ttl_secs() {
+            return Err(CoreError::InvalidArg(format!(
+                "ttl {} below minimum {} for {}",
+                ttl,
+                existing.node_type.min_ttl_secs(),
+                existing.node_type
+            )));
+        }
+    }
+
+    let mut sql = String::from("UPDATE nodes SET ");
+    let mut sets = Vec::new();
+    let mut params: Vec<Box<dyn ToSql>> = Vec::new();
+
+    if let Some(reachable) = patch.reachable {
+        sets.push("reachable = ?");
+        params.push(Box::new(bool_to_int(reachable)));
+    }
+    if let Some(ttl) = patch.ttl {
+        sets.push("ttl = ?");
+        params.push(Box::new(ttl));
+    }
+    if let Some(last_seen) = patch.last_seen {
+        sets.push("last_seen = ?");
+        params.push(Box::new(last_seen));
+    }
+    if let Some(source) = patch.source {
+        sets.push("source = ?");
+        params.push(Box::new(source.as_str().to_string()));
+    }
+    if let Some(node_id) = &patch.node_id {
+        sets.push("node_id = ?");
+        params.push(Box::new(node_id.clone()));
+    }
+
+    if sets.is_empty() {
+        return Ok(existing);
+    }
+
+    sets.push("updated_at = ?");
+    params.push(Box::new(Utc::now().timestamp()));
+
+    sql.push_str(&sets.join(", "));
+    sql.push_str(" WHERE id = ?");
+    params.push(Box::new(id));
+
+    let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    conn.execute(&sql, &*param_refs)?;
+
+    get_node(conn, id)?
+        .ok_or_else(|| CoreError::NotFound(format!("node {id} disappeared after update")))
+}
+
+pub fn delete_node(conn: &Connection, id: i64) -> Result<bool, CoreError> {
+    let affected = conn.execute("DELETE FROM nodes WHERE id = ?1", params![id])?;
+    Ok(affected > 0)
+}
+
+/// Remove nodes whose TTL expired or unreachable nodes exceeding ttl/2
+pub fn prune_stale_nodes(conn: &Connection, now: i64) -> Result<usize, CoreError> {
+    let expired = conn.execute(
+        "DELETE FROM nodes WHERE (?1 - last_seen) > ttl",
+        params![now],
+    )?;
+    let unreachable = conn.execute(
+        "DELETE FROM nodes WHERE reachable = 0 AND (?1 - last_seen) > (ttl / 2)",
+        params![now],
+    )?;
+    Ok(expired + unreachable)
 }
 
 #[cfg(test)]
@@ -2565,7 +3017,9 @@ mod tests {
             code: 1,
         };
         let ev_id = add_truth_event(&conn, new_ev).expect("insert event");
-        let ev = get_truth_event(&conn, ev_id).expect("get event").expect("event exists");
+        let ev = get_truth_event(&conn, ev_id)
+            .expect("get event")
+            .expect("event exists");
         assert_eq!(ev.id, ev_id);
         assert_eq!(ev.description, "Test event");
         assert!(ev.signature.is_none());
@@ -2590,13 +3044,68 @@ mod tests {
         assert_eq!(count, 1);
 
         // Вставка impact и чтение
-        let _impact_id = add_impact(&conn, ev_id, 1, true, Some("note".to_string()))
-            .expect("add impact");
+        let _impact_id =
+            add_impact(&conn, ev_id, 1, true, Some("note".to_string())).expect("add impact");
         let impacts = load_impacts(&conn).expect("load impacts");
         assert!(!impacts.is_empty());
         let imp = &impacts[0];
         assert!(imp.signature.is_none());
         assert!(imp.public_key.is_none());
+    }
+
+    #[test]
+    fn node_repository_crud_and_prune() {
+        let mut conn = open_db(":memory:").expect("open db");
+        seed_knowledge_base(&mut conn, "en").expect("seed kb");
+        let now = 1_700_000_000;
+
+        let created = insert_node(
+            &conn,
+            NewNode {
+                address: "http://lan-1".into(),
+                node_type: NodeType::Lan,
+                reachable: true,
+                last_seen: now,
+                ttl: NodeType::Lan.min_ttl_secs(),
+                source: Some(NodeSource::LocalBroadcast),
+                node_id: Some("lan-1".into()),
+                created_at: now,
+                updated_at: now,
+            },
+        )
+        .expect("insert node");
+        assert_eq!(created.address, "http://lan-1");
+
+        let list = list_nodes(
+            &conn,
+            &NodeFilter {
+                node_type: Some(NodeType::Lan),
+                reachable: Some(true),
+                limit: Some(10),
+                address: None,
+            },
+        )
+        .expect("list nodes");
+        assert_eq!(list.len(), 1);
+
+        let updated = update_node(
+            &conn,
+            created.id,
+            &NodePatch {
+                reachable: Some(false),
+                ttl: Some(200),
+                last_seen: Some(now + 60),
+                source: None,
+                node_id: None,
+            },
+        )
+        .expect("update node");
+        assert!(!updated.reachable);
+        assert_eq!(updated.ttl, 200);
+
+        let removed = prune_stale_nodes(&conn, now + 10_000).expect("prune stale");
+        assert!(removed >= 1);
+        assert!(get_node(&conn, created.id).unwrap().is_none());
     }
 
     #[test]
@@ -2624,20 +3133,26 @@ mod tests {
         .expect("set event author pk");
 
         // Statement with positive truth_score for this event
-        let stmt_id = add_statement(&conn, NewStatement {
-            event_id: ev_id,
-            text: "Looks true".to_string(),
-            context: None,
-            truth_score: Some(0.9),
-        }).expect("add statement");
+        let stmt_id = add_statement(
+            &conn,
+            NewStatement {
+                event_id: ev_id,
+                text: "Looks true".to_string(),
+                context: None,
+                truth_score: Some(0.9),
+            },
+        )
+        .expect("add statement");
         assert!(stmt_id > 0);
 
         // Validator nodeB adds positive impact for the event
-        let impact_id = add_impact(&conn, ev_id, 1, true, Some("agree".to_string())).expect("add impact");
+        let impact_id =
+            add_impact(&conn, ev_id, 1, true, Some("agree".to_string())).expect("add impact");
         conn.execute(
             "UPDATE impact SET public_key=?1 WHERE id=?2",
             params!["nodeB", impact_id],
-        ).expect("set impact validator pk");
+        )
+        .expect("set impact validator pk");
 
         // Recalc ratings
         recalc_ratings(&conn, 1_700_000_200).expect("recalc ratings");
@@ -2663,7 +3178,10 @@ mod tests {
         // Graph data contains nodes and link between nodeB (validator) and nodeA (author)
         let graph = load_graph(&conn).expect("load graph");
         assert!(graph.nodes.len() >= 2);
-        assert!(graph.links.iter().any(|l| l.source == "nodeB" && l.target == "nodeA"));
+        assert!(graph
+            .links
+            .iter()
+            .any(|l| l.source == "nodeB" && l.target == "nodeA"));
     }
 
     #[test]
@@ -2812,7 +3330,12 @@ pub fn upsert_node_metrics(
             |r| r.get::<_, f64>(0),
         )
         .unwrap_or(0.0) as f32;
-    let p = compute_propagation_priority(trust_score, prev_q, relay_success_rate.clamp(0.0, 1.0), prev_p);
+    let p = compute_propagation_priority(
+        trust_score,
+        prev_q,
+        relay_success_rate.clamp(0.0, 1.0),
+        prev_p,
+    );
 
     conn.execute(
         "INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index, propagation_priority) VALUES (?1, ?2, ?3, COALESCE((SELECT quality_index FROM node_metrics WHERE pubkey=?1), 0.0), ?4)
@@ -2823,10 +3346,13 @@ pub fn upsert_node_metrics(
 }
 
 /// Load node metrics by pubkey
-pub fn load_node_metrics(conn: &Connection, pubkey: &str) -> Result<Option<crate::NodeMetrics>, CoreError> {
+pub fn load_node_metrics(
+    conn: &Connection,
+    pubkey: &str,
+) -> Result<Option<crate::NodeMetrics>, CoreError> {
     let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate, quality_index, propagation_priority FROM node_metrics WHERE pubkey = ?1")?;
     let mut rows = stmt.query(params![pubkey])?;
-    
+
     if let Some(row) = rows.next()? {
         Ok(Some(crate::NodeMetrics {
             pubkey: row.get(0)?,
@@ -2845,7 +3371,7 @@ pub fn load_all_node_metrics(conn: &Connection) -> Result<Vec<crate::NodeMetrics
     let mut stmt = conn.prepare("SELECT pubkey, last_seen, relay_success_rate, quality_index, propagation_priority FROM node_metrics ORDER BY last_seen DESC")?;
     let mut rows = stmt.query([])?;
     let mut metrics = Vec::new();
-    
+
     while let Some(row) = rows.next()? {
         metrics.push(crate::NodeMetrics {
             pubkey: row.get(0)?,
@@ -2855,12 +3381,16 @@ pub fn load_all_node_metrics(conn: &Connection) -> Result<Vec<crate::NodeMetrics
             propagation_priority: row.get(4)?,
         });
     }
-    
+
     Ok(metrics)
 }
 
 /// Update relay success rate for a specific node
-pub fn update_relay_success_rate(conn: &Connection, pubkey: &str, rate: f32) -> Result<(), CoreError> {
+pub fn update_relay_success_rate(
+    conn: &Connection,
+    pubkey: &str,
+    rate: f32,
+) -> Result<(), CoreError> {
     conn.execute(
         "UPDATE node_metrics SET relay_success_rate = ?1 WHERE pubkey = ?2",
         params![rate, pubkey],
@@ -2869,14 +3399,22 @@ pub fn update_relay_success_rate(conn: &Connection, pubkey: &str, rate: f32) -> 
 }
 
 /// Flush relay metrics from memory to database
-pub fn flush_relay_metrics(conn: &Connection, relay_stats: &[(String, f32)]) -> Result<(), CoreError> {
+pub fn flush_relay_metrics(
+    conn: &Connection,
+    relay_stats: &[(String, f32)],
+) -> Result<(), CoreError> {
     for (pubkey, success_rate) in relay_stats {
         // При обновлении ретрансляции — пересчитываем quality_index с учетом EMA
         let prev_q = load_node_metrics(conn, pubkey)?.map(|m| m.quality_index);
         let prev_p = load_node_metrics(conn, pubkey)?.map(|m| m.propagation_priority);
         let conflict_free_ratio = 1.0; // не знаем конфликтность в этом пути → считаем отсутствие конфликтов
         let trust_score_stability = 1.0; // без истории оставим базовое значение
-        let q = compute_quality_index((*success_rate).clamp(0.0, 1.0), conflict_free_ratio, trust_score_stability, prev_q);
+        let q = compute_quality_index(
+            (*success_rate).clamp(0.0, 1.0),
+            conflict_free_ratio,
+            trust_score_stability,
+            prev_q,
+        );
         // Для EMA приоритета требуется текущий trust_score
         let trust_score: f32 = conn
             .query_row(
@@ -2885,8 +3423,16 @@ pub fn flush_relay_metrics(conn: &Connection, relay_stats: &[(String, f32)]) -> 
                 |r| r.get::<_, f64>(0),
             )
             .unwrap_or(0.0) as f32;
-        let p = compute_propagation_priority(trust_score, q, (*success_rate).clamp(0.0, 1.0), prev_p);
-        upsert_node_metrics_with_quality_and_priority(conn, pubkey, chrono::Utc::now().timestamp(), *success_rate, q, p)?;
+        let p =
+            compute_propagation_priority(trust_score, q, (*success_rate).clamp(0.0, 1.0), prev_p);
+        upsert_node_metrics_with_quality_and_priority(
+            conn,
+            pubkey,
+            chrono::Utc::now().timestamp(),
+            *success_rate,
+            q,
+            p,
+        )?;
     }
     Ok(())
 }
@@ -2909,7 +3455,11 @@ pub fn upsert_node_metrics_with_quality_and_priority(
 }
 
 /// Обновить качество узла (идентификатором служит pubkey или peer_url)
-pub fn update_node_quality(conn: &Connection, peer_url_or_pubkey: &str, quality_index: f32) -> Result<(), CoreError> {
+pub fn update_node_quality(
+    conn: &Connection,
+    peer_url_or_pubkey: &str,
+    quality_index: f32,
+) -> Result<(), CoreError> {
     let now = chrono::Utc::now().timestamp();
     conn.execute(
         "INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index) VALUES (?1, ?2, 0.0, ?3)
@@ -2920,7 +3470,11 @@ pub fn update_node_quality(conn: &Connection, peer_url_or_pubkey: &str, quality_
 }
 
 /// Обновить приоритет распространения (в обеих таблицах)
-pub fn update_node_priority(conn: &Connection, pubkey: &str, priority: f32) -> Result<(), CoreError> {
+pub fn update_node_priority(
+    conn: &Connection,
+    pubkey: &str,
+    priority: f32,
+) -> Result<(), CoreError> {
     let p = priority.clamp(0.0, 1.0) as f64;
     let now = chrono::Utc::now().timestamp();
     conn.execute(
@@ -2947,11 +3501,25 @@ pub fn log_peer_sync(
 ) -> Result<(), CoreError> {
     let now = chrono::Utc::now().timestamp();
     // Try find existing record for peer_url
-    let mut stmt = conn.prepare("SELECT id, success_count, fail_count FROM peer_history WHERE peer_url = ?1 LIMIT 1")?;
-    let row = stmt.query_row(params![peer_url], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?))).optional()?;
+    let mut stmt = conn.prepare(
+        "SELECT id, success_count, fail_count FROM peer_history WHERE peer_url = ?1 LIMIT 1",
+    )?;
+    let row = stmt
+        .query_row(params![peer_url], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, i64>(1)?,
+                r.get::<_, i64>(2)?,
+            ))
+        })
+        .optional()?;
     match row {
         Some((id, succ, fail)) => {
-            let (succ2, fail2) = if success { (succ + 1, fail) } else { (succ, fail + 1) };
+            let (succ2, fail2) = if success {
+                (succ + 1, fail)
+            } else {
+                (succ, fail + 1)
+            };
             conn.execute(
                 r#"UPDATE peer_history
                    SET last_sync=?2, success_count=?3, fail_count=?4, last_quality_index=?5, last_trust_score=?6
@@ -2960,7 +3528,11 @@ pub fn log_peer_sync(
             )?;
         }
         None => {
-            let (succ, fail) = if success { (1_i64, 0_i64) } else { (0_i64, 1_i64) };
+            let (succ, fail) = if success {
+                (1_i64, 0_i64)
+            } else {
+                (0_i64, 1_i64)
+            };
             conn.execute(
                 r#"INSERT INTO peer_history (peer_url, last_sync, success_count, fail_count, last_quality_index, last_trust_score)
                    VALUES (?1, ?2, ?3, ?4, ?5, ?6)"#,
@@ -2972,7 +3544,10 @@ pub fn log_peer_sync(
 }
 
 /// Load peer history list ordered by last_sync desc
-pub fn load_peer_history(conn: &Connection, limit: Option<usize>) -> Result<Vec<crate::models::PeerHistoryEntry>, CoreError> {
+pub fn load_peer_history(
+    conn: &Connection,
+    limit: Option<usize>,
+) -> Result<Vec<crate::models::PeerHistoryEntry>, CoreError> {
     let sql = r#"SELECT id, peer_url, last_sync, success_count, fail_count, last_quality_index, last_trust_score
                  FROM peer_history
                  ORDER BY COALESCE(last_sync, 0) DESC
@@ -2991,14 +3566,17 @@ pub fn load_peer_history(conn: &Connection, limit: Option<usize>) -> Result<Vec<
         })
     })?;
     let mut out = Vec::new();
-    for r in rows { out.push(r?); }
+    for r in rows {
+        out.push(r?);
+    }
     Ok(out)
 }
 
 /// Compute peer summary statistics across history table
 pub fn get_peer_summary(conn: &Connection) -> Result<crate::models::PeerSummary, CoreError> {
     // Load minimal fields to compute averages in Rust for portability
-    let mut stmt = conn.prepare("SELECT success_count, fail_count, last_quality_index FROM peer_history")?;
+    let mut stmt =
+        conn.prepare("SELECT success_count, fail_count, last_quality_index FROM peer_history")?;
     let mut rows = stmt.query([])?;
     let mut total_peers: usize = 0;
     let mut sum_success_rate: f64 = 0.0;
@@ -3008,12 +3586,28 @@ pub fn get_peer_summary(conn: &Connection) -> Result<crate::models::PeerSummary,
         let fail: i64 = row.get(1)?;
         let q: f64 = row.get(2)?;
         let total = (succ + fail) as f64;
-        let rate = if total <= 0.0 { 0.0 } else { (succ as f64) / total };
+        let rate = if total <= 0.0 {
+            0.0
+        } else {
+            (succ as f64) / total
+        };
         total_peers += 1;
         sum_success_rate += rate;
         sum_quality += q;
     }
-    let avg_success_rate = if total_peers == 0 { 0.0 } else { (sum_success_rate / (total_peers as f64)) as f32 };
-    let avg_quality_index = if total_peers == 0 { 0.0 } else { (sum_quality / (total_peers as f64)) as f32 };
-    Ok(crate::models::PeerSummary { total_peers, avg_success_rate, avg_quality_index })
+    let avg_success_rate = if total_peers == 0 {
+        0.0
+    } else {
+        (sum_success_rate / (total_peers as f64)) as f32
+    };
+    let avg_quality_index = if total_peers == 0 {
+        0.0
+    } else {
+        (sum_quality / (total_peers as f64)) as f32
+    };
+    Ok(crate::models::PeerSummary {
+        total_peers,
+        avg_success_rate,
+        avg_quality_index,
+    })
 }

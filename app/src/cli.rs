@@ -1,136 +1,70 @@
-use clap::{Parser, Subcommand};
-use serde::{Deserialize, Serialize};
-use std::fs;
-use truth_core::p2p::encryption::CryptoIdentity;
-use truth_core::p2p::sync::{push_local_data, pull_remote_data, reconcile};
-use core_lib::storage::{open_db, init_db};
+//! Shared helpers for truthctl subcommands (node discovery utilities).
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct PeerEntry {
-    addr: String,
-    public_key_hex: String,
-}
+use anyhow::{Context, Result};
+use core_lib::storage;
+use std::path::Path;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use truth_core::node::NodeConfig;
 
-#[derive(Parser)]
-#[command(name = "truthctl")]
-#[command(about = "Peer management and sync CLI", long_about = None)]
-struct Cli {
-    /// Path to sqlite database file
-    #[arg(long, default_value = "truth_db.sqlite")]
-    db: String,
+pub type SharedConnection = Arc<Mutex<rusqlite::Connection>>;
 
-    /// Path to peers store file (JSON)
-    #[arg(long, default_value = "peers.json")]
-    peers: String,
-
-    /// Verbose output
-    #[arg(long, default_value_t = false)]
-    verbose: bool,
-
-    #[command(subcommand)]
-    cmd: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Manage peers
-    Peers { #[command(subcommand)] action: PeerCmd },
-    /// Trigger sync with all peers
-    Sync { #[arg(long, default_value_t = false)] pull_only: bool },
-    /// Submit anonymous confession (plaintext-at-rest)
-    Confess { #[arg(long, default_value = "-")] file: String, #[arg(long, default_value_t = 1)] context: i64 },
-    /// Submit judgment for event id
-    Judge { #[arg(long)] event: i64, #[arg(long)] signal: String },
-}
-
-#[derive(Subcommand)]
-enum PeerCmd {
-    /// Add a peer
-    Add { addr: String, pubkey: String },
-    /// List peers
-    List,
-}
-
-fn load_peers(path: &str) -> Vec<PeerEntry> {
-    if !std::path::Path::new(path).exists() {
-        return Vec::new();
+/// Load ~/.truthctl/config.json (if present) and merge with overrides/env vars.
+pub fn load_discovery_config(extra_registries: &[String]) -> NodeDiscoveryConfig {
+    let cfg = crate::config_utils::load_config()
+        .unwrap_or_else(|_| crate::config_utils::default_config());
+    let mut urls = cfg.node_registries.clone();
+    urls.extend(extra_registries.iter().cloned());
+    if let Ok(env) = std::env::var("TRUTH_GLOBAL_REGISTRIES") {
+        urls.extend(env.split(',').filter_map(|s| {
+            let trimmed = s.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }));
     }
-    let s = fs::read_to_string(path).unwrap_or_else(|_| "[]".to_string());
-    serde_json::from_str(&s).unwrap_or_default()
-}
+    urls.sort();
+    urls.dedup();
 
-fn save_peers(path: &str, peers: &[PeerEntry]) -> std::io::Result<()> {
-    let json = serde_json::to_string_pretty(peers).unwrap_or_else(|_| "[]".to_string());
-    fs::write(path, json)
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if std::env::args().any(|a| a == "--version") {
-        println!("truthctl CLI v{}", env!("CARGO_PKG_VERSION"));
-        return Ok(());
+    NodeDiscoveryConfig {
+        registry_urls: urls,
     }
-    let cli = Cli::parse();
-    let conn = open_db(&cli.db)?;
-    init_db(&conn)?;
+}
 
-    match cli.cmd {
-        Commands::Peers { action } => match action {
-            PeerCmd::Add { addr, pubkey } => {
-                let mut peers = load_peers(&cli.peers);
-                peers.push(PeerEntry { addr, public_key_hex: pubkey });
-                save_peers(&cli.peers, &peers)?;
-                println!("Peer added. Total peers: {}", peers.len());
-            }
-            PeerCmd::List => {
-                let peers = load_peers(&cli.peers);
-                if peers.is_empty() { println!("No peers configured"); }
-                for p in peers {
-                    println!("{} {}", p.addr, p.public_key_hex);
-                }
-            }
-        },
-        Commands::Sync { pull_only } => {
-            let peers = load_peers(&cli.peers);
-            if peers.is_empty() {
-                println!("No peers configured");
-                return Ok(());
-            }
-            let identity = CryptoIdentity::new();
-            if cli.verbose { println!("Public key: {}", identity.public_key_hex()); }
+#[derive(Debug, Clone)]
+pub struct NodeDiscoveryConfig {
+    pub registry_urls: Vec<String>,
+}
 
-            let mut total = 0u32;
-            for p in peers {
-                if cli.verbose { println!("Syncing with {}", p.addr); }
-                if pull_only {
-                    let remote = pull_remote_data(&p.addr, &identity).await?;
-                    let res = reconcile(&conn, &remote)?;
-                    total += res.events_added + res.statements_added + res.impacts_added;
-                } else {
-                    let res = push_local_data(&p.addr, &identity, &conn).await?;
-                    total += res.events_added + res.statements_added + res.impacts_added;
-                }
-            }
-            println!("Synced items: {}", total);
-        }
-        Commands::Confess { file, context } => {
-            eprintln!("[warning] Anonymous confession stored plaintext-at-rest; ensure environment trust.");
-            let text = if file == "-" { use std::io::Read; let mut s=String::new(); std::io::stdin().read_to_string(&mut s).unwrap_or(0); s } else { fs::read_to_string(&file).unwrap_or_default() };
-            if text.trim().is_empty() { println!("No content"); return Ok(()); }
-            let new_ev = core_lib::models::NewTruthEvent { description: text, context_id: context, vector: true, timestamp_start: chrono::Utc::now().timestamp(), code: 1 };
-            let id = core_lib::storage::add_truth_event(&conn, new_ev)?;
-            println!("event_id: {}", id);
-        }
-        Commands::Judge { event, signal } => {
-            let s = signal.to_lowercase();
-            match s.as_str() {
-                "confirm" => { let _ = core_lib::storage::add_impact(&conn, event, 1, true, Some("judge".into()))?; println!("ok"); }
-                "reject" => { let _ = core_lib::storage::add_impact(&conn, event, 1, false, Some("judge".into()))?; println!("ok"); }
-                "abstain" => { println!("abstained"); }
-                _ => { println!("invalid signal: use confirm|reject|abstain"); }
-            }
+impl NodeDiscoveryConfig {
+    pub fn into_node_config(self) -> NodeConfig {
+        NodeConfig {
+            bind_host: "0.0.0.0".into(),
+            bind_port: 0,
+            public_host: None,
+            public_port: None,
+            timing: core_lib::DEFAULT_DISCOVERY_TIMING,
+            global_registry_urls: self.registry_urls,
         }
     }
+}
 
-    Ok(())
+pub fn open_shared_connection(db_path: &Path) -> Result<SharedConnection> {
+    let path_str = db_path
+        .to_str()
+        .context("database path contains invalid UTF-8")?;
+    let conn = storage::open_db(path_str)?;
+    storage::init_db(&conn)?;
+    Ok(Arc::new(Mutex::new(conn)))
+}
+
+pub fn open_connection(db_path: &Path) -> Result<rusqlite::Connection> {
+    let path_str = db_path
+        .to_str()
+        .context("database path contains invalid UTF-8")?;
+    let conn = storage::open_db(path_str)?;
+    storage::init_db(&conn)?;
+    Ok(conn)
 }

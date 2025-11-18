@@ -1,10 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
-use tokio::{
-    net::UdpSocket,
-    sync::RwLock,
-    time::interval,
-};
+use tokio::{net::UdpSocket, sync::RwLock, time::interval};
 
 /// Множество пиров (HTTP-адресов) с потокобезопасным доступом
 #[derive(Clone, Debug)]

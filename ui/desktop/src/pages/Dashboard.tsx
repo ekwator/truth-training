@@ -6,6 +6,7 @@ import { SyncStatus } from '@/components/system/SyncStatus';
 import { EventCard } from '@/components/Dashboard/EventCard';
 import { CreateEventButton } from '@/components/Dashboard/CreateEventButton';
 import { Screen } from '@/components/layout/TopMenuBar';
+import { NodesPanel } from '@/components/NodesPanel';
 
 interface DashboardProps {
   onNavigate?: (screen: Screen) => void;
@@ -89,6 +90,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div>• With Consensus: {events.filter(e => e.collective_score !== null && e.collective_score !== undefined).length}</div>
             <div>• Participants: -</div>
           </div>
+        </div>
+
+        <div className="mb-8">
+          <NodesPanel />
         </div>
 
         {/* Events List */}

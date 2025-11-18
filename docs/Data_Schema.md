@@ -140,3 +140,58 @@ The `context` table stores reusable context templates that can be matched to eve
    ```
 
 4. **Validation**: After migration, verify all FK references are valid and no orphaned data exists.
+
+---
+
+## 4. Node Discovery (v2.0.0)
+
+### Table: nodes
+
+| Column      | Type     | Notes                                                                                  |
+|-------------|----------|----------------------------------------------------------------------------------------|
+| id          | INTEGER  | Primary key (`AUTOINCREMENT`)                                                          |
+| address     | TEXT     | URL or `ip:port` of the peer                                                           |
+| type        | TEXT     | `LAN`, `WIFI`, `GLOBAL`, `RELAY`, `CLIENT`                                             |
+| reachable   | INTEGER  | `0/1` flag updated by health checks                                                    |
+| last_seen   | INTEGER  | UNIX epoch seconds of the last successful handshake                                    |
+| ttl         | INTEGER  | Time-to-live (seconds) before the record is considered stale                           |
+| source      | TEXT     | Discovery source (`local_broadcast`, `wifi_scan`, `global_registry`, `manual`, `peer_sync`) |
+| node_id     | TEXT     | Optional Ed25519 public key (hex)                                                      |
+| created_at  | INTEGER  | Creation timestamp                                                                     |
+| updated_at  | INTEGER  | Last modification timestamp                                                            |
+
+Default TTLs (codified in `core/src/config.rs`):
+
+| Node Type | TTL (seconds) |
+|-----------|---------------|
+| LAN       | 120           |
+| Wi-Fi     | 300           |
+| Global    | 3600          |
+| Relay     | 3600          |
+| Client    | 600           |
+
+Discovery cadence defaults (also exported via `DiscoveryTimingConfig`):
+
+- LAN broadcast interval: **30s**
+- Wi-Fi scan interval: **45s**
+- Global registry poll interval: **3600s**
+- Cleanup interval: **60s**
+- Health check timeout: **5s** (3 retries)
+
+> **Merging Rule**: When duplicate addresses exist, prefer local (LAN/Wi-Fi) entries over Global; if both local, use the latest `last_seen`, then lexicographic address order.
+
+Indexes:
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_nodes_address ON nodes(address);
+CREATE INDEX IF NOT EXISTS idx_nodes_last_seen ON nodes(last_seen);
+CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type);
+CREATE INDEX IF NOT EXISTS idx_nodes_reachable ON nodes(reachable);
+```
+
+Cleanup heuristic (executed every 60s):
+
+```sql
+DELETE FROM nodes WHERE strftime('%s','now') - last_seen > ttl;
+DELETE FROM nodes WHERE reachable = 0 AND strftime('%s','now') - last_seen > (ttl / 2);
+```

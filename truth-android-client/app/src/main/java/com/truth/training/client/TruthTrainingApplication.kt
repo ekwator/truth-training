@@ -7,6 +7,7 @@ import androidx.work.WorkManager
 import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.TruthDatabaseMigrations
 import com.truth.training.client.data.sync.SyncConfiguration
+import com.truth.training.client.worker.NodeSyncWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,7 +27,10 @@ class TruthTrainingApplication : Application(), Configuration.Provider {
             TruthDatabase::class.java,
             TruthDatabase.DATABASE_NAME
         )
-            .addMigrations(TruthDatabaseMigrations.MIGRATION_1_2)
+            .addMigrations(
+                TruthDatabaseMigrations.MIGRATION_1_2,
+                TruthDatabaseMigrations.MIGRATION_2_3
+            )
             .fallbackToDestructiveMigration() // Fallback for development/testing - will be removed in production
             .build()
     }
@@ -40,6 +44,10 @@ class TruthTrainingApplication : Application(), Configuration.Provider {
         // Start periodic sync worker (if enabled)
         // Note: In production, this should be controlled by user settings
         startPeriodicSync()
+        
+        // Start periodic node discovery worker
+        // Note: In production, this should be controlled by user settings
+        startNodeDiscovery()
     }
 
     override val workManagerConfiguration: Configuration
@@ -57,6 +65,29 @@ class TruthTrainingApplication : Application(), Configuration.Provider {
             .enqueueUniquePeriodicWork(
                 "sync_worker",
                 androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                workRequest
+            )
+    }
+    
+    /**
+     * Start periodic node discovery worker.
+     * Polls global registries, checks reachability, and prunes stale nodes.
+     * 
+     * TODO: Load registry URLs from user settings/preferences
+     */
+    private fun startNodeDiscovery() {
+        // Default configuration - should be loaded from user settings
+        val registryUrls = emptyList<String>() // TODO: Load from SharedPreferences or Settings
+        val workRequest = NodeSyncWorker.createPeriodicWorkRequest(
+            registryUrls = registryUrls,
+            reachabilityTimeout = 5L,
+            reachabilityRetries = 2
+        )
+        
+        WorkManager.getInstance(this)
+            .enqueueUniquePeriodicWork(
+                NodeSyncWorker.WORK_NAME,
+                androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
                 workRequest
             )
     }

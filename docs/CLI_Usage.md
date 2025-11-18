@@ -45,6 +45,24 @@ Output includes:
 - For fresh database shows warning: "No sync history yet."
 - Network metrics: average `propagation_priority`, average `relay_success_rate`, average `quality_index` with color coding (quality: 🔵 high, 🟡 medium, 🔴 low)
 
+## Node Discovery Defaults (FR-012)
+
+The `truthctl nodes` subcommands (added in the Unified Node Discovery feature) honor the shared timings defined in `core::config`:
+
+| Scope | Discovery Interval | Default TTL | Notes |
+|-------|--------------------|-------------|-------|
+| LAN   | 30 seconds         | 120 seconds | Uses UDP multicast advertisements |
+| Wi-Fi | 45 seconds         | 300 seconds | Uses Wi-Fi scan callbacks + multicast |
+| Global| 1 hour             | 3600 seconds| Polls relay/registry endpoints |
+| Relay | 1 hour             | 3600 seconds| Applies to server/relay nodes |
+| Client| on demand          | 600 seconds | Mobile/Desktop clients advertising to peers |
+
+- Cleanup runs every 60 seconds and removes entries whose `last_seen` exceeds TTL or unreachable nodes exceeding `ttl / 2`.
+- Health checks time out after 5 seconds and retry up to 3 times before marking a node unreachable.
+- `truthctl nodes discover --scope <LAN|WIFI|GLOBAL>` overrides the default cadence for a single cycle; omitted scope triggers all three.
+- `truthctl nodes cleanup` forces immediate TTL enforcement (useful during testing).
+- Configuration keys `lan_discovery_interval_secs`, `wifi_discovery_interval_secs`, `global_poll_interval_secs`, `cleanup_interval_secs`, and `health_check_timeout_secs` will become available once the new commands land; until then, default values above are baked into `core/src/config.rs`.
+
 ## Key Management
 
 ### Key Generation

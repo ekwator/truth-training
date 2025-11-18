@@ -1,23 +1,30 @@
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use crate::p2p::encryption::CryptoIdentity;
+use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::time::{Duration as StdDuration, Instant};
 use tokio::sync::Mutex;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
-use crate::p2p::encryption::CryptoIdentity;
 
-use core_lib::models::{Impact, NewStatement, GraphData, GraphSummary, RbacUser, NewContext};
-use core_lib::storage;
-use crate::p2p::sync::SyncData;
-use crate::p2p::node::Node;
-use chrono::Utc;
-use std::fmt;
-use jsonwebtoken::{encode, decode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
-use once_cell::sync::Lazy;
-use utoipa::{OpenApi, ToSchema};
+use crate::p2p::node::{poll_global_registries, run_http_reachability_checks, Node};
 use crate::p2p::sync::get_relay_stats;
-use core_lib::models::{PeerHistoryEntry, PeerSummary};
+use crate::p2p::sync::SyncData;
 use base64::{engine::general_purpose, Engine as _};
+use chrono::Utc;
+use core_lib::models::{
+    CoreError, GraphData, GraphSummary, Impact, NewContext, NewNode, NewStatement,
+    Node as DiscoveryNode, NodeFilter, NodePatch, NodeSource, NodeType, PeerHistoryEntry,
+    PeerSummary, RbacUser,
+};
+use core_lib::storage;
+use core_lib::sync::merge_node_lists;
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use once_cell::sync::Lazy;
+use rusqlite::ErrorCode;
+use std::fmt;
+use std::str::FromStr;
+use utoipa::{OpenApi, ToSchema};
 // rusqlite::OptionalExtension is used in storage functions // for query_row(...).optional()
 
 type DbPool = Arc<Mutex<rusqlite::Connection>>;
@@ -81,7 +88,9 @@ async fn api_v1_info(node: web::Data<Node>, meta: web::Data<AppInfo>) -> impl Re
 }
 
 #[derive(Deserialize)]
-struct NearbyStartRequest { interval_ms: Option<u64> }
+struct NearbyStartRequest {
+    interval_ms: Option<u64>,
+}
 
 #[post("/api/v1/nearby_sync/start")]
 async fn api_v1_nearby_start(
@@ -92,9 +101,18 @@ async fn api_v1_nearby_start(
     identity: web::Data<Arc<CryptoIdentity>>,
     body: web::Json<NearbyStartRequest>,
 ) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     let interval = body.interval_ms.unwrap_or(3000).clamp(500, 60_000);
-    start_nearby_task(handle.get_ref(), pool.get_ref(), identity.get_ref(), meta.http_port, interval).await;
+    start_nearby_task(
+        handle.get_ref(),
+        pool.get_ref(),
+        identity.get_ref(),
+        meta.http_port,
+        interval,
+    )
+    .await;
     HttpResponse::Ok().json(serde_json::json!({"status":"started","interval_ms": interval}))
 }
 
@@ -103,13 +121,18 @@ async fn api_v1_nearby_stop(
     req: HttpRequest,
     handle: web::Data<Arc<RwLock<Option<JoinHandle<()>>>>>,
 ) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     stop_nearby_task(handle.get_ref()).await;
     HttpResponse::Ok().json(serde_json::json!({"status":"stopped"}))
 }
 
 #[derive(Serialize, Deserialize)]
-struct ServerAppConfig { nearby_sync: bool, nearby_interval_ms: u64 }
+struct ServerAppConfig {
+    nearby_sync: bool,
+    nearby_interval_ms: u64,
+}
 
 #[get("/api/v1/config")]
 async fn api_v1_get_config(pool: web::Data<DbPool>) -> impl Responder {
@@ -117,8 +140,12 @@ async fn api_v1_get_config(pool: web::Data<DbPool>) -> impl Responder {
     let result = web::block(move || {
         let conn = pool.blocking_lock();
         let (enabled, interval) = core_lib::storage::load_app_config(&conn)?;
-        Ok::<ServerAppConfig, core_lib::models::CoreError>(ServerAppConfig { nearby_sync: enabled, nearby_interval_ms: interval })
-    }).await;
+        Ok::<ServerAppConfig, core_lib::models::CoreError>(ServerAppConfig {
+            nearby_sync: enabled,
+            nearby_interval_ms: interval,
+        })
+    })
+    .await;
     match result {
         Ok(Ok(cfg)) => HttpResponse::Ok().json(cfg),
         _ => HttpResponse::InternalServerError().finish(),
@@ -134,7 +161,9 @@ async fn api_v1_set_config(
     identity: web::Data<Arc<CryptoIdentity>>,
     body: web::Json<ServerAppConfig>,
 ) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     let enabled = body.nearby_sync;
     let interval = body.nearby_interval_ms.clamp(500, 60_000);
     // Persist
@@ -142,15 +171,27 @@ async fn api_v1_set_config(
     let persist = web::block(move || {
         let conn = poolc.blocking_lock();
         core_lib::storage::save_app_config(&conn, enabled, interval)
-    }).await;
-    if persist.is_err() { return HttpResponse::InternalServerError().finish(); }
+    })
+    .await;
+    if persist.is_err() {
+        return HttpResponse::InternalServerError().finish();
+    }
     // Apply runtime
     if enabled {
-        start_nearby_task(handle.get_ref(), pool.get_ref(), identity.get_ref(), meta.http_port, interval).await;
+        start_nearby_task(
+            handle.get_ref(),
+            pool.get_ref(),
+            identity.get_ref(),
+            meta.http_port,
+            interval,
+        )
+        .await;
     } else {
         stop_nearby_task(handle.get_ref()).await;
     }
-    HttpResponse::Ok().json(serde_json::json!({"status":"ok","nearby_sync": enabled, "nearby_interval_ms": interval}))
+    HttpResponse::Ok().json(
+        serde_json::json!({"status":"ok","nearby_sync": enabled, "nearby_interval_ms": interval}),
+    )
 }
 
 #[allow(unused_variables)]
@@ -162,7 +203,9 @@ async fn start_nearby_task(
     interval_ms: u64,
 ) {
     let mut guard = handle.write().await;
-    if let Some(h) = guard.take() { h.abort(); }
+    if let Some(h) = guard.take() {
+        h.abort();
+    }
     let conn = pool.clone();
     let id = identity.clone();
     let task = tokio::spawn(async move {
@@ -174,7 +217,9 @@ async fn start_nearby_task(
 
 async fn stop_nearby_task(handle: &Arc<RwLock<Option<JoinHandle<()>>>>) {
     let mut guard = handle.write().await;
-    if let Some(h) = guard.take() { h.abort(); }
+    if let Some(h) = guard.take() {
+        h.abort();
+    }
 }
 
 #[utoipa::path(
@@ -202,20 +247,23 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
             let sum: f64 = node_rs.iter().map(|r| r.trust_score as f64).sum();
             (sum / (node_rs.len() as f64)) as f32
         };
-        
+
         let avg_propagation_priority: f32 = if node_rs.is_empty() {
             0.0
         } else {
             let sum: f64 = node_rs.iter().map(|r| r.propagation_priority as f64).sum();
             (sum / (node_rs.len() as f64)) as f32
         };
-        
+
         // Загружаем метрики узлов
         let node_metrics = core_lib::storage::load_all_node_metrics(&conn)?;
         let avg_relay_success_rate: f32 = if node_metrics.is_empty() {
             0.0
         } else {
-            let sum: f64 = node_metrics.iter().map(|m| m.relay_success_rate as f64).sum();
+            let sum: f64 = node_metrics
+                .iter()
+                .map(|m| m.relay_success_rate as f64)
+                .sum();
             (sum / (node_metrics.len() as f64)) as f32
         };
         let avg_quality_index: f32 = if node_metrics.is_empty() {
@@ -225,13 +273,18 @@ async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
             (sum / (node_metrics.len() as f64)) as f32
         };
         // Средний приоритет распространения по node_metrics (для валидации и будущего использования)
-        let _avg_priority_metrics: f32 = if node_metrics.is_empty() { 0.0 } else {
-            let sum: f64 = node_metrics.iter().map(|m| m.propagation_priority as f64).sum();
+        let _avg_priority_metrics: f32 = if node_metrics.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = node_metrics
+                .iter()
+                .map(|m| m.propagation_priority as f64)
+                .sum();
             (sum / (node_metrics.len() as f64)) as f32
         };
-        
+
         let active_nodes = node_metrics.len() as i32;
-        
+
         Ok::<NodeStats, core_lib::models::CoreError>(NodeStats {
             events,
             statements,
@@ -293,20 +346,33 @@ fn jwt_decoding_key() -> DecodingKey {
     DecodingKey::from_secret(JWT_SECRET.as_bytes())
 }
 
-pub fn issue_jwt_pair_with(conn: &rusqlite::Connection, public_key_hex: &str) -> anyhow::Result<(String, String, i64)> {
+pub fn issue_jwt_pair_with(
+    conn: &rusqlite::Connection,
+    public_key_hex: &str,
+) -> anyhow::Result<(String, String, i64)> {
     use chrono::Utc;
     let now = Utc::now().timestamp() as usize;
     let exp_access = (Utc::now() + chrono::Duration::hours(1)).timestamp() as usize;
     // lookup role and trust in users table (fallbacks)
     let (role, trust_score): (String, f32) = {
         if let Ok(mut stmt) = conn.prepare("SELECT role, trust_score FROM users WHERE pubkey=?1") {
-            match stmt.query_row([public_key_hex], |r| Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)? as f32))) {
+            match stmt.query_row([public_key_hex], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)? as f32))
+            }) {
                 Ok((role, ts)) => (role, ts),
                 Err(_) => ("observer".to_string(), 0.0),
             }
-        } else { ("observer".to_string(), 0.0) }
+        } else {
+            ("observer".to_string(), 0.0)
+        }
     };
-    let claims = Claims { sub: public_key_hex.to_string(), exp: exp_access, iat: now, role, trust_score };
+    let claims = Claims {
+        sub: public_key_hex.to_string(),
+        exp: exp_access,
+        iat: now,
+        role,
+        trust_score,
+    };
     let header = Header::new(Algorithm::HS256);
     let access = encode(&header, &claims, &jwt_encoding_key())?;
     // refresh token как случайная строка (32 байта hex)
@@ -334,10 +400,17 @@ fn role_level(role: &str) -> i32 {
 }
 
 async fn require_role(req: HttpRequest, min_role: &str) -> Result<Claims, HttpResponse> {
-    let Some(token) = extract_bearer(&req) else { return Err(unauthorized_json()); };
-    let claims = match verify_jwt(&token) { Ok(c) => c, Err(_) => return Err(unauthorized_json()) };
+    let Some(token) = extract_bearer(&req) else {
+        return Err(unauthorized_json());
+    };
+    let claims = match verify_jwt(&token) {
+        Ok(c) => c,
+        Err(_) => return Err(unauthorized_json()),
+    };
     if role_level(&claims.role) < role_level(min_role) {
-        return Err(HttpResponse::Forbidden().json(serde_json::json!({"error":"forbidden","code":403})));
+        return Err(
+            HttpResponse::Forbidden().json(serde_json::json!({"error":"forbidden","code":403}))
+        );
     }
     Ok(claims)
 }
@@ -357,7 +430,9 @@ impl fmt::Display for VerifyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             VerifyError::PublicKeyHex(e) => write!(f, "public key hex decode error: {}", e),
-            VerifyError::PublicKeyLength(len) => write!(f, "public key has invalid length: {}", len),
+            VerifyError::PublicKeyLength(len) => {
+                write!(f, "public key has invalid length: {}", len)
+            }
             VerifyError::PublicKeyParse(s) => write!(f, "public key parse error: {}", s),
             VerifyError::SignatureHex(e) => write!(f, "signature hex decode error: {}", e),
             VerifyError::SignatureParse(s) => write!(f, "signature parse error: {}", s),
@@ -376,7 +451,7 @@ pub fn verify_signature(
 ) -> Result<(), VerifyError> {
     // Создаем CryptoIdentity из публичного ключа
     let identity = CryptoIdentity::from_public_key_hex(public_key_hex)?;
-    
+
     // Проверяем подпись используя метод CryptoIdentity
     identity.verify_from_hex(message.as_bytes(), signature_hex)
 }
@@ -506,7 +581,7 @@ async fn add_event(pool: web::Data<DbPool>, payload: web::Json<AddEventRequest>)
 
     let result = web::block(move || {
         let conn = pool.blocking_lock();
-        
+
         // Validate FK references
         if let Err(e) = storage::validate_foreign_key(&conn, "category", req.category_id) {
             return Err(e);
@@ -536,9 +611,9 @@ async fn add_event(pool: web::Data<DbPool>, payload: web::Json<AddEventRequest>)
             code: 1, // Default code for new events
         };
         let id = storage::add_truth_event(&conn, new_event);
-        if let Ok(ref eid) = id { 
-            log::info!("event_created id={} category_id={:?} forma_id={:?} cause_id={:?} develop_id={:?} effect_id={:?} vector={}", 
-                eid, req.category_id, req.forma_id, req.cause_id, req.develop_id, req.effect_id, req.vector); 
+        if let Ok(ref eid) = id {
+            log::info!("event_created id={} category_id={:?} forma_id={:?} cause_id={:?} develop_id={:?} effect_id={:?} vector={}",
+                eid, req.category_id, req.forma_id, req.cause_id, req.develop_id, req.effect_id, req.vector);
         }
         id
     })
@@ -553,7 +628,7 @@ async fn add_event(pool: web::Data<DbPool>, payload: web::Json<AddEventRequest>)
             } else {
                 HttpResponse::InternalServerError().body(e.to_string())
             }
-        },
+        }
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
@@ -567,7 +642,13 @@ async fn add_impact(pool: web::Data<DbPool>, payload: web::Json<Impact>) -> impl
 
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
-        storage::add_impact(&_conn, im_copy.event_id, im_copy.type_id, im_copy.value, im_copy.notes)
+        storage::add_impact(
+            &_conn,
+            im_copy.event_id,
+            im_copy.type_id,
+            im_copy.value,
+            im_copy.notes,
+        )
     })
     .await;
 
@@ -634,14 +715,17 @@ async fn list_contexts(pool: web::Data<DbPool>) -> impl Responder {
 
 /// POST /contexts - Create a new context template
 #[post("/contexts")]
-async fn create_context(pool: web::Data<DbPool>, payload: web::Json<CreateContextRequest>) -> impl Responder {
+async fn create_context(
+    pool: web::Data<DbPool>,
+    payload: web::Json<CreateContextRequest>,
+) -> impl Responder {
     let pool_clone = pool.clone();
     let pool_for_fetch = pool.clone();
     let req = payload.into_inner();
 
     let result = web::block(move || {
         let conn = pool_clone.blocking_lock();
-        
+
         let new_ctx = NewContext {
             name: req.name,
             category_id: req.category_id,
@@ -672,7 +756,7 @@ async fn create_context(pool: web::Data<DbPool>, payload: web::Json<CreateContex
                 Ok(Ok(template)) => HttpResponse::Ok().json(template),
                 _ => HttpResponse::Ok().json(serde_json::json!({"id": id})),
             }
-        },
+        }
         Ok(Err(e)) => {
             let err_str = e.to_string();
             if err_str.contains("already exists") || err_str.contains("duplicate") {
@@ -682,7 +766,7 @@ async fn create_context(pool: web::Data<DbPool>, payload: web::Json<CreateContex
             } else {
                 HttpResponse::BadRequest().body(err_str)
             }
-        },
+        }
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
@@ -709,7 +793,10 @@ async fn get_context_by_name(pool: web::Data<DbPool>, path: web::Path<String>) -
 
 /// POST /contexts/match - Match event fields to a context template
 #[post("/contexts/match")]
-async fn match_context(pool: web::Data<DbPool>, payload: web::Json<MatchContextRequest>) -> impl Responder {
+async fn match_context(
+    pool: web::Data<DbPool>,
+    payload: web::Json<MatchContextRequest>,
+) -> impl Responder {
     let pool = pool.clone();
     let req = payload.into_inner();
 
@@ -742,17 +829,22 @@ async fn match_context(pool: web::Data<DbPool>, payload: web::Json<MatchContextR
 
 /// POST /contexts/from-event - Create context template from event fields
 #[post("/contexts/from-event")]
-async fn create_context_from_event(pool: web::Data<DbPool>, payload: web::Json<CreateContextFromEventRequest>) -> impl Responder {
+async fn create_context_from_event(
+    pool: web::Data<DbPool>,
+    payload: web::Json<CreateContextFromEventRequest>,
+) -> impl Responder {
     let pool_clone = pool.clone();
     let pool_for_fetch = pool.clone();
     let req = payload.into_inner();
 
     let result = web::block(move || {
         let conn = pool_clone.blocking_lock();
-        
+
         // Fetch event to get embedded fields
         let event = storage::get_truth_event(&conn, req.event_id)?;
-        let event = event.ok_or_else(|| core_lib::CoreError::NotFound(format!("Event {} not found", req.event_id)))?;
+        let event = event.ok_or_else(|| {
+            core_lib::CoreError::NotFound(format!("Event {} not found", req.event_id))
+        })?;
 
         let new_ctx = NewContext {
             name: req.name,
@@ -784,7 +876,7 @@ async fn create_context_from_event(pool: web::Data<DbPool>, payload: web::Json<C
                 Ok(Ok(template)) => HttpResponse::Ok().json(template),
                 _ => HttpResponse::Ok().json(serde_json::json!({"id": id})),
             }
-        },
+        }
         Ok(Err(e)) => {
             let err_str = e.to_string();
             if err_str.contains("not found") {
@@ -796,7 +888,7 @@ async fn create_context_from_event(pool: web::Data<DbPool>, payload: web::Json<C
             } else {
                 HttpResponse::BadRequest().body(err_str)
             }
-        },
+        }
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
@@ -829,7 +921,7 @@ async fn seed_db(pool: web::Data<DbPool>, payload: web::Json<SeedRequest>) -> im
     let pool = pool.clone();
     let locale = payload.locale.clone().unwrap_or_else(|| "ru".to_string());
     let locale_for_response = locale.clone();
-    
+
     let result = web::block(move || {
         let mut _conn = pool.blocking_lock();
         storage::seed_knowledge_base(&mut _conn, &locale)
@@ -837,7 +929,8 @@ async fn seed_db(pool: web::Data<DbPool>, payload: web::Json<SeedRequest>) -> im
     .await;
 
     match result {
-        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status": "seeded", "locale": locale_for_response})),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .json(serde_json::json!({"status": "seeded", "locale": locale_for_response})),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
@@ -845,18 +938,24 @@ async fn seed_db(pool: web::Data<DbPool>, payload: web::Json<SeedRequest>) -> im
 
 /// POST /detect - Анализ несоответствий (отметка события как обнаруженного)
 #[post("/detect")]
-async fn detect_event(pool: web::Data<DbPool>, payload: web::Json<serde_json::Value>) -> impl Responder {
+async fn detect_event(
+    pool: web::Data<DbPool>,
+    payload: web::Json<serde_json::Value>,
+) -> impl Responder {
     let pool = pool.clone();
-    let event_id = payload.get("event_id")
+    let event_id = payload
+        .get("event_id")
         .and_then(|v| v.as_i64())
         .unwrap_or(0);
-    let detected = payload.get("detected")
+    let detected = payload
+        .get("detected")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let corrected = payload.get("corrected")
+    let corrected = payload
+        .get("corrected")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    
+
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
         storage::set_event_detected(&_conn, event_id, detected, None, corrected)
@@ -865,7 +964,9 @@ async fn detect_event(pool: web::Data<DbPool>, payload: web::Json<serde_json::Va
     .await;
 
     match result {
-        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status": "detected", "event_id": event_id})),
+        Ok(Ok(())) => {
+            HttpResponse::Ok().json(serde_json::json!({"status": "detected", "event_id": event_id}))
+        }
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
@@ -874,7 +975,9 @@ async fn detect_event(pool: web::Data<DbPool>, payload: web::Json<serde_json::Va
 /// POST /recalc - Пересчет связей (метрики прогресса)
 #[post("/recalc")]
 async fn recalc_metrics(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     let pool = pool.clone();
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
@@ -886,7 +989,8 @@ async fn recalc_metrics(req: HttpRequest, pool: web::Data<DbPool>) -> impl Respo
     .await;
 
     match result {
-        Ok(Ok(metric_id)) => HttpResponse::Ok().json(serde_json::json!({"status": "recalculated", "metric_id": metric_id})),
+        Ok(Ok(metric_id)) => HttpResponse::Ok()
+            .json(serde_json::json!({"status": "recalculated", "metric_id": metric_id})),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
@@ -901,18 +1005,23 @@ async fn get_all_data(pool: web::Data<DbPool>) -> impl Responder {
         let events = storage::load_truth_events(&_conn)?;
         let impacts = storage::load_impacts(&_conn)?;
         let metrics = storage::load_metrics(&_conn)?;
-        Ok::<(Vec<core_lib::models::TruthEvent>, Vec<core_lib::models::Impact>, Vec<core_lib::models::ProgressMetrics>), core_lib::models::CoreError>((events, impacts, metrics))
+        Ok::<
+            (
+                Vec<core_lib::models::TruthEvent>,
+                Vec<core_lib::models::Impact>,
+                Vec<core_lib::models::ProgressMetrics>,
+            ),
+            core_lib::models::CoreError,
+        >((events, impacts, metrics))
     })
     .await;
 
     match result {
-        Ok(Ok((events, impacts, metrics))) => {
-            HttpResponse::Ok().json(serde_json::json!({
-                "events": events,
-                "impacts": impacts,
-                "metrics": metrics
-            }))
-        },
+        Ok(Ok((events, impacts, metrics))) => HttpResponse::Ok().json(serde_json::json!({
+            "events": events,
+            "impacts": impacts,
+            "metrics": metrics
+        })),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
@@ -937,7 +1046,11 @@ async fn get_progress(pool: web::Data<DbPool>) -> impl Responder {
 
 /// POST /sync - Двунаправленная синхронизация данных
 #[post("/sync")]
-async fn sync_data(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json<SyncData>) -> impl Responder {
+async fn sync_data(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    payload: web::Json<SyncData>,
+) -> impl Responder {
     let public_key = req
         .headers()
         .get("X-Public-Key")
@@ -951,8 +1064,14 @@ async fn sync_data(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json
         .unwrap_or("");
 
     // Require caller to provide timestamp header used for signature
-    let ts_hdr = req.headers().get("X-Timestamp").and_then(|v| v.to_str().ok());
-    let ratings_hash_hdr = req.headers().get("X-Ratings-Hash").and_then(|v| v.to_str().ok());
+    let ts_hdr = req
+        .headers()
+        .get("X-Timestamp")
+        .and_then(|v| v.to_str().ok());
+    let ratings_hash_hdr = req
+        .headers()
+        .get("X-Ratings-Hash")
+        .and_then(|v| v.to_str().ok());
     let message = match ts_hdr {
         Some(ts) => match ratings_hash_hdr {
             Some(h) if !h.is_empty() => format!("sync_push:{}:{}", ts, h),
@@ -965,7 +1084,7 @@ async fn sync_data(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json
         Ok(()) => {
             let pool = pool.clone();
             let received_data = payload.into_inner();
-            
+
             let result = web::block(move || {
                 let _conn = pool.blocking_lock();
                 // Reconcile into local DB and log
@@ -989,7 +1108,11 @@ async fn sync_data(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json
 
 /// POST /incremental_sync - Инкрементальная синхронизация
 #[post("/incremental_sync")]
-async fn incremental_sync(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json<SyncData>) -> impl Responder {
+async fn incremental_sync(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    payload: web::Json<SyncData>,
+) -> impl Responder {
     let public_key = req
         .headers()
         .get("X-Public-Key")
@@ -1002,8 +1125,14 @@ async fn incremental_sync(req: HttpRequest, pool: web::Data<DbPool>, payload: we
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
-    let ts_hdr = req.headers().get("X-Timestamp").and_then(|v| v.to_str().ok());
-    let ratings_hash_hdr = req.headers().get("X-Ratings-Hash").and_then(|v| v.to_str().ok());
+    let ts_hdr = req
+        .headers()
+        .get("X-Timestamp")
+        .and_then(|v| v.to_str().ok());
+    let ratings_hash_hdr = req
+        .headers()
+        .get("X-Ratings-Hash")
+        .and_then(|v| v.to_str().ok());
     let message = match ts_hdr {
         Some(ts) => match ratings_hash_hdr {
             Some(h) if !h.is_empty() => format!("incremental_sync:{}:{}", ts, h),
@@ -1016,7 +1145,7 @@ async fn incremental_sync(req: HttpRequest, pool: web::Data<DbPool>, payload: we
         Ok(()) => {
             let pool = pool.clone();
             let received_data = payload.into_inner();
-            
+
             let result = web::block(move || {
                 let _conn = pool.blocking_lock();
                 crate::p2p::sync::reconcile(&_conn, &received_data)
@@ -1040,7 +1169,9 @@ async fn incremental_sync(req: HttpRequest, pool: web::Data<DbPool>, payload: we
 /// POST /ratings/sync — инициирует широковещательную отправку локальных рейтингов на пиров
 #[post("/ratings/sync")]
 async fn ratings_sync(req: HttpRequest, node: web::Data<Node>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     match node.broadcast_ratings().await {
         Ok(()) => HttpResponse::Ok().json(serde_json::json!({"status":"broadcasted"})),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -1050,7 +1181,9 @@ async fn ratings_sync(req: HttpRequest, node: web::Data<Node>) -> impl Responder
 /// Secured variants under /api/v1/* requiring Bearer
 #[post("/api/v1/recalc")]
 async fn api_v1_recalc(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     let pool = pool.clone();
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
@@ -1058,7 +1191,8 @@ async fn api_v1_recalc(req: HttpRequest, pool: web::Data<DbPool>) -> impl Respon
         let metric_id = storage::recalc_progress_metrics(&_conn, ts)?;
         core_lib::storage::recalc_ratings(&_conn, ts)?;
         Ok::<i64, core_lib::models::CoreError>(metric_id)
-    }).await;
+    })
+    .await;
     match result {
         Ok(Ok(_)) => HttpResponse::Ok().json(serde_json::json!({"status":"recalculated"})),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -1072,7 +1206,8 @@ async fn recalc_collective(pool: web::Data<DbPool>) -> impl Responder {
     let result = web::block(move || {
         let conn = pool.blocking_lock();
         core_lib::recalc_collective_truth(&conn)
-    }).await;
+    })
+    .await;
     match result {
         Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status":"ok"})),
         Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -1082,7 +1217,9 @@ async fn recalc_collective(pool: web::Data<DbPool>) -> impl Responder {
 
 #[post("/api/v1/ratings/sync")]
 async fn api_v1_ratings_sync(req: HttpRequest, node: web::Data<Node>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     match node.broadcast_ratings().await {
         Ok(()) => HttpResponse::Ok().json(serde_json::json!({"status":"broadcasted"})),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -1091,14 +1228,464 @@ async fn api_v1_ratings_sync(req: HttpRequest, node: web::Data<Node>) -> impl Re
 
 #[post("/api/v1/reset")]
 async fn api_v1_reset(req: HttpRequest) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     HttpResponse::Ok().json(serde_json::json!({"status":"ok"}))
 }
 
 #[post("/api/v1/reinit")]
 async fn api_v1_reinit(req: HttpRequest) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     HttpResponse::Ok().json(serde_json::json!({"status":"ok"}))
+}
+
+#[derive(Deserialize)]
+struct ListNodesQuery {
+    #[serde(rename = "type")]
+    node_type: Option<String>,
+    reachable: Option<bool>,
+    limit: Option<i64>,
+}
+
+#[derive(Serialize)]
+struct ListNodesResponse {
+    nodes: Vec<DiscoveryNode>,
+    total: usize,
+}
+
+#[derive(Deserialize)]
+struct CreateNodeRequest {
+    address: String,
+    #[serde(rename = "type")]
+    node_type: String,
+    reachable: Option<bool>,
+    last_seen: Option<i64>,
+    ttl: i64,
+    source: Option<String>,
+    node_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct DiscoverRequest {
+    #[serde(default)]
+    types: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct DiscoverResponse {
+    discovered: usize,
+    updated: usize,
+    duration_ms: u128,
+}
+
+#[derive(Deserialize)]
+struct SyncNodesRequest {
+    nodes: Vec<IncomingNodeRequest>,
+}
+
+#[derive(Clone, Deserialize)]
+struct IncomingNodeRequest {
+    address: String,
+    #[serde(rename = "type")]
+    node_type: String,
+    reachable: Option<bool>,
+    last_seen: Option<i64>,
+    ttl: i64,
+    source: Option<String>,
+    node_id: Option<String>,
+}
+
+#[derive(Serialize)]
+struct SyncNodesResponse {
+    merged: Vec<DiscoveryNode>,
+    local_added: usize,
+    local_updated: usize,
+}
+
+#[derive(Deserialize, Default)]
+struct UpdateNodeRequest {
+    reachable: Option<bool>,
+    ttl: Option<i64>,
+    last_seen: Option<i64>,
+    source: Option<String>,
+    node_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct NodesHealthQuery {
+    node_id: Option<i64>,
+}
+
+#[derive(Serialize)]
+struct NodeHealthEntry {
+    node_id: i64,
+    address: String,
+    reachable: bool,
+    checked_at: i64,
+    response_time_ms: Option<i64>,
+    error: Option<String>,
+}
+
+#[derive(Serialize)]
+struct NodeHealthSnapshot {
+    nodes: Vec<NodeHealthEntry>,
+    checked_at: i64,
+}
+
+#[get("/nodes")]
+async fn list_nodes_http(
+    pool: web::Data<DbPool>,
+    query: web::Query<ListNodesQuery>,
+) -> impl Responder {
+    let limit = query.limit.unwrap_or(100).clamp(1, 1000);
+    let node_type = match query.node_type.as_deref() {
+        Some(label) => match NodeType::from_str(label) {
+            Ok(nt) => Some(nt),
+            Err(_) => {
+                return HttpResponse::BadRequest().body(format!("Unknown node type: {label}"))
+            }
+        },
+        None => None,
+    };
+    let filter = NodeFilter {
+        node_type,
+        reachable: query.reachable,
+        limit: Some(limit),
+        address: None,
+    };
+    let pool_clone = pool.clone();
+    let result = web::block(move || {
+        let conn = pool_clone.blocking_lock();
+        storage::list_nodes(&conn, &filter)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(nodes)) => HttpResponse::Ok().json(ListNodesResponse {
+            total: nodes.len(),
+            nodes,
+        }),
+        Ok(Err(err)) => map_storage_error(err),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[post("/nodes")]
+async fn create_node_http(
+    pool: web::Data<DbPool>,
+    payload: web::Json<CreateNodeRequest>,
+) -> impl Responder {
+    let body = payload.into_inner();
+    if body.address.trim().is_empty() {
+        return HttpResponse::BadRequest().body("address must not be empty");
+    }
+    let node_type = match NodeType::from_str(&body.node_type) {
+        Ok(nt) => nt,
+        Err(_) => {
+            return HttpResponse::BadRequest()
+                .body(format!("Unknown node type: {}", body.node_type))
+        }
+    };
+    if body.ttl < node_type.min_ttl_secs() {
+        return HttpResponse::BadRequest().body(format!(
+            "ttl must be >= {} for {}",
+            node_type.min_ttl_secs(),
+            node_type
+        ));
+    }
+    let source = match body.source.as_deref() {
+        Some(label) => match NodeSource::from_str(label) {
+            Ok(src) => Some(src),
+            Err(e) => return HttpResponse::BadRequest().body(e.to_string()),
+        },
+        None => None,
+    };
+    let last_seen = body.last_seen.unwrap_or_else(|| Utc::now().timestamp());
+    let new_node = NewNode {
+        address: body.address,
+        node_type,
+        reachable: body.reachable.unwrap_or(true),
+        last_seen,
+        ttl: body.ttl,
+        source,
+        node_id: body.node_id,
+        created_at: last_seen,
+        updated_at: last_seen,
+    };
+    let pool_clone = pool.clone();
+    let result = web::block(move || {
+        let conn = pool_clone.blocking_lock();
+        storage::insert_node(&conn, new_node)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(node)) => HttpResponse::Created().json(node),
+        Ok(Err(CoreError::InvalidArg(msg))) => HttpResponse::BadRequest().body(msg),
+        Ok(Err(CoreError::Db(rusqlite::Error::SqliteFailure(err, _))))
+            if err.code == ErrorCode::ConstraintViolation =>
+        {
+            HttpResponse::Conflict().body("node with this address already exists")
+        }
+        Ok(Err(err)) => map_storage_error(err),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[post("/nodes/discover")]
+async fn discover_nodes_http(
+    node: Option<web::Data<Node>>,
+    pool: web::Data<DbPool>,
+    payload: Option<web::Json<DiscoverRequest>>,
+) -> impl Responder {
+    let requested_labels = if let Some(request) = payload {
+        request.into_inner().types
+    } else {
+        vec!["LAN".into(), "WIFI".into(), "GLOBAL".into()]
+    };
+    let mut requested = Vec::new();
+    for label in requested_labels {
+        match NodeType::from_str(&label) {
+            Ok(nt) => requested.push(nt),
+            Err(_) => {
+                return HttpResponse::BadRequest().body(format!("Unknown node type: {label}"))
+            }
+        }
+    }
+    if requested.is_empty() {
+        requested.extend([NodeType::Lan, NodeType::Wifi, NodeType::Global]);
+    }
+
+    let mut discovered = 0usize;
+    let mut updated = 0usize;
+    let start = Instant::now();
+    let run_local = requested
+        .iter()
+        .any(|t| matches!(t, NodeType::Lan | NodeType::Wifi | NodeType::Client));
+    let run_global = requested
+        .iter()
+        .any(|t| matches!(t, NodeType::Global | NodeType::Relay));
+
+    if run_local {
+        let conn_arc = pool.get_ref().clone();
+        match run_http_reachability_checks(
+            conn_arc,
+            StdDuration::from_secs(core_lib::HEALTH_CHECK_TIMEOUT_SECS),
+            core_lib::HEALTH_CHECK_RETRY_LIMIT,
+        )
+        .await
+        {
+            Ok(count) => updated += count,
+            Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+        }
+    }
+
+    if run_global {
+        if let Some(node_data) = node {
+            match poll_global_registries(&node_data.config, node_data.conn_data.clone()).await {
+                Ok(count) => discovered += count,
+                Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+            }
+        }
+    }
+
+    HttpResponse::Ok().json(DiscoverResponse {
+        discovered,
+        updated,
+        duration_ms: start.elapsed().as_millis(),
+    })
+}
+
+#[post("/nodes/sync")]
+async fn sync_nodes_http(
+    pool: web::Data<DbPool>,
+    payload: web::Json<SyncNodesRequest>,
+) -> impl Responder {
+    let body = payload.into_inner();
+    let mut remote_nodes = Vec::new();
+    for node in body.nodes {
+        match node.into_node() {
+            Ok(model) => remote_nodes.push(model),
+            Err(msg) => return HttpResponse::BadRequest().body(msg),
+        }
+    }
+    let pool_clone = pool.clone();
+    let result = web::block(move || {
+        let conn = pool_clone.blocking_lock();
+        let local = storage::list_nodes(&conn, &NodeFilter::default())?;
+        let (merged, added, updated) = merge_node_lists(&local, &remote_nodes);
+        for node in &merged {
+            storage::upsert_node_by_address(&conn, node)?;
+        }
+        Ok::<_, CoreError>((merged, added, updated))
+    })
+    .await;
+
+    match result {
+        Ok(Ok((merged, added, updated))) => HttpResponse::Ok().json(SyncNodesResponse {
+            merged,
+            local_added: added,
+            local_updated: updated,
+        }),
+        Ok(Err(err)) => map_storage_error(err),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[get("/nodes/{id}")]
+async fn get_node_http(pool: web::Data<DbPool>, path: web::Path<i64>) -> impl Responder {
+    let id = path.into_inner();
+    let pool_clone = pool.clone();
+    let result = web::block(move || {
+        let conn = pool_clone.blocking_lock();
+        storage::get_node(&conn, id)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(Some(node))) => HttpResponse::Ok().json(node),
+        Ok(Ok(None)) => HttpResponse::NotFound().finish(),
+        Ok(Err(err)) => map_storage_error(err),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[put("/nodes/{id}")]
+async fn update_node_http(
+    pool: web::Data<DbPool>,
+    path: web::Path<i64>,
+    payload: web::Json<UpdateNodeRequest>,
+) -> impl Responder {
+    let id = path.into_inner();
+    let body = payload.into_inner();
+    let mut patch = NodePatch::default();
+    patch.reachable = body.reachable;
+    patch.ttl = body.ttl;
+    patch.last_seen = body.last_seen;
+    patch.node_id = body.node_id;
+    if let Some(label) = body.source {
+        match NodeSource::from_str(&label) {
+            Ok(src) => patch.source = Some(src),
+            Err(e) => return HttpResponse::BadRequest().body(e.to_string()),
+        }
+    }
+
+    let pool_clone = pool.clone();
+    let result = web::block(move || {
+        let conn = pool_clone.blocking_lock();
+        storage::update_node(&conn, id, &patch)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(node)) => HttpResponse::Ok().json(node),
+        Ok(Err(err)) => map_storage_error(err),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[delete("/nodes/{id}")]
+async fn delete_node_http(pool: web::Data<DbPool>, path: web::Path<i64>) -> impl Responder {
+    let id = path.into_inner();
+    let pool_clone = pool.clone();
+    let result = web::block(move || {
+        let conn = pool_clone.blocking_lock();
+        storage::delete_node(&conn, id)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(true)) => HttpResponse::NoContent().finish(),
+        Ok(Ok(false)) => HttpResponse::NotFound().finish(),
+        Ok(Err(err)) => map_storage_error(err),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[get("/nodes/health")]
+async fn nodes_health_http(
+    pool: web::Data<DbPool>,
+    query: web::Query<NodesHealthQuery>,
+) -> impl Responder {
+    let node_id = query.node_id;
+    let pool_clone = pool.clone();
+    let result = web::block(move || {
+        let conn = pool_clone.blocking_lock();
+        if let Some(id) = node_id {
+            let maybe = storage::get_node(&conn, id)?;
+            Ok::<_, CoreError>(maybe.into_iter().collect::<Vec<_>>())
+        } else {
+            storage::list_nodes(&conn, &NodeFilter::default())
+        }
+    })
+    .await;
+
+    match result {
+        Ok(Ok(nodes)) => {
+            let checked_at = Utc::now().timestamp();
+            let entries = nodes
+                .into_iter()
+                .map(|node| NodeHealthEntry {
+                    node_id: node.id,
+                    address: node.address,
+                    reachable: node.reachable,
+                    checked_at,
+                    response_time_ms: None,
+                    error: None,
+                })
+                .collect();
+            HttpResponse::Ok().json(NodeHealthSnapshot {
+                nodes: entries,
+                checked_at,
+            })
+        }
+        Ok(Err(err)) => map_storage_error(err),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+fn map_storage_error(err: CoreError) -> HttpResponse {
+    match err {
+        CoreError::InvalidArg(msg) => HttpResponse::BadRequest().body(msg),
+        CoreError::NotFound(msg) => HttpResponse::NotFound().body(msg),
+        other => HttpResponse::InternalServerError().body(other.to_string()),
+    }
+}
+
+impl IncomingNodeRequest {
+    fn into_node(self) -> Result<DiscoveryNode, String> {
+        let node_type = NodeType::from_str(&self.node_type)
+            .map_err(|_| format!("Unknown node type: {}", self.node_type))?;
+        if self.ttl < node_type.min_ttl_secs() {
+            return Err(format!(
+                "ttl must be >= {} for {}",
+                node_type.min_ttl_secs(),
+                node_type
+            ));
+        }
+        let source = match self.source.as_deref() {
+            Some(label) => Some(
+                NodeSource::from_str(label).map_err(|_| format!("Unknown node source: {label}"))?,
+            ),
+            None => None,
+        };
+        let last_seen = self.last_seen.unwrap_or_else(|| Utc::now().timestamp());
+        Ok(DiscoveryNode {
+            id: 0,
+            address: self.address,
+            node_type,
+            reachable: self.reachable.unwrap_or(true),
+            last_seen,
+            ttl: self.ttl,
+            source,
+            node_id: self.node_id,
+            created_at: last_seen,
+            updated_at: last_seen,
+        })
+    }
 }
 
 /// helper: зарегистрировать все маршруты
@@ -1153,7 +1740,15 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
         .service(create_context)
         .service(get_context_by_name)
         .service(match_context)
-        .service(create_context_from_event);
+        .service(create_context_from_event)
+        .service(list_nodes_http)
+        .service(create_node_http)
+        .service(discover_nodes_http)
+        .service(sync_nodes_http)
+        .service(get_node_http)
+        .service(update_node_http)
+        .service(delete_node_http)
+        .service(nodes_health_http);
 }
 
 #[derive(Serialize, ToSchema)]
@@ -1186,17 +1781,25 @@ async fn api_v1_network_local(pool: web::Data<DbPool>) -> impl Responder {
     match result {
         Ok(Ok((peers, summary))) => {
             // Преобразуем last_sync в ISO8601 для совместимости с примером
-            let peers_json: Vec<serde_json::Value> = peers.into_iter().map(|p| {
-                let last_sync_str = p.last_sync.map(|ts| chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts as u64)).to_rfc3339());
-                serde_json::json!({
-                    "url": p.peer_url,
-                    "last_sync": last_sync_str,
-                    "success_count": p.success_count,
-                    "fail_count": p.fail_count,
-                    "last_quality_index": p.last_quality_index,
-                    "last_trust_score": p.last_trust_score,
+            let peers_json: Vec<serde_json::Value> = peers
+                .into_iter()
+                .map(|p| {
+                    let last_sync_str = p.last_sync.map(|ts| {
+                        chrono::DateTime::<chrono::Utc>::from(
+                            std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts as u64),
+                        )
+                        .to_rfc3339()
+                    });
+                    serde_json::json!({
+                        "url": p.peer_url,
+                        "last_sync": last_sync_str,
+                        "success_count": p.success_count,
+                        "fail_count": p.fail_count,
+                        "last_quality_index": p.last_quality_index,
+                        "last_trust_score": p.last_trust_score,
+                    })
                 })
-            }).collect();
+                .collect();
             HttpResponse::Ok().json(serde_json::json!({
                 "peers": peers_json,
                 "summary": {
@@ -1225,18 +1828,35 @@ async fn api_v1_peers_priorities(node: web::Data<Node>, pool: web::Data<DbPool>)
         let conn = pool_for_block.blocking_lock();
         let mut items: Vec<PeerPriorityItem> = Vec::new();
         let ratings = core_lib::storage::load_node_ratings(&conn).unwrap_or_default();
-        let map: std::collections::HashMap<String, core_lib::models::NodeRating> = ratings.into_iter().map(|r| (r.node_id.clone(), r)).collect();
+        let map: std::collections::HashMap<String, core_lib::models::NodeRating> = ratings
+            .into_iter()
+            .map(|r| (r.node_id.clone(), r))
+            .collect();
         for url in peers.iter() {
             // public_key hex в URL не хранится — в MVP ищем по совпадению начала ключа в URL или пропускаем
             // Для корректности ожидается, что Node.peers содержит URLы пиров, а соответствие ключ→URL хранится в приложении CLI/конфиге.
             // Здесь заполним trust_priority как среднее по сети, если ключ не найден.
-            let (trust, prio) = if let Some((_id, r)) = map.iter().next() { (r.trust_score, r.propagation_priority) } else { (0.0f32, 0.5f32) };
-            items.push(PeerPriorityItem { peer_url: url.clone(), trust_score: trust, propagation_priority: prio, relay_rate: 0.0, quality_index: 0.0 });
+            let (trust, prio) = if let Some((_id, r)) = map.iter().next() {
+                (r.trust_score, r.propagation_priority)
+            } else {
+                (0.0f32, 0.5f32)
+            };
+            items.push(PeerPriorityItem {
+                peer_url: url.clone(),
+                trust_score: trust,
+                propagation_priority: prio,
+                relay_rate: 0.0,
+                quality_index: 0.0,
+            });
         }
         Ok::<Vec<PeerPriorityItem>, core_lib::models::CoreError>(items)
-    }).await;
+    })
+    .await;
 
-    let mut items = match priorities { Ok(Ok(v)) => v, _ => Vec::new() };
+    let mut items = match priorities {
+        Ok(Ok(v)) => v,
+        _ => Vec::new(),
+    };
     // Вливаем метрики ретрансляции
     let stats = get_relay_stats().await;
     // Обновим relay_rate и quality_index (без длительных блокировок)
@@ -1251,7 +1871,9 @@ async fn api_v1_peers_priorities(node: web::Data<Node>, pool: web::Data<DbPool>)
                 let conn = pool2.blocking_lock();
                 core_lib::storage::load_node_metrics(&conn, &key)
             }
-        }).await {
+        })
+        .await
+        {
             it.quality_index = mm.quality_index;
         }
     }
@@ -1262,16 +1884,35 @@ async fn api_v1_peers_priorities(node: web::Data<Node>, pool: web::Data<DbPool>)
 
 #[post("/api/v1/auth")]
 async fn api_v1_auth(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
-    let public_key = req.headers().get("X-Public-Key").and_then(|v| v.to_str().ok());
-    let signature = req.headers().get("X-Signature").and_then(|v| v.to_str().ok());
-    let ts = req.headers().get("X-Timestamp").and_then(|v| v.to_str().ok());
-    let Some(pk) = public_key else { return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401})); };
-    let Some(sig) = signature else { return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401})); };
-    let Some(ts) = ts else { return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401})); };
+    let public_key = req
+        .headers()
+        .get("X-Public-Key")
+        .and_then(|v| v.to_str().ok());
+    let signature = req
+        .headers()
+        .get("X-Signature")
+        .and_then(|v| v.to_str().ok());
+    let ts = req
+        .headers()
+        .get("X-Timestamp")
+        .and_then(|v| v.to_str().ok());
+    let Some(pk) = public_key else {
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
+    };
+    let Some(sig) = signature else {
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
+    };
+    let Some(ts) = ts else {
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
+    };
     let message = format!("auth:{}", ts);
     if let Err(e) = verify_signature(pk, sig, &message) {
         log::warn!("Auth signature failed: {}", e);
-        return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401}));
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
     }
     // ok -> issue jwt and refresh, store refresh
     let (access, refresh, exp_refresh) = match web::block({
@@ -1281,7 +1922,9 @@ async fn api_v1_auth(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responde
             let conn = pool.blocking_lock();
             issue_jwt_pair_with(&conn, &pk_owned)
         }
-    }).await {
+    })
+    .await
+    {
         Ok(Ok(v)) => v,
         Ok(Err(e)) => return HttpResponse::InternalServerError().body(e.to_string()),
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
@@ -1292,7 +1935,8 @@ async fn api_v1_auth(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responde
     let res = web::block(move || {
         let conn = pool.blocking_lock();
         core_lib::storage::register_refresh_token(&conn, &pk_owned, &refresh_owned, exp_refresh)
-    }).await;
+    })
+    .await;
     match res {
         Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({
             "access_token": access,
@@ -1313,12 +1957,15 @@ async fn api_v1_auth(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responde
 )]
 #[get("/api/v1/users")]
 async fn api_v1_users_list(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
-    if let Err(resp) = require_role(req, "admin").await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_role(req, "admin").await.map(|_| ()) {
+        return resp;
+    }
     let pool = pool.clone();
     let result = web::block(move || {
         let conn = pool.blocking_lock();
         core_lib::storage::list_users(&conn)
-    }).await;
+    })
+    .await;
     match result {
         Ok(Ok(users)) => HttpResponse::Ok().json(users),
         _ => HttpResponse::InternalServerError().finish(),
@@ -1326,7 +1973,10 @@ async fn api_v1_users_list(req: HttpRequest, pool: web::Data<DbPool>) -> impl Re
 }
 
 #[derive(Deserialize)]
-struct RoleRequest { pubkey: String, role: String }
+struct RoleRequest {
+    pubkey: String,
+    role: String,
+}
 
 #[utoipa::path(
     post,
@@ -1334,19 +1984,32 @@ struct RoleRequest { pubkey: String, role: String }
     responses((status=200, description="Роль обновлена"))
 )]
 #[post("/api/v1/users/role")]
-async fn api_v1_users_role(req: HttpRequest, pool: web::Data<DbPool>, body: web::Json<RoleRequest>) -> impl Responder {
-    if let Err(resp) = require_role(req, "admin").await.map(|_| ()) { return resp; }
+async fn api_v1_users_role(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    body: web::Json<RoleRequest>,
+) -> impl Responder {
+    if let Err(resp) = require_role(req, "admin").await.map(|_| ()) {
+        return resp;
+    }
     let RoleRequest { pubkey, role } = body.into_inner();
     let poolc = pool.clone();
     let res = web::block(move || {
         let conn = poolc.blocking_lock();
         core_lib::storage::update_user_role(&conn, &pubkey, &role)
-    }).await;
-    match res { Ok(Ok(())) => HttpResponse::Ok().finish(), _ => HttpResponse::InternalServerError().finish() }
+    })
+    .await;
+    match res {
+        Ok(Ok(())) => HttpResponse::Ok().finish(),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
 }
 
 #[derive(Deserialize)]
-struct TrustDelegateRequest { target_pubkey: String, delta: f32 }
+struct TrustDelegateRequest {
+    target_pubkey: String,
+    delta: f32,
+}
 
 #[utoipa::path(
     post,
@@ -1354,12 +2017,23 @@ struct TrustDelegateRequest { target_pubkey: String, delta: f32 }
     responses((status=200, description="Делегирование доверия применено"))
 )]
 #[post("/api/v1/trust/delegate")]
-async fn api_v1_trust_delegate(req: HttpRequest, pool: web::Data<DbPool>, body: web::Json<TrustDelegateRequest>) -> impl Responder {
+async fn api_v1_trust_delegate(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    body: web::Json<TrustDelegateRequest>,
+) -> impl Responder {
     // Требуется роль не ниже node
-    let claims = match require_role(req, "node").await { Ok(c) => c, Err(resp) => return resp };
-    let TrustDelegateRequest { target_pubkey, delta } = body.into_inner();
+    let claims = match require_role(req, "node").await {
+        Ok(c) => c,
+        Err(resp) => return resp,
+    };
+    let TrustDelegateRequest {
+        target_pubkey,
+        delta,
+    } = body.into_inner();
     // ограничиваем делегирование по FidoNet-like: разрешено только положительное малое смещение и не на себя
-    if target_pubkey == claims.sub || delta.abs() > 0.2 { // лимит шага делегирования
+    if target_pubkey == claims.sub || delta.abs() > 0.2 {
+        // лимит шага делегирования
         return HttpResponse::BadRequest().body("invalid delegation request");
     }
     let poolc = pool.clone();
@@ -1369,25 +2043,38 @@ async fn api_v1_trust_delegate(req: HttpRequest, pool: web::Data<DbPool>, body: 
         let _new = core_lib::storage::adjust_trust_score(&conn, &target_pubkey, delta)?;
         // синхронизация с node_ratings произойдет при следующем пересчете; можно инициировать мягкий апдейт users уже сейчас
         Ok::<(), core_lib::models::CoreError>(())
-    }).await;
-    match res { Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status":"ok"})), _ => HttpResponse::InternalServerError().finish() }
+    })
+    .await;
+    match res {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status":"ok"})),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
 }
 
 #[derive(Deserialize)]
-struct RefreshRequest { refresh_token: String }
+struct RefreshRequest {
+    refresh_token: String,
+}
 
 #[post("/api/v1/refresh")]
-async fn api_v1_refresh(pool: web::Data<DbPool>, body: web::Json<RefreshRequest>) -> impl Responder {
+async fn api_v1_refresh(
+    pool: web::Data<DbPool>,
+    body: web::Json<RefreshRequest>,
+) -> impl Responder {
     let refresh = body.refresh_token.clone();
     let refresh_lookup = refresh.clone();
     let pool1 = pool.clone();
     let res = web::block(move || {
         let conn = pool1.blocking_lock();
         core_lib::storage::find_session_by_refresh(&conn, &refresh_lookup)
-    }).await;
-    let Ok(Ok(opt)) = res else { return HttpResponse::InternalServerError().finish(); };
+    })
+    .await;
+    let Ok(Ok(opt)) = res else {
+        return HttpResponse::InternalServerError().finish();
+    };
     let Some((public_key, expires_at)) = opt else {
-        return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401}));
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
     };
     if chrono::Utc::now().timestamp() >= expires_at {
         // expired
@@ -1395,8 +2082,10 @@ async fn api_v1_refresh(pool: web::Data<DbPool>, body: web::Json<RefreshRequest>
         let _ = web::block(move || {
             let conn = pool_del.blocking_lock();
             core_lib::storage::delete_refresh_token(&conn, &refresh)
-        }).await;
-        return HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401}));
+        })
+        .await;
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
     }
     // rotate refresh: delete old, issue new pair (include role/trust)
     let (access, new_refresh, exp_refresh) = match web::block({
@@ -1406,7 +2095,9 @@ async fn api_v1_refresh(pool: web::Data<DbPool>, body: web::Json<RefreshRequest>
             let conn = pool.blocking_lock();
             issue_jwt_pair_with(&conn, &public_key)
         }
-    }).await {
+    })
+    .await
+    {
         Ok(Ok(v)) => v,
         _ => return HttpResponse::InternalServerError().finish(),
     };
@@ -1417,8 +2108,14 @@ async fn api_v1_refresh(pool: web::Data<DbPool>, body: web::Json<RefreshRequest>
     let res2 = web::block(move || {
         let conn = pool2.blocking_lock();
         core_lib::storage::delete_refresh_token(&conn, &refresh_old)?;
-        core_lib::storage::register_refresh_token(&conn, &public_key2, &new_refresh_for_closure, exp_refresh)
-    }).await;
+        core_lib::storage::register_refresh_token(
+            &conn,
+            &public_key2,
+            &new_refresh_for_closure,
+            exp_refresh,
+        )
+    })
+    .await;
     match res2 {
         Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({
             "access_token": access,
@@ -1445,7 +2142,9 @@ fn extract_bearer(req: &HttpRequest) -> Option<String> {
 }
 
 async fn require_jwt(req: HttpRequest) -> Result<String, HttpResponse> {
-    let Some(token) = extract_bearer(&req) else { return Err(unauthorized_json()); };
+    let Some(token) = extract_bearer(&req) else {
+        return Err(unauthorized_json());
+    };
     match verify_jwt(&token) {
         Ok(c) => Ok(c.sub),
         Err(_) => Err(unauthorized_json()),
@@ -1458,8 +2157,8 @@ async fn require_jwt(req: HttpRequest) -> Result<String, HttpResponse> {
 struct PushRequest {
     node_id: String,
     payload: serde_json::Value,
-    signature: String,   // base64
-    public_key: String,  // base64
+    signature: String,  // base64
+    public_key: String, // base64
 }
 
 fn b64_to_hex(b64: &str) -> Result<String, String> {
@@ -1471,34 +2170,62 @@ fn b64_to_hex(b64: &str) -> Result<String, String> {
 
 #[post("/api/v1/push")]
 async fn api_v1_push(req: HttpRequest, body: web::Json<PushRequest>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
 
-    let PushRequest { node_id, payload, signature, public_key } = body.into_inner();
+    let PushRequest {
+        node_id,
+        payload,
+        signature,
+        public_key,
+    } = body.into_inner();
 
     let msg_bytes = match serde_json::to_vec(&payload) {
         Ok(b) => b,
-        Err(_) => return HttpResponse::BadRequest().json(serde_json::json!({"status":"error","reason":"bad_payload"})),
+        Err(_) => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"status":"error","reason":"bad_payload"}))
+        }
     };
 
     // Convert base64 inputs to hex to reuse existing verifier
-    let pk_hex = match b64_to_hex(&public_key) { Ok(s) => s, Err(e) => return HttpResponse::BadRequest().json(serde_json::json!({"status":"error","reason":e})) };
-    let sig_hex = match b64_to_hex(&signature) { Ok(s) => s, Err(e) => return HttpResponse::BadRequest().json(serde_json::json!({"status":"error","reason":e})) };
+    let pk_hex = match b64_to_hex(&public_key) {
+        Ok(s) => s,
+        Err(e) => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"status":"error","reason":e}))
+        }
+    };
+    let sig_hex = match b64_to_hex(&signature) {
+        Ok(s) => s,
+        Err(e) => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"status":"error","reason":e}))
+        }
+    };
 
-    match verify_signature(&pk_hex, &sig_hex, std::str::from_utf8(&msg_bytes).unwrap_or("")) {
+    match verify_signature(
+        &pk_hex,
+        &sig_hex,
+        std::str::from_utf8(&msg_bytes).unwrap_or(""),
+    ) {
         Ok(()) => {
             // Enqueue or log the payload for processing
             log::info!("push from {} accepted: {}", node_id, payload);
             HttpResponse::Ok().json(serde_json::json!({"status":"ok"}))
         }
-        Err(_) => HttpResponse::Unauthorized().json(serde_json::json!({"status":"error","reason":"invalid_signature"})),
+        Err(_) => HttpResponse::Unauthorized()
+            .json(serde_json::json!({"status":"error","reason":"invalid_signature"})),
     }
 }
-
 
 /// POST /recalc_ratings - Пересчет рейтингов узлов и групп
 #[post("/recalc_ratings")]
 async fn recalc_ratings(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     let pool = pool.clone();
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
@@ -1588,7 +2315,13 @@ struct GraphQuery {
 #[get("/graph/json")]
 async fn get_graph_json(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) -> impl Responder {
     let pool = pool.clone();
-    let GraphQuery { min_score, max_links, depth, min_priority, limit } = query.into_inner();
+    let GraphQuery {
+        min_score,
+        max_links,
+        depth,
+        min_priority,
+        limit,
+    } = query.into_inner();
 
     // Значения по умолчанию
     let min_score = min_score.unwrap_or(-1.0);
@@ -1600,21 +2333,27 @@ async fn get_graph_json(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) 
         let _conn = pool.blocking_lock();
         // ensure ratings up-to-date for graph queries
         let _ = core_lib::storage::recalc_ratings(&_conn, chrono::Utc::now().timestamp());
-        let mut graph = core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)?;
-        
+        let mut graph =
+            core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)?;
+
         // Фильтр по propagation_priority
         if min_priority > 0.0 {
-            graph.nodes.retain(|node| node.propagation_priority >= min_priority);
+            graph
+                .nodes
+                .retain(|node| node.propagation_priority >= min_priority);
         }
-        
+
         // Ограничение количества узлов
         if graph.nodes.len() > limit {
             graph.nodes.truncate(limit);
             // Также ограничиваем связи только для оставшихся узлов
-            let node_ids: std::collections::HashSet<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
-            graph.links.retain(|link| node_ids.contains(&link.source) && node_ids.contains(&link.target));
+            let node_ids: std::collections::HashSet<String> =
+                graph.nodes.iter().map(|n| n.id.clone()).collect();
+            graph
+                .links
+                .retain(|link| node_ids.contains(&link.source) && node_ids.contains(&link.target));
         }
-        
+
         Ok::<core_lib::models::GraphData, core_lib::models::CoreError>(graph)
     })
     .await;
@@ -1628,16 +2367,25 @@ async fn get_graph_json(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) 
 
 /// GET /graph/summary — агрегированные метрики по графу
 #[get("/graph/summary")]
-async fn get_graph_summary(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) -> impl Responder {
+async fn get_graph_summary(
+    pool: web::Data<DbPool>,
+    query: web::Query<GraphQuery>,
+) -> impl Responder {
     let pool = pool.clone();
-    let GraphQuery { min_score, max_links, depth, .. } = query.into_inner();
+    let GraphQuery {
+        min_score,
+        max_links,
+        depth,
+        ..
+    } = query.into_inner();
 
     let min_score = min_score.unwrap_or(-1.0);
     let max_links = max_links.unwrap_or(10).max(0);
 
     let result = web::block(move || {
         let _conn = pool.blocking_lock();
-        let graph: GraphData = core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)?;
+        let graph: GraphData =
+            core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)?;
         let summary: GraphSummary = core_lib::models::summarize_graph(&graph);
         Ok::<GraphSummary, core_lib::models::CoreError>(summary)
     })
@@ -1663,27 +2411,30 @@ mod tests {
     async fn test_signature_verification_refactor() {
         // Создаем новую криптографическую идентичность
         let identity = CryptoIdentity::new();
-        
+
         // Создаем сообщение для подписи
         let message = "test message";
-        
+
         // Подписываем сообщение
         let signature = identity.sign(message.as_bytes());
         let signature_hex = hex::encode(signature.to_bytes());
         let public_key_hex = identity.public_key_hex();
-        
+
         // Проверяем подпись используя рефакторенную функцию
         let result = verify_signature(&public_key_hex, &signature_hex, message);
-        
+
         // Проверяем, что верификация прошла успешно
         assert!(result.is_ok(), "Signature verification should succeed");
-        
+
         // Проверяем с неправильным сообщением
         let wrong_message = "wrong message";
         let wrong_result = verify_signature(&public_key_hex, &signature_hex, wrong_message);
-        
+
         // Проверяем, что верификация с неправильным сообщением не прошла
-        assert!(wrong_result.is_err(), "Signature verification with wrong message should fail");
+        assert!(
+            wrong_result.is_err(),
+            "Signature verification with wrong message should fail"
+        );
     }
 
     #[actix_web::test]
@@ -1699,8 +2450,9 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(actix_web::web::Data::new(conn_data.clone()))
-                .configure(crate::api::routes)
-        ).await;
+                .configure(crate::api::routes),
+        )
+        .await;
 
         // Add event and statement + impact to have some ratings
         let add_event_req = serde_json::json!({
@@ -1708,14 +2460,21 @@ mod tests {
             "category_id": 1,
             "vector": true
         });
-        let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
+        let req = test::TestRequest::post()
+            .uri("/events")
+            .set_json(&add_event_req)
+            .to_request();
         let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         let ev_id = resp.get("id").and_then(|v| v.as_i64()).unwrap();
 
         // set author public key on event
         {
             let c = conn_data.lock().await;
-            c.execute("UPDATE truth_events SET public_key='nodeA' WHERE id=?1", rusqlite::params![ev_id]).unwrap();
+            c.execute(
+                "UPDATE truth_events SET public_key='nodeA' WHERE id=?1",
+                rusqlite::params![ev_id],
+            )
+            .unwrap();
         }
 
         let add_stmt_req = serde_json::json!({
@@ -1724,14 +2483,22 @@ mod tests {
             "context": null,
             "truth_score": 0.8
         });
-        let req = test::TestRequest::post().uri("/statements").set_json(&add_stmt_req).to_request();
+        let req = test::TestRequest::post()
+            .uri("/statements")
+            .set_json(&add_stmt_req)
+            .to_request();
         let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
 
         // direct DB insert impact to set validator pubkey
         {
             let c = conn_data.lock().await;
-            let impact_id = core_lib::storage::add_impact(&c, ev_id, 1, true, Some("ok".into())).unwrap();
-            c.execute("UPDATE impact SET public_key='nodeB' WHERE id=?1", rusqlite::params![impact_id]).unwrap();
+            let impact_id =
+                core_lib::storage::add_impact(&c, ev_id, 1, true, Some("ok".into())).unwrap();
+            c.execute(
+                "UPDATE impact SET public_key='nodeB' WHERE id=?1",
+                rusqlite::params![impact_id],
+            )
+            .unwrap();
         }
 
         // recalc
@@ -1765,8 +2532,9 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(actix_web::web::Data::new(conn_data.clone()))
-                .configure(crate::api::routes)
-        ).await;
+                .configure(crate::api::routes),
+        )
+        .await;
 
         // Event A (author nodeA) with positive statement; validator nodeB agrees
         let add_event_req = serde_json::json!({
@@ -1774,12 +2542,19 @@ mod tests {
             "category_id": 1,
             "vector": true
         });
-        let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
+        let req = test::TestRequest::post()
+            .uri("/events")
+            .set_json(&add_event_req)
+            .to_request();
         let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         let ev1 = resp.get("id").and_then(|v| v.as_i64()).unwrap();
         {
             let c = conn_data.lock().await;
-            c.execute("UPDATE truth_events SET public_key='nodeA' WHERE id=?1", rusqlite::params![ev1]).unwrap();
+            c.execute(
+                "UPDATE truth_events SET public_key='nodeA' WHERE id=?1",
+                rusqlite::params![ev1],
+            )
+            .unwrap();
         }
         let add_stmt_req = serde_json::json!({
             "event_id": ev1,
@@ -1787,12 +2562,20 @@ mod tests {
             "context": null,
             "truth_score": 0.9
         });
-        let req = test::TestRequest::post().uri("/statements").set_json(&add_stmt_req).to_request();
+        let req = test::TestRequest::post()
+            .uri("/statements")
+            .set_json(&add_stmt_req)
+            .to_request();
         let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         {
             let c = conn_data.lock().await;
-            let impact_id = core_lib::storage::add_impact(&c, ev1, 1, true, Some("ok".into())).unwrap();
-            c.execute("UPDATE impact SET public_key='nodeB' WHERE id=?1", rusqlite::params![impact_id]).unwrap();
+            let impact_id =
+                core_lib::storage::add_impact(&c, ev1, 1, true, Some("ok".into())).unwrap();
+            c.execute(
+                "UPDATE impact SET public_key='nodeB' WHERE id=?1",
+                rusqlite::params![impact_id],
+            )
+            .unwrap();
         }
 
         // Event C (author nodeC) with negative statement
@@ -1801,12 +2584,19 @@ mod tests {
             "category_id": 1,
             "vector": true
         });
-        let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
+        let req = test::TestRequest::post()
+            .uri("/events")
+            .set_json(&add_event_req)
+            .to_request();
         let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         let ev2 = resp.get("id").and_then(|v| v.as_i64()).unwrap();
         {
             let c = conn_data.lock().await;
-            c.execute("UPDATE truth_events SET public_key='nodeC' WHERE id=?1", rusqlite::params![ev2]).unwrap();
+            c.execute(
+                "UPDATE truth_events SET public_key='nodeC' WHERE id=?1",
+                rusqlite::params![ev2],
+            )
+            .unwrap();
         }
         let add_stmt_req = serde_json::json!({
             "event_id": ev2,
@@ -1814,7 +2604,10 @@ mod tests {
             "context": null,
             "truth_score": -0.9
         });
-        let req = test::TestRequest::post().uri("/statements").set_json(&add_stmt_req).to_request();
+        let req = test::TestRequest::post()
+            .uri("/statements")
+            .set_json(&add_stmt_req)
+            .to_request();
         let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
 
         // Recalculate
@@ -1822,20 +2615,26 @@ mod tests {
         let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
 
         // min_score filter should exclude nodeB (0.0) and nodeC (<0)
-        let req = test::TestRequest::get().uri("/graph/json?min_score=0.1&max_links=5").to_request();
+        let req = test::TestRequest::get()
+            .uri("/graph/json?min_score=0.1&max_links=5")
+            .to_request();
         let graph_val: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         let graph: core_lib::models::GraphData = serde_json::from_value(graph_val).unwrap();
-        let ids: std::collections::HashSet<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+        let ids: std::collections::HashSet<String> =
+            graph.nodes.iter().map(|n| n.id.clone()).collect();
         assert!(ids.contains("nodeA"));
         assert!(!ids.contains("nodeB"));
         assert!(!ids.contains("nodeC"));
         assert!(graph.links.is_empty()); // no validator in set => no edges
 
         // depth=1 around top node should include nodeB but not nodeC
-        let req = test::TestRequest::get().uri("/graph/json?min_score=-1&depth=1").to_request();
+        let req = test::TestRequest::get()
+            .uri("/graph/json?min_score=-1&depth=1")
+            .to_request();
         let graph_val: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         let graph: core_lib::models::GraphData = serde_json::from_value(graph_val).unwrap();
-        let ids: std::collections::HashSet<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+        let ids: std::collections::HashSet<String> =
+            graph.nodes.iter().map(|n| n.id.clone()).collect();
         assert!(ids.contains("nodeA"));
         assert!(ids.contains("nodeB"));
         assert!(!ids.contains("nodeC"));
@@ -1854,43 +2653,71 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(actix_web::web::Data::new(conn_data.clone()))
-                .configure(crate::api::routes)
-        ).await;
+                .configure(crate::api::routes),
+        )
+        .await;
 
         // Create small dataset
         let add_event_req = serde_json::json!({"description":"E1","category_id":1,"vector":true});
-        let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
+        let req = test::TestRequest::post()
+            .uri("/events")
+            .set_json(&add_event_req)
+            .to_request();
         let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         let ev1 = resp.get("id").and_then(|v| v.as_i64()).unwrap();
         {
             let c = conn_data.lock().await;
-            c.execute("UPDATE truth_events SET public_key='nodeA' WHERE id=?1", rusqlite::params![ev1]).unwrap();
+            c.execute(
+                "UPDATE truth_events SET public_key='nodeA' WHERE id=?1",
+                rusqlite::params![ev1],
+            )
+            .unwrap();
         }
-        let add_stmt_req = serde_json::json!({"event_id":ev1,"text":"t","context":null,"truth_score":0.7});
-        let req = test::TestRequest::post().uri("/statements").set_json(&add_stmt_req).to_request();
+        let add_stmt_req =
+            serde_json::json!({"event_id":ev1,"text":"t","context":null,"truth_score":0.7});
+        let req = test::TestRequest::post()
+            .uri("/statements")
+            .set_json(&add_stmt_req)
+            .to_request();
         let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         {
             let c = conn_data.lock().await;
             let impact_id = core_lib::storage::add_impact(&c, ev1, 1, true, None).unwrap();
-            c.execute("UPDATE impact SET public_key='nodeB' WHERE id=?1", rusqlite::params![impact_id]).unwrap();
+            c.execute(
+                "UPDATE impact SET public_key='nodeB' WHERE id=?1",
+                rusqlite::params![impact_id],
+            )
+            .unwrap();
         }
 
         let req = test::TestRequest::post().uri("/recalc").to_request();
         let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
 
         // Get graph and summary with the same filters
-        let req = test::TestRequest::get().uri("/graph/json?min_score=-1&max_links=10&depth=1").to_request();
+        let req = test::TestRequest::get()
+            .uri("/graph/json?min_score=-1&max_links=10&depth=1")
+            .to_request();
         let graph_val: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         let graph: core_lib::models::GraphData = serde_json::from_value(graph_val).unwrap();
 
-        let req = test::TestRequest::get().uri("/graph/summary?min_score=-1&max_links=10&depth=1").to_request();
-        let summary: core_lib::models::GraphSummary = test::call_and_read_body_json(&app, req).await;
+        let req = test::TestRequest::get()
+            .uri("/graph/summary?min_score=-1&max_links=10&depth=1")
+            .to_request();
+        let summary: core_lib::models::GraphSummary =
+            test::call_and_read_body_json(&app, req).await;
 
         assert_eq!(summary.total_nodes, graph.nodes.len());
         assert_eq!(summary.total_links, graph.links.len());
-        let avg: f64 = if graph.nodes.is_empty() { 0.0 } else { graph.nodes.iter().map(|n| n.score as f64).sum::<f64>() / (graph.nodes.len() as f64) };
+        let avg: f64 = if graph.nodes.is_empty() {
+            0.0
+        } else {
+            graph.nodes.iter().map(|n| n.score as f64).sum::<f64>() / (graph.nodes.len() as f64)
+        };
         assert!((summary.avg_trust - avg).abs() < 1e-9);
-        assert_eq!(summary.top_nodes.len(), std::cmp::min(10, graph.nodes.len()));
+        assert_eq!(
+            summary.top_nodes.len(),
+            std::cmp::min(10, graph.nodes.len())
+        );
     }
 
     #[actix_web::test]
@@ -1906,8 +2733,9 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(actix_web::web::Data::new(conn_data.clone()))
-                .configure(crate::api::routes)
-        ).await;
+                .configure(crate::api::routes),
+        )
+        .await;
 
         // Add event
         let add_event_req = serde_json::json!({
@@ -1915,7 +2743,10 @@ mod tests {
             "category_id": 1,
             "vector": true
         });
-        let req = test::TestRequest::post().uri("/events").set_json(&add_event_req).to_request();
+        let req = test::TestRequest::post()
+            .uri("/events")
+            .set_json(&add_event_req)
+            .to_request();
         let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         let ev_id = resp.get("id").and_then(|v| v.as_i64()).unwrap();
 
@@ -1926,14 +2757,18 @@ mod tests {
         }
 
         // Call collective recalc endpoint
-        let req = test::TestRequest::post().uri("/api/v1/recalc_collective").to_request();
+        let req = test::TestRequest::post()
+            .uri("/api/v1/recalc_collective")
+            .to_request();
         let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         assert_eq!(resp.get("status").unwrap(), "ok");
 
         // Verify value persisted in DB
         {
             let c = conn_data.lock().await;
-            let ev = core_lib::storage::get_truth_event(&c, ev_id).unwrap().unwrap();
+            let ev = core_lib::storage::get_truth_event(&c, ev_id)
+                .unwrap()
+                .unwrap();
             assert!(ev.collective_score.is_some());
             assert!(ev.collective_score.unwrap() > 0.0);
         }
@@ -1946,13 +2781,19 @@ struct JudgmentPostRequest {
     assessment: String,
     confidence_level: f32,
     reasoning: Option<String>,
-    signature: String,   // base64
-    public_key: String,  // base64
+    signature: String,  // base64
+    public_key: String, // base64
 }
 
 #[post("/api/v1/judgments")]
-async fn api_v1_judgments_post(req: HttpRequest, pool: web::Data<DbPool>, payload: web::Json<JudgmentPostRequest>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+async fn api_v1_judgments_post(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    payload: web::Json<JudgmentPostRequest>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     let body = payload.into_inner();
     // Build canonical message to verify: assessment+confidence+reasoning+event_id JSON
     let msg = match serde_json::to_string(&serde_json::json!({
@@ -1960,12 +2801,22 @@ async fn api_v1_judgments_post(req: HttpRequest, pool: web::Data<DbPool>, payloa
         "assessment": body.assessment,
         "confidence_level": body.confidence_level,
         "reasoning": body.reasoning,
-    })) { Ok(s) => s, Err(_) => return HttpResponse::BadRequest().body("bad payload") };
+    })) {
+        Ok(s) => s,
+        Err(_) => return HttpResponse::BadRequest().body("bad payload"),
+    };
     // Convert base64 inputs to hex and verify
-    let pk_hex = match b64_to_hex(&body.public_key) { Ok(s) => s, Err(e) => return HttpResponse::BadRequest().body(e) };
-    let sig_hex = match b64_to_hex(&body.signature) { Ok(s) => s, Err(e) => return HttpResponse::BadRequest().body(e) };
+    let pk_hex = match b64_to_hex(&body.public_key) {
+        Ok(s) => s,
+        Err(e) => return HttpResponse::BadRequest().body(e),
+    };
+    let sig_hex = match b64_to_hex(&body.signature) {
+        Ok(s) => s,
+        Err(e) => return HttpResponse::BadRequest().body(e),
+    };
     if let Err(_e) = verify_signature(&pk_hex, &sig_hex, &msg) {
-        return HttpResponse::Unauthorized().json(serde_json::json!({"status":"error","reason":"invalid_signature"}));
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"status":"error","reason":"invalid_signature"}));
     }
     let poolc = pool.clone();
     let res = web::block(move || {
@@ -1975,7 +2826,8 @@ async fn api_v1_judgments_post(req: HttpRequest, pool: web::Data<DbPool>, payloa
         let j = core_lib::collective_intelligence::models::Judgment {
             id: uuid::Uuid::new_v4(),
             participant_id,
-            event_id: uuid::Uuid::parse_str(&msg_json::get_event_id(&msg)).unwrap_or_else(|_| uuid::Uuid::new_v4()),
+            event_id: uuid::Uuid::parse_str(&msg_json::get_event_id(&msg))
+                .unwrap_or_else(|_| uuid::Uuid::new_v4()),
             assessment: msg_json::get_assessment(&msg),
             confidence_level: msg_json::get_confidence(&msg),
             reasoning: msg_json::get_reasoning(&msg),
@@ -1986,7 +2838,8 @@ async fn api_v1_judgments_post(req: HttpRequest, pool: web::Data<DbPool>, payloa
         // Recalculate consensus
         let _c = core_lib::storage::ci_calculate_and_upsert_consensus(&conn, &j.event_id)?;
         Ok::<uuid::Uuid, core_lib::models::CoreError>(j.id)
-    }).await;
+    })
+    .await;
     match res {
         Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
         Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
@@ -1996,40 +2849,88 @@ async fn api_v1_judgments_post(req: HttpRequest, pool: web::Data<DbPool>, payloa
 
 mod msg_json {
     use serde_json::Value;
-    pub fn parse(msg: &str) -> Value { serde_json::from_str(msg).unwrap_or(serde_json::json!({})) }
-    pub fn get_event_id(msg: &str) -> String { parse(msg).get("event_id").and_then(|v| v.as_str()).unwrap_or("").to_string() }
-    pub fn get_assessment(msg: &str) -> String { parse(msg).get("assessment").and_then(|v| v.as_str()).unwrap_or("").to_string() }
-    pub fn get_confidence(msg: &str) -> f32 { parse(msg).get("confidence_level").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32 }
-    pub fn get_reasoning(msg: &str) -> Option<String> { parse(msg).get("reasoning").and_then(|v| v.as_str()).map(|s| s.to_string()) }
+    pub fn parse(msg: &str) -> Value {
+        serde_json::from_str(msg).unwrap_or(serde_json::json!({}))
+    }
+    pub fn get_event_id(msg: &str) -> String {
+        parse(msg)
+            .get("event_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string()
+    }
+    pub fn get_assessment(msg: &str) -> String {
+        parse(msg)
+            .get("assessment")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string()
+    }
+    pub fn get_confidence(msg: &str) -> f32 {
+        parse(msg)
+            .get("confidence_level")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0) as f32
+    }
+    pub fn get_reasoning(msg: &str) -> Option<String> {
+        parse(msg)
+            .get("reasoning")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+    }
 }
 
 #[get("/api/v1/judgments")]
-async fn api_v1_judgments_get(req: HttpRequest, pool: web::Data<DbPool>, q: web::Query<std::collections::HashMap<String, String>>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
-    let event_id = match q.get("event_id").cloned() { Some(v) => v, None => return HttpResponse::BadRequest().body("event_id required") };
+async fn api_v1_judgments_get(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let event_id = match q.get("event_id").cloned() {
+        Some(v) => v,
+        None => return HttpResponse::BadRequest().body("event_id required"),
+    };
     let poolc = pool.clone();
     let res = web::block(move || {
         let conn = poolc.blocking_lock();
-        let ev = uuid::Uuid::parse_str(&event_id).map_err(|_| core_lib::models::CoreError::InvalidArg("bad event_id".into()))?;
+        let ev = uuid::Uuid::parse_str(&event_id)
+            .map_err(|_| core_lib::models::CoreError::InvalidArg("bad event_id".into()))?;
         let js = core_lib::storage::ci_get_judgments_by_event(&conn, &ev)?;
-        Ok::<Vec<core_lib::collective_intelligence::models::Judgment>, core_lib::models::CoreError>(js)
-    }).await;
+        Ok::<Vec<core_lib::collective_intelligence::models::Judgment>, core_lib::models::CoreError>(
+            js,
+        )
+    })
+    .await;
     match res {
-        Ok(Ok(list)) => HttpResponse::Ok().json(serde_json::json!({"judgments": list, "total_count": list.len()})),
+        Ok(Ok(list)) => HttpResponse::Ok()
+            .json(serde_json::json!({"judgments": list, "total_count": list.len()})),
         Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
 
 #[get("/api/v1/consensus/{event_id}")]
-async fn api_v1_consensus_get(req: HttpRequest, pool: web::Data<DbPool>, path: web::Path<String>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
-    let event_id = match uuid::Uuid::parse_str(&path.into_inner()) { Ok(v) => v, Err(_) => return HttpResponse::BadRequest().finish() };
+async fn api_v1_consensus_get(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    path: web::Path<String>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let event_id = match uuid::Uuid::parse_str(&path.into_inner()) {
+        Ok(v) => v,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
     let poolc = pool.clone();
     let res = web::block(move || {
         let conn = poolc.blocking_lock();
         core_lib::storage::ci_get_consensus_by_event(&conn, &event_id)
-    }).await;
+    })
+    .await;
     match res {
         Ok(Ok(Some(c))) => HttpResponse::Ok().json(c),
         Ok(Ok(None)) => HttpResponse::NotFound().finish(),
@@ -2039,14 +2940,24 @@ async fn api_v1_consensus_get(req: HttpRequest, pool: web::Data<DbPool>, path: w
 }
 
 #[post("/api/v1/consensus/{event_id}/calculate")]
-async fn api_v1_consensus_calculate(req: HttpRequest, pool: web::Data<DbPool>, path: web::Path<String>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
-    let event_id = match uuid::Uuid::parse_str(&path.into_inner()) { Ok(v) => v, Err(_) => return HttpResponse::BadRequest().finish() };
+async fn api_v1_consensus_calculate(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    path: web::Path<String>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let event_id = match uuid::Uuid::parse_str(&path.into_inner()) {
+        Ok(v) => v,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
     let poolc = pool.clone();
     let res = web::block(move || {
         let conn = poolc.blocking_lock();
         core_lib::storage::ci_calculate_and_upsert_consensus(&conn, &event_id)
-    }).await;
+    })
+    .await;
     match res {
         Ok(Ok(c)) => HttpResponse::Ok().json(c),
         Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
@@ -2055,15 +2966,22 @@ async fn api_v1_consensus_calculate(req: HttpRequest, pool: web::Data<DbPool>, p
 }
 
 #[get("/api/v1/reputation/{participant_id}")]
-async fn api_v1_reputation_get(req: HttpRequest, pool: web::Data<DbPool>, path: web::Path<String>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+async fn api_v1_reputation_get(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    path: web::Path<String>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     let pid = path.into_inner();
     let poolc = pool.clone();
     let pid_out = pid.clone();
     let res = web::block(move || {
         let conn = poolc.blocking_lock();
         core_lib::storage::ci_get_reputation_by_participant(&conn, &pid)
-    }).await;
+    })
+    .await;
     match res {
         Ok(Ok(Some(v))) => HttpResponse::Ok().json(serde_json::json!({"participant_id": pid_out, "reputation_score": v["reputation_score"], "total_judgments": v["total_judgments"], "accurate_judgments": v["accurate_judgments"], "last_activity": v["last_activity"]})),
         Ok(Ok(None)) => HttpResponse::NotFound().finish(),
@@ -2073,17 +2991,28 @@ async fn api_v1_reputation_get(req: HttpRequest, pool: web::Data<DbPool>, path: 
 }
 
 #[get("/api/v1/reputation/leaderboard")]
-async fn api_v1_reputation_leaderboard(req: HttpRequest, pool: web::Data<DbPool>, q: web::Query<std::collections::HashMap<String, String>>) -> impl Responder {
-    if let Err(resp) = require_jwt(req).await.map(|_| ()) { return resp; }
+async fn api_v1_reputation_leaderboard(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
     let limit: i64 = q.get("limit").and_then(|v| v.parse().ok()).unwrap_or(10);
-    let min_j: i64 = q.get("min_judgments").and_then(|v| v.parse().ok()).unwrap_or(0);
+    let min_j: i64 = q
+        .get("min_judgments")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
     let poolc = pool.clone();
     let res = web::block(move || {
         let conn = poolc.blocking_lock();
         core_lib::storage::ci_get_reputation_leaderboard(&conn, min_j, limit)
-    }).await;
+    })
+    .await;
     match res {
-        Ok(Ok(lb)) => HttpResponse::Ok().json(serde_json::json!({"leaderboard": lb, "total_participants": lb.len()})),
+        Ok(Ok(lb)) => HttpResponse::Ok()
+            .json(serde_json::json!({"leaderboard": lb, "total_participants": lb.len()})),
         Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }

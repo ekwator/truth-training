@@ -26,7 +26,13 @@ pub async fn list_logs(page: u32, db: State<'_, Db>) -> Result<LogsPage, String>
     Ok(LogsPage {
         items: rows
             .into_iter()
-            .map(|(id, timestamp, source, level, message)| LogItem { id, timestamp, source, level, message })
+            .map(|(id, timestamp, source, level, message)| LogItem {
+                id,
+                timestamp,
+                source,
+                level,
+                message,
+            })
             .collect(),
         page,
         total,
@@ -37,5 +43,3 @@ pub async fn list_logs(page: u32, db: State<'_, Db>) -> Result<LogsPage, String>
 pub async fn clear_logs(db: State<'_, Db>) -> Result<(), String> {
     db.clear_logs()
 }
-
-

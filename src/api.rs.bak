@@ -1,0 +1,2558 @@
+use crate::p2p::encryption::CryptoIdentity;
+use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
+
+use crate::p2p::node::Node;
+use crate::p2p::sync::get_relay_stats;
+use crate::p2p::sync::SyncData;
+use base64::{engine::general_purpose, Engine as _};
+use chrono::Utc;
+use core_lib::models::{GraphData, GraphSummary, Impact, NewContext, NewStatement, RbacUser};
+use core_lib::models::{PeerHistoryEntry, PeerSummary};
+use core_lib::storage;
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use once_cell::sync::Lazy;
+use std::fmt;
+use utoipa::{OpenApi, ToSchema};
+// rusqlite::OptionalExtension is used in storage functions // for query_row(...).optional()
+
+type DbPool = Arc<Mutex<rusqlite::Connection>>;
+
+/// Параметры HTTP-сервера, необходимые для служебных эндпоинтов
+#[derive(Clone)]
+pub struct AppInfo {
+    pub db_path: String,
+    pub p2p_enabled: bool,
+    pub http_port: u16,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct NodeInfo {
+    pub node_name: String,
+    pub version: String,
+    pub p2p_enabled: bool,
+    pub db_path: String,
+    pub peer_count: i32,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct NodeStats {
+    pub events: i32,
+    pub statements: i32,
+    pub impacts: i32,
+    pub node_ratings: i32,
+    pub group_ratings: i32,
+    pub avg_trust_score: f32,
+    pub avg_propagation_priority: f32,
+    pub avg_relay_success_rate: f32,
+    pub avg_quality_index: f32,
+    pub active_nodes: i32,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/info",
+    responses(
+        (status = 200, description = "Информация об узле", body = NodeInfo)
+    )
+)]
+#[get("/api/v1/info")]
+async fn api_v1_info(node: web::Data<Node>, meta: web::Data<AppInfo>) -> impl Responder {
+    // Имя узла формируем из публичного ключа (короткий вид)
+    let pub_hex = node.crypto.public_key_hex();
+    let short = pub_hex.get(0..8).unwrap_or("");
+    let node_name = format!("node-{}", short);
+
+    let version = env!("CARGO_PKG_VERSION").to_string();
+    let peer_count = node.peers.len() as i32;
+
+    let info = NodeInfo {
+        node_name,
+        version,
+        p2p_enabled: meta.p2p_enabled,
+        db_path: meta.db_path.clone(),
+        peer_count,
+    };
+    HttpResponse::Ok().json(info)
+}
+
+#[derive(Deserialize)]
+struct NearbyStartRequest {
+    interval_ms: Option<u64>,
+}
+
+#[post("/api/v1/nearby_sync/start")]
+async fn api_v1_nearby_start(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    meta: web::Data<AppInfo>,
+    handle: web::Data<Arc<RwLock<Option<JoinHandle<()>>>>>,
+    identity: web::Data<Arc<CryptoIdentity>>,
+    body: web::Json<NearbyStartRequest>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let interval = body.interval_ms.unwrap_or(3000).clamp(500, 60_000);
+    start_nearby_task(
+        handle.get_ref(),
+        pool.get_ref(),
+        identity.get_ref(),
+        meta.http_port,
+        interval,
+    )
+    .await;
+    HttpResponse::Ok().json(serde_json::json!({"status":"started","interval_ms": interval}))
+}
+
+#[post("/api/v1/nearby_sync/stop")]
+async fn api_v1_nearby_stop(
+    req: HttpRequest,
+    handle: web::Data<Arc<RwLock<Option<JoinHandle<()>>>>>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    stop_nearby_task(handle.get_ref()).await;
+    HttpResponse::Ok().json(serde_json::json!({"status":"stopped"}))
+}
+
+#[derive(Serialize, Deserialize)]
+struct ServerAppConfig {
+    nearby_sync: bool,
+    nearby_interval_ms: u64,
+}
+
+#[get("/api/v1/config")]
+async fn api_v1_get_config(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        let (enabled, interval) = core_lib::storage::load_app_config(&conn)?;
+        Ok::<ServerAppConfig, core_lib::models::CoreError>(ServerAppConfig {
+            nearby_sync: enabled,
+            nearby_interval_ms: interval,
+        })
+    })
+    .await;
+    match result {
+        Ok(Ok(cfg)) => HttpResponse::Ok().json(cfg),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+#[post("/api/v1/config")]
+async fn api_v1_set_config(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    meta: web::Data<AppInfo>,
+    handle: web::Data<Arc<RwLock<Option<JoinHandle<()>>>>>,
+    identity: web::Data<Arc<CryptoIdentity>>,
+    body: web::Json<ServerAppConfig>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let enabled = body.nearby_sync;
+    let interval = body.nearby_interval_ms.clamp(500, 60_000);
+    // Persist
+    let poolc = pool.clone();
+    let persist = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::save_app_config(&conn, enabled, interval)
+    })
+    .await;
+    if persist.is_err() {
+        return HttpResponse::InternalServerError().finish();
+    }
+    // Apply runtime
+    if enabled {
+        start_nearby_task(
+            handle.get_ref(),
+            pool.get_ref(),
+            identity.get_ref(),
+            meta.http_port,
+            interval,
+        )
+        .await;
+    } else {
+        stop_nearby_task(handle.get_ref()).await;
+    }
+    HttpResponse::Ok().json(
+        serde_json::json!({"status":"ok","nearby_sync": enabled, "nearby_interval_ms": interval}),
+    )
+}
+
+#[allow(unused_variables)]
+async fn start_nearby_task(
+    handle: &Arc<RwLock<Option<JoinHandle<()>>>>,
+    pool: &Arc<Mutex<rusqlite::Connection>>,
+    identity: &Arc<CryptoIdentity>,
+    http_port: u16,
+    interval_ms: u64,
+) {
+    let mut guard = handle.write().await;
+    if let Some(h) = guard.take() {
+        h.abort();
+    }
+    let conn = pool.clone();
+    let id = identity.clone();
+    let task = tokio::spawn(async move {
+        #[cfg(any(test, feature = "p2p-client-sync"))]
+        crate::p2p::wifi_direct::start_nearby_sync(conn, id, http_port, interval_ms).await;
+    });
+    *guard = Some(task);
+}
+
+async fn stop_nearby_task(handle: &Arc<RwLock<Option<JoinHandle<()>>>>) {
+    let mut guard = handle.write().await;
+    if let Some(h) = guard.take() {
+        h.abort();
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/stats",
+    responses(
+        (status = 200, description = "Агрегированная статистика по БД", body = NodeStats)
+    )
+)]
+#[get("/api/v1/stats")]
+async fn api_v1_stats(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        let events = core_lib::storage::load_truth_events(&conn)?.len() as i32;
+        let statements = core_lib::storage::load_statements(&conn)?.len() as i32;
+        let impacts = core_lib::storage::load_impacts(&conn)?.len() as i32;
+        let node_rs = core_lib::storage::load_node_ratings(&conn)?;
+        let group_rs = core_lib::storage::load_group_ratings(&conn)?;
+        let node_ratings = node_rs.len() as i32;
+        let group_ratings = group_rs.len() as i32;
+        let avg_trust_score: f32 = if node_rs.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = node_rs.iter().map(|r| r.trust_score as f64).sum();
+            (sum / (node_rs.len() as f64)) as f32
+        };
+
+        let avg_propagation_priority: f32 = if node_rs.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = node_rs.iter().map(|r| r.propagation_priority as f64).sum();
+            (sum / (node_rs.len() as f64)) as f32
+        };
+
+        // Загружаем метрики узлов
+        let node_metrics = core_lib::storage::load_all_node_metrics(&conn)?;
+        let avg_relay_success_rate: f32 = if node_metrics.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = node_metrics
+                .iter()
+                .map(|m| m.relay_success_rate as f64)
+                .sum();
+            (sum / (node_metrics.len() as f64)) as f32
+        };
+        let avg_quality_index: f32 = if node_metrics.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = node_metrics.iter().map(|m| m.quality_index as f64).sum();
+            (sum / (node_metrics.len() as f64)) as f32
+        };
+        // Средний приоритет распространения по node_metrics (для валидации и будущего использования)
+        let _avg_priority_metrics: f32 = if node_metrics.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = node_metrics
+                .iter()
+                .map(|m| m.propagation_priority as f64)
+                .sum();
+            (sum / (node_metrics.len() as f64)) as f32
+        };
+
+        let active_nodes = node_metrics.len() as i32;
+
+        Ok::<NodeStats, core_lib::models::CoreError>(NodeStats {
+            events,
+            statements,
+            impacts,
+            node_ratings,
+            group_ratings,
+            avg_trust_score,
+            avg_propagation_priority,
+            avg_relay_success_rate,
+            avg_quality_index,
+            active_nodes,
+        })
+    })
+    .await;
+
+    match result {
+        Ok(Ok(st)) => HttpResponse::Ok().json(st),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// OpenAPI спецификация для Swagger UI
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        api_v1_info,
+        api_v1_stats,
+        api_v1_users_list,
+        api_v1_users_role,
+        api_v1_trust_delegate,
+        api_v1_peers_priorities,
+        api_v1_network_local
+    ),
+    components(schemas(NodeInfo, NodeStats, RbacUser, Claims)),
+    tags((name = "Truth API", description = "HTTP API для мобильной интеграции"))
+)]
+pub struct ApiDoc;
+
+// ===================== JWT structures =====================
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+struct Claims {
+    sub: String, // public key hex
+    exp: usize,
+    iat: usize,
+    role: String,
+    trust_score: f32,
+}
+
+static JWT_SECRET: Lazy<String> = Lazy::new(|| {
+    std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string())
+});
+
+fn jwt_encoding_key() -> EncodingKey {
+    EncodingKey::from_secret(JWT_SECRET.as_bytes())
+}
+
+fn jwt_decoding_key() -> DecodingKey {
+    DecodingKey::from_secret(JWT_SECRET.as_bytes())
+}
+
+pub fn issue_jwt_pair_with(
+    conn: &rusqlite::Connection,
+    public_key_hex: &str,
+) -> anyhow::Result<(String, String, i64)> {
+    use chrono::Utc;
+    let now = Utc::now().timestamp() as usize;
+    let exp_access = (Utc::now() + chrono::Duration::hours(1)).timestamp() as usize;
+    // lookup role and trust in users table (fallbacks)
+    let (role, trust_score): (String, f32) = {
+        if let Ok(mut stmt) = conn.prepare("SELECT role, trust_score FROM users WHERE pubkey=?1") {
+            match stmt.query_row([public_key_hex], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)? as f32))
+            }) {
+                Ok((role, ts)) => (role, ts),
+                Err(_) => ("observer".to_string(), 0.0),
+            }
+        } else {
+            ("observer".to_string(), 0.0)
+        }
+    };
+    let claims = Claims {
+        sub: public_key_hex.to_string(),
+        exp: exp_access,
+        iat: now,
+        role,
+        trust_score,
+    };
+    let header = Header::new(Algorithm::HS256);
+    let access = encode(&header, &claims, &jwt_encoding_key())?;
+    // refresh token как случайная строка (32 байта hex)
+    let mut rng = rand::rngs::OsRng;
+    use rand::RngCore;
+    let mut buf = [0u8; 32];
+    rng.fill_bytes(&mut buf);
+    let refresh = hex::encode(buf);
+    let exp_refresh = (Utc::now() + chrono::Duration::hours(24)).timestamp();
+    Ok((access, refresh, exp_refresh))
+}
+
+fn verify_jwt(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+    let validation = Validation::new(Algorithm::HS256);
+    decode::<Claims>(token, &jwt_decoding_key(), &validation).map(|d| d.claims)
+}
+
+// ===== RBAC helpers =====
+fn role_level(role: &str) -> i32 {
+    match role {
+        "admin" => 3,
+        "node" => 2,
+        _ => 1,
+    }
+}
+
+async fn require_role(req: HttpRequest, min_role: &str) -> Result<Claims, HttpResponse> {
+    let Some(token) = extract_bearer(&req) else {
+        return Err(unauthorized_json());
+    };
+    let claims = match verify_jwt(&token) {
+        Ok(c) => c,
+        Err(_) => return Err(unauthorized_json()),
+    };
+    if role_level(&claims.role) < role_level(min_role) {
+        return Err(
+            HttpResponse::Forbidden().json(serde_json::json!({"error":"forbidden","code":403}))
+        );
+    }
+    Ok(claims)
+}
+
+/// Проверяет подпись сообщения, полученную от другого узла
+#[derive(Debug)]
+pub enum VerifyError {
+    PublicKeyHex(hex::FromHexError),
+    PublicKeyLength(usize),
+    PublicKeyParse(String),
+    SignatureHex(hex::FromHexError),
+    SignatureParse(String),
+    VerificationFailed(String),
+}
+
+impl fmt::Display for VerifyError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VerifyError::PublicKeyHex(e) => write!(f, "public key hex decode error: {}", e),
+            VerifyError::PublicKeyLength(len) => {
+                write!(f, "public key has invalid length: {}", len)
+            }
+            VerifyError::PublicKeyParse(s) => write!(f, "public key parse error: {}", s),
+            VerifyError::SignatureHex(e) => write!(f, "signature hex decode error: {}", e),
+            VerifyError::SignatureParse(s) => write!(f, "signature parse error: {}", s),
+            VerifyError::VerificationFailed(s) => write!(f, "verification failed: {}", s),
+        }
+    }
+}
+
+impl std::error::Error for VerifyError {}
+
+/// Проверяет подпись и возвращает Ok(()) при успехе, или Err(VerifyError) при любой ошибке.
+pub fn verify_signature(
+    public_key_hex: &str,
+    signature_hex: &str,
+    message: &str,
+) -> Result<(), VerifyError> {
+    // Создаем CryptoIdentity из публичного ключа
+    let identity = CryptoIdentity::from_public_key_hex(public_key_hex)?;
+
+    // Проверяем подпись используя метод CryptoIdentity
+    identity.verify_from_hex(message.as_bytes(), signature_hex)
+}
+
+/// Health
+#[get("/health")]
+async fn health() -> impl Responder {
+    HttpResponse::Ok().body("OK")
+}
+
+/// GET /statements
+#[get("/statements")]
+async fn get_statements(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        storage::load_statements(&_conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(statements)) => HttpResponse::Ok().json(statements),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[derive(Deserialize)]
+struct AddStatementRequest {
+    event_id: i64,
+    text: String,
+    context: Option<String>,
+    truth_score: Option<f32>,
+}
+
+/// POST /statements
+#[post("/statements")]
+async fn add_statement(
+    pool: web::Data<DbPool>,
+    payload: web::Json<AddStatementRequest>,
+) -> impl Responder {
+    let pool = pool.clone();
+    let req = payload.into_inner();
+
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        let new_statement = NewStatement {
+            event_id: req.event_id,
+            text: req.text,
+            context: req.context,
+            truth_score: req.truth_score,
+        };
+        storage::add_statement(&_conn, new_statement)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /events
+#[get("/events")]
+async fn get_events(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    let public_key = req
+        .headers()
+        .get("X-Public-Key")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let signature = req
+        .headers()
+        .get("X-Signature")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    // Важное замечание: message должен быть **тем же самым** строковым payload,
+    // который подписывает отправитель. Надёжнее — чтобы отправитель включал
+    // отдельный заголовок X-Timestamp или X-Nonce и подписывал canonical payload.
+    let message = format!("sync_request:{}", Utc::now().timestamp());
+
+    // Используем Result: если ошибка — вернём 401 + причину (или generic)
+    match verify_signature(public_key, signature, &message) {
+        Ok(()) => {
+            // подпись валидна — возвращаем события из БД
+            let pool = pool.clone();
+            let result = web::block(move || {
+                let _conn = pool.blocking_lock();
+                storage::load_truth_events(&_conn)
+            })
+            .await;
+
+            match result {
+                Ok(Ok(list)) => HttpResponse::Ok().json(list),
+                Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+                Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            }
+        }
+        Err(err) => {
+            // Можно не отдавать подробности в проде (логировать), но во время разработки
+            // удобно видеть причину.
+            log::warn!("Signature verification failed: {}", err);
+            HttpResponse::Unauthorized().body(format!("Invalid signature: {}", err))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AddEventRequest {
+    description: String,
+    category_id: Option<i64>,
+    forma_id: Option<i64>,
+    cause_id: Option<i64>,
+    develop_id: Option<i64>,
+    effect_id: Option<i64>,
+    vector: bool,
+}
+
+/// POST /events
+#[post("/events")]
+async fn add_event(pool: web::Data<DbPool>, payload: web::Json<AddEventRequest>) -> impl Responder {
+    let pool = pool.clone();
+    let req = payload.into_inner();
+
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        
+        // Validate FK references
+        if let Err(e) = storage::validate_foreign_key(&conn, "category", req.category_id) {
+            return Err(e);
+        }
+        if let Err(e) = storage::validate_foreign_key(&conn, "forma", req.forma_id) {
+            return Err(e);
+        }
+        if let Err(e) = storage::validate_foreign_key(&conn, "cause", req.cause_id) {
+            return Err(e);
+        }
+        if let Err(e) = storage::validate_foreign_key(&conn, "develop", req.develop_id) {
+            return Err(e);
+        }
+        if let Err(e) = storage::validate_foreign_key(&conn, "effect", req.effect_id) {
+            return Err(e);
+        }
+
+        let new_event = core_lib::models::NewTruthEvent {
+            description: req.description,
+            category_id: req.category_id,
+            forma_id: req.forma_id,
+            cause_id: req.cause_id,
+            develop_id: req.develop_id,
+            effect_id: req.effect_id,
+            vector: req.vector,
+            timestamp_start: chrono::Utc::now().timestamp(),
+            code: 1, // Default code for new events
+        };
+        let id = storage::add_truth_event(&conn, new_event);
+        if let Ok(ref eid) = id { 
+            log::info!("event_created id={} category_id={:?} forma_id={:?} cause_id={:?} develop_id={:?} effect_id={:?} vector={}", 
+                eid, req.category_id, req.forma_id, req.cause_id, req.develop_id, req.effect_id, req.vector); 
+        }
+        id
+    })
+    .await;
+
+    match result {
+        Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
+        Ok(Err(e)) => {
+            // Check if it's a validation error (should return 400)
+            if e.to_string().contains("Foreign key") || e.to_string().contains("does not exist") {
+                HttpResponse::BadRequest().body(e.to_string())
+            } else {
+                HttpResponse::InternalServerError().body(e.to_string())
+            }
+        }
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /impacts
+#[post("/impacts")]
+async fn add_impact(pool: web::Data<DbPool>, payload: web::Json<Impact>) -> impl Responder {
+    let pool = pool.clone();
+    let im = payload.into_inner();
+    let im_copy = im.clone();
+
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        storage::add_impact(
+            &_conn,
+            im_copy.event_id,
+            im_copy.type_id,
+            im_copy.value,
+            im_copy.notes,
+        )
+    })
+    .await;
+
+    match result {
+        Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/* =========================
+Context Template Endpoints
+========================= */
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CreateContextRequest {
+    name: String,
+    category_id: Option<i64>,
+    forma_id: Option<i64>,
+    cause_id: Option<i64>,
+    develop_id: Option<i64>,
+    effect_id: Option<i64>,
+    description: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MatchContextRequest {
+    category_id: Option<i64>,
+    forma_id: Option<i64>,
+    cause_id: Option<i64>,
+    develop_id: Option<i64>,
+    effect_id: Option<i64>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CreateContextFromEventRequest {
+    name: String,
+    event_id: i64,
+    description: Option<String>,
+}
+
+/// GET /contexts - List all context templates
+#[get("/contexts")]
+async fn list_contexts(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        storage::get_all_contexts(&conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(contexts)) => HttpResponse::Ok().json(serde_json::json!({
+            "data": contexts,
+            "total": contexts.len() as i64
+        })),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /contexts - Create a new context template
+#[post("/contexts")]
+async fn create_context(
+    pool: web::Data<DbPool>,
+    payload: web::Json<CreateContextRequest>,
+) -> impl Responder {
+    let pool_clone = pool.clone();
+    let pool_for_fetch = pool.clone();
+    let req = payload.into_inner();
+
+    let result = web::block(move || {
+        let conn = pool_clone.blocking_lock();
+
+        let new_ctx = NewContext {
+            name: req.name,
+            category_id: req.category_id,
+            forma_id: req.forma_id,
+            cause_id: req.cause_id,
+            develop_id: req.develop_id,
+            effect_id: req.effect_id,
+            description: req.description,
+        };
+
+        storage::add_context(&conn, new_ctx)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(id)) => {
+            // Fetch the created template to return it
+            let fetch_result = web::block(move || {
+                let conn = pool_for_fetch.blocking_lock();
+                let contexts = storage::get_all_contexts(&conn)?;
+                contexts.into_iter().find(|c| c.id == id).ok_or_else(|| {
+                    core_lib::CoreError::NotFound(format!("Created template {} not found", id))
+                })
+            })
+            .await;
+
+            match fetch_result {
+                Ok(Ok(template)) => HttpResponse::Ok().json(template),
+                _ => HttpResponse::Ok().json(serde_json::json!({"id": id})),
+            }
+        }
+        Ok(Err(e)) => {
+            let err_str = e.to_string();
+            if err_str.contains("already exists") || err_str.contains("duplicate") {
+                HttpResponse::Conflict().body(err_str)
+            } else if err_str.contains("Foreign key") || err_str.contains("does not exist") {
+                HttpResponse::BadRequest().body(err_str)
+            } else {
+                HttpResponse::BadRequest().body(err_str)
+            }
+        }
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /contexts/by-name/{name} - Get context template by name
+#[get("/contexts/by-name/{name}")]
+async fn get_context_by_name(pool: web::Data<DbPool>, path: web::Path<String>) -> impl Responder {
+    let pool = pool.clone();
+    let name = path.into_inner();
+
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        storage::get_context_by_name(&conn, &name)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(Some(context))) => HttpResponse::Ok().json(context),
+        Ok(Ok(None)) => HttpResponse::NotFound().body("Template not found"),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /contexts/match - Match event fields to a context template
+#[post("/contexts/match")]
+async fn match_context(
+    pool: web::Data<DbPool>,
+    payload: web::Json<MatchContextRequest>,
+) -> impl Responder {
+    let pool = pool.clone();
+    let req = payload.into_inner();
+
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        storage::match_context_template(
+            &conn,
+            req.category_id,
+            req.forma_id,
+            req.cause_id,
+            req.develop_id,
+            req.effect_id,
+        )
+    })
+    .await;
+
+    match result {
+        Ok(Ok(Some(template))) => HttpResponse::Ok().json(serde_json::json!({
+            "matched": true,
+            "template": template
+        })),
+        Ok(Ok(None)) => HttpResponse::Ok().json(serde_json::json!({
+            "matched": false,
+            "template": null
+        })),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /contexts/from-event - Create context template from event fields
+#[post("/contexts/from-event")]
+async fn create_context_from_event(
+    pool: web::Data<DbPool>,
+    payload: web::Json<CreateContextFromEventRequest>,
+) -> impl Responder {
+    let pool_clone = pool.clone();
+    let pool_for_fetch = pool.clone();
+    let req = payload.into_inner();
+
+    let result = web::block(move || {
+        let conn = pool_clone.blocking_lock();
+
+        // Fetch event to get embedded fields
+        let event = storage::get_truth_event(&conn, req.event_id)?;
+        let event = event.ok_or_else(|| {
+            core_lib::CoreError::NotFound(format!("Event {} not found", req.event_id))
+        })?;
+
+        let new_ctx = NewContext {
+            name: req.name,
+            category_id: event.category_id,
+            forma_id: event.forma_id,
+            cause_id: event.cause_id,
+            develop_id: event.develop_id,
+            effect_id: event.effect_id,
+            description: req.description,
+        };
+
+        storage::add_context(&conn, new_ctx)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(id)) => {
+            // Fetch the created template to return it
+            let fetch_result = web::block(move || {
+                let conn = pool_for_fetch.blocking_lock();
+                let contexts = storage::get_all_contexts(&conn)?;
+                contexts.into_iter().find(|c| c.id == id).ok_or_else(|| {
+                    core_lib::CoreError::NotFound(format!("Created template {} not found", id))
+                })
+            })
+            .await;
+
+            match fetch_result {
+                Ok(Ok(template)) => HttpResponse::Ok().json(template),
+                _ => HttpResponse::Ok().json(serde_json::json!({"id": id})),
+            }
+        }
+        Ok(Err(e)) => {
+            let err_str = e.to_string();
+            if err_str.contains("not found") {
+                HttpResponse::NotFound().body(err_str)
+            } else if err_str.contains("already exists") || err_str.contains("duplicate") {
+                HttpResponse::Conflict().body(err_str)
+            } else if err_str.contains("Foreign key") || err_str.contains("does not exist") {
+                HttpResponse::BadRequest().body(err_str)
+            } else {
+                HttpResponse::BadRequest().body(err_str)
+            }
+        }
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /init - Инициализация базы данных
+#[post("/init")]
+async fn init_db(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        storage::init_db(&_conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status": "initialized"})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[derive(Deserialize)]
+struct SeedRequest {
+    locale: Option<String>,
+}
+
+/// POST /seed - Загрузка исходных данных
+#[post("/seed")]
+async fn seed_db(pool: web::Data<DbPool>, payload: web::Json<SeedRequest>) -> impl Responder {
+    let pool = pool.clone();
+    let locale = payload.locale.clone().unwrap_or_else(|| "ru".to_string());
+    let locale_for_response = locale.clone();
+
+    let result = web::block(move || {
+        let mut _conn = pool.blocking_lock();
+        storage::seed_knowledge_base(&mut _conn, &locale)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok()
+            .json(serde_json::json!({"status": "seeded", "locale": locale_for_response})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /detect - Анализ несоответствий (отметка события как обнаруженного)
+#[post("/detect")]
+async fn detect_event(
+    pool: web::Data<DbPool>,
+    payload: web::Json<serde_json::Value>,
+) -> impl Responder {
+    let pool = pool.clone();
+    let event_id = payload
+        .get("event_id")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0);
+    let detected = payload
+        .get("detected")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let corrected = payload
+        .get("corrected")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        storage::set_event_detected(&_conn, event_id, detected, None, corrected)
+            .and_then(|_| core_lib::storage::recalc_ratings(&_conn, chrono::Utc::now().timestamp()))
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => {
+            HttpResponse::Ok().json(serde_json::json!({"status": "detected", "event_id": event_id}))
+        }
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /recalc - Пересчет связей (метрики прогресса)
+#[post("/recalc")]
+async fn recalc_metrics(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        let ts = chrono::Utc::now().timestamp();
+        let metric_id = storage::recalc_progress_metrics(&_conn, ts)?;
+        core_lib::storage::recalc_ratings(&_conn, ts)?;
+        Ok::<i64, core_lib::models::CoreError>(metric_id)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(metric_id)) => HttpResponse::Ok()
+            .json(serde_json::json!({"status": "recalculated", "metric_id": metric_id})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /get_data - Получение всех данных
+#[get("/get_data")]
+async fn get_all_data(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        let events = storage::load_truth_events(&_conn)?;
+        let impacts = storage::load_impacts(&_conn)?;
+        let metrics = storage::load_metrics(&_conn)?;
+        Ok::<
+            (
+                Vec<core_lib::models::TruthEvent>,
+                Vec<core_lib::models::Impact>,
+                Vec<core_lib::models::ProgressMetrics>,
+            ),
+            core_lib::models::CoreError,
+        >((events, impacts, metrics))
+    })
+    .await;
+
+    match result {
+        Ok(Ok((events, impacts, metrics))) => HttpResponse::Ok().json(serde_json::json!({
+            "events": events,
+            "impacts": impacts,
+            "metrics": metrics
+        })),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /progress - Получение метрик прогресса
+#[get("/progress")]
+async fn get_progress(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        storage::load_metrics(&_conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(metrics)) => HttpResponse::Ok().json(metrics),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// POST /sync - Двунаправленная синхронизация данных
+#[post("/sync")]
+async fn sync_data(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    payload: web::Json<SyncData>,
+) -> impl Responder {
+    let public_key = req
+        .headers()
+        .get("X-Public-Key")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let signature = req
+        .headers()
+        .get("X-Signature")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    // Require caller to provide timestamp header used for signature
+    let ts_hdr = req
+        .headers()
+        .get("X-Timestamp")
+        .and_then(|v| v.to_str().ok());
+    let ratings_hash_hdr = req
+        .headers()
+        .get("X-Ratings-Hash")
+        .and_then(|v| v.to_str().ok());
+    let message = match ts_hdr {
+        Some(ts) => match ratings_hash_hdr {
+            Some(h) if !h.is_empty() => format!("sync_push:{}:{}", ts, h),
+            _ => format!("sync_push:{}", ts),
+        },
+        None => return HttpResponse::BadRequest().body("Missing X-Timestamp"),
+    };
+
+    match verify_signature(public_key, signature, &message) {
+        Ok(()) => {
+            let pool = pool.clone();
+            let received_data = payload.into_inner();
+
+            let result = web::block(move || {
+                let _conn = pool.blocking_lock();
+                // Reconcile into local DB and log
+                crate::p2p::sync::reconcile(&_conn, &received_data)
+                    .map_err(|e| core_lib::models::CoreError::InvalidArg(e.to_string()))
+            })
+            .await;
+
+            match result {
+                Ok(Ok(sync_result)) => HttpResponse::Ok().json(sync_result),
+                Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+                Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            }
+        }
+        Err(err) => {
+            log::warn!("Sync signature verification failed: {}", err);
+            HttpResponse::Unauthorized().body(format!("Invalid signature: {}", err))
+        }
+    }
+}
+
+/// POST /incremental_sync - Инкрементальная синхронизация
+#[post("/incremental_sync")]
+async fn incremental_sync(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    payload: web::Json<SyncData>,
+) -> impl Responder {
+    let public_key = req
+        .headers()
+        .get("X-Public-Key")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let signature = req
+        .headers()
+        .get("X-Signature")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let ts_hdr = req
+        .headers()
+        .get("X-Timestamp")
+        .and_then(|v| v.to_str().ok());
+    let ratings_hash_hdr = req
+        .headers()
+        .get("X-Ratings-Hash")
+        .and_then(|v| v.to_str().ok());
+    let message = match ts_hdr {
+        Some(ts) => match ratings_hash_hdr {
+            Some(h) if !h.is_empty() => format!("incremental_sync:{}:{}", ts, h),
+            _ => format!("incremental_sync:{}", ts),
+        },
+        None => return HttpResponse::BadRequest().body("Missing X-Timestamp"),
+    };
+
+    match verify_signature(public_key, signature, &message) {
+        Ok(()) => {
+            let pool = pool.clone();
+            let received_data = payload.into_inner();
+
+            let result = web::block(move || {
+                let _conn = pool.blocking_lock();
+                crate::p2p::sync::reconcile(&_conn, &received_data)
+                    .map_err(|e| core_lib::models::CoreError::InvalidArg(e.to_string()))
+            })
+            .await;
+
+            match result {
+                Ok(Ok(sync_result)) => HttpResponse::Ok().json(sync_result),
+                Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+                Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            }
+        }
+        Err(err) => {
+            log::warn!("Incremental sync signature verification failed: {}", err);
+            HttpResponse::Unauthorized().body(format!("Invalid signature: {}", err))
+        }
+    }
+}
+
+/// POST /ratings/sync — инициирует широковещательную отправку локальных рейтингов на пиров
+#[post("/ratings/sync")]
+async fn ratings_sync(req: HttpRequest, node: web::Data<Node>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    match node.broadcast_ratings().await {
+        Ok(()) => HttpResponse::Ok().json(serde_json::json!({"status":"broadcasted"})),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// Secured variants under /api/v1/* requiring Bearer
+#[post("/api/v1/recalc")]
+async fn api_v1_recalc(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        let ts = chrono::Utc::now().timestamp();
+        let metric_id = storage::recalc_progress_metrics(&_conn, ts)?;
+        core_lib::storage::recalc_ratings(&_conn, ts)?;
+        Ok::<i64, core_lib::models::CoreError>(metric_id)
+    })
+    .await;
+    match result {
+        Ok(Ok(_)) => HttpResponse::Ok().json(serde_json::json!({"status":"recalculated"})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[post("/api/v1/recalc_collective")]
+async fn recalc_collective(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        core_lib::recalc_collective_truth(&conn)
+    })
+    .await;
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status":"ok"})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[post("/api/v1/ratings/sync")]
+async fn api_v1_ratings_sync(req: HttpRequest, node: web::Data<Node>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    match node.broadcast_ratings().await {
+        Ok(()) => HttpResponse::Ok().json(serde_json::json!({"status":"broadcasted"})),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[post("/api/v1/reset")]
+async fn api_v1_reset(req: HttpRequest) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    HttpResponse::Ok().json(serde_json::json!({"status":"ok"}))
+}
+
+#[post("/api/v1/reinit")]
+async fn api_v1_reinit(req: HttpRequest) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    HttpResponse::Ok().json(serde_json::json!({"status":"ok"}))
+}
+
+/// helper: зарегистрировать все маршруты
+pub fn routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(health)
+        .service(api_v1_info)
+        .service(api_v1_stats)
+        .service(api_v1_nearby_start)
+        .service(api_v1_nearby_stop)
+        .service(api_v1_get_config)
+        .service(api_v1_set_config)
+        .service(recalc_collective)
+        .service(api_v1_push)
+        .service(api_v1_network_local)
+        .service(api_v1_auth)
+        .service(api_v1_refresh)
+        .service(api_v1_recalc)
+        .service(api_v1_ratings_sync)
+        .service(api_v1_reset)
+        .service(api_v1_reinit)
+        .service(init_db)
+        .service(seed_db)
+        .service(detect_event)
+        .service(recalc_metrics)
+        .service(recalc_ratings)
+        .service(get_all_data)
+        .service(get_progress)
+        .service(api_v1_peers_priorities)
+        .service(get_node_ratings)
+        .service(get_group_ratings)
+        .service(get_graph)
+        .service(get_graph_json)
+        .service(get_graph_summary)
+        .service(get_statements)
+        .service(add_statement)
+        .service(get_events)
+        .service(add_event)
+        .service(add_impact)
+        .service(sync_data)
+        .service(incremental_sync)
+        .service(ratings_sync)
+        .service(api_v1_users_list)
+        .service(api_v1_users_role)
+        .service(api_v1_trust_delegate)
+        .service(api_v1_judgments_post)
+        .service(api_v1_judgments_get)
+        .service(api_v1_consensus_get)
+        .service(api_v1_consensus_calculate)
+        .service(api_v1_reputation_get)
+        .service(api_v1_reputation_leaderboard)
+        .service(list_contexts)
+        .service(create_context)
+        .service(get_context_by_name)
+        .service(match_context)
+        .service(create_context_from_event);
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct PeerPriorityItem {
+    pub peer_url: String,
+    pub trust_score: f32,
+    pub propagation_priority: f32,
+    pub relay_rate: f32,
+    pub quality_index: f32,
+}
+
+/// GET /api/v1/network/local — локальная статистика по пирам и сводка
+#[utoipa::path(
+    get,
+    path = "/api/v1/network/local",
+    responses((status=200, description="Локальная статистика пиров", body = serde_json::Value))
+)]
+#[get("/api/v1/network/local")]
+async fn api_v1_network_local(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        // Грузим историю и сводку
+        let peers = core_lib::storage::load_peer_history(&conn, Some(200))?;
+        let summary = core_lib::storage::get_peer_summary(&conn)?;
+        Ok::<(Vec<PeerHistoryEntry>, PeerSummary), core_lib::models::CoreError>((peers, summary))
+    })
+    .await;
+
+    match result {
+        Ok(Ok((peers, summary))) => {
+            // Преобразуем last_sync в ISO8601 для совместимости с примером
+            let peers_json: Vec<serde_json::Value> = peers
+                .into_iter()
+                .map(|p| {
+                    let last_sync_str = p.last_sync.map(|ts| {
+                        chrono::DateTime::<chrono::Utc>::from(
+                            std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts as u64),
+                        )
+                        .to_rfc3339()
+                    });
+                    serde_json::json!({
+                        "url": p.peer_url,
+                        "last_sync": last_sync_str,
+                        "success_count": p.success_count,
+                        "fail_count": p.fail_count,
+                        "last_quality_index": p.last_quality_index,
+                        "last_trust_score": p.last_trust_score,
+                    })
+                })
+                .collect();
+            HttpResponse::Ok().json(serde_json::json!({
+                "peers": peers_json,
+                "summary": {
+                    "total_peers": summary.total_peers,
+                    "avg_success_rate": summary.avg_success_rate,
+                    "avg_quality_index": summary.avg_quality_index,
+                }
+            }))
+        }
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /api/v1/peers/priorities — список пиров с приоритетами распространения и метриками ретрансляции
+#[utoipa::path(
+    get,
+    path = "/api/v1/peers/priorities",
+    responses((status=200, description="Приоритеты ретрансляции по пирам", body = [PeerPriorityItem]))
+)]
+#[get("/api/v1/peers/priorities")]
+async fn api_v1_peers_priorities(node: web::Data<Node>, pool: web::Data<DbPool>) -> impl Responder {
+    let peers = node.peers.clone();
+    let pool_for_block = pool.clone();
+    let priorities = web::block(move || {
+        let conn = pool_for_block.blocking_lock();
+        let mut items: Vec<PeerPriorityItem> = Vec::new();
+        let ratings = core_lib::storage::load_node_ratings(&conn).unwrap_or_default();
+        let map: std::collections::HashMap<String, core_lib::models::NodeRating> = ratings
+            .into_iter()
+            .map(|r| (r.node_id.clone(), r))
+            .collect();
+        for url in peers.iter() {
+            // public_key hex в URL не хранится — в MVP ищем по совпадению начала ключа в URL или пропускаем
+            // Для корректности ожидается, что Node.peers содержит URLы пиров, а соответствие ключ→URL хранится в приложении CLI/конфиге.
+            // Здесь заполним trust_priority как среднее по сети, если ключ не найден.
+            let (trust, prio) = if let Some((_id, r)) = map.iter().next() {
+                (r.trust_score, r.propagation_priority)
+            } else {
+                (0.0f32, 0.5f32)
+            };
+            items.push(PeerPriorityItem {
+                peer_url: url.clone(),
+                trust_score: trust,
+                propagation_priority: prio,
+                relay_rate: 0.0,
+                quality_index: 0.0,
+            });
+        }
+        Ok::<Vec<PeerPriorityItem>, core_lib::models::CoreError>(items)
+    })
+    .await;
+
+    let mut items = match priorities {
+        Ok(Ok(v)) => v,
+        _ => Vec::new(),
+    };
+    // Вливаем метрики ретрансляции
+    let stats = get_relay_stats().await;
+    // Обновим relay_rate и quality_index (без длительных блокировок)
+    for it in &mut items {
+        let key = it.peer_url.clone();
+        if let Some(s) = stats.iter().find(|s| s.peer_url == key) {
+            it.relay_rate = s.relay_rate;
+        }
+        if let Ok(Ok(Some(mm))) = web::block({
+            let pool2 = pool.clone();
+            move || {
+                let conn = pool2.blocking_lock();
+                core_lib::storage::load_node_metrics(&conn, &key)
+            }
+        })
+        .await
+        {
+            it.quality_index = mm.quality_index;
+        }
+    }
+    HttpResponse::Ok().json(items)
+}
+
+// ===================== Auth endpoints =====================
+
+#[post("/api/v1/auth")]
+async fn api_v1_auth(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    let public_key = req
+        .headers()
+        .get("X-Public-Key")
+        .and_then(|v| v.to_str().ok());
+    let signature = req
+        .headers()
+        .get("X-Signature")
+        .and_then(|v| v.to_str().ok());
+    let ts = req
+        .headers()
+        .get("X-Timestamp")
+        .and_then(|v| v.to_str().ok());
+    let Some(pk) = public_key else {
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
+    };
+    let Some(sig) = signature else {
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
+    };
+    let Some(ts) = ts else {
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
+    };
+    let message = format!("auth:{}", ts);
+    if let Err(e) = verify_signature(pk, sig, &message) {
+        log::warn!("Auth signature failed: {}", e);
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
+    }
+    // ok -> issue jwt and refresh, store refresh
+    let (access, refresh, exp_refresh) = match web::block({
+        let pool = pool.clone();
+        let pk_owned = pk.to_string();
+        move || {
+            let conn = pool.blocking_lock();
+            issue_jwt_pair_with(&conn, &pk_owned)
+        }
+    })
+    .await
+    {
+        Ok(Ok(v)) => v,
+        Ok(Err(e)) => return HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
+    };
+    let pool = pool.clone();
+    let pk_owned = pk.to_string();
+    let refresh_owned = refresh.clone();
+    let res = web::block(move || {
+        let conn = pool.blocking_lock();
+        core_lib::storage::register_refresh_token(&conn, &pk_owned, &refresh_owned, exp_refresh)
+    })
+    .await;
+    match res {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({
+            "access_token": access,
+            "refresh_token": refresh,
+            "token_type": "Bearer",
+            "expires_in": 3600
+        })),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+// ===================== RBAC / Users endpoints =====================
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/users",
+    responses((status=200, description="Список пользователей", body = [RbacUser]))
+)]
+#[get("/api/v1/users")]
+async fn api_v1_users_list(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    if let Err(resp) = require_role(req, "admin").await.map(|_| ()) {
+        return resp;
+    }
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        core_lib::storage::list_users(&conn)
+    })
+    .await;
+    match result {
+        Ok(Ok(users)) => HttpResponse::Ok().json(users),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+#[derive(Deserialize)]
+struct RoleRequest {
+    pubkey: String,
+    role: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/users/role",
+    responses((status=200, description="Роль обновлена"))
+)]
+#[post("/api/v1/users/role")]
+async fn api_v1_users_role(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    body: web::Json<RoleRequest>,
+) -> impl Responder {
+    if let Err(resp) = require_role(req, "admin").await.map(|_| ()) {
+        return resp;
+    }
+    let RoleRequest { pubkey, role } = body.into_inner();
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::update_user_role(&conn, &pubkey, &role)
+    })
+    .await;
+    match res {
+        Ok(Ok(())) => HttpResponse::Ok().finish(),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+#[derive(Deserialize)]
+struct TrustDelegateRequest {
+    target_pubkey: String,
+    delta: f32,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/trust/delegate",
+    responses((status=200, description="Делегирование доверия применено"))
+)]
+#[post("/api/v1/trust/delegate")]
+async fn api_v1_trust_delegate(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    body: web::Json<TrustDelegateRequest>,
+) -> impl Responder {
+    // Требуется роль не ниже node
+    let claims = match require_role(req, "node").await {
+        Ok(c) => c,
+        Err(resp) => return resp,
+    };
+    let TrustDelegateRequest {
+        target_pubkey,
+        delta,
+    } = body.into_inner();
+    // ограничиваем делегирование по FidoNet-like: разрешено только положительное малое смещение и не на себя
+    if target_pubkey == claims.sub || delta.abs() > 0.2 {
+        // лимит шага делегирования
+        return HttpResponse::BadRequest().body("invalid delegation request");
+    }
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        // применяем дельту
+        let _new = core_lib::storage::adjust_trust_score(&conn, &target_pubkey, delta)?;
+        // синхронизация с node_ratings произойдет при следующем пересчете; можно инициировать мягкий апдейт users уже сейчас
+        Ok::<(), core_lib::models::CoreError>(())
+    })
+    .await;
+    match res {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status":"ok"})),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+#[derive(Deserialize)]
+struct RefreshRequest {
+    refresh_token: String,
+}
+
+#[post("/api/v1/refresh")]
+async fn api_v1_refresh(
+    pool: web::Data<DbPool>,
+    body: web::Json<RefreshRequest>,
+) -> impl Responder {
+    let refresh = body.refresh_token.clone();
+    let refresh_lookup = refresh.clone();
+    let pool1 = pool.clone();
+    let res = web::block(move || {
+        let conn = pool1.blocking_lock();
+        core_lib::storage::find_session_by_refresh(&conn, &refresh_lookup)
+    })
+    .await;
+    let Ok(Ok(opt)) = res else {
+        return HttpResponse::InternalServerError().finish();
+    };
+    let Some((public_key, expires_at)) = opt else {
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
+    };
+    if chrono::Utc::now().timestamp() >= expires_at {
+        // expired
+        let pool_del = pool.clone();
+        let _ = web::block(move || {
+            let conn = pool_del.blocking_lock();
+            core_lib::storage::delete_refresh_token(&conn, &refresh)
+        })
+        .await;
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"error":"unauthorized","code":401}));
+    }
+    // rotate refresh: delete old, issue new pair (include role/trust)
+    let (access, new_refresh, exp_refresh) = match web::block({
+        let pool = pool.clone();
+        let public_key = public_key.clone();
+        move || {
+            let conn = pool.blocking_lock();
+            issue_jwt_pair_with(&conn, &public_key)
+        }
+    })
+    .await
+    {
+        Ok(Ok(v)) => v,
+        _ => return HttpResponse::InternalServerError().finish(),
+    };
+    let new_refresh_for_closure = new_refresh.clone();
+    let pool2 = pool.clone();
+    let refresh_old = refresh.clone();
+    let public_key2 = public_key.clone();
+    let res2 = web::block(move || {
+        let conn = pool2.blocking_lock();
+        core_lib::storage::delete_refresh_token(&conn, &refresh_old)?;
+        core_lib::storage::register_refresh_token(
+            &conn,
+            &public_key2,
+            &new_refresh_for_closure,
+            exp_refresh,
+        )
+    })
+    .await;
+    match res2 {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({
+            "access_token": access,
+            "refresh_token": new_refresh,
+            "token_type": "Bearer",
+            "expires_in": 3600
+        })),
+        _ => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+// ===================== Middleware for Bearer auth =====================
+
+fn unauthorized_json() -> HttpResponse {
+    HttpResponse::Unauthorized().json(serde_json::json!({"error":"unauthorized","code":401}))
+}
+
+fn extract_bearer(req: &HttpRequest) -> Option<String> {
+    req.headers()
+        .get("Authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .map(|s| s.to_string())
+}
+
+async fn require_jwt(req: HttpRequest) -> Result<String, HttpResponse> {
+    let Some(token) = extract_bearer(&req) else {
+        return Err(unauthorized_json());
+    };
+    match verify_jwt(&token) {
+        Ok(c) => Ok(c.sub),
+        Err(_) => Err(unauthorized_json()),
+    }
+}
+
+// ===================== Android Push endpoint =====================
+
+#[derive(Debug, Deserialize)]
+struct PushRequest {
+    node_id: String,
+    payload: serde_json::Value,
+    signature: String,  // base64
+    public_key: String, // base64
+}
+
+fn b64_to_hex(b64: &str) -> Result<String, String> {
+    let bytes = general_purpose::STANDARD
+        .decode(b64)
+        .map_err(|e| format!("base64 decode error: {}", e))?;
+    Ok(hex::encode(bytes))
+}
+
+#[post("/api/v1/push")]
+async fn api_v1_push(req: HttpRequest, body: web::Json<PushRequest>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+
+    let PushRequest {
+        node_id,
+        payload,
+        signature,
+        public_key,
+    } = body.into_inner();
+
+    let msg_bytes = match serde_json::to_vec(&payload) {
+        Ok(b) => b,
+        Err(_) => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"status":"error","reason":"bad_payload"}))
+        }
+    };
+
+    // Convert base64 inputs to hex to reuse existing verifier
+    let pk_hex = match b64_to_hex(&public_key) {
+        Ok(s) => s,
+        Err(e) => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"status":"error","reason":e}))
+        }
+    };
+    let sig_hex = match b64_to_hex(&signature) {
+        Ok(s) => s,
+        Err(e) => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"status":"error","reason":e}))
+        }
+    };
+
+    match verify_signature(
+        &pk_hex,
+        &sig_hex,
+        std::str::from_utf8(&msg_bytes).unwrap_or(""),
+    ) {
+        Ok(()) => {
+            // Enqueue or log the payload for processing
+            log::info!("push from {} accepted: {}", node_id, payload);
+            HttpResponse::Ok().json(serde_json::json!({"status":"ok"}))
+        }
+        Err(_) => HttpResponse::Unauthorized()
+            .json(serde_json::json!({"status":"error","reason":"invalid_signature"})),
+    }
+}
+
+/// POST /recalc_ratings - Пересчет рейтингов узлов и групп
+#[post("/recalc_ratings")]
+async fn recalc_ratings(req: HttpRequest, pool: web::Data<DbPool>) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        core_lib::storage::recalc_ratings(&_conn, chrono::Utc::now().timestamp())
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => HttpResponse::Ok().json(serde_json::json!({"status": "recalculated"})),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /ratings/nodes
+#[get("/ratings/nodes")]
+async fn get_node_ratings(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        let mut ratings = core_lib::storage::load_node_ratings(&conn)?;
+        if ratings.is_empty() {
+            // lazy recalc if empty
+            let _ = core_lib::storage::recalc_ratings(&conn, chrono::Utc::now().timestamp());
+            ratings = core_lib::storage::load_node_ratings(&conn)?;
+        }
+        Ok::<_, core_lib::models::CoreError>(ratings)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(ratings)) => HttpResponse::Ok().json(ratings),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /ratings/groups
+#[get("/ratings/groups")]
+async fn get_group_ratings(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let conn = pool.blocking_lock();
+        let mut ratings = core_lib::storage::load_group_ratings(&conn)?;
+        if ratings.is_empty() {
+            let _ = core_lib::storage::recalc_ratings(&conn, chrono::Utc::now().timestamp());
+            ratings = core_lib::storage::load_group_ratings(&conn)?;
+        }
+        Ok::<_, core_lib::models::CoreError>(ratings)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(ratings)) => HttpResponse::Ok().json(ratings),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /graph - данные графа доверия
+#[get("/graph")]
+async fn get_graph(pool: web::Data<DbPool>) -> impl Responder {
+    let pool = pool.clone();
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        core_lib::storage::load_graph(&_conn)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(graph)) => HttpResponse::Ok().json(graph),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[derive(Deserialize)]
+struct GraphQuery {
+    min_score: Option<f64>,
+    max_links: Option<usize>,
+    depth: Option<usize>,
+    min_priority: Option<f32>,
+    limit: Option<usize>,
+}
+
+/// GET /graph/json — полный граф в JSON с параметрами фильтра
+#[get("/graph/json")]
+async fn get_graph_json(pool: web::Data<DbPool>, query: web::Query<GraphQuery>) -> impl Responder {
+    let pool = pool.clone();
+    let GraphQuery {
+        min_score,
+        max_links,
+        depth,
+        min_priority,
+        limit,
+    } = query.into_inner();
+
+    // Значения по умолчанию
+    let min_score = min_score.unwrap_or(-1.0);
+    let max_links = max_links.unwrap_or(10).max(0);
+    let min_priority = min_priority.unwrap_or(0.0);
+    let limit = limit.unwrap_or(50);
+
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        // ensure ratings up-to-date for graph queries
+        let _ = core_lib::storage::recalc_ratings(&_conn, chrono::Utc::now().timestamp());
+        let mut graph =
+            core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)?;
+
+        // Фильтр по propagation_priority
+        if min_priority > 0.0 {
+            graph
+                .nodes
+                .retain(|node| node.propagation_priority >= min_priority);
+        }
+
+        // Ограничение количества узлов
+        if graph.nodes.len() > limit {
+            graph.nodes.truncate(limit);
+            // Также ограничиваем связи только для оставшихся узлов
+            let node_ids: std::collections::HashSet<String> =
+                graph.nodes.iter().map(|n| n.id.clone()).collect();
+            graph
+                .links
+                .retain(|link| node_ids.contains(&link.source) && node_ids.contains(&link.target));
+        }
+
+        Ok::<core_lib::models::GraphData, core_lib::models::CoreError>(graph)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(graph)) => HttpResponse::Ok().json(graph),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+/// GET /graph/summary — агрегированные метрики по графу
+#[get("/graph/summary")]
+async fn get_graph_summary(
+    pool: web::Data<DbPool>,
+    query: web::Query<GraphQuery>,
+) -> impl Responder {
+    let pool = pool.clone();
+    let GraphQuery {
+        min_score,
+        max_links,
+        depth,
+        ..
+    } = query.into_inner();
+
+    let min_score = min_score.unwrap_or(-1.0);
+    let max_links = max_links.unwrap_or(10).max(0);
+
+    let result = web::block(move || {
+        let _conn = pool.blocking_lock();
+        let graph: GraphData =
+            core_lib::storage::load_graph_filtered(&_conn, min_score, max_links, depth)?;
+        let summary: GraphSummary = core_lib::models::summarize_graph(&graph);
+        Ok::<GraphSummary, core_lib::models::CoreError>(summary)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(summary)) => HttpResponse::Ok().json(summary),
+        Ok(Err(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::p2p::encryption::CryptoIdentity;
+    // use hex; // not needed here
+    use actix_web::{test, App};
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
+
+    #[actix_web::test]
+    async fn test_signature_verification_refactor() {
+        // Создаем новую криптографическую идентичность
+        let identity = CryptoIdentity::new();
+
+        // Создаем сообщение для подписи
+        let message = "test message";
+
+        // Подписываем сообщение
+        let signature = identity.sign(message.as_bytes());
+        let signature_hex = hex::encode(signature.to_bytes());
+        let public_key_hex = identity.public_key_hex();
+
+        // Проверяем подпись используя рефакторенную функцию
+        let result = verify_signature(&public_key_hex, &signature_hex, message);
+
+        // Проверяем, что верификация прошла успешно
+        assert!(result.is_ok(), "Signature verification should succeed");
+
+        // Проверяем с неправильным сообщением
+        let wrong_message = "wrong message";
+        let wrong_result = verify_signature(&public_key_hex, &signature_hex, wrong_message);
+
+        // Проверяем, что верификация с неправильным сообщением не прошла
+        assert!(
+            wrong_result.is_err(),
+            "Signature verification with wrong message should fail"
+        );
+    }
+
+    #[actix_web::test]
+    async fn ratings_endpoints_work() {
+        // Prepare in-memory DB and app
+        let conn = core_lib::storage::open_db(":memory:").unwrap();
+        let conn_data = Arc::new(Mutex::new(conn));
+        {
+            let mut c = conn_data.lock().await;
+            core_lib::storage::seed_knowledge_base(&mut c, "en").unwrap();
+        }
+
+        let app = test::init_service(
+            App::new()
+                .app_data(actix_web::web::Data::new(conn_data.clone()))
+                .configure(crate::api::routes),
+        )
+        .await;
+
+        // Add event and statement + impact to have some ratings
+        let add_event_req = serde_json::json!({
+            "description": "Test for ratings",
+            "category_id": 1,
+            "vector": true
+        });
+        let req = test::TestRequest::post()
+            .uri("/events")
+            .set_json(&add_event_req)
+            .to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let ev_id = resp.get("id").and_then(|v| v.as_i64()).unwrap();
+
+        // set author public key on event
+        {
+            let c = conn_data.lock().await;
+            c.execute(
+                "UPDATE truth_events SET public_key='nodeA' WHERE id=?1",
+                rusqlite::params![ev_id],
+            )
+            .unwrap();
+        }
+
+        let add_stmt_req = serde_json::json!({
+            "event_id": ev_id,
+            "text": "true",
+            "context": null,
+            "truth_score": 0.8
+        });
+        let req = test::TestRequest::post()
+            .uri("/statements")
+            .set_json(&add_stmt_req)
+            .to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+
+        // direct DB insert impact to set validator pubkey
+        {
+            let c = conn_data.lock().await;
+            let impact_id =
+                core_lib::storage::add_impact(&c, ev_id, 1, true, Some("ok".into())).unwrap();
+            c.execute(
+                "UPDATE impact SET public_key='nodeB' WHERE id=?1",
+                rusqlite::params![impact_id],
+            )
+            .unwrap();
+        }
+
+        // recalc
+        let req = test::TestRequest::post().uri("/recalc").to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+
+        // GET ratings
+        let req = test::TestRequest::get().uri("/ratings/nodes").to_request();
+        let nodes: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        assert!(!nodes.as_array().unwrap().is_empty());
+
+        let req = test::TestRequest::get().uri("/ratings/groups").to_request();
+        let groups: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        assert!(!groups.as_array().unwrap().is_empty());
+
+        let req = test::TestRequest::get().uri("/graph").to_request();
+        let graph: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        assert!(!graph.get("nodes").unwrap().as_array().unwrap().is_empty());
+    }
+
+    #[actix_web::test]
+    async fn graph_json_filters_work() {
+        // Prepare in-memory DB and app
+        let conn = core_lib::storage::open_db(":memory:").unwrap();
+        let conn_data = Arc::new(Mutex::new(conn));
+        {
+            let mut c = conn_data.lock().await;
+            core_lib::storage::seed_knowledge_base(&mut c, "en").unwrap();
+        }
+
+        let app = test::init_service(
+            App::new()
+                .app_data(actix_web::web::Data::new(conn_data.clone()))
+                .configure(crate::api::routes),
+        )
+        .await;
+
+        // Event A (author nodeA) with positive statement; validator nodeB agrees
+        let add_event_req = serde_json::json!({
+            "description": "E1",
+            "category_id": 1,
+            "vector": true
+        });
+        let req = test::TestRequest::post()
+            .uri("/events")
+            .set_json(&add_event_req)
+            .to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let ev1 = resp.get("id").and_then(|v| v.as_i64()).unwrap();
+        {
+            let c = conn_data.lock().await;
+            c.execute(
+                "UPDATE truth_events SET public_key='nodeA' WHERE id=?1",
+                rusqlite::params![ev1],
+            )
+            .unwrap();
+        }
+        let add_stmt_req = serde_json::json!({
+            "event_id": ev1,
+            "text": "true",
+            "context": null,
+            "truth_score": 0.9
+        });
+        let req = test::TestRequest::post()
+            .uri("/statements")
+            .set_json(&add_stmt_req)
+            .to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        {
+            let c = conn_data.lock().await;
+            let impact_id =
+                core_lib::storage::add_impact(&c, ev1, 1, true, Some("ok".into())).unwrap();
+            c.execute(
+                "UPDATE impact SET public_key='nodeB' WHERE id=?1",
+                rusqlite::params![impact_id],
+            )
+            .unwrap();
+        }
+
+        // Event C (author nodeC) with negative statement
+        let add_event_req = serde_json::json!({
+            "description": "E2",
+            "category_id": 1,
+            "vector": true
+        });
+        let req = test::TestRequest::post()
+            .uri("/events")
+            .set_json(&add_event_req)
+            .to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let ev2 = resp.get("id").and_then(|v| v.as_i64()).unwrap();
+        {
+            let c = conn_data.lock().await;
+            c.execute(
+                "UPDATE truth_events SET public_key='nodeC' WHERE id=?1",
+                rusqlite::params![ev2],
+            )
+            .unwrap();
+        }
+        let add_stmt_req = serde_json::json!({
+            "event_id": ev2,
+            "text": "false",
+            "context": null,
+            "truth_score": -0.9
+        });
+        let req = test::TestRequest::post()
+            .uri("/statements")
+            .set_json(&add_stmt_req)
+            .to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+
+        // Recalculate
+        let req = test::TestRequest::post().uri("/recalc").to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+
+        // min_score filter should exclude nodeB (0.0) and nodeC (<0)
+        let req = test::TestRequest::get()
+            .uri("/graph/json?min_score=0.1&max_links=5")
+            .to_request();
+        let graph_val: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let graph: core_lib::models::GraphData = serde_json::from_value(graph_val).unwrap();
+        let ids: std::collections::HashSet<String> =
+            graph.nodes.iter().map(|n| n.id.clone()).collect();
+        assert!(ids.contains("nodeA"));
+        assert!(!ids.contains("nodeB"));
+        assert!(!ids.contains("nodeC"));
+        assert!(graph.links.is_empty()); // no validator in set => no edges
+
+        // depth=1 around top node should include nodeB but not nodeC
+        let req = test::TestRequest::get()
+            .uri("/graph/json?min_score=-1&depth=1")
+            .to_request();
+        let graph_val: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let graph: core_lib::models::GraphData = serde_json::from_value(graph_val).unwrap();
+        let ids: std::collections::HashSet<String> =
+            graph.nodes.iter().map(|n| n.id.clone()).collect();
+        assert!(ids.contains("nodeA"));
+        assert!(ids.contains("nodeB"));
+        assert!(!ids.contains("nodeC"));
+    }
+
+    #[actix_web::test]
+    async fn graph_summary_consistent() {
+        // Prepare in-memory DB and app
+        let conn = core_lib::storage::open_db(":memory:").unwrap();
+        let conn_data = Arc::new(Mutex::new(conn));
+        {
+            let mut c = conn_data.lock().await;
+            core_lib::storage::seed_knowledge_base(&mut c, "en").unwrap();
+        }
+
+        let app = test::init_service(
+            App::new()
+                .app_data(actix_web::web::Data::new(conn_data.clone()))
+                .configure(crate::api::routes),
+        )
+        .await;
+
+        // Create small dataset
+        let add_event_req = serde_json::json!({"description":"E1","category_id":1,"vector":true});
+        let req = test::TestRequest::post()
+            .uri("/events")
+            .set_json(&add_event_req)
+            .to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let ev1 = resp.get("id").and_then(|v| v.as_i64()).unwrap();
+        {
+            let c = conn_data.lock().await;
+            c.execute(
+                "UPDATE truth_events SET public_key='nodeA' WHERE id=?1",
+                rusqlite::params![ev1],
+            )
+            .unwrap();
+        }
+        let add_stmt_req =
+            serde_json::json!({"event_id":ev1,"text":"t","context":null,"truth_score":0.7});
+        let req = test::TestRequest::post()
+            .uri("/statements")
+            .set_json(&add_stmt_req)
+            .to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        {
+            let c = conn_data.lock().await;
+            let impact_id = core_lib::storage::add_impact(&c, ev1, 1, true, None).unwrap();
+            c.execute(
+                "UPDATE impact SET public_key='nodeB' WHERE id=?1",
+                rusqlite::params![impact_id],
+            )
+            .unwrap();
+        }
+
+        let req = test::TestRequest::post().uri("/recalc").to_request();
+        let _resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+
+        // Get graph and summary with the same filters
+        let req = test::TestRequest::get()
+            .uri("/graph/json?min_score=-1&max_links=10&depth=1")
+            .to_request();
+        let graph_val: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let graph: core_lib::models::GraphData = serde_json::from_value(graph_val).unwrap();
+
+        let req = test::TestRequest::get()
+            .uri("/graph/summary?min_score=-1&max_links=10&depth=1")
+            .to_request();
+        let summary: core_lib::models::GraphSummary =
+            test::call_and_read_body_json(&app, req).await;
+
+        assert_eq!(summary.total_nodes, graph.nodes.len());
+        assert_eq!(summary.total_links, graph.links.len());
+        let avg: f64 = if graph.nodes.is_empty() {
+            0.0
+        } else {
+            graph.nodes.iter().map(|n| n.score as f64).sum::<f64>() / (graph.nodes.len() as f64)
+        };
+        assert!((summary.avg_trust - avg).abs() < 1e-9);
+        assert_eq!(
+            summary.top_nodes.len(),
+            std::cmp::min(10, graph.nodes.len())
+        );
+    }
+
+    #[actix_web::test]
+    async fn recalc_collective_endpoint_works() {
+        // Prepare in-memory DB and app
+        let conn = core_lib::storage::open_db(":memory:").unwrap();
+        let conn_data = Arc::new(Mutex::new(conn));
+        {
+            let mut c = conn_data.lock().await;
+            core_lib::storage::seed_knowledge_base(&mut c, "en").unwrap();
+        }
+
+        let app = test::init_service(
+            App::new()
+                .app_data(actix_web::web::Data::new(conn_data.clone()))
+                .configure(crate::api::routes),
+        )
+        .await;
+
+        // Add event
+        let add_event_req = serde_json::json!({
+            "description": "E-collective",
+            "category_id": 1,
+            "vector": true
+        });
+        let req = test::TestRequest::post()
+            .uri("/events")
+            .set_json(&add_event_req)
+            .to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        let ev_id = resp.get("id").and_then(|v| v.as_i64()).unwrap();
+
+        // Insert a positive impact for this event
+        {
+            let c = conn_data.lock().await;
+            let _iid = core_lib::storage::add_impact(&c, ev_id, 1, true, None).unwrap();
+        }
+
+        // Call collective recalc endpoint
+        let req = test::TestRequest::post()
+            .uri("/api/v1/recalc_collective")
+            .to_request();
+        let resp: serde_json::Value = test::call_and_read_body_json(&app, req).await;
+        assert_eq!(resp.get("status").unwrap(), "ok");
+
+        // Verify value persisted in DB
+        {
+            let c = conn_data.lock().await;
+            let ev = core_lib::storage::get_truth_event(&c, ev_id)
+                .unwrap()
+                .unwrap();
+            assert!(ev.collective_score.is_some());
+            assert!(ev.collective_score.unwrap() > 0.0);
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct JudgmentPostRequest {
+    event_id: String,
+    assessment: String,
+    confidence_level: f32,
+    reasoning: Option<String>,
+    signature: String,  // base64
+    public_key: String, // base64
+}
+
+#[post("/api/v1/judgments")]
+async fn api_v1_judgments_post(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    payload: web::Json<JudgmentPostRequest>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let body = payload.into_inner();
+    // Build canonical message to verify: assessment+confidence+reasoning+event_id JSON
+    let msg = match serde_json::to_string(&serde_json::json!({
+        "event_id": body.event_id,
+        "assessment": body.assessment,
+        "confidence_level": body.confidence_level,
+        "reasoning": body.reasoning,
+    })) {
+        Ok(s) => s,
+        Err(_) => return HttpResponse::BadRequest().body("bad payload"),
+    };
+    // Convert base64 inputs to hex and verify
+    let pk_hex = match b64_to_hex(&body.public_key) {
+        Ok(s) => s,
+        Err(e) => return HttpResponse::BadRequest().body(e),
+    };
+    let sig_hex = match b64_to_hex(&body.signature) {
+        Ok(s) => s,
+        Err(e) => return HttpResponse::BadRequest().body(e),
+    };
+    if let Err(_e) = verify_signature(&pk_hex, &sig_hex, &msg) {
+        return HttpResponse::Unauthorized()
+            .json(serde_json::json!({"status":"error","reason":"invalid_signature"}));
+    }
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        // Ensure participant using provided public key
+        let participant_id = core_lib::storage::ci_ensure_participant(&conn, &pk_hex)?;
+        let j = core_lib::collective_intelligence::models::Judgment {
+            id: uuid::Uuid::new_v4(),
+            participant_id,
+            event_id: uuid::Uuid::parse_str(&msg_json::get_event_id(&msg))
+                .unwrap_or_else(|_| uuid::Uuid::new_v4()),
+            assessment: msg_json::get_assessment(&msg),
+            confidence_level: msg_json::get_confidence(&msg),
+            reasoning: msg_json::get_reasoning(&msg),
+            submitted_at: chrono::Utc::now(),
+            signature: sig_hex,
+        };
+        core_lib::storage::ci_insert_judgment(&conn, &j)?;
+        // Recalculate consensus
+        let _c = core_lib::storage::ci_calculate_and_upsert_consensus(&conn, &j.event_id)?;
+        Ok::<uuid::Uuid, core_lib::models::CoreError>(j.id)
+    })
+    .await;
+    match res {
+        Ok(Ok(id)) => HttpResponse::Ok().json(serde_json::json!({"id": id})),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+mod msg_json {
+    use serde_json::Value;
+    pub fn parse(msg: &str) -> Value {
+        serde_json::from_str(msg).unwrap_or(serde_json::json!({}))
+    }
+    pub fn get_event_id(msg: &str) -> String {
+        parse(msg)
+            .get("event_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string()
+    }
+    pub fn get_assessment(msg: &str) -> String {
+        parse(msg)
+            .get("assessment")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string()
+    }
+    pub fn get_confidence(msg: &str) -> f32 {
+        parse(msg)
+            .get("confidence_level")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0) as f32
+    }
+    pub fn get_reasoning(msg: &str) -> Option<String> {
+        parse(msg)
+            .get("reasoning")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+    }
+}
+
+#[get("/api/v1/judgments")]
+async fn api_v1_judgments_get(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let event_id = match q.get("event_id").cloned() {
+        Some(v) => v,
+        None => return HttpResponse::BadRequest().body("event_id required"),
+    };
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        let ev = uuid::Uuid::parse_str(&event_id)
+            .map_err(|_| core_lib::models::CoreError::InvalidArg("bad event_id".into()))?;
+        let js = core_lib::storage::ci_get_judgments_by_event(&conn, &ev)?;
+        Ok::<Vec<core_lib::collective_intelligence::models::Judgment>, core_lib::models::CoreError>(
+            js,
+        )
+    })
+    .await;
+    match res {
+        Ok(Ok(list)) => HttpResponse::Ok()
+            .json(serde_json::json!({"judgments": list, "total_count": list.len()})),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[get("/api/v1/consensus/{event_id}")]
+async fn api_v1_consensus_get(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    path: web::Path<String>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let event_id = match uuid::Uuid::parse_str(&path.into_inner()) {
+        Ok(v) => v,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::ci_get_consensus_by_event(&conn, &event_id)
+    })
+    .await;
+    match res {
+        Ok(Ok(Some(c))) => HttpResponse::Ok().json(c),
+        Ok(Ok(None)) => HttpResponse::NotFound().finish(),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[post("/api/v1/consensus/{event_id}/calculate")]
+async fn api_v1_consensus_calculate(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    path: web::Path<String>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let event_id = match uuid::Uuid::parse_str(&path.into_inner()) {
+        Ok(v) => v,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::ci_calculate_and_upsert_consensus(&conn, &event_id)
+    })
+    .await;
+    match res {
+        Ok(Ok(c)) => HttpResponse::Ok().json(c),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[get("/api/v1/reputation/{participant_id}")]
+async fn api_v1_reputation_get(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    path: web::Path<String>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let pid = path.into_inner();
+    let poolc = pool.clone();
+    let pid_out = pid.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::ci_get_reputation_by_participant(&conn, &pid)
+    })
+    .await;
+    match res {
+        Ok(Ok(Some(v))) => HttpResponse::Ok().json(serde_json::json!({"participant_id": pid_out, "reputation_score": v["reputation_score"], "total_judgments": v["total_judgments"], "accurate_judgments": v["accurate_judgments"], "last_activity": v["last_activity"]})),
+        Ok(Ok(None)) => HttpResponse::NotFound().finish(),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
+
+#[get("/api/v1/reputation/leaderboard")]
+async fn api_v1_reputation_leaderboard(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    q: web::Query<std::collections::HashMap<String, String>>,
+) -> impl Responder {
+    if let Err(resp) = require_jwt(req).await.map(|_| ()) {
+        return resp;
+    }
+    let limit: i64 = q.get("limit").and_then(|v| v.parse().ok()).unwrap_or(10);
+    let min_j: i64 = q
+        .get("min_judgments")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    let poolc = pool.clone();
+    let res = web::block(move || {
+        let conn = poolc.blocking_lock();
+        core_lib::storage::ci_get_reputation_leaderboard(&conn, min_j, limit)
+    })
+    .await;
+    match res {
+        Ok(Ok(lb)) => HttpResponse::Ok()
+            .json(serde_json::json!({"leaderboard": lb, "total_participants": lb.len()})),
+        Ok(Err(e)) => HttpResponse::BadRequest().body(e.to_string()),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
+}
