@@ -1,8 +1,8 @@
 # truthctl CLI
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-01-XX
 
-Command-line utility for P2P synchronization and Truth Training node maintenance.
+Command-line utility for P2P synchronization, node discovery, and Truth Training node maintenance.
 
 ## Installation and Running
 
@@ -45,23 +45,155 @@ Output includes:
 - For fresh database shows warning: "No sync history yet."
 - Network metrics: average `propagation_priority`, average `relay_success_rate`, average `quality_index` with color coding (quality: 🔵 high, 🟡 medium, 🔴 low)
 
+## Node Discovery Commands (v1.0.0)
+
+The `truthctl nodes` subcommands provide comprehensive node discovery and management capabilities. These commands are part of the Unified Node Discovery feature and work seamlessly with Desktop and Android implementations.
+
+### List Nodes
+
+List all discovered nodes with optional filtering:
+
+```bash
+# List all nodes
+truthctl nodes list --db truth.db
+
+# List with filters
+truthctl nodes list --db truth.db --type lan --reachable true --limit 10
+
+# JSON output
+truthctl nodes list --db truth.db --format json
+```
+
+**Filters:**
+- `--type <LAN|WIFI|GLOBAL|RELAY|CLIENT>`: Filter by node type
+- `--reachable <true|false>`: Filter by reachability status
+- `--limit <N>`: Limit number of results
+- `--format <table|json>`: Output format (default: table)
+
+### Add/Remove Nodes
+
+Manually add or remove nodes:
+
+```bash
+# Add a node manually
+truthctl nodes add --db truth.db \
+  --address "http://192.168.1.100:8080/api/v1" \
+  --type lan \
+  --ttl 120 \
+  --reachable true \
+  --source manual
+
+# Remove a node by address
+truthctl nodes remove --db truth.db --address "http://192.168.1.100:8080/api/v1"
+
+# Remove a node by node_id
+truthctl nodes remove --db truth.db --node-id "abc123..."
+```
+
+### Discover Nodes
+
+Trigger discovery cycle for local and/or global nodes:
+
+```bash
+# Discover all types (LAN, Wi-Fi, Global)
+truthctl nodes discover --db truth.db
+
+# Discover specific type
+truthctl nodes discover --db truth.db --type lan
+truthctl nodes discover --db truth.db --type global
+
+# Discover with custom registry URLs
+truthctl nodes discover --db truth.db \
+  --registry "https://registry.example.com/nodes" \
+  --registry "https://registry2.example.com/nodes"
+```
+
+**Discovery Types:**
+- `LAN`: UDP multicast on `239.255.0.1:52525` (local network)
+- `WIFI`: Wi-Fi scan + multicast (local network)
+- `GLOBAL`: HTTPS GET to registry endpoints (Internet)
+
+### Sync Nodes
+
+Synchronize node lists with a peer server:
+
+```bash
+# Sync with peer server
+truthctl nodes sync --db truth.db --server "http://192.168.1.100:8080/api/v1"
+```
+
+The sync command:
+1. Loads local nodes from database
+2. Sends them to `/api/v1/nodes/sync` endpoint
+3. Server merges using deterministic rules (Local > Global priority)
+4. Server returns merged list
+5. Local database is updated with merged results
+
+**Merge Behavior**: See `specs/008-specify-md/contracts/README.md` for detailed sync handshake contract.
+
+### Cleanup Stale Nodes
+
+Force immediate TTL cleanup:
+
+```bash
+truthctl nodes cleanup --db truth.db
+```
+
+Removes:
+- Nodes whose `last_seen` exceeds TTL
+- Unreachable nodes that exceeded `ttl / 2`
+
+### Health Check
+
+Check reachability of discovered nodes:
+
+```bash
+# Check all nodes
+truthctl nodes health-check --db truth.db
+
+# Check specific node by address
+truthctl nodes health-check --db truth.db --address "http://192.168.1.100:8080/api/v1"
+```
+
+Health checks:
+- Send HTTP GET to `/api/v1/nodes/health` endpoint
+- Timeout: 5 seconds (configurable)
+- Retries: 3 attempts
+- Updates `reachable` flag in database
+
+### Validate Schema
+
+Verify database schema parity and migration status:
+
+```bash
+truthctl nodes validate --db truth.db
+```
+
+Validates:
+- Schema matches canonical format (from `core/src/storage.rs`)
+- All required indexes exist
+- Migration status is correct
+- Recent sync activity (if any)
+
 ## Node Discovery Defaults (FR-012)
 
-The `truthctl nodes` subcommands (added in the Unified Node Discovery feature) honor the shared timings defined in `core::config`:
+The `truthctl nodes` subcommands honor the shared timings defined in `core/src/config.rs`:
 
 | Scope | Discovery Interval | Default TTL | Notes |
 |-------|--------------------|-------------|-------|
-| LAN   | 30 seconds         | 120 seconds | Uses UDP multicast advertisements |
+| LAN   | 30 seconds         | 120 seconds | Uses UDP multicast on `239.255.0.1:52525` |
 | Wi-Fi | 45 seconds         | 300 seconds | Uses Wi-Fi scan callbacks + multicast |
-| Global| 1 hour             | 3600 seconds| Polls relay/registry endpoints |
+| Global| 1 hour             | 3600 seconds| Polls relay/registry endpoints via HTTPS |
 | Relay | 1 hour             | 3600 seconds| Applies to server/relay nodes |
 | Client| on demand          | 600 seconds | Mobile/Desktop clients advertising to peers |
 
-- Cleanup runs every 60 seconds and removes entries whose `last_seen` exceeds TTL or unreachable nodes exceeding `ttl / 2`.
-- Health checks time out after 5 seconds and retry up to 3 times before marking a node unreachable.
-- `truthctl nodes discover --scope <LAN|WIFI|GLOBAL>` overrides the default cadence for a single cycle; omitted scope triggers all three.
-- `truthctl nodes cleanup` forces immediate TTL enforcement (useful during testing).
-- Configuration keys `lan_discovery_interval_secs`, `wifi_discovery_interval_secs`, `global_poll_interval_secs`, `cleanup_interval_secs`, and `health_check_timeout_secs` will become available once the new commands land; until then, default values above are baked into `core/src/config.rs`.
+**Default Behavior:**
+- Cleanup runs every 60 seconds and removes entries whose `last_seen` exceeds TTL or unreachable nodes exceeding `ttl / 2`
+- Health checks time out after 5 seconds and retry up to 3 times before marking a node unreachable
+- `truthctl nodes discover` without `--type` triggers all discovery types (LAN, Wi-Fi, Global)
+- `truthctl nodes cleanup` forces immediate TTL enforcement (useful during testing)
+
+**Configuration**: Default values are codified in `core/src/config.rs` and exported via `DiscoveryTimingConfig`. Platform-specific overrides can be configured via settings (Desktop) or WorkManager parameters (Android).
 
 ## Key Management
 
