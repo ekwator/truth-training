@@ -82,7 +82,7 @@ Integration tests (Quickstart scenarios → [P]):
 - [x] T061 Verify UDP multicast compatibility between Desktop (Rust) and Android (Kotlin) with packet roundtrip tests.
 - [ ] T062 Add cross-device E2E tests (Linux Desktop ↔ Android device, CLI ↔ Android ↔ Desktop).
 - [x] T063 Update documentation with Android navigation instructions, device test instructions, and feature flag usage.
-- [ ] T064 Update CI to run desktop feature tests (`cargo test --features desktop`).
+- [x] T064 Update CI to run desktop feature tests (`cargo test --features desktop`).
 
 ## Phase 3.5: Polish & Documentation
 - [ ] T051 [P] Update documentation (`README.md`, `docs/Data_Schema.md`, `docs/CLI_Usage.md`, `docs/architecture.md`) with schema, discovery flow, CLI usage, and Android/Desktop behaviors.
