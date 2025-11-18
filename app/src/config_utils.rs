@@ -22,6 +22,8 @@ pub struct Config {
     pub auto_peer: bool,
     #[serde(default)]
     pub p2p_enabled: bool,
+    #[serde(default)]
+    pub node_registries: Vec<String>,
 }
 
 pub fn default_config() -> Config {
@@ -33,6 +35,7 @@ pub fn default_config() -> Config {
         private_key: String::new(),
         auto_peer: false,
         p2p_enabled: true,
+        node_registries: Vec::new(),
     }
 }
 

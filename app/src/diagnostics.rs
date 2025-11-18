@@ -32,13 +32,21 @@ fn truthctl_dir() -> Result<PathBuf> {
     Ok(dir)
 }
 
-fn config_path() -> Result<PathBuf> { Ok(truthctl_dir()?.join("config.json")) }
-fn keys_path() -> Result<PathBuf> { Ok(truthctl_dir()?.join("keys.json")) }
-fn peers_path() -> Result<PathBuf> { Ok(truthctl_dir()?.join("peers.json")) }
+fn config_path() -> Result<PathBuf> {
+    Ok(truthctl_dir()?.join("config.json"))
+}
+fn keys_path() -> Result<PathBuf> {
+    Ok(truthctl_dir()?.join("keys.json"))
+}
+fn peers_path() -> Result<PathBuf> {
+    Ok(truthctl_dir()?.join("peers.json"))
+}
 
 fn load_keys_file() -> Result<KeyStore> {
     let path = keys_path()?;
-    if !path.exists() { return Ok(KeyStore::default()); }
+    if !path.exists() {
+        return Ok(KeyStore::default());
+    }
     let data = fs::read_to_string(path)?;
     Ok(serde_json::from_str(&data).unwrap_or_default())
 }
@@ -52,7 +60,9 @@ fn save_keys_file(store: &KeyStore) -> Result<()> {
 
 fn load_peers_file() -> Result<crate::status_utils::Peers> {
     let path = peers_path()?;
-    if !path.exists() { return Ok(crate::status_utils::Peers::default()); }
+    if !path.exists() {
+        return Ok(crate::status_utils::Peers::default());
+    }
     let data = fs::read_to_string(path)?;
     Ok(serde_json::from_str(&data).unwrap_or_default())
 }
@@ -70,14 +80,15 @@ pub async fn run_diagnostics(_verbose: bool) -> Vec<DiagnosticResult> {
             .and_then(|t| serde_json::from_str::<crate::config_utils::Config>(&t).ok())
         {
             Some(cfg) => {
-                let ok = !cfg.node_name.is_empty()
-                    && !cfg.db_path.is_empty()
-                    && cfg.port > 0;
+                let ok = !cfg.node_name.is_empty() && !cfg.db_path.is_empty() && cfg.port > 0;
                 if ok {
                     results.push(DiagnosticResult {
                         check: "Config".to_string(),
                         status: "✅ OK".to_string(),
-                        message: format!("node={}, port={}, db={}", cfg.node_name, cfg.port, cfg.db_path),
+                        message: format!(
+                            "node={}, port={}, db={}",
+                            cfg.node_name, cfg.port, cfg.db_path
+                        ),
                     });
                     cfg_loaded = Some(cfg);
                 } else {
@@ -105,7 +116,10 @@ pub async fn run_diagnostics(_verbose: bool) -> Vec<DiagnosticResult> {
     // Keys
     match load_keys_file() {
         Ok(ks) => {
-            let valid = ks.keys.iter().any(|k| is_valid_hex64(&k.private_key_hex) && is_valid_hex64(&k.public_key_hex));
+            let valid = ks
+                .keys
+                .iter()
+                .any(|k| is_valid_hex64(&k.private_key_hex) && is_valid_hex64(&k.public_key_hex));
             if valid {
                 results.push(DiagnosticResult {
                     check: "Keys".to_string(),
@@ -156,20 +170,40 @@ pub async fn run_diagnostics(_verbose: bool) -> Vec<DiagnosticResult> {
     // Database
     let db_status = if let Some(cfg) = &cfg_loaded {
         if Path::new(&cfg.db_path).exists() {
-            DiagnosticResult { check: "Database".to_string(), status: "✅ OK".to_string(), message: cfg.db_path.clone() }
+            DiagnosticResult {
+                check: "Database".to_string(),
+                status: "✅ OK".to_string(),
+                message: cfg.db_path.clone(),
+            }
         } else {
-            DiagnosticResult { check: "Database".to_string(), status: "⚠️ Missing".to_string(), message: cfg.db_path.clone() }
+            DiagnosticResult {
+                check: "Database".to_string(),
+                status: "⚠️ Missing".to_string(),
+                message: cfg.db_path.clone(),
+            }
         }
     } else {
-        DiagnosticResult { check: "Database".to_string(), status: "⚠️ Missing".to_string(), message: "config not found".to_string() }
+        DiagnosticResult {
+            check: "Database".to_string(),
+            status: "⚠️ Missing".to_string(),
+            message: "config not found".to_string(),
+        }
     };
     results.push(db_status);
 
     // P2P feature
     if cfg!(feature = "p2p-client-sync") {
-        results.push(DiagnosticResult { check: "P2P Feature".to_string(), status: "✅ Enabled".to_string(), message: String::new() });
+        results.push(DiagnosticResult {
+            check: "P2P Feature".to_string(),
+            status: "✅ Enabled".to_string(),
+            message: String::new(),
+        });
     } else {
-        results.push(DiagnosticResult { check: "P2P Feature".to_string(), status: "⚠️ Disabled".to_string(), message: String::new() });
+        results.push(DiagnosticResult {
+            check: "P2P Feature".to_string(),
+            status: "⚠️ Disabled".to_string(),
+            message: String::new(),
+        });
     }
 
     results
@@ -194,7 +228,8 @@ pub fn print_diagnostic_summary(results: &[DiagnosticResult]) {
 pub fn reset_local_data(confirm: bool, reinit: bool) -> Result<()> {
     use rusqlite::Connection;
     // Load config (existing or default)
-    let cfg = crate::config_utils::load_config().unwrap_or_else(|_| crate::config_utils::default_config());
+    let cfg = crate::config_utils::load_config()
+        .unwrap_or_else(|_| crate::config_utils::default_config());
 
     // Clear logs if DB exists, then remove DB file
     let db_path = PathBuf::from(&cfg.db_path);
@@ -212,7 +247,11 @@ pub fn reset_local_data(confirm: bool, reinit: bool) -> Result<()> {
         if !confirm {
             // Ask interactively
             let question = format!("Remove {}?", peers_path.display());
-            if let Ok(ans) = dialoguer::Confirm::new().with_prompt(question).default(false).interact() {
+            if let Ok(ans) = dialoguer::Confirm::new()
+                .with_prompt(question)
+                .default(false)
+                .interact()
+            {
                 remove = ans;
             }
         }
@@ -226,9 +265,17 @@ pub fn reset_local_data(confirm: bool, reinit: bool) -> Result<()> {
     if reinit {
         ensure_keypair_exists(true)?;
         // derive values from existing or default config
-        let name = if cfg.node_name.is_empty() { "node".to_string() } else { cfg.node_name };
+        let name = if cfg.node_name.is_empty() {
+            "node".to_string()
+        } else {
+            cfg.node_name
+        };
         let port = cfg.port.to_string();
-        let db = if cfg.db_path.is_empty() { "truth.db".to_string() } else { cfg.db_path };
+        let db = if cfg.db_path.is_empty() {
+            "truth.db".to_string()
+        } else {
+            cfg.db_path
+        };
 
         let exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("truthctl"));
         let status = std::process::Command::new(exe)
@@ -269,8 +316,15 @@ pub fn ensure_keypair_exists(interactive: bool) -> Result<()> {
         let priv_hex = hex::encode(sk.to_bytes());
         let pub_hex = hex::encode(vk.to_bytes());
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-        let created_at = chrono::DateTime::<chrono::Utc>::from(UNIX_EPOCH + std::time::Duration::from_secs(ts)).to_rfc3339();
-        ks.keys.push(KeyPair { id: 1, private_key_hex: priv_hex, public_key_hex: pub_hex, created_at });
+        let created_at =
+            chrono::DateTime::<chrono::Utc>::from(UNIX_EPOCH + std::time::Duration::from_secs(ts))
+                .to_rfc3339();
+        ks.keys.push(KeyPair {
+            id: 1,
+            private_key_hex: priv_hex,
+            public_key_hex: pub_hex,
+            created_at,
+        });
         save_keys_file(&ks)?;
         println!("{}", "🔑 New keypair generated.".green());
         return Ok(());
@@ -289,13 +343,21 @@ pub fn ensure_keypair_exists(interactive: bool) -> Result<()> {
             let priv_hex = hex::encode(sk.to_bytes());
             let pub_hex = hex::encode(vk.to_bytes());
             let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-            let created_at = chrono::DateTime::<chrono::Utc>::from(UNIX_EPOCH + std::time::Duration::from_secs(ts)).to_rfc3339();
+            let created_at = chrono::DateTime::<chrono::Utc>::from(
+                UNIX_EPOCH + std::time::Duration::from_secs(ts),
+            )
+            .to_rfc3339();
             if let Some(first) = ks.keys.first_mut() {
                 first.private_key_hex = priv_hex;
                 first.public_key_hex = pub_hex;
                 first.created_at = created_at;
             } else {
-                ks.keys.push(KeyPair { id: 1, private_key_hex: priv_hex, public_key_hex: pub_hex, created_at });
+                ks.keys.push(KeyPair {
+                    id: 1,
+                    private_key_hex: priv_hex,
+                    public_key_hex: pub_hex,
+                    created_at,
+                });
             }
             save_keys_file(&ks)?;
             println!("{}", "🔁 Keypair replaced.".yellow());
@@ -305,6 +367,8 @@ pub fn ensure_keypair_exists(interactive: bool) -> Result<()> {
 }
 
 fn is_valid_hex64(s: &str) -> bool {
-    if s.len() != 64 { return false; }
+    if s.len() != 64 {
+        return false;
+    }
     s.chars().all(|c| c.is_ascii_hexdigit())
 }

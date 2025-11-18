@@ -7,12 +7,18 @@ fn logs_show_and_clear_persist() {
     // isolated HOME and working directory
     let tmp_home = std::env::temp_dir().join(format!(
         "truthctl-test-home-{}",
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
     ));
     std::fs::create_dir_all(&tmp_home).unwrap();
     let tmp_dir = std::env::temp_dir().join(format!(
         "truthctl-test-dir-{}",
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
     ));
     std::fs::create_dir_all(&tmp_dir).unwrap();
 
@@ -72,7 +78,7 @@ fn logs_show_and_clear_persist() {
 
     // show again must be empty
     let out = Command::new(bin)
-        .args(["logs", "show", "--limit", "10"]) 
+        .args(["logs", "show", "--limit", "10"])
         .env("HOME", &tmp_home)
         .current_dir(&tmp_dir)
         .output()

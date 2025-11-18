@@ -52,7 +52,11 @@ fn process_json_request_logic(input: &str) -> String {
         }),
         Some("analyze_text") => {
             let text = parsed["text"].as_str().unwrap_or("");
-            let keywords = if text.is_empty() { vec![] } else { vec!["truth", "context"] };
+            let keywords = if text.is_empty() {
+                vec![]
+            } else {
+                vec!["truth", "context"]
+            };
             json!({ "status": "ok", "sentiment": "neutral", "keywords": keywords })
         }
         _ => json!({
@@ -177,4 +181,3 @@ fn test_missing_action() {
     assert_eq!(parsed["error"], "unknown_action");
     assert!(parsed["received_action"].is_null());
 }
-

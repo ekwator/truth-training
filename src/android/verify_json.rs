@@ -16,13 +16,19 @@ pub enum VerifyError {
 }
 
 impl From<serde_json::Error> for VerifyError {
-    fn from(e: serde_json::Error) -> Self { Self::InvalidJson(e) }
+    fn from(e: serde_json::Error) -> Self {
+        Self::InvalidJson(e)
+    }
 }
 impl From<base64::DecodeError> for VerifyError {
-    fn from(e: base64::DecodeError) -> Self { Self::Base64(e) }
+    fn from(e: base64::DecodeError) -> Self {
+        Self::Base64(e)
+    }
 }
 impl From<ed25519_dalek::SignatureError> for VerifyError {
-    fn from(e: ed25519_dalek::SignatureError) -> Self { Self::SignatureParse(e) }
+    fn from(e: ed25519_dalek::SignatureError) -> Self {
+        Self::SignatureParse(e)
+    }
 }
 
 pub struct TrustedMessage {
@@ -37,8 +43,14 @@ pub struct TrustedMessage {
 pub fn verify_json_message(raw_json: &str) -> Result<TrustedMessage, VerifyError> {
     let v: Value = serde_json::from_str(raw_json)?;
 
-    let signature_b64 = v.get("signature").and_then(|s| s.as_str()).ok_or(VerifyError::MissingSignature)?;
-    let pubkey_b64 = v.get("public_key").and_then(|s| s.as_str()).ok_or(VerifyError::MissingPublicKey)?;
+    let signature_b64 = v
+        .get("signature")
+        .and_then(|s| s.as_str())
+        .ok_or(VerifyError::MissingSignature)?;
+    let pubkey_b64 = v
+        .get("public_key")
+        .and_then(|s| s.as_str())
+        .ok_or(VerifyError::MissingPublicKey)?;
     let payload = v.get("payload").ok_or(VerifyError::MissingPayload)?.clone();
 
     let data = serde_json::to_vec(&payload)?;
@@ -46,11 +58,17 @@ pub fn verify_json_message(raw_json: &str) -> Result<TrustedMessage, VerifyError
     let sig_bytes = general_purpose::STANDARD.decode(signature_b64)?;
     let pk_bytes = general_purpose::STANDARD.decode(pubkey_b64)?;
 
-    if pk_bytes.len() != 32 { return Err(VerifyError::PublicKeyLength(pk_bytes.len())); }
+    if pk_bytes.len() != 32 {
+        return Err(VerifyError::PublicKeyLength(pk_bytes.len()));
+    }
 
     let sig_arr: [u8; 64] = match sig_bytes.as_slice().try_into() {
         Ok(a) => a,
-        Err(_) => return Err(VerifyError::VerificationFailed("invalid_signature_length".to_string())),
+        Err(_) => {
+            return Err(VerifyError::VerificationFailed(
+                "invalid_signature_length".to_string(),
+            ))
+        }
     };
     let signature = Signature::from_bytes(&sig_arr);
 
@@ -68,5 +86,9 @@ pub fn verify_json_message(raw_json: &str) -> Result<TrustedMessage, VerifyError
         return Err(VerifyError::VerificationFailed(e.to_string()));
     }
 
-    Ok(TrustedMessage { verified: true, payload, sender_key_b64: pubkey_b64.to_string() })
+    Ok(TrustedMessage {
+        verified: true,
+        payload,
+        sender_key_b64: pubkey_b64.to_string(),
+    })
 }

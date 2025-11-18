@@ -1,6 +1,6 @@
+use crate::storage::Db;
 use serde::{Deserialize, Serialize};
 use tauri::{command, State};
-use crate::storage::Db;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Impact {
@@ -27,7 +27,7 @@ pub async fn add_impact(request: AddImpactRequest, db: State<'_, Db>) -> Result<
 
     let id = format!("impact_{}", uuid::Uuid::new_v4());
     let created_at = chrono::Utc::now().to_rfc3339();
-    
+
     db.insert_impact(
         &id,
         &request.event_id,
@@ -44,4 +44,3 @@ pub async fn add_impact(request: AddImpactRequest, db: State<'_, Db>) -> Result<
         created_at,
     })
 }
-

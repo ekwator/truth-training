@@ -1,8 +1,8 @@
-use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
-use rand::rngs::OsRng;
+use crate::api::VerifyError;
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hex;
-use std::convert::TryInto;
-use crate::api::VerifyError; // либо продублировать VerifyError в другом месте/реэкспортировать
+use rand::rngs::OsRng;
+use std::convert::TryInto; // либо продублировать VerifyError в другом месте/реэкспортировать
 
 pub struct CryptoIdentity {
     pub signing_key: SigningKey,
@@ -14,7 +14,10 @@ impl CryptoIdentity {
         let mut rng = OsRng;
         let signing_key = SigningKey::generate(&mut rng);
         let verifying_key = signing_key.verifying_key();
-        Self { signing_key, verifying_key }
+        Self {
+            signing_key,
+            verifying_key,
+        }
     }
 
     pub fn sign(&self, data: &[u8]) -> Signature {
@@ -24,7 +27,7 @@ impl CryptoIdentity {
     pub fn public_key_hex(&self) -> String {
         hex::encode(self.verifying_key.to_bytes())
     }
-    
+
     /// Проверка, возвращающая Result
     pub fn verify(&self, data: &[u8], sig: &Signature) -> Result<(), VerifyError> {
         self.verifying_key
@@ -75,17 +78,28 @@ impl CryptoIdentity {
     #[allow(dead_code)] // Используется в CLI
     pub fn from_keypair_hex(private_key_hex: &str, public_key_hex: &str) -> Result<Self, String> {
         let sk_bytes = hex::decode(private_key_hex).map_err(|e| e.to_string())?;
-        if sk_bytes.len() != 32 { return Err(format!("invalid private key length: {}", sk_bytes.len())); }
+        if sk_bytes.len() != 32 {
+            return Err(format!("invalid private key length: {}", sk_bytes.len()));
+        }
         let pk_bytes = hex::decode(public_key_hex).map_err(|e| e.to_string())?;
-        if pk_bytes.len() != 32 { return Err(format!("invalid public key length: {}", pk_bytes.len())); }
+        if pk_bytes.len() != 32 {
+            return Err(format!("invalid public key length: {}", pk_bytes.len()));
+        }
 
-        let signing_key = SigningKey::from_bytes(&sk_bytes.try_into().map_err(|_| "bad sk".to_string())?);
-        let verifying_key = VerifyingKey::from_bytes(&pk_bytes.try_into().map_err(|_| "bad pk".to_string())?)
-            .map_err(|e| e.to_string())?;
-        Ok(Self { signing_key, verifying_key })
+        let signing_key =
+            SigningKey::from_bytes(&sk_bytes.try_into().map_err(|_| "bad sk".to_string())?);
+        let verifying_key =
+            VerifyingKey::from_bytes(&pk_bytes.try_into().map_err(|_| "bad pk".to_string())?)
+                .map_err(|e| e.to_string())?;
+        Ok(Self {
+            signing_key,
+            verifying_key,
+        })
     }
 }
 
 impl Default for CryptoIdentity {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }

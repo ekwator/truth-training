@@ -1,0 +1,430 @@
+openapi: 3.0.3
+info:
+  title: Node Discovery & Address Exchange API
+  version: 1.0.0
+  description: |
+    REST API for node discovery, synchronization, and health checks.
+    Enables cross-platform node list sharing between CLI, Server, Desktop, and Android clients.
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.truth-training.example.com/v1
+    description: Production server
+
+paths:
+  /nodes:
+    get:
+      summary: List all known nodes
+      description: Returns a list of all nodes in the local database, optionally filtered by type or reachability.
+      operationId: listNodes
+      tags:
+        - nodes
+      parameters:
+        - name: type
+          in: query
+          description: Filter by node type (LAN, WIFI, GLOBAL, RELAY, CLIENT)
+          schema:
+            type: string
+            enum: [LAN, WIFI, GLOBAL, RELAY, CLIENT]
+        - name: reachable
+          in: query
+          description: Filter by reachability status
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Maximum number of nodes to return
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Node'
+                  total:
+                    type: integer
+                    description: Total number of nodes matching filters
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Register a new node
+      description: Manually register a node (typically used for global endpoints or manual configuration).
+      operationId: registerNode
+      tags:
+        - nodes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewNodeRequest'
+      responses:
+        '201':
+          description: Node registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Node'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Node with this address already exists
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /nodes/discover:
+    post:
+      summary: Trigger discovery cycle
+      description: Manually trigger a discovery cycle (LAN/Wi-Fi broadcast or global registry poll).
+      operationId: discoverNodes
+      tags:
+        - nodes
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                types:
+                  type: array
+                  items:
+                    type: string
+                    enum: [LAN, WIFI, GLOBAL]
+                  description: Discovery types to run (default: all)
+      responses:
+        '200':
+          description: Discovery cycle completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  discovered:
+                    type: integer
+                    description: Number of new nodes discovered
+                  updated:
+                    type: integer
+                    description: Number of existing nodes updated
+                  duration_ms:
+                    type: integer
+                    description: Discovery cycle duration in milliseconds
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /nodes/sync:
+    post:
+      summary: Synchronize node lists with peer
+      description: Exchange node lists with another node. Returns merged list and updates local database.
+      operationId: syncNodes
+      tags:
+        - nodes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nodes:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Node'
+                  description: Remote node list to merge
+      responses:
+        '200':
+          description: Synchronization completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  merged:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Node'
+                    description: Merged node list (return to peer)
+                  local_added:
+                    type: integer
+                    description: Number of nodes added to local DB
+                  local_updated:
+                    type: integer
+                    description: Number of nodes updated in local DB
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /nodes/{id}:
+    get:
+      summary: Get node by ID
+      operationId: getNode
+      tags:
+        - nodes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Node found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Node'
+        '404':
+          description: Node not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update node
+      operationId: updateNode
+      tags:
+        - nodes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNodeRequest'
+      responses:
+        '200':
+          description: Node updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Node'
+        '404':
+          description: Node not found
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete node
+      operationId: deleteNode
+      tags:
+        - nodes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Node deleted
+        '404':
+          description: Node not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /nodes/health:
+    get:
+      summary: Health check endpoint
+      description: Returns health status of all nodes (reachability check results).
+      operationId: checkNodeHealth
+      tags:
+        - nodes
+      parameters:
+        - name: node_id
+          in: query
+          description: Check specific node by ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Health check results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NodeHealth'
+                  checked_at:
+                    type: integer
+                    format: int64
+                    description: Unix timestamp of health check
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    Node:
+      type: object
+      required:
+        - id
+        - address
+        - type
+        - reachable
+        - last_seen
+        - ttl
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Auto-incrementing primary key
+        address:
+          type: string
+          format: uri
+          example: "http://192.168.1.100:8080"
+          description: Network address (URL or IP:port)
+        type:
+          type: string
+          enum: [LAN, WIFI, GLOBAL, RELAY, CLIENT]
+          description: Node type category
+        reachable:
+          type: integer
+          enum: [0, 1]
+          description: Reachability status (0 = unreachable, 1 = reachable)
+        last_seen:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds) of last successful contact
+        ttl:
+          type: integer
+          description: Time-to-live in seconds
+          minimum: 60
+        source:
+          type: string
+          nullable: true
+          enum: [local_broadcast, wifi_scan, global_registry, manual, peer_sync]
+          description: Discovery source
+        node_id:
+          type: string
+          nullable: true
+          pattern: '^[0-9a-fA-F]{64}$'
+          description: Public key (hex) for node identity (ed25519)
+        created_at:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds) when record was created
+        updated_at:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds) when record was last updated
+
+    NewNodeRequest:
+      type: object
+      required:
+        - address
+        - type
+        - ttl
+      properties:
+        address:
+          type: string
+          format: uri
+        type:
+          type: string
+          enum: [LAN, WIFI, GLOBAL, RELAY, CLIENT]
+        ttl:
+          type: integer
+          minimum: 60
+        source:
+          type: string
+          enum: [manual, global_registry]
+        node_id:
+          type: string
+          pattern: '^[0-9a-fA-F]{64}$'
+
+    UpdateNodeRequest:
+      type: object
+      properties:
+        reachable:
+          type: integer
+          enum: [0, 1]
+        last_seen:
+          type: integer
+          format: int64
+        ttl:
+          type: integer
+          minimum: 60
+
+    NodeHealth:
+      type: object
+      required:
+        - node_id
+        - reachable
+        - checked_at
+        - response_time_ms
+      properties:
+        node_id:
+          type: integer
+        address:
+          type: string
+        reachable:
+          type: boolean
+        checked_at:
+          type: integer
+          format: int64
+        response_time_ms:
+          type: integer
+          nullable: true
+          description: HTTP response time in milliseconds (null if unreachable)
+        error:
+          type: string
+          nullable: true
+          description: Error message if health check failed
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    NodeSignature:
+      type: http
+      scheme: bearer
+      description: Ed25519 signature-based authentication (node_id + request signature)
+
+security:
+  - NodeSignature: []
+

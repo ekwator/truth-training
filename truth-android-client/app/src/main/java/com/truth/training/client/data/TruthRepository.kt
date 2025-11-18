@@ -11,6 +11,7 @@ import com.truth.training.client.data.network.dto.AuthRequest
 import com.truth.training.client.data.network.dto.InfoResponse
 import com.truth.training.client.data.network.dto.StatsResponse
 import com.truth.training.client.data.repository.*
+import com.truth.training.client.data.repository.DiscoveryRepository
 import com.truth.training.client.data.sync.SyncQueueManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +44,9 @@ class TruthRepository(context: Context, database: TruthDatabase? = null) {
     val judgmentRepository: JudgmentRepository = JudgmentRepository(db, api)
     val impactRepository: ImpactRepository = ImpactRepository(db, api)
     val summaryRepository: SummaryRepository = SummaryRepository(db)
+    
+    // Discovery repository (no API dependency, uses HTTP client internally)
+    val discoveryRepository: DiscoveryRepository = DiscoveryRepository(db, null)
     
     // Sync queue manager
     val syncQueueManager: SyncQueueManager = SyncQueueManager(db)
