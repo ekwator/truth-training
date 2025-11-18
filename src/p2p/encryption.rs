@@ -74,6 +74,16 @@ impl CryptoIdentity {
         self.verify(data, &signature)
     }
 
+    /// Создание CryptoIdentity из SigningKey (для tests)
+    #[cfg(test)]
+    pub fn from_keypair(signing_key: SigningKey) -> Self {
+        let verifying_key = signing_key.verifying_key();
+        Self {
+            signing_key,
+            verifying_key,
+        }
+    }
+
     /// Создание CryptoIdentity из пары ключей в hex (для CLI)
     #[allow(dead_code)] // Используется в CLI
     pub fn from_keypair_hex(private_key_hex: &str, public_key_hex: &str) -> Result<Self, String> {

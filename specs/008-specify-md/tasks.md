@@ -70,7 +70,7 @@ Integration tests (Quickstart scenarios → [P]):
 ## Phase 3.4: Integration & Observability
 - [x] T048 Implement shared logging/metrics for discovery events (counters, TTL cleanup stats) in `src/main.rs`, `app/src/cli.rs`, and `ui/desktop/src-tauri/src/logging.rs`.
 - [x] T049 Update `tests/cli_sync.rs` to cover new CLI commands end-to-end (list/discover/sync/cleanup/validate).
-- [ ] T050 Ensure Desktop ↔ Server ↔ Android sync handshake uses new merge helpers (update `tests/integration/cli_sync.rs` or new test) and document handshake contract in `contracts/README.md`.
+- [x] T050 Ensure Desktop ↔ Server ↔ Android sync handshake uses new merge helpers (update `tests/integration/cli_sync.rs` or new test) and document handshake contract in `contracts/README.md`.
 
 ## Phase 3.6: Post-Integration Hardening & Reliability
 - [x] T055 Fix `lan_announcement_roundtrip` test feature flag gating (`#[cfg(feature = "desktop")]`).
@@ -79,7 +79,7 @@ Integration tests (Quickstart scenarios → [P]):
 - [x] T058 Add tests for empty/malformed registry URLs in CLI commands (`tests/cli_sync.rs`).
 - [x] T059 Create TTL behavior consistency tests (`tests/integration/test_ttl_consistency.rs`).
 - [x] T060 Create JSON enum serialization tests (`tests/integration/test_json_enum_serialization.rs`).
-- [ ] T061 Verify UDP multicast compatibility between Desktop (Rust) and Android (Kotlin) with packet roundtrip tests.
+- [x] T061 Verify UDP multicast compatibility between Desktop (Rust) and Android (Kotlin) with packet roundtrip tests.
 - [ ] T062 Add cross-device E2E tests (Linux Desktop ↔ Android device, CLI ↔ Android ↔ Desktop).
 - [x] T063 Update documentation with Android navigation instructions, device test instructions, and feature flag usage.
 - [ ] T064 Update CI to run desktop feature tests (`cargo test --features desktop`).
