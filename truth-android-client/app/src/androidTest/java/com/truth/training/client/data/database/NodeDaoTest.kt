@@ -7,6 +7,7 @@ import com.truth.training.client.data.database.daos.NodeDao
 import com.truth.training.client.data.database.entities.NodeEntity
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -86,16 +87,19 @@ class NodeDaoTest {
         )
         
         nodeDao.upsertNode(node1)
-        val id1 = nodeDao.getNodeByAddress(node1.address)!!.id
+        val inserted = nodeDao.getNodeByAddress(node1.address)
+        assertNotNull("Node should be inserted", inserted)
+        val id1 = inserted!!.id
+        assertTrue("Node should have a valid ID", id1 > 0)
         
-        // Upsert with updated TTL
-        val node2 = node1.copy(ttl = 200, updatedAt = now + 10)
+        // Upsert with updated TTL - use the actual ID from the inserted node
+        val node2 = inserted.copy(ttl = 200, updatedAt = now + 10)
         nodeDao.upsertNode(node2)
         
         val retrieved = nodeDao.getNodeByAddress(node1.address)
-        assert(retrieved != null)
-        assert(retrieved!!.id == id1) // Same ID
-        assert(retrieved.ttl == 200L) // Updated TTL
+        assertNotNull("Node should still exist after upsert", retrieved)
+        assertEquals("ID should remain the same after upsert", id1, retrieved!!.id)
+        assertEquals("TTL should be updated to 200", 200L, retrieved.ttl)
     }
     
     @Test
