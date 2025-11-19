@@ -88,7 +88,7 @@ Integration tests (Quickstart scenarios → [P]):
 - [x] T051 [P] Update documentation (`README.md`, `docs/Data_Schema.md`, `docs/CLI_Usage.md`, `docs/architecture.md`) with schema, discovery flow, CLI usage, and Android/Desktop behaviors.
 - [x] T052 [P] Add performance regression tests/benchmarks for discovery + merge in `tests/test_discovery_perf.rs` ensuring targets (<5s scan, <100ms merge).
 - [x] T053 [P] Execute quickstart scenarios end-to-end and capture results in `test-results/reports/node_discovery.md`, attaching logs/screenshots from each platform.
-- [ ] T054 Run final CLI-driven verification (fresh DB, migrations, sync across modules) and record evidence in `test-results/reports/final_validation.md`.
+- [x] T054 Run final CLI-driven verification (fresh DB, migrations, sync across modules) and record evidence in `docs/final_validation.md`.
 
 ## Dependencies
 - T002 depends on T001 (config values referenced in deps).
