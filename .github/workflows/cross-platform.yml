@@ -84,8 +84,17 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Build desktop lib (truth_core)
         run: cargo build --release --features desktop --lib -p truth_core
-      - name: Test desktop
-        run: cargo test --features desktop
+      - name: Test desktop (all tests with desktop feature)
+        run: |
+          # Run all tests with desktop feature enabled
+          # This includes:
+          # - Unit tests in src/ that require desktop features
+          # - Integration tests in tests/ that use truth_core::p2p (requires desktop)
+          # - Tests that use actix_web (requires desktop)
+          # - Tests in tests/integration/ that access p2p modules
+          echo "🧪 Running all tests with --features desktop..."
+          cargo test --features desktop --lib --tests
+          echo "✅ Desktop feature tests completed"
       - name: Upload Desktop artifacts (libtruth_core-desktop)
         uses: actions/upload-artifact@v4
         with:

@@ -47,13 +47,23 @@ pub extern "system" fn Java_com_truth_training_client_TruthCore_processJsonReque
     use serde_json::json;
     let input: String = match env.get_string(&request) {
         Ok(jstr) => jstr.into(),
-        Err(_) => return env.new_string(r#"{"error":"invalid_input"}"#).unwrap().into_raw(),
+        Err(_) => {
+            return env
+                .new_string(r#"{"error":"invalid_input"}"#)
+                .unwrap()
+                .into_raw()
+        }
     };
 
     // If Android envelope contains signed payload, verify first.
     let parsed: serde_json::Value = match serde_json::from_str(&input) {
         Ok(v) => v,
-        Err(_) => return env.new_string(r#"{"error":"invalid_json"}"#).unwrap().into_raw(),
+        Err(_) => {
+            return env
+                .new_string(r#"{"error":"invalid_json"}"#)
+                .unwrap()
+                .into_raw()
+        }
     };
 
     // Try verification path if envelope fields present
@@ -140,7 +150,11 @@ pub extern "system" fn Java_com_truth_training_client_TruthCore_processJsonReque
         Some("analyze_text") => {
             let text = parsed["text"].as_str().unwrap_or("");
             // TODO: call truth_core semantic analyzer when available
-            let keywords = if text.is_empty() { vec![] } else { vec!["truth", "context"] };
+            let keywords = if text.is_empty() {
+                vec![]
+            } else {
+                vec!["truth", "context"]
+            };
             json!({
                 "status": "ok",
                 "sentiment": "neutral",

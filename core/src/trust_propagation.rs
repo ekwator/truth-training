@@ -49,12 +49,13 @@ pub fn compute_quality_index(
     trust_score_stability: f32,
     prev_quality: Option<f32>,
 ) -> f32 {
-    let q_raw = (0.5 * relay_success_rate)
-        + (0.3 * conflict_free_ratio)
-        + (0.2 * trust_score_stability);
+    let q_raw =
+        (0.5 * relay_success_rate) + (0.3 * conflict_free_ratio) + (0.2 * trust_score_stability);
     let q_raw = q_raw.clamp(0.0, 1.0);
     match prev_quality {
-        Some(prev) => (QUALITY_EMA_ALPHA * q_raw + (1.0 - QUALITY_EMA_ALPHA) * prev).clamp(0.0, 1.0),
+        Some(prev) => {
+            (QUALITY_EMA_ALPHA * q_raw + (1.0 - QUALITY_EMA_ALPHA) * prev).clamp(0.0, 1.0)
+        }
         None => q_raw,
     }
 }
@@ -70,16 +71,20 @@ pub fn blend_priority(local_priority: f32, remote_priority: f32) -> f32 {
 /// где trust_norm = clamp((trust_score+1)/2, 0..1)
 /// p = alpha*p_raw + (1-alpha)*prev, alpha = PRIORITY_EMA_ALPHA
 pub fn compute_propagation_priority(
-    trust_score: f32,          // -1..1
-    quality_index: f32,        // 0..1
-    relay_success_rate: f32,   // 0..1
+    trust_score: f32,        // -1..1
+    quality_index: f32,      // 0..1
+    relay_success_rate: f32, // 0..1
     prev_priority: Option<f32>,
 ) -> f32 {
     let trust_norm = ((trust_score + 1.0) / 2.0).clamp(0.0, 1.0);
-    let p_raw = (0.4 * trust_norm) + (0.3 * quality_index.clamp(0.0, 1.0)) + (0.3 * relay_success_rate.clamp(0.0, 1.0));
+    let p_raw = (0.4 * trust_norm)
+        + (0.3 * quality_index.clamp(0.0, 1.0))
+        + (0.3 * relay_success_rate.clamp(0.0, 1.0));
     let p_raw = p_raw.clamp(0.0, 1.0);
     match prev_priority {
-        Some(prev) => (PRIORITY_EMA_ALPHA * p_raw + (1.0 - PRIORITY_EMA_ALPHA) * prev).clamp(0.0, 1.0),
+        Some(prev) => {
+            (PRIORITY_EMA_ALPHA * p_raw + (1.0 - PRIORITY_EMA_ALPHA) * prev).clamp(0.0, 1.0)
+        }
         None => p_raw,
     }
 }
@@ -117,12 +122,12 @@ pub fn propagate_from_remote(
         let row = sel
             .query_row([nr.node_id.as_str()], |r| {
                 Ok((
-                    r.get::<_, i64>(0)?, // events_true
-                    r.get::<_, i64>(1)?, // events_false
-                    r.get::<_, i64>(2)?, // validations
-                    r.get::<_, i64>(3)?, // reused_events
+                    r.get::<_, i64>(0)?,        // events_true
+                    r.get::<_, i64>(1)?,        // events_false
+                    r.get::<_, i64>(2)?,        // validations
+                    r.get::<_, i64>(3)?,        // reused_events
                     r.get::<_, f64>(4)? as f32, // trust_score
-                    r.get::<_, i64>(5)?, // last_updated
+                    r.get::<_, i64>(5)?,        // last_updated
                 ))
             })
             .optional()?;

@@ -1,6 +1,6 @@
+use crate::storage::Db;
 use serde::{Deserialize, Serialize};
 use tauri::{command, State};
-use crate::storage::Db;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Judgment {
@@ -36,10 +36,16 @@ pub struct JudgmentStatsResponse {
 }
 
 #[command]
-pub async fn submit_judgment_fast(request: SubmitJudgmentRequest, db: State<'_, Db>) -> Result<Judgment, String> {
+pub async fn submit_judgment_fast(
+    request: SubmitJudgmentRequest,
+    db: State<'_, Db>,
+) -> Result<Judgment, String> {
     let id = format!("judg_{}", uuid::Uuid::new_v4());
     let submitted_at = chrono::Utc::now().to_rfc3339();
-    if !(request.assessment == "true" || request.assessment == "false" || request.assessment == "uncertain") {
+    if !(request.assessment == "true"
+        || request.assessment == "false"
+        || request.assessment == "uncertain")
+    {
         return Err("invalid assessment".into());
     }
     if request.confidence_level < 0.0 || request.confidence_level > 1.0 {
@@ -64,23 +70,36 @@ pub async fn submit_judgment_fast(request: SubmitJudgmentRequest, db: State<'_, 
 }
 
 #[command]
-pub async fn judgments_list_fast(event_id: String, page: u32, per_page: u32, db: State<'_, Db>) -> Result<JudgmentListResponse, String> {
+pub async fn judgments_list_fast(
+    event_id: String,
+    page: u32,
+    per_page: u32,
+    db: State<'_, Db>,
+) -> Result<JudgmentListResponse, String> {
     let limit = per_page as i64;
     let offset = (page.saturating_sub(1) as i64) * limit;
     let (rows, total) = db.list_judgments_for_event(&event_id, limit, offset)?;
-    let data = rows.into_iter().map(|(id, event_id, assessment, confidence_level, reasoning, submitted_at)| Judgment {
-        id,
-        event_id,
-        assessment,
-        confidence_level,
-        reasoning,
-        submitted_at,
-    }).collect();
+    let data = rows
+        .into_iter()
+        .map(
+            |(id, event_id, assessment, confidence_level, reasoning, submitted_at)| Judgment {
+                id,
+                event_id,
+                assessment,
+                confidence_level,
+                reasoning,
+                submitted_at,
+            },
+        )
+        .collect();
     Ok(JudgmentListResponse { data, total })
 }
 
 #[command]
-pub async fn get_judgment_stats(event_id: String, db: State<'_, Db>) -> Result<JudgmentStatsResponse, String> {
+pub async fn get_judgment_stats(
+    event_id: String,
+    db: State<'_, Db>,
+) -> Result<JudgmentStatsResponse, String> {
     let (t_true, t_false, t_uncertain, avg, last) = db.get_judgment_stats(&event_id)?;
     Ok(JudgmentStatsResponse {
         true_count: t_true,

@@ -31,6 +31,38 @@ export interface AppConfig {
   nearby_interval_ms?: number;
 }
 
+export interface NodeRecord {
+  id: number;
+  address: string;
+  node_type: string;
+  reachable: boolean;
+  ttl: number;
+  last_seen: number;
+  updated_at: number;
+  source?: string | null;
+  node_id?: string | null;
+  expires_in: number;
+}
+
+export interface DiscoverySettings {
+  enable_background: boolean;
+  lan_interval_secs: number;
+  wifi_interval_secs: number;
+  global_interval_secs: number;
+  cleanup_interval_secs: number;
+  lan_ttl_secs: number;
+  wifi_ttl_secs: number;
+  global_ttl_secs: number;
+  registry_urls: string[];
+  db_path: string;
+}
+
+export interface DiscoverRun {
+  discovered: number;
+  updated: number;
+  duration_ms: number;
+}
+
 export interface ConnectionTestResult {
   ok: boolean;
   message: string;

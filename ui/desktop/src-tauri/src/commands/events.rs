@@ -1,6 +1,6 @@
+use crate::storage::Db;
 use serde::{Deserialize, Serialize};
 use tauri::{command, State};
-use crate::storage::Db;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Event {
@@ -50,7 +50,10 @@ pub struct ListEventsResponse {
 }
 
 #[command]
-pub async fn create_event_fast(request: CreateEventRequest, db: State<'_, Db>) -> Result<Event, String> {
+pub async fn create_event_fast(
+    request: CreateEventRequest,
+    db: State<'_, Db>,
+) -> Result<Event, String> {
     if request.description.trim().is_empty() {
         return Err("Description is required".to_string());
     }
@@ -90,6 +93,10 @@ pub async fn health_check_core() -> Result<HealthCheckResponse, String> {
 }
 
 #[command]
-pub async fn list_events_fast(page: u32, per_page: u32, db: State<'_, Db>) -> Result<ListEventsResponse, String> {
+pub async fn list_events_fast(
+    page: u32,
+    per_page: u32,
+    db: State<'_, Db>,
+) -> Result<ListEventsResponse, String> {
     db.list_truth_events_with_names(page, per_page)
 }

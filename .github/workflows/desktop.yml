@@ -84,6 +84,11 @@ jobs:
       - name: Build Web
         working-directory: ./ui/desktop
         run: npm run build
+      - name: Test desktop features (before build)
+        run: |
+          echo "🧪 Running desktop feature tests..."
+          cargo test --features desktop --lib --tests
+          echo "✅ Desktop feature tests completed"
       - name: Build Server (Linux host)
         run: cargo build --release --bin truth_core_server --features desktop --target x86_64-unknown-linux-gnu
       - name: Build Tauri (Linux)
@@ -215,6 +220,11 @@ jobs:
       - name: Build Web
         working-directory: ./ui/desktop
         run: npm run build
+      - name: Test desktop features (before build)
+        run: |
+          echo "🧪 Running desktop feature tests..."
+          cargo test --features desktop --lib --tests
+          echo "✅ Desktop feature tests completed"
       - name: Build Tauri (macOS)
         working-directory: ./ui/desktop
         run: cargo tauri build --target x86_64-apple-darwin
@@ -329,6 +339,11 @@ jobs:
       - name: Build Web
         working-directory: ./ui/desktop
         run: npm run build
+      - name: Test desktop features (before build)
+        run: |
+          echo "🧪 Running desktop feature tests..."
+          cargo test --features desktop --lib --tests
+          echo "✅ Desktop feature tests completed"
       - name: Build Tauri (Windows native)
         working-directory: ./ui/desktop
         run: cargo tauri build

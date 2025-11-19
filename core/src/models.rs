@@ -1,12 +1,13 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// Ошибки уровня ядра
 #[derive(thiserror::Error, Debug)]
 pub enum CoreError {
-#[error("Database error: {0}")]
-Db(#[from] rusqlite::Error),
-#[error("Invalid argument: {0}")]
-InvalidArg(String),
+    #[error("Database error: {0}")]
+    Db(#[from] rusqlite::Error),
+    #[error("Invalid argument: {0}")]
+    InvalidArg(String),
     #[error("Not found: {0}")]
     NotFound(String),
     #[error("IO error: {0}")]
@@ -95,20 +96,20 @@ pub struct ImpactType {
 /// Событие правды/лжи (таблица: truth_events)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TruthEvent {
-    pub id: i64,                    // INTEGER, PK
-    pub description: String,        // TEXT
-    pub category_id: Option<i64>,   // INTEGER (FK → category.id, nullable)
-    pub forma_id: Option<i64>,      // INTEGER (FK → forma.id, nullable)
-    pub cause_id: Option<i64>,      // INTEGER (FK → cause.id, nullable)
-    pub develop_id: Option<i64>,    // INTEGER (FK → develop.id, nullable)
-    pub effect_id: Option<i64>,     // INTEGER (FK → effect.id, nullable)
-    pub vector: bool,               // BOOLEAN (true = исходящее, false = входящее)
-    pub detected: Option<bool>,     // BOOLEAN NULLABLE (распознано ли как ложь/правда)
-    pub corrected: bool,            // BOOLEAN
-    pub timestamp_start: i64,       // INTEGER (UNIX secs)
-pub timestamp_end: Option<i64>, // INTEGER NULLABLE (UNIX secs)
-    pub code: u8,                   // 8-bit event code (2 control bits + 6 counter bits)
-    pub signature: Option<String>,  // Подпись события
+    pub id: i64,                       // INTEGER, PK
+    pub description: String,           // TEXT
+    pub category_id: Option<i64>,      // INTEGER (FK → category.id, nullable)
+    pub forma_id: Option<i64>,         // INTEGER (FK → forma.id, nullable)
+    pub cause_id: Option<i64>,         // INTEGER (FK → cause.id, nullable)
+    pub develop_id: Option<i64>,       // INTEGER (FK → develop.id, nullable)
+    pub effect_id: Option<i64>,        // INTEGER (FK → effect.id, nullable)
+    pub vector: bool,                  // BOOLEAN (true = исходящее, false = входящее)
+    pub detected: Option<bool>,        // BOOLEAN NULLABLE (распознано ли как ложь/правда)
+    pub corrected: bool,               // BOOLEAN
+    pub timestamp_start: i64,          // INTEGER (UNIX secs)
+    pub timestamp_end: Option<i64>,    // INTEGER NULLABLE (UNIX secs)
+    pub code: u8,                      // 8-bit event code (2 control bits + 6 counter bits)
+    pub signature: Option<String>,     // Подпись события
     pub public_key: Option<String>, // Публичный ключ автора (legacy; deprecated for Truth Without Author)
     pub collective_score: Option<f64>, // REAL NULLABLE — коллективная оценка (0..1)
 }
@@ -116,26 +117,26 @@ pub timestamp_end: Option<i64>, // INTEGER NULLABLE (UNIX secs)
 /// Вспомогательная структура для вставки события
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewTruthEvent {
-pub description: String,
-pub category_id: Option<i64>,   // INTEGER (FK → category.id, nullable)
-pub forma_id: Option<i64>,      // INTEGER (FK → forma.id, nullable)
-pub cause_id: Option<i64>,      // INTEGER (FK → cause.id, nullable)
-pub develop_id: Option<i64>,    // INTEGER (FK → develop.id, nullable)
-pub effect_id: Option<i64>,     // INTEGER (FK → effect.id, nullable)
-pub vector: bool,
-pub timestamp_start: i64,
+    pub description: String,
+    pub category_id: Option<i64>, // INTEGER (FK → category.id, nullable)
+    pub forma_id: Option<i64>,    // INTEGER (FK → forma.id, nullable)
+    pub cause_id: Option<i64>,    // INTEGER (FK → cause.id, nullable)
+    pub develop_id: Option<i64>,  // INTEGER (FK → develop.id, nullable)
+    pub effect_id: Option<i64>,   // INTEGER (FK → effect.id, nullable)
+    pub vector: bool,
+    pub timestamp_start: i64,
     pub code: u8,
 }
 
 /// Воздействие (таблица: impact)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Impact {
-    pub id: i64,  // INTEGER PRIMARY KEY AUTOINCREMENT
-    pub event_id: i64, // INTEGER FK → truth_events.id
-    pub type_id: i64,  // INTEGER FK → impact_type.id
-    pub value: bool,   // BOOLEAN (0/1) - true = позитивное, false = негативное
-    pub notes: Option<String>,  // TEXT nullable
-    pub created_at: i64,  // INTEGER (UNIX timestamp)
+    pub id: i64,                    // INTEGER PRIMARY KEY AUTOINCREMENT
+    pub event_id: i64,              // INTEGER FK → truth_events.id
+    pub type_id: i64,               // INTEGER FK → impact_type.id
+    pub value: bool,                // BOOLEAN (0/1) - true = позитивное, false = негативное
+    pub notes: Option<String>,      // TEXT nullable
+    pub created_at: i64,            // INTEGER (UNIX timestamp)
     pub signature: Option<String>,  // Подпись записи влияния
     pub public_key: Option<String>, // Публичный ключ автора
 }
@@ -143,16 +144,16 @@ pub struct Impact {
 /// Метрики прогресса (таблица: progress_metrics)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgressMetrics {
-pub id: i64,
-pub timestamp: i64,
-pub total_events: i64,
-pub total_events_group: i64,
-pub total_positive_impact: f64,
-pub total_positive_impact_group: f64,
-pub total_negative_impact: f64,
-pub total_negative_impact_group: f64,
-pub trend: f64,
-pub trend_group: f64,
+    pub id: i64,
+    pub timestamp: i64,
+    pub total_events: i64,
+    pub total_events_group: i64,
+    pub total_positive_impact: f64,
+    pub total_positive_impact_group: f64,
+    pub total_negative_impact: f64,
+    pub total_negative_impact_group: f64,
+    pub trend: f64,
+    pub trend_group: f64,
 }
 
 /// Утверждение (таблица: statements)
@@ -211,7 +212,7 @@ pub struct NodeRating {
     pub events_false: u32,
     pub validations: u32,
     pub reused_events: u32,
-    pub trust_score: f32, // -1.0 .. 1.0
+    pub trust_score: f32,          // -1.0 .. 1.0
     pub propagation_priority: f32, // 0.0 .. 1.0 — скорость ретрансляции
     pub last_updated: i64,
 }
@@ -234,6 +235,181 @@ pub struct NodeMetrics {
     pub relay_success_rate: f32,
     pub quality_index: f32, // 0.0..1.0 — индикатор непрерывности доверия
     pub propagation_priority: f32, // 0.0..1.0 — адаптивный приоритет распространения
+}
+
+/// Тип узла для обнаружения (LAN/WIFI/GLOBAL/RELAY/CLIENT)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum NodeType {
+    Lan,
+    Wifi,
+    Global,
+    Relay,
+    Client,
+}
+
+impl NodeType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NodeType::Lan => "LAN",
+            NodeType::Wifi => "WIFI",
+            NodeType::Global => "GLOBAL",
+            NodeType::Relay => "RELAY",
+            NodeType::Client => "CLIENT",
+        }
+    }
+
+    pub fn min_ttl_secs(&self) -> i64 {
+        match self {
+            NodeType::Lan => crate::config::LAN_TTL_SECS,
+            NodeType::Wifi => crate::config::WIFI_TTL_SECS,
+            NodeType::Global => crate::config::GLOBAL_TTL_SECS,
+            NodeType::Relay => crate::config::RELAY_TTL_SECS,
+            NodeType::Client => crate::config::CLIENT_TTL_SECS,
+        }
+    }
+
+    pub fn priority(&self) -> u8 {
+        match self {
+            NodeType::Lan => 3,
+            NodeType::Wifi => 2,
+            NodeType::Client => 2,
+            NodeType::Relay => 1,
+            NodeType::Global => 1,
+        }
+    }
+}
+
+impl fmt::Display for NodeType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::str::FromStr for NodeType {
+    type Err = CoreError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_uppercase().as_str() {
+            "LAN" => Ok(NodeType::Lan),
+            "WIFI" | "WI-FI" => Ok(NodeType::Wifi),
+            "GLOBAL" => Ok(NodeType::Global),
+            "RELAY" | "SERVER" => Ok(NodeType::Relay),
+            "CLIENT" => Ok(NodeType::Client),
+            other => Err(CoreError::InvalidArg(format!("Unknown node type: {other}"))),
+        }
+    }
+}
+
+/// Источник обнаружения узла
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NodeSource {
+    LocalBroadcast,
+    WifiScan,
+    GlobalRegistry,
+    Manual,
+    PeerSync,
+}
+
+impl NodeSource {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NodeSource::LocalBroadcast => "local_broadcast",
+            NodeSource::WifiScan => "wifi_scan",
+            NodeSource::GlobalRegistry => "global_registry",
+            NodeSource::Manual => "manual",
+            NodeSource::PeerSync => "peer_sync",
+        }
+    }
+}
+
+impl fmt::Display for NodeSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::str::FromStr for NodeSource {
+    type Err = CoreError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "local_broadcast" => Ok(NodeSource::LocalBroadcast),
+            "wifi_scan" => Ok(NodeSource::WifiScan),
+            "global_registry" => Ok(NodeSource::GlobalRegistry),
+            "manual" => Ok(NodeSource::Manual),
+            "peer_sync" => Ok(NodeSource::PeerSync),
+            other => Err(CoreError::InvalidArg(format!(
+                "Unknown node source: {other}"
+            ))),
+        }
+    }
+}
+
+/// Запись таблицы nodes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Node {
+    pub id: i64,
+    pub address: String,
+    pub node_type: NodeType,
+    pub reachable: bool,
+    pub last_seen: i64,
+    pub ttl: i64,
+    pub source: Option<NodeSource>,
+    pub node_id: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+/// Структура для вставки нового узла
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewNode {
+    pub address: String,
+    pub node_type: NodeType,
+    pub reachable: bool,
+    pub last_seen: i64,
+    pub ttl: i64,
+    pub source: Option<NodeSource>,
+    pub node_id: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+impl NewNode {
+    pub fn validate(&self) -> Result<(), CoreError> {
+        if self.address.trim().is_empty() {
+            return Err(CoreError::InvalidArg("address cannot be empty".into()));
+        }
+        if self.ttl < self.node_type.min_ttl_secs() {
+            return Err(CoreError::InvalidArg(format!(
+                "ttl {} below minimum {} for {}",
+                self.ttl,
+                self.node_type.min_ttl_secs(),
+                self.node_type
+            )));
+        }
+        Ok(())
+    }
+}
+
+/// Фильтр для выборки узлов
+#[derive(Debug, Clone, Default)]
+pub struct NodeFilter {
+    pub node_type: Option<NodeType>,
+    pub reachable: Option<bool>,
+    pub limit: Option<i64>,
+    pub address: Option<String>,
+}
+
+/// Патч/обновление узла
+#[derive(Debug, Clone, Default)]
+pub struct NodePatch {
+    pub reachable: Option<bool>,
+    pub ttl: Option<i64>,
+    pub last_seen: Option<i64>,
+    pub source: Option<NodeSource>,
+    pub node_id: Option<String>,
 }
 
 /// Узел графа для визуализации
@@ -292,7 +468,9 @@ pub fn summarize_graph(graph: &GraphData) -> GraphSummary {
         .collect();
     top.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     // Ограничим топ до 10 элементов для компактности
-    if top.len() > 10 { top.truncate(10); }
+    if top.len() > 10 {
+        top.truncate(10);
+    }
 
     GraphSummary {
         total_nodes,
@@ -338,8 +516,8 @@ pub struct SyncLog {
 #[cfg_attr(not(target_os = "android"), derive(utoipa::ToSchema))]
 pub struct RbacUser {
     pub pubkey: String,
-    pub role: String,        // observer | node | admin
-    pub trust_score: f32,    // -1.0 .. 1.0 (зеркалит node_ratings)
-    pub last_updated: i64,   // unix seconds
+    pub role: String,      // observer | node | admin
+    pub trust_score: f32,  // -1.0 .. 1.0 (зеркалит node_ratings)
+    pub last_updated: i64, // unix seconds
     pub display_name: Option<String>,
 }

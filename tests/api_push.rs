@@ -17,8 +17,9 @@ async fn push_valid_and_invalid() {
     let app = test::init_service(
         App::new()
             .app_data(actix_web::web::Data::new(conn_data.clone()))
-            .configure(crate::api::routes)
-    ).await;
+            .configure(crate::api::routes),
+    )
+    .await;
 
     // Create identity and sign payload
     let id = CryptoIdentity::new();
@@ -34,7 +35,8 @@ async fn push_valid_and_invalid() {
     // For test simplicity, just build a Bearer from api::issue_jwt_pair_with through DB.
     let token = {
         let conn = conn_data.lock().await;
-        let (access, _refresh, _exp) = api::issue_jwt_pair_with(&conn, &id.public_key_hex()).unwrap();
+        let (access, _refresh, _exp) =
+            api::issue_jwt_pair_with(&conn, &id.public_key_hex()).unwrap();
         access
     };
 
