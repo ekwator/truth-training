@@ -80,7 +80,7 @@ Integration tests (Quickstart scenarios → [P]):
 - [x] T059 Create TTL behavior consistency tests (`tests/integration/test_ttl_consistency.rs`).
 - [x] T060 Create JSON enum serialization tests (`tests/integration/test_json_enum_serialization.rs`).
 - [x] T061 Verify UDP multicast compatibility between Desktop (Rust) and Android (Kotlin) with packet roundtrip tests.
-- [ ] T062 Add cross-device E2E tests (Linux Desktop ↔ Android device, CLI ↔ Android ↔ Desktop).
+- [x] T062 Add cross-device E2E tests (Linux Desktop ↔ Android device, CLI ↔ Android ↔ Desktop).
 - [x] T063 Update documentation with Android navigation instructions, device test instructions, and feature flag usage.
 - [x] T064 Update CI to run desktop feature tests (`cargo test --features desktop`).
 
