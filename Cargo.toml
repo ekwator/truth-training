@@ -90,4 +90,5 @@ get_if_addrs = { version = "0.5" }
 tokio = { version = "1.37", features = ["full", "test-util"] }
 anyhow = "1.0"
 tempfile = "3.8"
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
 
