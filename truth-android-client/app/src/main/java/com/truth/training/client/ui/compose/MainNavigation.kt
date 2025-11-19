@@ -8,6 +8,10 @@ import androidx.navigation.compose.composable
 import com.truth.training.client.ui.compose.events.*
 import com.truth.training.client.ui.compose.contexts.*
 import com.truth.training.client.ui.compose.judgments.*
+import com.truth.training.client.ui.compose.nodes.NodesScreen
+import com.truth.training.client.ui.compose.nodes.NodesViewModel
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 /**
  * Main Navigation component for Truth Training Android app.
@@ -76,6 +80,19 @@ fun MainNavigation(
             if (eventId != null) {
                 // TODO: Provide JudgmentSubmissionScreen with ViewModel data for eventId
             }
+        }
+        
+        composable("nodes") {
+            val context = LocalContext.current
+            val viewModel: NodesViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        @Suppress("UNCHECKED_CAST")
+                        return NodesViewModel(context.applicationContext as android.app.Application) as T
+                    }
+                }
+            )
+            NodesScreen(viewModel = viewModel)
         }
     }
 }

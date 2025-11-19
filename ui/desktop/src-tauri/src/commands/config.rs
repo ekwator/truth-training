@@ -1,14 +1,18 @@
+use dirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use tauri::{command, State};
-use dirs;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppConfig {
     pub mode: String, // "core" or "http"
     pub server_ip: String,
     pub server_port: u16,
+    #[serde(default)]
+    pub nearby_sync: bool,
+    #[serde(default = "default_nearby_interval_ms")]
+    pub nearby_interval_ms: u64,
 }
 
 impl Default for AppConfig {
@@ -17,6 +21,8 @@ impl Default for AppConfig {
             mode: "core".to_string(),
             server_ip: "127.0.0.1".to_string(),
             server_port: 8080,
+            nearby_sync: false,
+            nearby_interval_ms: default_nearby_interval_ms(),
         }
     }
 }
@@ -30,18 +36,18 @@ pub struct CoreStatus {
 #[command]
 pub async fn get_app_config() -> Result<AppConfig, String> {
     let config_path = get_config_path()?;
-    
+
     if !config_path.exists() {
         // Return default config if file doesn't exist
         return Ok(AppConfig::default());
     }
-    
+
     let content = fs::read_to_string(&config_path)
         .map_err(|e| format!("Failed to read config file: {}", e))?;
-    
+
     let config: AppConfig = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse config file: {}", e))?;
-    
+
     Ok(config)
 }
 
@@ -51,30 +57,32 @@ pub async fn save_app_config(config: AppConfig) -> Result<(), String> {
     if !["core", "http"].contains(&config.mode.as_str()) {
         return Err("Invalid mode. Must be 'core' or 'http'".to_string());
     }
-    
+
     if !is_valid_ip(&config.server_ip) {
         return Err("Invalid IP address format".to_string());
     }
-    
+
     // u16 cannot exceed 65535; only check for zero (invalid)
     if config.server_port == 0 {
         return Err("Invalid port. Must be between 1 and 65535".to_string());
     }
-    
+    if config.nearby_interval_ms < 500 || config.nearby_interval_ms > 60_000 {
+        return Err("nearby_interval_ms must be between 500 and 60000".to_string());
+    }
+
     let config_path = get_config_path()?;
-    
+
     // Ensure directory exists
     if let Some(parent) = config_path.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create config directory: {}", e))?;
     }
-    
+
     let content = serde_json::to_string_pretty(&config)
         .map_err(|e| format!("Failed to serialize config: {}", e))?;
-    
-    fs::write(&config_path, content)
-        .map_err(|e| format!("Failed to write config file: {}", e))?;
-    
+
+    fs::write(&config_path, content).map_err(|e| format!("Failed to write config file: {}", e))?;
+
     Ok(())
 }
 
@@ -94,15 +102,15 @@ pub async fn test_http_connection(ip: String, port: u16) -> Result<CoreStatus, S
     if !is_valid_ip(&ip) {
         return Err("Invalid IP address format".to_string());
     }
-    
+
     // u16 cannot exceed 65535; only check for zero (invalid)
     if port == 0 {
         return Err("Invalid port. Must be between 1 and 65535".to_string());
     }
-    
+
     // Test HTTP connection
     let url = format!("http://{}:{}/status", ip, port);
-    
+
     match reqwest::get(&url).await {
         Ok(response) => {
             if response.status().is_success() {
@@ -117,12 +125,10 @@ pub async fn test_http_connection(ip: String, port: u16) -> Result<CoreStatus, S
                 })
             }
         }
-        Err(e) => {
-            Ok(CoreStatus {
-                ok: false,
-                message: format!("HTTP connection failed: {}", e),
-            })
-        }
+        Err(e) => Ok(CoreStatus {
+            ok: false,
+            message: format!("HTTP connection failed: {}", e),
+        }),
     }
 }
 
@@ -137,8 +143,7 @@ pub async fn init_app(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, S
     }
     let content = serde_json::to_string_pretty(&default_cfg)
         .map_err(|e| format!("Failed to serialize default config: {}", e))?;
-    fs::write(&cfg_path, content)
-        .map_err(|e| format!("Failed to write default config: {}", e))?;
+    fs::write(&cfg_path, content).map_err(|e| format!("Failed to write default config: {}", e))?;
 
     // 2) Reset database using the current connection
     let conn = db.0.lock();
@@ -208,13 +213,15 @@ pub async fn init_app(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, S
     conn.execute_batch(sql_schema)
         .map_err(|e| format!("Failed to recreate schema: {}", e))?;
 
-    Ok(CoreStatus { ok: true, message: "Initialized config and database".to_string() })
+    Ok(CoreStatus {
+        ok: true,
+        message: "Initialized config and database".to_string(),
+    })
 }
 
 fn get_config_path() -> Result<PathBuf, String> {
-    let home_dir = dirs::home_dir()
-        .ok_or("Failed to get home directory")?;
-    
+    let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
+
     Ok(home_dir.join(".truth-training").join("config.json"))
 }
 
@@ -224,12 +231,16 @@ fn is_valid_ip(ip: &str) -> bool {
     if parts.len() != 4 {
         return false;
     }
-    
+
     for part in parts {
         if part.parse::<u8>().is_err() {
             return false;
         }
     }
-    
+
     true
+}
+
+fn default_nearby_interval_ms() -> u64 {
+    3_000
 }

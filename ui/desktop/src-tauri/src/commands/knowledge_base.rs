@@ -1,8 +1,8 @@
-use serde::Serialize;
-use tauri::command;
-use std::path::PathBuf;
-use std::fs;
 use dirs;
+use serde::Serialize;
+use std::fs;
+use std::path::PathBuf;
+use tauri::command;
 
 #[derive(Debug, Serialize)]
 pub struct KBItem {
@@ -21,17 +21,21 @@ fn parse_kb_from_markdown(md: &str) -> Vec<KBItem> {
     let mut in_section = false;
     for line in md.lines() {
         if line.trim_start().starts_with("## ") {
-            if in_section { break; }
-            if line.contains("knowledge_base") { in_section = true; }
+            if in_section {
+                break;
+            }
+            if line.contains("knowledge_base") {
+                in_section = true;
+            }
             continue;
         }
         if in_section {
             let t = line.trim();
             if t.starts_with("-") || t.starts_with("*") {
-                let label = t.trim_start_matches(&['-','*',' '][..]).to_string();
+                let label = t.trim_start_matches(&['-', '*', ' '][..]).to_string();
                 if !label.is_empty() {
                     let id = format!("kb:{}", label.to_lowercase().replace(' ', "_"));
-                    items.push(KBItem{ id, label });
+                    items.push(KBItem { id, label });
                 }
             }
         }
@@ -69,12 +73,19 @@ pub async fn knowledge_base_list() -> Result<KBListResponse, String> {
     if items.is_empty() {
         // 3) Fallback minimal defaults
         items = vec![
-            KBItem { id: "kb:general".to_string(), label: "General".to_string() },
-            KBItem { id: "kb:technology".to_string(), label: "Technology".to_string() },
-            KBItem { id: "kb:science".to_string(), label: "Science".to_string() },
+            KBItem {
+                id: "kb:general".to_string(),
+                label: "General".to_string(),
+            },
+            KBItem {
+                id: "kb:technology".to_string(),
+                label: "Technology".to_string(),
+            },
+            KBItem {
+                id: "kb:science".to_string(),
+                label: "Science".to_string(),
+            },
         ];
     }
     Ok(KBListResponse { items })
 }
-
-

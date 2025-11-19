@@ -341,6 +341,42 @@ object TruthDatabaseMigrations {
             )
         }
     }
+    
+    /**
+     * Migration 2 → 3: Add nodes table for cross-platform discovery.
+     * 
+     * Matches canonical SQLite schema from:
+     * - specs/008-specify-md/data-model.md
+     * - core/src/storage.rs
+     * - docs/cross_platform_discovery_compatibility.md
+     */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // Create nodes table matching canonical schema
+            database.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `nodes` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `address` TEXT NOT NULL,
+                    `type` TEXT NOT NULL,
+                    `reachable` INTEGER NOT NULL,
+                    `last_seen` INTEGER NOT NULL,
+                    `ttl` INTEGER NOT NULL,
+                    `source` TEXT,
+                    `node_id` TEXT,
+                    `created_at` INTEGER NOT NULL,
+                    `updated_at` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            
+            // Create indices for performance (matching core/src/storage.rs)
+            database.execSQL("CREATE INDEX IF NOT EXISTS `idx_nodes_address` ON `nodes`(`address`)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS `idx_nodes_last_seen` ON `nodes`(`last_seen`)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS `idx_nodes_type` ON `nodes`(`type`)")
+            database.execSQL("CREATE INDEX IF NOT EXISTS `idx_nodes_reachable` ON `nodes`(`reachable`)")
+        }
+    }
 }
 
 private fun tableExists(database: SupportSQLiteDatabase, tableName: String): Boolean {

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useSyncStore } from '@/stores/sync';
 import { ApiService } from '@/services/api';
-import { AppConfig, ConnectionTestResult } from '@/types/api';
+import { AppConfig, ConnectionTestResult, DiscoverySettings } from '@/types/api';
+import { useToast } from '@/components/system/Toaster';
 
 export const Settings: React.FC = () => {
   const { isOnline, pendingOperations } = useSyncStore();
+  const { addToast } = useToast();
   const [config, setConfig] = useState<AppConfig>({
     mode: 'core',
     server_ip: '127.0.0.1',
@@ -16,9 +18,13 @@ export const Settings: React.FC = () => {
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
   const [lastTestTime, setLastTestTime] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [discoverySettings, setDiscoverySettings] = useState<DiscoverySettings | null>(null);
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+  const [discoveryErrors, setDiscoveryErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadConfig();
+    loadDiscoverySettings();
   }, []);
 
   const loadConfig = async () => {
@@ -27,6 +33,15 @@ export const Settings: React.FC = () => {
       setConfig(loadedConfig);
     } catch (error) {
       console.error('Failed to load config:', error);
+    }
+  };
+
+  const loadDiscoverySettings = async () => {
+    try {
+      const settings = await ApiService.getDiscoverySettings();
+      setDiscoverySettings(settings);
+    } catch (error) {
+      console.error('Failed to load discovery settings:', error);
     }
   };
 
@@ -51,6 +66,34 @@ export const Settings: React.FC = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const validateDiscoverySettings = (): boolean => {
+    if (!discoverySettings) return false;
+    const next: Record<string, string> = {};
+    if (discoverySettings.lan_interval_secs < 5) {
+      next.lan_interval_secs = 'Must be at least 5 seconds';
+    }
+    if (discoverySettings.wifi_interval_secs < 5) {
+      next.wifi_interval_secs = 'Must be at least 5 seconds';
+    }
+    if (discoverySettings.global_interval_secs < 30) {
+      next.global_interval_secs = 'Should be at least 30 seconds';
+    }
+    if (discoverySettings.cleanup_interval_secs < 10) {
+      next.cleanup_interval_secs = 'Must be at least 10 seconds';
+    }
+    if (discoverySettings.lan_ttl_secs < 60) {
+      next.lan_ttl_secs = 'Must be >= 60';
+    }
+    if (discoverySettings.wifi_ttl_secs < 60) {
+      next.wifi_ttl_secs = 'Must be >= 60';
+    }
+    if (discoverySettings.global_ttl_secs < 300) {
+      next.global_ttl_secs = 'Must be >= 300';
+    }
+    setDiscoveryErrors(next);
+    return Object.keys(next).length === 0;
   };
 
   const handleSaveSettings = async () => {
@@ -79,6 +122,34 @@ export const Settings: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveDiscoverySettings = async () => {
+    if (!discoverySettings || !validateDiscoverySettings()) {
+      return;
+    }
+    setDiscoveryLoading(true);
+    try {
+      await ApiService.saveDiscoverySettings(discoverySettings);
+      addToast({
+        type: 'success',
+        title: 'Discovery settings saved',
+        message: 'Background worker updated successfully',
+      });
+    } catch (error) {
+      console.error('Failed to save discovery settings', error);
+      addToast({
+        type: 'error',
+        title: 'Save failed',
+        message: 'Unable to persist discovery settings',
+      });
+    } finally {
+      setDiscoveryLoading(false);
+    }
+  };
+
+  const updateDiscovery = <K extends keyof DiscoverySettings>(field: K, value: DiscoverySettings[K]) => {
+    setDiscoverySettings(prev => (prev ? { ...prev, [field]: value } : prev));
   };
 
   const handleTestConnection = async () => {
@@ -273,6 +344,211 @@ export const Settings: React.FC = () => {
               <p className="text-xs text-gray-500">When enabled, the node uses UDP broadcast discovery and HTTP sync with peers on the local network.</p>
             </div>
           </div>
+
+        {/* Discovery Worker Settings */}
+        {discoverySettings && (
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">Discovery Worker Settings</h2>
+              <p className="text-sm text-gray-500">Background discovery cadence and TTL overrides</p>
+            </div>
+            <div className="px-6 py-4 space-y-6">
+              <label className="inline-flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={discoverySettings.enable_background}
+                  onChange={(e) => updateDiscovery('enable_background', e.target.checked)}
+                />
+                <span className="text-sm">Enable background discovery worker</span>
+              </label>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    LAN Interval (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min={5}
+                    value={discoverySettings.lan_interval_secs}
+                    onChange={(e) =>
+                      updateDiscovery('lan_interval_secs', Number(e.target.value) || 5)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      discoveryErrors.lan_interval_secs ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {discoveryErrors.lan_interval_secs && (
+                    <p className="text-xs text-red-600">{discoveryErrors.lan_interval_secs}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Wi-Fi Interval (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min={5}
+                    value={discoverySettings.wifi_interval_secs}
+                    onChange={(e) =>
+                      updateDiscovery('wifi_interval_secs', Number(e.target.value) || 5)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      discoveryErrors.wifi_interval_secs ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {discoveryErrors.wifi_interval_secs && (
+                    <p className="text-xs text-red-600">{discoveryErrors.wifi_interval_secs}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Global Poll Interval (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min={30}
+                    value={discoverySettings.global_interval_secs}
+                    onChange={(e) =>
+                      updateDiscovery('global_interval_secs', Number(e.target.value) || 30)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      discoveryErrors.global_interval_secs ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {discoveryErrors.global_interval_secs && (
+                    <p className="text-xs text-red-600">{discoveryErrors.global_interval_secs}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cleanup Interval (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min={10}
+                    value={discoverySettings.cleanup_interval_secs}
+                    onChange={(e) =>
+                      updateDiscovery('cleanup_interval_secs', Number(e.target.value) || 10)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      discoveryErrors.cleanup_interval_secs ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {discoveryErrors.cleanup_interval_secs && (
+                    <p className="text-xs text-red-600">{discoveryErrors.cleanup_interval_secs}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    LAN TTL (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min={60}
+                    value={discoverySettings.lan_ttl_secs}
+                    onChange={(e) =>
+                      updateDiscovery('lan_ttl_secs', Number(e.target.value) || 60)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      discoveryErrors.lan_ttl_secs ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {discoveryErrors.lan_ttl_secs && (
+                    <p className="text-xs text-red-600">{discoveryErrors.lan_ttl_secs}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Wi-Fi TTL (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min={60}
+                    value={discoverySettings.wifi_ttl_secs}
+                    onChange={(e) =>
+                      updateDiscovery('wifi_ttl_secs', Number(e.target.value) || 120)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      discoveryErrors.wifi_ttl_secs ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {discoveryErrors.wifi_ttl_secs && (
+                    <p className="text-xs text-red-600">{discoveryErrors.wifi_ttl_secs}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Global TTL (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min={300}
+                    value={discoverySettings.global_ttl_secs}
+                    onChange={(e) =>
+                      updateDiscovery('global_ttl_secs', Number(e.target.value) || 3600)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      discoveryErrors.global_ttl_secs ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {discoveryErrors.global_ttl_secs && (
+                    <p className="text-xs text-red-600">{discoveryErrors.global_ttl_secs}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Registry URLs (one per line)
+                </label>
+                <textarea
+                  rows={3}
+                  value={discoverySettings.registry_urls.join('\n')}
+                  onChange={(e) =>
+                    updateDiscovery(
+                      'registry_urls',
+                      e.target.value
+                        .split('\n')
+                        .map((line) => line.trim())
+                        .filter((line) => line.length > 0)
+                    )
+                  }
+                  className="w-full px-3 py-2 border rounded-md border-gray-300"
+                  placeholder="https://registry.example.com/api/v1/nodes"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nodes Database Path
+                </label>
+                <input
+                  type="text"
+                  value={discoverySettings.db_path}
+                  onChange={(e) => updateDiscovery('db_path', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md border-gray-300"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  The desktop worker writes discovery results to this SQLite database.
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSaveDiscoverySettings}
+                  disabled={discoveryLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300"
+                >
+                  {discoveryLoading ? 'Saving...' : 'Save Discovery Settings'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
           {/* Connection Test Result */}
           {testResult && (

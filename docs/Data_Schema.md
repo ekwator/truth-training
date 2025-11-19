@@ -140,3 +140,90 @@ The `context` table stores reusable context templates that can be matched to eve
    ```
 
 4. **Validation**: After migration, verify all FK references are valid and no orphaned data exists.
+
+---
+
+## 4. Node Discovery (v1.0.0-Release)
+
+### Table: nodes
+
+The `nodes` table stores discovered peer nodes in the Truth Training network. This table is shared across all platforms (Desktop, CLI, Server, Android) with identical schema.
+
+| Column      | Type     | Notes                                                                                  |
+|-------------|----------|----------------------------------------------------------------------------------------|
+| id          | INTEGER  | Primary key (`AUTOINCREMENT`)                                                          |
+| address     | TEXT     | Full URL or `ip:port` of the peer (e.g., `http://192.168.1.100:8080/api/v1`)          |
+| type        | TEXT     | Node type: `LAN`, `WIFI`, `GLOBAL`, `RELAY`, `CLIENT` (UPPERCASE)                     |
+| reachable   | INTEGER  | `0/1` flag updated by health checks (0 = unreachable, 1 = reachable)                   |
+| last_seen   | INTEGER  | UNIX epoch seconds of the last successful contact or discovery                         |
+| ttl         | INTEGER  | Time-to-live (seconds) before the record is considered stale                          |
+| source      | TEXT     | Discovery source: `local_broadcast`, `wifi_scan`, `global_registry`, `manual`, `peer_sync` (snake_case) |
+| node_id     | TEXT     | Optional Ed25519 public key (hex, 64 characters) for cryptographic node identity       |
+| created_at  | INTEGER  | Creation timestamp (UNIX epoch seconds)                                                |
+| updated_at  | INTEGER  | Last modification timestamp (UNIX epoch seconds)                                        |
+
+### Default TTLs
+
+TTL values are codified in `core/src/config.rs` and shared across all platforms:
+
+| Node Type | TTL (seconds) | Min TTL | Notes                                    |
+|-----------|---------------|---------|------------------------------------------|
+| LAN       | 120           | 60      | Local network, ephemeral                  |
+| Wi-Fi     | 300           | 120     | Local network, more stable                |
+| Global    | 3600          | 1800    | Internet-accessible, persistent           |
+| Relay     | 3600          | 1800    | Server/relay nodes, persistent            |
+| Client    | 600           | 300     | Mobile/Desktop clients, on-demand        |
+
+### Discovery Cadence Defaults
+
+Discovery intervals are exported via `DiscoveryTimingConfig` in `core/src/config.rs`:
+
+- **LAN broadcast interval**: 30 seconds (UDP multicast advertisements)
+- **Wi-Fi scan interval**: 45 seconds (Wi-Fi scan callbacks + multicast)
+- **Global registry poll interval**: 3600 seconds (1 hour, HTTPS GET)
+- **Cleanup interval**: 60 seconds (TTL enforcement)
+- **Health check timeout**: 5 seconds (with 3 retries)
+
+### Merging Rules
+
+When duplicate addresses exist during synchronization, the following deterministic rules apply (implemented in `core/src/sync.rs::merge_node_lists()`):
+
+1. **Type Priority**: Local sources (LAN/Wi-Fi) have higher priority than Global sources
+   - Priority order: `LAN > WIFI > GLOBAL > RELAY > CLIENT`
+   - A LAN node will **never** be replaced by a Global node, even with a newer `last_seen`
+
+2. **Timestamp Tiebreaker**: For nodes with the same type priority, the node with the newer `last_seen` timestamp wins
+
+3. **Address Tiebreaker**: For nodes with the same type and `last_seen`, lexicographic ordering of `address` is used (deterministic but arbitrary)
+
+4. **New Nodes**: Nodes with addresses not present in the local database are always added
+
+### Indexes
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_nodes_address ON nodes(address);
+CREATE INDEX IF NOT EXISTS idx_nodes_last_seen ON nodes(last_seen);
+CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type);
+CREATE INDEX IF NOT EXISTS idx_nodes_reachable ON nodes(reachable);
+```
+
+### Cleanup Heuristic
+
+Cleanup runs every 60 seconds and removes stale nodes:
+
+```sql
+-- Remove nodes that exceeded TTL
+DELETE FROM nodes WHERE (strftime('%s','now') - last_seen) > ttl;
+
+-- Remove unreachable nodes that exceeded half TTL
+DELETE FROM nodes WHERE reachable = 0 AND (strftime('%s','now') - last_seen) > (ttl / 2);
+```
+
+### Cross-Platform Compatibility
+
+**✅ All platforms use identical schema:**
+- **Desktop/CLI/Server** (Rust): Uses `rusqlite` with the schema defined in `core/src/storage.rs`
+- **Android** (Kotlin): Uses Room with `NodeEntity` matching the canonical schema
+- **Database migrations**: Android uses `MIGRATION_2_3` to create the `nodes` table
+
+**Reference**: See `docs/cross_platform_discovery_compatibility.md` for detailed format specifications and `docs/android_discovery_architecture.md` for Android-specific implementation details.

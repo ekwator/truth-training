@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { config } from '@/config/env';
-import { AppConfig, ConnectionTestResult } from '@/types/api';
+import { AppConfig, ConnectionTestResult, DiscoverySettings, DiscoverRun, NodeRecord } from '@/types/api';
 // Import shared domain types
 import type { Event as TruthEvent, EventDetails, CreateEventRequest } from '@/types/events';
 import type { Judgment, CreateJudgmentRequest } from '@/types/judgments';
@@ -117,6 +117,11 @@ export interface LogItem {
   source: string;
   level: string;
   message: string;
+}
+
+interface NodeFilterOptions {
+  nodeType?: string;
+  reachable?: boolean;
 }
 
 // Consensus API
@@ -543,6 +548,73 @@ export class ApiService {
     } else {
       // Simulate init in web mode
       return { ok: true, message: 'Initialized (web mode simulation)' };
+    }
+  }
+
+  // Discovery / Nodes helpers
+  static async listNodes(filter: NodeFilterOptions = {}): Promise<NodeRecord[]> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const nodes = await invoke('list_nodes', {
+        nodeType: filter.nodeType ?? null,
+        reachable: filter.reachable ?? null
+      });
+      return nodes as NodeRecord[];
+    }
+    return [];
+  }
+
+  static async manualDiscover(types: string[] = ['LAN', 'WIFI', 'GLOBAL']): Promise<DiscoverRun> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const result = await invoke('manual_discover', { nodeTypes: types });
+      return result as DiscoverRun;
+    }
+    return { discovered: 0, updated: 0, duration_ms: 0 };
+  }
+
+  static async cleanupNodes(): Promise<number> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const removed = await invoke('cleanup_nodes');
+      return removed as number;
+    }
+    return 0;
+  }
+
+  static async runNodesHealthCheck(): Promise<number> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const checked = await invoke('run_nodes_health_check');
+      return checked as number;
+    }
+    return 0;
+  }
+
+  static async getDiscoverySettings(): Promise<DiscoverySettings> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const settings = await invoke('get_discovery_settings');
+      return settings as DiscoverySettings;
+    }
+    return {
+      enable_background: false,
+      lan_interval_secs: 30,
+      wifi_interval_secs: 45,
+      global_interval_secs: 3600,
+      cleanup_interval_secs: 60,
+      lan_ttl_secs: 120,
+      wifi_ttl_secs: 300,
+      global_ttl_secs: 3600,
+      registry_urls: [],
+      db_path: '/'
+    };
+  }
+
+  static async saveDiscoverySettings(settings: DiscoverySettings): Promise<void> {
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('save_discovery_settings_cmd', { settings });
     }
   }
 

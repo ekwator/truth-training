@@ -1,6 +1,10 @@
 package com.truth.training.client.core.crypto
 
 import android.content.Context
+import org.bouncycastle.asn1.edec.EdECObjectIdentifiers
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
+import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.*
 import java.security.spec.X509EncodedKeySpec
@@ -118,6 +122,65 @@ object Ed25519CryptoManager {
             cachedKeys ?: if (context != null) loadOrCreateKeys(context) else generateKeyPair().also { cachedKeys = it }
         }
         return signMessage(kp.private, msg)
+    }
+    
+    /**
+     * Decode public key from hex string (64 hex chars = 32 bytes).
+     * Used for LAN discovery announcements where node_id is hex-encoded.
+     * 
+     * Creates Ed25519 public key from raw 32-byte key material by wrapping
+     * it in SubjectPublicKeyInfo ASN.1 structure.
+     */
+    fun decodePublicKeyFromHex(hex: String): PublicKey? {
+        return try {
+            ensureProvider()
+            val rawKeyBytes = hexStringToByteArray(hex)
+            if (rawKeyBytes.size != 32) {
+                return null // Ed25519 public key must be exactly 32 bytes
+            }
+            
+            // Create Ed25519PublicKeyParameters from raw bytes
+            val publicKeyParams = Ed25519PublicKeyParameters(rawKeyBytes, 0)
+            
+            // Create SubjectPublicKeyInfo structure
+            val algorithmIdentifier = AlgorithmIdentifier(EdECObjectIdentifiers.id_Ed25519)
+            val keyInfo = SubjectPublicKeyInfo(algorithmIdentifier, publicKeyParams.encoded)
+            
+            // Convert to X509 format and create PublicKey
+            val x509Bytes = keyInfo.encoded
+            val spec = X509EncodedKeySpec(x509Bytes)
+            keyFactory().generatePublic(spec)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    /**
+     * Verify signature from hex-encoded signature string.
+     * Used for LAN discovery announcements where signature is hex-encoded.
+     */
+    fun verifySignature(publicKey: PublicKey, message: String, signatureHex: ByteArray): Boolean {
+        return try {
+            ensureProvider()
+            val sig = signature()
+            sig.initVerify(publicKey)
+            sig.update(message.toByteArray(Charsets.UTF_8))
+            sig.verify(signatureHex)
+        } catch (_: Exception) { false }
+    }
+    
+    /**
+     * Convert hex string to ByteArray.
+     */
+    private fun hexStringToByteArray(hex: String): ByteArray {
+        val len = hex.length
+        val data = ByteArray(len / 2)
+        var i = 0
+        while (i < len) {
+            data[i / 2] = ((Character.digit(hex[i], 16) shl 4) + Character.digit(hex[i + 1], 16)).toByte()
+            i += 2
+        }
+        return data
     }
 }
 

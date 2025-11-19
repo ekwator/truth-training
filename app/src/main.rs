@@ -2,8 +2,9 @@ use chrono::Utc;
 use clap::{Parser, Subcommand};
 use core_lib::expert_simple::{evaluate_answers, questions_for_context};
 use core_lib::{
-    CoreError, NewTruthEvent, NewStatement, add_impact, add_truth_event, add_statement, get_truth_event, get_statement,
-    init_db, open_db, recalc_progress_metrics, seed_knowledge_base, set_event_detected,
+    add_impact, add_statement, add_truth_event, get_statement, get_truth_event, init_db, open_db,
+    recalc_progress_metrics, seed_knowledge_base, set_event_detected, CoreError, NewStatement,
+    NewTruthEvent,
 };
 use rusqlite;
 use rusqlite::OptionalExtension;
@@ -140,9 +141,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ).optional()?;
 
             let (category_id, forma_id, cause_id, develop_id, effect_id) = match context_record {
-                Some((cat_id, form_id, c_id, dev_id, eff_id)) => (cat_id, form_id, c_id, dev_id, eff_id),
+                Some((cat_id, form_id, c_id, dev_id, eff_id)) => {
+                    (cat_id, form_id, c_id, dev_id, eff_id)
+                }
                 None => {
-                    return Err(CoreError::InvalidArg(format!("Context with id {} not found", context)).into());
+                    return Err(CoreError::InvalidArg(format!(
+                        "Context with id {} not found",
+                        context
+                    ))
+                    .into());
                 }
             };
 

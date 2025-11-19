@@ -180,7 +180,7 @@ impl Db {
 
         // Run migrations
         Self::run_migrations(&conn)?;
-        
+
         // Seed knowledge base if empty
         Self::seed_knowledge_base(&conn)?;
 
@@ -192,7 +192,7 @@ impl Db {
         let has_old_events = conn
             .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='events' AND sql LIKE '%context_id%'", [], |row| row.get::<_, i64>(0))
             .unwrap_or(0) > 0;
-        
+
         if has_old_events {
             // Migration will be handled by application logic when needed
             // For now, we keep both schemas for compatibility
@@ -311,14 +311,86 @@ impl Db {
 
         // Seed context templates
         let contexts: &[(i64, &str, i64, i64, i64, i64, i64, &str)] = &[
-            (1, "Interpersonal: openness", 1, 2, 5, 3, 2, "Honest dialogue, strengthening trust"),
-            (2, "Interpersonal: concealment", 1, 1, 1, 1, 1, "Withholding a significant fact, trust erosion"),
-            (3, "Finance: fraud", 2, 1, 2, 2, 5, "Deception for profit, legal consequences"),
-            (4, "Finance: transparent reporting", 2, 2, 5, 4, 8, "Verifiable facts, reputation growth"),
-            (5, "Politics: treaty breach", 3, 1, 2, 1, 1, "Hidden violations, loss of trust"),
-            (6, "Politics: treaty compliance", 3, 2, 5, 4, 2, "Confirmed execution of obligations"),
-            (7, "Organization: admitting a mistake", 6, 2, 5, 6, 6, "Admission and correction improve learning"),
-            (8, "Media: disinformation", 7, 1, 7, 2, 3, "Manipulations leading to conflict"),
+            (
+                1,
+                "Interpersonal: openness",
+                1,
+                2,
+                5,
+                3,
+                2,
+                "Honest dialogue, strengthening trust",
+            ),
+            (
+                2,
+                "Interpersonal: concealment",
+                1,
+                1,
+                1,
+                1,
+                1,
+                "Withholding a significant fact, trust erosion",
+            ),
+            (
+                3,
+                "Finance: fraud",
+                2,
+                1,
+                2,
+                2,
+                5,
+                "Deception for profit, legal consequences",
+            ),
+            (
+                4,
+                "Finance: transparent reporting",
+                2,
+                2,
+                5,
+                4,
+                8,
+                "Verifiable facts, reputation growth",
+            ),
+            (
+                5,
+                "Politics: treaty breach",
+                3,
+                1,
+                2,
+                1,
+                1,
+                "Hidden violations, loss of trust",
+            ),
+            (
+                6,
+                "Politics: treaty compliance",
+                3,
+                2,
+                5,
+                4,
+                2,
+                "Confirmed execution of obligations",
+            ),
+            (
+                7,
+                "Organization: admitting a mistake",
+                6,
+                2,
+                5,
+                6,
+                6,
+                "Admission and correction improve learning",
+            ),
+            (
+                8,
+                "Media: disinformation",
+                7,
+                1,
+                7,
+                2,
+                3,
+                "Manipulations leading to conflict",
+            ),
         ];
         for (id, name, cat, forma, cause, develop, effect, desc) in contexts {
             conn.execute(
@@ -331,6 +403,7 @@ impl Db {
         Ok(())
     }
 
+    #[allow(dead_code)] // Public API method - may be called by external code
     pub fn insert_event(
         &self,
         id: &str,
@@ -404,10 +477,25 @@ impl Db {
         Ok(())
     }
 
-    pub fn list_judgments_for_event(&self, event_id: &str, limit: i64, offset: i64) -> Result<(Vec<(String,String,String,f64,Option<String>,String)>, i64), String> {
+    pub fn list_judgments_for_event(
+        &self,
+        event_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<
+        (
+            Vec<(String, String, String, f64, Option<String>, String)>,
+            i64,
+        ),
+        String,
+    > {
         let conn = self.0.lock();
         let total: i64 = conn
-            .query_row("SELECT COUNT(1) FROM judgments WHERE event_id = ?1", [event_id], |row| row.get(0))
+            .query_row(
+                "SELECT COUNT(1) FROM judgments WHERE event_id = ?1",
+                [event_id],
+                |row| row.get(0),
+            )
             .map_err(|e| e.to_string())?;
 
         let mut stmt = conn
@@ -430,20 +518,51 @@ impl Db {
         Ok((items, total))
     }
 
-    pub fn get_judgment_stats(&self, event_id: &str) -> Result<(i64,i64,i64,f64,Option<String>), String> {
+    pub fn get_judgment_stats(
+        &self,
+        event_id: &str,
+    ) -> Result<(i64, i64, i64, f64, Option<String>), String> {
         let conn = self.0.lock();
-        let (t_true, t_false, t_uncertain): (i64,i64,i64) = {
-            let true_c: i64 = conn.query_row("SELECT COUNT(1) FROM judgments WHERE event_id=?1 AND assessment='true'", [event_id], |r| r.get(0)).unwrap_or(0);
-            let false_c: i64 = conn.query_row("SELECT COUNT(1) FROM judgments WHERE event_id=?1 AND assessment='false'", [event_id], |r| r.get(0)).unwrap_or(0);
-            let uncertain_c: i64 = conn.query_row("SELECT COUNT(1) FROM judgments WHERE event_id=?1 AND assessment='uncertain'", [event_id], |r| r.get(0)).unwrap_or(0);
-            (true_c,false_c,uncertain_c)
+        let (t_true, t_false, t_uncertain): (i64, i64, i64) = {
+            let true_c: i64 = conn
+                .query_row(
+                    "SELECT COUNT(1) FROM judgments WHERE event_id=?1 AND assessment='true'",
+                    [event_id],
+                    |r| r.get(0),
+                )
+                .unwrap_or(0);
+            let false_c: i64 = conn
+                .query_row(
+                    "SELECT COUNT(1) FROM judgments WHERE event_id=?1 AND assessment='false'",
+                    [event_id],
+                    |r| r.get(0),
+                )
+                .unwrap_or(0);
+            let uncertain_c: i64 = conn
+                .query_row(
+                    "SELECT COUNT(1) FROM judgments WHERE event_id=?1 AND assessment='uncertain'",
+                    [event_id],
+                    |r| r.get(0),
+                )
+                .unwrap_or(0);
+            (true_c, false_c, uncertain_c)
         };
-        let avg_conf: f64 = conn.query_row("SELECT COALESCE(AVG(confidence_level),0.0) FROM judgments WHERE event_id=?1", [event_id], |r| r.get(0)).unwrap_or(0.0);
+        let avg_conf: f64 = conn
+            .query_row(
+                "SELECT COALESCE(AVG(confidence_level),0.0) FROM judgments WHERE event_id=?1",
+                [event_id],
+                |r| r.get(0),
+            )
+            .unwrap_or(0.0);
         let last_submitted: Option<String> = conn.query_row("SELECT submitted_at FROM judgments WHERE event_id=?1 ORDER BY datetime(submitted_at) DESC LIMIT 1", [event_id], |r| r.get(0)).optional().unwrap_or(None);
-        Ok((t_true,t_false,t_uncertain,avg_conf,last_submitted))
+        Ok((t_true, t_false, t_uncertain, avg_conf, last_submitted))
     }
 
-    pub fn list_logs(&self, page: i64, page_size: i64) -> Result<(Vec<(String,String,String,String,String)>, i64), String> {
+    pub fn list_logs(
+        &self,
+        page: i64,
+        page_size: i64,
+    ) -> Result<(Vec<(String, String, String, String, String)>, i64), String> {
         let conn = self.0.lock();
         let total: i64 = conn
             .query_row("SELECT COUNT(1) FROM logs", [], |row| row.get(0))
@@ -452,7 +571,9 @@ impl Db {
         let mut stmt = conn
             .prepare("SELECT id, timestamp, source, level, message FROM logs ORDER BY datetime(timestamp) DESC LIMIT ?1 OFFSET ?2")
             .map_err(|e| e.to_string())?;
-        let mut rows = stmt.query(params![page_size, offset]).map_err(|e| e.to_string())?;
+        let mut rows = stmt
+            .query(params![page_size, offset])
+            .map_err(|e| e.to_string())?;
         let mut items = Vec::new();
         while let Some(row) = rows.next().map_err(|e| e.to_string())? {
             items.push((
@@ -468,7 +589,8 @@ impl Db {
 
     pub fn clear_logs(&self) -> Result<(), String> {
         let conn = self.0.lock();
-        conn.execute("DELETE FROM logs", []).map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM logs", [])
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -499,7 +621,9 @@ impl Db {
         Ok((total_events, avg_impact, last_updated))
     }
 
-    pub fn list_event_summaries(&self) -> Result<Vec<(String, String, Option<f64>, String)>, String> {
+    pub fn list_event_summaries(
+        &self,
+    ) -> Result<Vec<(String, String, Option<f64>, String)>, String> {
         let conn = self.0.lock();
         let mut stmt = conn
             .prepare(
@@ -553,7 +677,10 @@ impl Db {
         Ok(conn.last_insert_rowid())
     }
 
-    pub fn get_truth_event_with_names(&self, event_id: i64) -> Option<crate::commands::events::Event> {
+    pub fn get_truth_event_with_names(
+        &self,
+        event_id: i64,
+    ) -> Option<crate::commands::events::Event> {
         use crate::commands::events::Event;
         let conn = self.0.lock();
         let mut stmt = conn.prepare(
@@ -569,7 +696,7 @@ impl Db {
                LEFT JOIN effect eff ON e.effect_id = eff.id
                WHERE e.id = ?1"#
         ).ok()?;
-        
+
         let mut rows = stmt.query(params![event_id]).ok()?;
         if let Some(row) = rows.next().ok()? {
             Some(Event {
@@ -598,10 +725,14 @@ impl Db {
         }
     }
 
-    pub fn list_truth_events_with_names(&self, page: u32, per_page: u32) -> Result<crate::commands::events::ListEventsResponse, String> {
+    pub fn list_truth_events_with_names(
+        &self,
+        page: u32,
+        per_page: u32,
+    ) -> Result<crate::commands::events::ListEventsResponse, String> {
         use crate::commands::events::{Event, ListEventsResponse};
         let conn = self.0.lock();
-        
+
         let total: i64 = conn
             .query_row("SELECT COUNT(1) FROM truth_events", [], |row| row.get(0))
             .map_err(|e| e.to_string())?;
@@ -622,7 +753,9 @@ impl Db {
         )
         .map_err(|e| e.to_string())?;
 
-        let mut rows = stmt.query(params![per_page as i64, offset]).map_err(|e| e.to_string())?;
+        let mut rows = stmt
+            .query(params![per_page as i64, offset])
+            .map_err(|e| e.to_string())?;
         let mut data: Vec<Event> = Vec::new();
         while let Some(row) = rows.next().map_err(|e| e.to_string())? {
             data.push(Event {
@@ -634,7 +767,10 @@ impl Db {
                 develop_id: row.get(5).ok().unwrap_or(None),
                 effect_id: row.get(6).ok().unwrap_or(None),
                 vector: row.get::<_, i64>(7).map_err(|e| e.to_string())? != 0,
-                detected: row.get::<_, Option<i64>>(8).map_err(|e| e.to_string())?.map(|v| v != 0),
+                detected: row
+                    .get::<_, Option<i64>>(8)
+                    .map_err(|e| e.to_string())?
+                    .map(|v| v != 0),
                 corrected: row.get::<_, i64>(9).map_err(|e| e.to_string())? != 0,
                 timestamp_start: row.get(10).map_err(|e| e.to_string())?,
                 timestamp_end: row.get(11).ok().unwrap_or(None),
@@ -651,5 +787,3 @@ impl Db {
         Ok(ListEventsResponse { data, total })
     }
 }
-
-

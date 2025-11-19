@@ -1,6 +1,6 @@
+pub mod encryption;
 pub mod node;
 pub mod sync;
-pub mod encryption;
 pub mod wifi_direct;
 
 // Переэкспортируем только то, что реально нужно внешним модулям
@@ -10,9 +10,9 @@ pub mod wifi_direct;
 
 // Если ты пока не используешь эти re-export’ы — можно закомментировать их
 #[allow(unused_imports)]
+pub use encryption::CryptoIdentity;
+#[allow(unused_imports)]
 pub use node::Node;
 #[cfg(any(test, feature = "p2p-client-sync"))]
 #[allow(unused_imports)]
 pub use sync::sync_with_peer;
-#[allow(unused_imports)]
-pub use encryption::CryptoIdentity;
