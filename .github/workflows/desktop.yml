@@ -1,12 +1,12 @@
 name: Desktop CI
 
 on:
-  push:
-    branches: [ master ]
-    tags:
-      - '**'
-  pull_request:
-    branches: [ master ]
+  # push:
+  #   branches: [ master ]
+  #   tags:
+  #     - '**'
+  # pull_request:
+  #   branches: [ master ]
   workflow_dispatch:
 
 permissions:
