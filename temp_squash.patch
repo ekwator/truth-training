@@ -1,0 +1,620 @@
+From 11ed45708e6c4f98e2757516247fa4198a77ca97 Mon Sep 17 00:00:00 2001
+From: ekwator <ekwator@mail.ru>
+Date: Thu, 20 Nov 2025 19:56:31 +0500
+Subject: [PATCH 1/9] edit README.md
+
+---
+ README.md | 69 +++++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 42 insertions(+), 27 deletions(-)
+
+diff --git a/README.md b/README.md
+index 1c3be1f..2448694 100644
+--- a/README.md
++++ b/README.md
+@@ -14,26 +14,41 @@ Originally conceived to combat fraud, Truth Training evolves into a **self-learn
+ 
+ ---
+ 
+-# 🧠 Truth Training v1.0.0
++## Release Information
+ 
+-**A distributed collective intelligence system for evaluating truth through trust-weighted consensus**
++**v1.0.0-Release**: [GitHub Release v1.0.0-Release](https://github.com/ekwator/truth-training/releases/tag/v1.0.0-Release)
+ 
+----
++**v1.0.0-Baseline**: [GitHub Release v1.0.0-Baseline](https://github.com/ekwator/truth-training/releases/tag/v1.0-Baseline)
+ 
+-## ✅ Cross-Platform v1.0.0 (Core, Desktop, Android) — Production Ready
++## What's New in v1.0.0-Release
+ 
+-**Status**: All platforms aligned to v1.0.0 baseline  
+-**Release**: [GitHub Release v1.0.0](https://github.com/ekwator/truth-training/releases/tag/v1.0.0)
++Truth Training v1.0.0-Release — Unified Discovery & Sync Release
+ 
+-### Platform Availability
++Truth Training v1.0.0-Release ships the finished, unified discovery stack for Desktop, CLI, Server, and Android clients. Every platform now speaks the same node schema, discovery protocol, and sync cadence, providing a seamless view of the network whether you manage nodes from a workstation, the terminal, or a phone.
+ 
+-- ✅ **Core/Server/CLI**: v1.0.0 (stable)
+-- ✅ **Desktop UI**: v1.0.0 (stable) — Linux, Windows, macOS
+-- ✅ **Android Client**: v1.0.0 (stable) — **NEW** — Full feature parity
++Highlights:
++- Unified cross-platform node discovery pipeline with shared data formats and conflict-free merge logic.
++- LAN/Wi-Fi UDP multicast (239.255.0.1:52525) and HTTPS registry polling run together to cover both local presence and global awareness.
++- Automated reachability checks with TTL-based cleanup keep node lists self-healing and trustworthy.
++- Android client now bundles Room DB storage, WorkManager background sync, and Compose UI so mobile operators see the same live roster as desktop and CLI users.
++- Desktop, CLI, and Server releases expose matching controls (dashboard widgets, `truthctl` commands, HTTP endpoints) for discovery, sync, cleanup, and health checks.
+ 
+-All platforms share the same data model, API contracts, and synchronization protocol.
++Quality & Validation:
++- Real-device end-to-end testing (desktop ↔ CLI ↔ Android) confirms multicast, registry polling, and sync interoperability on physical hardware and mixed networks.
++- Observability hooks record discovery counts, TTL pruning, and reachability metrics in every runtime, making deployment diagnostics straightforward.
+ 
+----
++Enjoy the most complete Truth Training release to date—fully aligned discovery logic everywhere, minimal configuration, and proven reliability in the field.
++
++## What's New in v1.0.0-Baseline
++
++This release represents the baseline version of Truth Training v1.0.0, featuring:
++- **FIDONet-inspired Architecture**: Store-and-forward messaging with hub/leaf node roles
++- **Cryptographic Verification**: Ed25519 signatures for event authentication and data integrity
++- **Peer-to-Peer Synchronization**: UDP beacon discovery and HTTP-based signed sync
++- **Trust Propagation System**: Node ratings with propagation priority metrics
++- **Cross-Platform Core**: Shared Rust library for desktop, Android, and iOS
++- **Offline-First Design**: Quality index for mobile/offline fairness without time-based decay
++- **Collective Intelligence**: Wisdom of the Crowd consensus mechanism for event evaluation
+ 
+ ## What's New in v1.0.0
+ 
+@@ -323,8 +338,8 @@ Main capabilities:
+ - `truthctl diagnose [--verbose]` — node diagnostics (config, keys, peers).
+ - `truthctl reset-data [--confirm] [--reinit]` — wipe local data and optionally reinit (auto key generation/replace).
+ - `truthctl graph show [--format json|ascii] [--min-priority 0.3] [--limit 50]` — visualize network graph with propagation metrics.
+-- `truthctl peers stats [--server URL] [--format json|table]` — локальная статистика по пирам (успешность, качество, доверие).
+-- `truthctl peers history [--limit N] [--db path]` — история синхронизаций по пирам из локальной БД.
++- `truthctl peers stats [--server URL] [--format json|table]` — local peer statistics (success rate, quality, trust).
++- `truthctl peers history [--limit N] [--db path]` — peer sync history from local DB.
+ 
+ Examples:
+ ```bash
+@@ -349,7 +364,7 @@ Full CLI reference: **`docs/CLI_Usage.md`** and **`spec/10-cli.md`**.
+ - Tables: `truth_events`, `statements`, `impact`, `node_ratings`, `group_ratings`, `sync_logs`, ...
+ - Sync modes:
+   - **Full sync**: send and receive full datasets (`/sync`).
+-  - **Incremental sync**: only changes since `last_sync` (`/incremental_sync`).
++ - **Incremental sync**: only changes since `last_sync` (`/incremental_sync`).
+ 
+ Trust & reputation:
+ - `NodeRating` now includes `propagation_priority` (0.0–1.0). It is computed as: `priority = trust_norm*0.8 + recent_activity*0.2`, where `trust_norm = (trust_score+1)/2`.
+@@ -358,27 +373,27 @@ Trust & reputation:
+ - Sync records are stored in `sync_logs` for auditing and diagnostics.
+ 
+ Adaptive Propagation Metrics:
+-- propagation_priority (0.0–1.0) — EMA‑сглажённая смесь доверия и сетевых метрик:
++- propagation_priority (0.0–1.0) — EMA-smoothed blend of trust and network metrics:
+   - p_raw = 0.4·trust_norm + 0.3·quality_index + 0.3·relay_success_rate
+-  - trust_norm = ((trust_score+1)/2), p = 0.3·p_raw + 0.7·prev
+-- Распространение по сети: blend_priority(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)
+-- Отображается в CLI: приоритет 🔵/🟡/🔴; среднее значение в `truthctl status`.
++ - trust_norm = ((trust_score+1)/2), p = 0.3·p_raw + 0.7·prev
++- Network propagation: blend_priority(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)
++- Displayed in CLI: priority 🔵/🟡/🔴; average value in `truthctl status`.
+ 
+ Relay metrics & adaptive quality tracking:
+ - Dynamic relay success rate tracking via `record_relay_result(peer_url, success)` in sync functions.
+ - Real-time metrics stored in `node_metrics` table with `relay_success_rate` (0.0–1.0) and `quality_index` (0.0–1.0).
+-- `quality_index` — индикатор непрерывности доверия для мобильных/оффлайн узлов. Это не штрафная метрика.
+-  - Локальный расчет: `q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability`, затем EMA: `q = 0.3·q_raw + 0.7·prev`.
+-  - Распространение по сети: `blend_quality(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)`.
++- `quality_index` — continuous trust indicator for mobile/offline nodes. This is not a penalty metric.
++  - Local calculation: `q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability`, then EMA: `q = 0.3·q_raw + 0.7·prev`.
++  - Network propagation: `blend_quality(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)`.
+ - CLI displays relay and quality: relay 🟢🟡🔴, quality 🔵🟡🔴; shows average network quality.
+-- API `/api/v1/stats` возвращает `avg_quality_index`; `/graph/json` включает `quality_index` на узлах.
++- API `/api/v1/stats` returns `avg_quality_index`; `/graph/json` includes `quality_index` on nodes.
+ 
+ ### Local Network Statistics & Peer History
+ 
+ - New SQLite table `peer_history` tracks per-peer sync attempts (success/fail counters, last sync timestamp, last observed `quality_index` and `trust_score`).
+ - Automatic logging after each sync attempt updates `peer_history`.
+ - API `GET /api/v1/network/local` returns:
+-  - `peers`: list with `url`, `last_sync` (RFC3339), `success_count`, `fail_count`, `last_quality_index`, `last_trust_score`.
++ - `peers`: list with `url`, `last_sync` (RFC3339), `success_count`, `fail_count`, `last_quality_index`, `last_trust_score`.
+   - `summary`: `total_peers`, `avg_success_rate`, `avg_quality_index`.
+ - CLI:
+   - `truthctl peers stats [--format json|table]` — shows table and averages.
+@@ -389,7 +404,7 @@ Example JSON for `/api/v1/network/local`:
+ {
+   "peers": [
+     {
+-      "url": "http://127.0.0.1:8080",
++      "url": "http://127.0.1:8080",
+       "last_sync": "2025-10-11T13:00:00Z",
+       "success_count": 24,
+       "fail_count": 3,
+@@ -399,9 +414,9 @@ Example JSON for `/api/v1/network/local`:
+   ],
+   "summary": {
+     "total_peers": 12,
+-    "avg_success_rate": 0.88,
++    "avg_success_rate": 0.8,
+     "avg_quality_index": 0.83
+-  }
++ }
+ }
+ ```
+ 
+-- 
+2.43.0
+
+
+From 3a958ba79cb9d6687c15043cb24432cdc3177721 Mon Sep 17 00:00:00 2001
+From: ekwator <ekwator@mail.ru>
+Date: Thu, 20 Nov 2025 19:58:23 +0500
+Subject: [PATCH 2/9] hot fix README.md
+
+---
+ README.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/README.md b/README.md
+index 2448694..a5f984d 100644
+--- a/README.md
++++ b/README.md
+@@ -18,7 +18,7 @@ Originally conceived to combat fraud, Truth Training evolves into a **self-learn
+ 
+ **v1.0.0-Release**: [GitHub Release v1.0.0-Release](https://github.com/ekwator/truth-training/releases/tag/v1.0.0-Release)
+ 
+-**v1.0.0-Baseline**: [GitHub Release v1.0.0-Baseline](https://github.com/ekwator/truth-training/releases/tag/v1.0-Baseline)
++**v1.0.0-Baseline**: [GitHub Release v1.0.0-Baseline](https://github.com/ekwator/truth-training/releases/tag/v1.0.0-Baseline)
+ 
+ ## What's New in v1.0.0-Release
+ 
+-- 
+2.43.0
+
+
+From ade688140e856a94a7473b73d361a3c80ffee4a3 Mon Sep 17 00:00:00 2001
+From: ekwator <ekwator@mail.ru>
+Date: Thu, 20 Nov 2025 20:38:47 +0500
+Subject: [PATCH 3/9] edit README.md
+
+---
+ README.md | 38 ++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 36 insertions(+), 2 deletions(-)
+
+diff --git a/README.md b/README.md
+index a5f984d..ecf59c7 100644
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,5 @@
+-# 🌐 Truth Training — The Network of Anonymous Trust (Created in Cursor AI IDE)
++# 🌐 Truth Training — The Network of Anonymous Trust  
++*(Created in Cursor AI IDE)*
+ 
+ Truth Training is a decentralized communication ecosystem where **truth travels without identity**.  
+ Events move freely through the network — encrypted, verified, and echoed by others — creating a distributed field of awareness instead of a chain of messages.
+@@ -6,7 +7,7 @@ Events move freely through the network — encrypted, verified, and echoed by ot
+ Each reflection of an event confirms its existence; each independent echo increases its credibility.  
+ Like confession without a priest, users anonymously release truths into the network — and the collective conscience responds.
+ 
+-It can serve as an **alternative to voting systems**, measuring the authenticity of social signals and public sentiment, not through ballots but through shared evaluation of facts.
++It can serve as an **alternative to voting systems**, measuring the authenticity of social signals and public sentiment not through ballots, but through shared evaluation of facts.
+ 
+ Unlike LoRa-based mesh systems such as **Meshtastic**, Truth Training builds a **mesh of minds, not hardware** — using Wi-Fi and the Internet as carriers of encrypted meaning, forming an autonomous infrastructure of human understanding.
+ 
+@@ -14,6 +15,39 @@ Originally conceived to combat fraud, Truth Training evolves into a **self-learn
+ 
+ ---
+ 
++## 🚫 No Bans. No Muting. No Administrative Suppression.
++
++A fundamental principle of Truth Training is **absolute non-censorship**:
++
++- **No user can be banned.**  
++- **No message can be deleted or blocked.**  
++- **No administrator or server operator can silence, shadow-ban, or filter participants.**
++
++The system is designed so that **no central authority exists** with the ability to suppress information or exclude individuals.
++
++All data flows are governed by:
++
++- **cryptographic identity**,  
++- **context evaluation**,  
++- **decentralized consensus**,  
++- **and distributed replication**,  
++
++—not by human moderation or arbitrary rules.
++
++Instead of punishment or exclusion, the network uses:
++
++- **context-based interpretation**
++- **collective impact scoring**
++- **correlation across independent nodes**
++- **temporal decay and natural fading of irrelevant data**
++
++This forms an **organic, self-regulating signal ecosystem**, where falsehood loses weight naturally — not because someone censored it, but because **the network rejects it collectively**.
++
++Truth Training is not a platform where content is controlled.  
++It is a field where meaning **emerges**.
++
++---
++
+ ## Release Information
+ 
+ **v1.0.0-Release**: [GitHub Release v1.0.0-Release](https://github.com/ekwator/truth-training/releases/tag/v1.0.0-Release)
+-- 
+2.43.0
+
+
+From 0ce50d21f18b748c34b6c7687393cb755e45aeec Mon Sep 17 00:00:00 2001
+From: ekwator <ekwator@mail.ru>
+Date: Thu, 20 Nov 2025 20:48:13 +0500
+Subject: [PATCH 4/9] edit README.md
+
+---
+ README.md | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/README.md b/README.md
+index ecf59c7..e8de8cc 100644
+--- a/README.md
++++ b/README.md
+@@ -159,9 +159,22 @@ Truth Training uses a **cross-platform core library** (`truth_core`) that adapts
+ The Android client (`truth-android-client`) is now part of the monorepo under `/truth-android-client`.
+ It is an independent Android application built on top of the shared Truth Core engine.
+ 
+-### iOS Client
+-The iOS client (`truth-ios-client`) is now part of the monorepo under `/truth-ios-client`.
+-It is an independent iOS application built with SwiftUI and integrated with the Truth Core engine via FFI bindings.
++## iOS Client
++
++The iOS client (`truth-ios-client`) is currently only a **prototype stub** included in the monorepo under `/truth-ios-client`.
++
++It is **not a functional application** — only an experimental placeholder created during early architectural testing.  
++I have **not developed the iOS version**, as I do not yet have experience with iOS development.
++
++We welcome **community contributions and volunteers** who can help implement:
++
++- Swift / SwiftUI application structure  
++- FFI bindings to the Truth Core engine  
++- Shared discovery & sync layer  
++- UI and navigation system  
++- Full feature parity with Android & Desktop clients  
++
++If you're experienced with Swift or iOS development and want to contribute, feel free to join the project!
+ 
+ ### Platform-Specific Features
+ 
+-- 
+2.43.0
+
+
+From ab8bfbe4c16410b8ebf4ca5c85befaa177704cb1 Mon Sep 17 00:00:00 2001
+From: ekwator <ekwator@mail.ru>
+Date: Fri, 21 Nov 2025 00:28:50 +0500
+Subject: [PATCH 5/9] edit SECURITY.md
+
+---
+ SECURITY.md | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/SECURITY.md b/SECURITY.md
+index 582bf57..4f8eefd 100644
+--- a/SECURITY.md
++++ b/SECURITY.md
+@@ -38,6 +38,8 @@ Main risks include:
+ 
+ ## 🧰 Development Security Guidelines
+ 
++> ⚠️ **Optional but recommended:** Using **Cursor AI IDE** can improve development speed, provide inline type checking, and assist with automated code refactoring. It is **not required**, but strongly suggested for prototyping and safe code edits.
++
+ 1. **Never commit private keys or seed phrases.**  
+ 2. Use **Result-based error handling** for all crypto/network ops.  
+ 3. Run `cargo clippy`, `cargo fmt`, and `cargo audit` before PRs.  
+@@ -81,4 +83,3 @@ Do **not** use it for:
+ - Any illegal activity  
+ 
+ Use under the **MIT License**, following the project’s ethical guidelines.
+-
+-- 
+2.43.0
+
+
+From 1b05269a4775d54d5a87a5adf2a0af6ca24d1411 Mon Sep 17 00:00:00 2001
+From: ekwator <ekwator@mail.ru>
+Date: Fri, 21 Nov 2025 11:51:40 +0500
+Subject: [PATCH 6/9] edit SECURITY.md
+
+---
+ SECURITY.md | 31 ++++++++++++++++++++++++++++++-
+ 1 file changed, 30 insertions(+), 1 deletion(-)
+
+diff --git a/SECURITY.md b/SECURITY.md
+index 4f8eefd..9cd6763 100644
+--- a/SECURITY.md
++++ b/SECURITY.md
+@@ -38,7 +38,36 @@ Main risks include:
+ 
+ ## 🧰 Development Security Guidelines
+ 
+-> ⚠️ **Optional but recommended:** Using **Cursor AI IDE** can improve development speed, provide inline type checking, and assist with automated code refactoring. It is **not required**, but strongly suggested for prototyping and safe code edits.
++To ensure consistency, safety, and traceability in development, the following tools are **mandatory** for all contributors:
++
++1. **Cursor AI IDE**  
++   You must use Cursor AI IDE for all development work. This ensures inline type checking, automated code refactoring, and alignment with the project’s code-generation standards. It is not optional.
++
++2. **Spec-Kit**  
++   We require using [GitHub Spec-Kit](https://github.com/github/spec-kit) (installed in the `.cursor` folder of the project) to run the structured specification workflow. Spec-Kit is a toolkit for Spec-Driven Development, designed to help generate and maintain executable specifications. :contentReference[oaicite:0]{index=0}
++
++   In our project, the following Spec-Kit slash commands (available after installation) must be used:
++
++   - `/specify` — creates a GitHub PR with a new branch based on the specification  
++   - `/plan` — creates, modifies, and executes a plan from a specification  
++   - `/clarify` — verifies the consistency of plan items among themselves and with the specification  
++   - `/plan` (without a prompt) — finalizes the plan after clarification  
++   - `/task` — creates, modifies, and executes tasks defined in the plan  
++   - `/implementation` — executes part of the specification  
++   - `/implementation` (without arguments) — executes the entire specification
++
++Failure to use Spec-Kit as described may result in misaligned development, unreviewable code, or divergence from project standards.  
++
++---
++
++## ✅ Security & Process Enforcement
++
++- All specification and planning steps **must go through Spec-Kit** before implementation.  
++- Any code committed without a corresponding Spec-Kit specification or plan will be considered non-compliant and may be rejected or reverted.  
++- Using Spec-Kit improves traceability, helps prevent drift between design and implementation, and ensures that AI-assisted code generation remains aligned with project governance.
++
++By enforcing Cursor AI IDE and Spec-Kit usage, we maintain a high standard of **predictable, safe, and auditable development** across all contributors.
++
+ 
+ 1. **Never commit private keys or seed phrases.**  
+ 2. Use **Result-based error handling** for all crypto/network ops.  
+-- 
+2.43.0
+
+
+From b365f69ba24d39c337d9e1ca415545a35b8be49a Mon Sep 17 00:00:00 2001
+From: ekwator <ekwator@mail.ru>
+Date: Fri, 21 Nov 2025 12:56:35 +0500
+Subject: [PATCH 7/9] edit  SECURITY.md and add file prompt
+
+---
+ SECURITY.md                                | 44 +++++++++++++++++++
+ docs/prompt/ekwator/specify1/plan/plan1.md | 49 ++++++++++++++++++++++
+ docs/prompt/ekwator/specify1/spec1.md      | 23 ++++++++++
+ 3 files changed, 116 insertions(+)
+ create mode 100644 docs/prompt/ekwator/specify1/plan/plan1.md
+ create mode 100644 docs/prompt/ekwator/specify1/spec1.md
+
+diff --git a/SECURITY.md b/SECURITY.md
+index 9cd6763..9f240dd 100644
+--- a/SECURITY.md
++++ b/SECURITY.md
+@@ -58,6 +58,50 @@ To ensure consistency, safety, and traceability in development, the following to
+ 
+ Failure to use Spec-Kit as described may result in misaligned development, unreviewable code, or divergence from project standards.  
+ 
++### 📁 Spec-Kit Prompt Library (Developer Examples)
++
++This project includes a dedicated directory with **real, working examples** of proper Spec-Kit usage.  
++These files serve as canonical templates for creating correct `/specify`, `/plan`, `/task`, and `/implementation` requests.
++
++All examples are stored in:
++- **/docs/prompt/ekwator/**  
++
++
++Folder structure:
++
++docs/
++└── prompt/
++└── ekwator/
++├── specify1/
++│ ├── spec1.md
++│ └── plan/
++│ └── plan1.md
++└── specify2/
++│ └── plan/
++
++#### 📌 What each file contains:
++
++- **specify1/spec1.md**  
++- 📄 [Complete template + real example of a `/specify` command for a development task.](https://github.com/ekwator/truth-training/docs/prompt/ekwator/specify1/spec1.md)
++
++- **specify1/plan/plan1.md**  
++- 🗂 [Example of a fully structured `/plan` request derived from the specification.](https://github.com/ekwator/truth-training/docs/prompt/ekwator/specify1/plan/plan1.md)
++
++- **specify2/**  
++- 📁 A second set of examples demonstrating variations of specifications and plans.
++
++#### 📘 Purpose of these examples
++These examples are intended to:
++
++- Preserve consistent Spec-Kit workflow quality across contributors.  
++- Demonstrate correct formatting, structure, and writing style.  
++- Provide “copy–adapt–apply” patterns for:
++  - `/specify`  
++  - `/plan`  
++  - `/clarify`  
++  - `/task`  
++  - `/implementation`
++
+ ---
+ 
+ ## ✅ Security & Process Enforcement
+diff --git a/docs/prompt/ekwator/specify1/plan/plan1.md b/docs/prompt/ekwator/specify1/plan/plan1.md
+new file mode 100644
+index 0000000..93af712
+--- /dev/null
++++ b/docs/prompt/ekwator/specify1/plan/plan1.md
+@@ -0,0 +1,49 @@
++/plan
++Create a complete modification plan for implementing the changes defined in the previous /specify request:
++
++Goal:
++Fix the issue in the truth-android-client where the application launches and immediately disappears from the screen, while still running in the background. The solution must properly register the UI entry point and screen structure in AndroidManifest.xml and ensure that the application opens normally and remains visible.
++
++Plan Requirements:
++1. Manifest Corrections
++   - Identify the current incorrect launcher Activity declaration.
++   - Add or correct the <activity> entry that should serve as the primary launcher.
++   - Add the proper intent-filter with MAIN and LAUNCHER categories.
++   - Ensure the activity is exported when required by Android 11+ rules.
++
++2. Entry Activity Initialization
++   - Confirm that the launcher Activity initializes the NavigationHost properly.
++   - Ensure that setContent{} in the Activity loads the correct initial composable.
++
++3. Navigation Structure Validation
++   - Validate that the navigation graph includes the initial screen.
++   - Add missing screens if they are referenced but not registered.
++   - Verify that the navigation graph loads without runtime exceptions.
++
++4. UI Startup Flow
++   - Ensure the initial screen (DashboardScreen or NodesScreen) is reachable and stable.
++   - Fix any early termination caused by lifecycle issues or missing UI bindings.
++
++5. ViewModel Setup
++   - Confirm the ViewModel factory is injected correctly.
++   - Add missing ViewModels for the launcher screen if required.
++
++6. Testing Plan
++   - Add unit tests or instrumentation tests to verify:
++     - The application no longer closes after launch.
++     - The manifest declares the correct launcher Activity.
++     - The navigation graph loads the initial screen successfully.
++
++7. Deliverables
++   - A complete set of manifest patches.
++   - Kotlin file modifications for Activity, Navigation, and ViewModels.
++   - Instructions for applying the patch via PR generated from the final plan.
++
++Important Rule:
++- The CLI part of the application must remain untouched because it is used only for verifying Core, Server, and CLI layers by the Cursor AI agent.
++
++Generate:
++- A clear, step-by-step plan.
++- Explicit file paths and modifications.
++- Dependencies between steps.
++- A ready-to-execute plan suitable for subsequent tasks and /implementation.
+diff --git a/docs/prompt/ekwator/specify1/spec1.md b/docs/prompt/ekwator/specify1/spec1.md
+new file mode 100644
+index 0000000..abd1603
+--- /dev/null
++++ b/docs/prompt/ekwator/specify1/spec1.md
+@@ -0,0 +1,23 @@
++/specify
++Goal:
++Fix the issue in truth-android-client where the application starts and instantly disappears from the screen while continuing to run in the background. The objective is to properly register the required UI screens and activities in AndroidManifest.xml so the application opens normally and stays visible.
++
++Requirements:
++1. Update AndroidManifest.xml:
++   - Ensure the correct launcher Activity is declared.
++   - Ensure the Activity is exported and visible on launch.
++   - Add proper intent filters for main launcher behavior.
++   - Prevent premature closing of the UI after onCreate().
++2. Validate that the main NavigationHost is initialized correctly.
++3. Ensure the initial composable screen (e.g., DashboardScreen or NodesScreen) is assigned as the entry point.
++4. Ensure any required ViewModels are attached through the correct factory.
++5. Add any missing screens into the navigation graph if required.
++6. Provide all necessary Kotlin and manifest changes as patches ready for PR generation.
++
++Important Rule:
++- The CLI part of the application is used exclusively for verifying the Core, Server, and CLI functionality by the Cursor AI agent. It must not be modified for UI-related changes.
++
++Deliverables:
++- A validated plan for required changes.
++- Patches for manifest, navigation, and affected Kotlin files.
++- A correctly structured PR generated from the final specification.
+-- 
+2.43.0
+
+
+From 3d503ca0f956fc89fd4c736dc2436a69f1f73991 Mon Sep 17 00:00:00 2001
+From: ekwator <ekwator@mail.ru>
+Date: Fri, 21 Nov 2025 13:07:14 +0500
+Subject: [PATCH 8/9] hot fix SECURITY.md
+
+---
+ SECURITY.md | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
+
+diff --git a/SECURITY.md b/SECURITY.md
+index 9f240dd..cd30244 100644
+--- a/SECURITY.md
++++ b/SECURITY.md
+@@ -67,25 +67,26 @@ All examples are stored in:
+ - **/docs/prompt/ekwator/**  
+ 
+ 
+-Folder structure:
++- 📁Folder structure:
+ 
+ docs/
+ └── prompt/
+-└── ekwator/
+-├── specify1/
+-│ ├── spec1.md
+-│ └── plan/
+-│ └── plan1.md
+-└── specify2/
+-│ └── plan/
++    └── ekwator/
++        ├── specify1/
++        │   ├── spec1.md
++        │   └── plan/
++        │       └── plan1.md
++        └── specify2/
++            └── plan/
++
+ 
+ #### 📌 What each file contains:
+ 
+ - **specify1/spec1.md**  
+-- 📄 [Complete template + real example of a `/specify` command for a development task.](https://github.com/ekwator/truth-training/docs/prompt/ekwator/specify1/spec1.md)
++- 📄 [Complete template + real example of a `/specify` command for a development task.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/spec1.md)
+ 
+ - **specify1/plan/plan1.md**  
+-- 🗂 [Example of a fully structured `/plan` request derived from the specification.](https://github.com/ekwator/truth-training/docs/prompt/ekwator/specify1/plan/plan1.md)
++- 🗂 [Example of a fully structured `/plan` request derived from the specification.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/plan/plan1.md)
+ 
+ - **specify2/**  
+ - 📁 A second set of examples demonstrating variations of specifications and plans.
+-- 
+2.43.0
+
+
+From da058fa7bffcdefbb897cf4c2d85805e4e4408d7 Mon Sep 17 00:00:00 2001
+From: ekwator <ekwator@mail.ru>
+Date: Fri, 21 Nov 2025 13:12:58 +0500
+Subject: [PATCH 9/9] hot fix SECURITY.md
+
+---
+ SECURITY.md | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/SECURITY.md b/SECURITY.md
+index cd30244..086a9b1 100644
+--- a/SECURITY.md
++++ b/SECURITY.md
+@@ -69,6 +69,7 @@ All examples are stored in:
+ 
+ - 📁Folder structure:
+ 
++```
+ docs/
+ └── prompt/
+     └── ekwator/
+@@ -78,7 +79,7 @@ docs/
+         │       └── plan1.md
+         └── specify2/
+             └── plan/
+-
++```
+ 
+ #### 📌 What each file contains:
+ 
+-- 
+2.43.0
+
