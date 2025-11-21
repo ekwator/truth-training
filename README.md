@@ -1,4 +1,5 @@
-# 🌐 Truth Training — The Network of Anonymous Trust (Created in Cursor AI IDE)
+# 🌐 Truth Training — The Network of Anonymous Trust  
+*(Created in Cursor AI IDE)*
 
 Truth Training is a decentralized communication ecosystem where **truth travels without identity**.  
 Events move freely through the network — encrypted, verified, and echoed by others — creating a distributed field of awareness instead of a chain of messages.
@@ -6,7 +7,7 @@ Events move freely through the network — encrypted, verified, and echoed by ot
 Each reflection of an event confirms its existence; each independent echo increases its credibility.  
 Like confession without a priest, users anonymously release truths into the network — and the collective conscience responds.
 
-It can serve as an **alternative to voting systems**, measuring the authenticity of social signals and public sentiment, not through ballots but through shared evaluation of facts.
+It can serve as an **alternative to voting systems**, measuring the authenticity of social signals and public sentiment not through ballots, but through shared evaluation of facts.
 
 Unlike LoRa-based mesh systems such as **Meshtastic**, Truth Training builds a **mesh of minds, not hardware** — using Wi-Fi and the Internet as carriers of encrypted meaning, forming an autonomous infrastructure of human understanding.
 
@@ -14,26 +15,74 @@ Originally conceived to combat fraud, Truth Training evolves into a **self-learn
 
 ---
 
-# 🧠 Truth Training v1.0.0
+## 🚫 No Bans. No Muting. No Administrative Suppression.
 
-**A distributed collective intelligence system for evaluating truth through trust-weighted consensus**
+A fundamental principle of Truth Training is **absolute non-censorship**:
+
+- **No user can be banned.**  
+- **No message can be deleted or blocked.**  
+- **No administrator or server operator can silence, shadow-ban, or filter participants.**
+
+The system is designed so that **no central authority exists** with the ability to suppress information or exclude individuals.
+
+All data flows are governed by:
+
+- **cryptographic identity**,  
+- **context evaluation**,  
+- **decentralized consensus**,  
+- **and distributed replication**,  
+
+—not by human moderation or arbitrary rules.
+
+Instead of punishment or exclusion, the network uses:
+
+- **context-based interpretation**
+- **collective impact scoring**
+- **correlation across independent nodes**
+- **temporal decay and natural fading of irrelevant data**
+
+This forms an **organic, self-regulating signal ecosystem**, where falsehood loses weight naturally — not because someone censored it, but because **the network rejects it collectively**.
+
+Truth Training is not a platform where content is controlled.  
+It is a field where meaning **emerges**.
 
 ---
 
-## ✅ Cross-Platform v1.0.0 (Core, Desktop, Android) — Production Ready
+## Release Information
 
-**Status**: All platforms aligned to v1.0.0 baseline  
-**Release**: [GitHub Release v1.0.0](https://github.com/ekwator/truth-training/releases/tag/v1.0.0)
+**v1.0.0-Release**: [GitHub Release v1.0.0-Release](https://github.com/ekwator/truth-training/releases/tag/v1.0.0-Release)
 
-### Platform Availability
+**v1.0.0-Baseline**: [GitHub Release v1.0.0-Baseline](https://github.com/ekwator/truth-training/releases/tag/v1.0.0-Baseline)
 
-- ✅ **Core/Server/CLI**: v1.0.0 (stable)
-- ✅ **Desktop UI**: v1.0.0 (stable) — Linux, Windows, macOS
-- ✅ **Android Client**: v1.0.0 (stable) — **NEW** — Full feature parity
+## What's New in v1.0.0-Release
 
-All platforms share the same data model, API contracts, and synchronization protocol.
+Truth Training v1.0.0-Release — Unified Discovery & Sync Release
 
----
+Truth Training v1.0.0-Release ships the finished, unified discovery stack for Desktop, CLI, Server, and Android clients. Every platform now speaks the same node schema, discovery protocol, and sync cadence, providing a seamless view of the network whether you manage nodes from a workstation, the terminal, or a phone.
+
+Highlights:
+- Unified cross-platform node discovery pipeline with shared data formats and conflict-free merge logic.
+- LAN/Wi-Fi UDP multicast (239.255.0.1:52525) and HTTPS registry polling run together to cover both local presence and global awareness.
+- Automated reachability checks with TTL-based cleanup keep node lists self-healing and trustworthy.
+- Android client now bundles Room DB storage, WorkManager background sync, and Compose UI so mobile operators see the same live roster as desktop and CLI users.
+- Desktop, CLI, and Server releases expose matching controls (dashboard widgets, `truthctl` commands, HTTP endpoints) for discovery, sync, cleanup, and health checks.
+
+Quality & Validation:
+- Real-device end-to-end testing (desktop ↔ CLI ↔ Android) confirms multicast, registry polling, and sync interoperability on physical hardware and mixed networks.
+- Observability hooks record discovery counts, TTL pruning, and reachability metrics in every runtime, making deployment diagnostics straightforward.
+
+Enjoy the most complete Truth Training release to date—fully aligned discovery logic everywhere, minimal configuration, and proven reliability in the field.
+
+## What's New in v1.0.0-Baseline
+
+This release represents the baseline version of Truth Training v1.0.0, featuring:
+- **FIDONet-inspired Architecture**: Store-and-forward messaging with hub/leaf node roles
+- **Cryptographic Verification**: Ed25519 signatures for event authentication and data integrity
+- **Peer-to-Peer Synchronization**: UDP beacon discovery and HTTP-based signed sync
+- **Trust Propagation System**: Node ratings with propagation priority metrics
+- **Cross-Platform Core**: Shared Rust library for desktop, Android, and iOS
+- **Offline-First Design**: Quality index for mobile/offline fairness without time-based decay
+- **Collective Intelligence**: Wisdom of the Crowd consensus mechanism for event evaluation
 
 ## What's New in v1.0.0
 
@@ -110,9 +159,22 @@ Truth Training uses a **cross-platform core library** (`truth_core`) that adapts
 The Android client (`truth-android-client`) is now part of the monorepo under `/truth-android-client`.
 It is an independent Android application built on top of the shared Truth Core engine.
 
-### iOS Client
-The iOS client (`truth-ios-client`) is now part of the monorepo under `/truth-ios-client`.
-It is an independent iOS application built with SwiftUI and integrated with the Truth Core engine via FFI bindings.
+## iOS Client
+
+The iOS client (`truth-ios-client`) is currently only a **prototype stub** included in the monorepo under `/truth-ios-client`.
+
+It is **not a functional application** — only an experimental placeholder created during early architectural testing.  
+I have **not developed the iOS version**, as I do not yet have experience with iOS development.
+
+We welcome **community contributions and volunteers** who can help implement:
+
+- Swift / SwiftUI application structure  
+- FFI bindings to the Truth Core engine  
+- Shared discovery & sync layer  
+- UI and navigation system  
+- Full feature parity with Android & Desktop clients  
+
+If you're experienced with Swift or iOS development and want to contribute, feel free to join the project!
 
 ### Platform-Specific Features
 
@@ -323,8 +385,8 @@ Main capabilities:
 - `truthctl diagnose [--verbose]` — node diagnostics (config, keys, peers).
 - `truthctl reset-data [--confirm] [--reinit]` — wipe local data and optionally reinit (auto key generation/replace).
 - `truthctl graph show [--format json|ascii] [--min-priority 0.3] [--limit 50]` — visualize network graph with propagation metrics.
-- `truthctl peers stats [--server URL] [--format json|table]` — локальная статистика по пирам (успешность, качество, доверие).
-- `truthctl peers history [--limit N] [--db path]` — история синхронизаций по пирам из локальной БД.
+- `truthctl peers stats [--server URL] [--format json|table]` — local peer statistics (success rate, quality, trust).
+- `truthctl peers history [--limit N] [--db path]` — peer sync history from local DB.
 
 Examples:
 ```bash
@@ -349,7 +411,7 @@ Full CLI reference: **`docs/CLI_Usage.md`** and **`spec/10-cli.md`**.
 - Tables: `truth_events`, `statements`, `impact`, `node_ratings`, `group_ratings`, `sync_logs`, ...
 - Sync modes:
   - **Full sync**: send and receive full datasets (`/sync`).
-  - **Incremental sync**: only changes since `last_sync` (`/incremental_sync`).
+ - **Incremental sync**: only changes since `last_sync` (`/incremental_sync`).
 
 Trust & reputation:
 - `NodeRating` now includes `propagation_priority` (0.0–1.0). It is computed as: `priority = trust_norm*0.8 + recent_activity*0.2`, where `trust_norm = (trust_score+1)/2`.
@@ -358,27 +420,27 @@ Trust & reputation:
 - Sync records are stored in `sync_logs` for auditing and diagnostics.
 
 Adaptive Propagation Metrics:
-- propagation_priority (0.0–1.0) — EMA‑сглажённая смесь доверия и сетевых метрик:
+- propagation_priority (0.0–1.0) — EMA-smoothed blend of trust and network metrics:
   - p_raw = 0.4·trust_norm + 0.3·quality_index + 0.3·relay_success_rate
-  - trust_norm = ((trust_score+1)/2), p = 0.3·p_raw + 0.7·prev
-- Распространение по сети: blend_priority(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)
-- Отображается в CLI: приоритет 🔵/🟡/🔴; среднее значение в `truthctl status`.
+ - trust_norm = ((trust_score+1)/2), p = 0.3·p_raw + 0.7·prev
+- Network propagation: blend_priority(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)
+- Displayed in CLI: priority 🔵/🟡/🔴; average value in `truthctl status`.
 
 Relay metrics & adaptive quality tracking:
 - Dynamic relay success rate tracking via `record_relay_result(peer_url, success)` in sync functions.
 - Real-time metrics stored in `node_metrics` table with `relay_success_rate` (0.0–1.0) and `quality_index` (0.0–1.0).
-- `quality_index` — индикатор непрерывности доверия для мобильных/оффлайн узлов. Это не штрафная метрика.
-  - Локальный расчет: `q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability`, затем EMA: `q = 0.3·q_raw + 0.7·prev`.
-  - Распространение по сети: `blend_quality(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)`.
+- `quality_index` — continuous trust indicator for mobile/offline nodes. This is not a penalty metric.
+  - Local calculation: `q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability`, then EMA: `q = 0.3·q_raw + 0.7·prev`.
+  - Network propagation: `blend_quality(local, remote) = clamp(0.8·local + 0.2·remote, 0..1)`.
 - CLI displays relay and quality: relay 🟢🟡🔴, quality 🔵🟡🔴; shows average network quality.
-- API `/api/v1/stats` возвращает `avg_quality_index`; `/graph/json` включает `quality_index` на узлах.
+- API `/api/v1/stats` returns `avg_quality_index`; `/graph/json` includes `quality_index` on nodes.
 
 ### Local Network Statistics & Peer History
 
 - New SQLite table `peer_history` tracks per-peer sync attempts (success/fail counters, last sync timestamp, last observed `quality_index` and `trust_score`).
 - Automatic logging after each sync attempt updates `peer_history`.
 - API `GET /api/v1/network/local` returns:
-  - `peers`: list with `url`, `last_sync` (RFC3339), `success_count`, `fail_count`, `last_quality_index`, `last_trust_score`.
+ - `peers`: list with `url`, `last_sync` (RFC3339), `success_count`, `fail_count`, `last_quality_index`, `last_trust_score`.
   - `summary`: `total_peers`, `avg_success_rate`, `avg_quality_index`.
 - CLI:
   - `truthctl peers stats [--format json|table]` — shows table and averages.
@@ -389,7 +451,7 @@ Example JSON for `/api/v1/network/local`:
 {
   "peers": [
     {
-      "url": "http://127.0.0.1:8080",
+      "url": "http://127.0.1:8080",
       "last_sync": "2025-10-11T13:00:00Z",
       "success_count": 24,
       "fail_count": 3,
@@ -399,9 +461,9 @@ Example JSON for `/api/v1/network/local`:
   ],
   "summary": {
     "total_peers": 12,
-    "avg_success_rate": 0.88,
+    "avg_success_rate": 0.8,
     "avg_quality_index": 0.83
-  }
+ }
 }
 ```
 

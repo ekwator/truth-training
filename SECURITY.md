@@ -38,6 +38,83 @@ Main risks include:
 
 ## 🧰 Development Security Guidelines
 
+To ensure consistency, safety, and traceability in development, the following tools are **mandatory** for all contributors:
+
+1. **Cursor AI IDE**  
+   You must use Cursor AI IDE for all development work. This ensures inline type checking, automated code refactoring, and alignment with the project’s code-generation standards. It is not optional.
+
+2. **Spec-Kit**  
+   We require using [GitHub Spec-Kit](https://github.com/github/spec-kit) (installed in the `.cursor` folder of the project) to run the structured specification workflow. Spec-Kit is a toolkit for Spec-Driven Development, designed to help generate and maintain executable specifications. :contentReference[oaicite:0]{index=0}
+
+   In our project, the following Spec-Kit slash commands (available after installation) must be used:
+
+   - `/specify` — creates a GitHub PR with a new branch based on the specification  
+   - `/plan` — creates, modifies, and executes a plan from a specification  
+   - `/clarify` — verifies the consistency of plan items among themselves and with the specification  
+   - `/plan` (without a prompt) — finalizes the plan after clarification  
+   - `/task` — creates, modifies, and executes tasks defined in the plan  
+   - `/implementation` — executes part of the specification  
+   - `/implementation` (without arguments) — executes the entire specification
+
+Failure to use Spec-Kit as described may result in misaligned development, unreviewable code, or divergence from project standards.  
+
+### 📁 Spec-Kit Prompt Library (Developer Examples)
+
+This project includes a dedicated directory with **real, working examples** of proper Spec-Kit usage.  
+These files serve as canonical templates for creating correct `/specify`, `/plan`, `/task`, and `/implementation` requests.
+
+All examples are stored in:
+- **/docs/prompt/ekwator/**  
+
+
+- 📁Folder structure:
+
+```
+docs/
+└── prompt/
+    └── ekwator/
+        ├── specify1/
+        │   ├── spec1.md
+        │   └── plan/
+        │       └── plan1.md
+        └── specify2/
+            └── plan/
+```
+
+#### 📌 What each file contains:
+
+- **specify1/spec1.md**  
+- 📄 [Complete template + real example of a `/specify` command for a development task.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/spec1.md)
+
+- **specify1/plan/plan1.md**  
+- 🗂 [Example of a fully structured `/plan` request derived from the specification.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/plan/plan1.md)
+
+- **specify2/**  
+- 📁 A second set of examples demonstrating variations of specifications and plans.
+
+#### 📘 Purpose of these examples
+These examples are intended to:
+
+- Preserve consistent Spec-Kit workflow quality across contributors.  
+- Demonstrate correct formatting, structure, and writing style.  
+- Provide “copy–adapt–apply” patterns for:
+  - `/specify`  
+  - `/plan`  
+  - `/clarify`  
+  - `/task`  
+  - `/implementation`
+
+---
+
+## ✅ Security & Process Enforcement
+
+- All specification and planning steps **must go through Spec-Kit** before implementation.  
+- Any code committed without a corresponding Spec-Kit specification or plan will be considered non-compliant and may be rejected or reverted.  
+- Using Spec-Kit improves traceability, helps prevent drift between design and implementation, and ensures that AI-assisted code generation remains aligned with project governance.
+
+By enforcing Cursor AI IDE and Spec-Kit usage, we maintain a high standard of **predictable, safe, and auditable development** across all contributors.
+
+
 1. **Never commit private keys or seed phrases.**  
 2. Use **Result-based error handling** for all crypto/network ops.  
 3. Run `cargo clippy`, `cargo fmt`, and `cargo audit` before PRs.  
@@ -81,4 +158,3 @@ Do **not** use it for:
 - Any illegal activity  
 
 Use under the **MIT License**, following the project’s ethical guidelines.
-
