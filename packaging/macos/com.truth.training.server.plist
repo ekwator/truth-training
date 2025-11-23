@@ -6,7 +6,7 @@
    <key>Label</key><string>com.truth.training.server</string>
    <key>ProgramArguments</key>
    <array>
-     <string>/usr/local/bin/truth-training-server</string>
+     <string>/usr/local/bin/truth-core-server</string>
    </array>
    <key>RunAtLoad</key><true/>
    <key>KeepAlive</key><true/>
