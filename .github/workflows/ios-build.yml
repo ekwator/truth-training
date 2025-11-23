@@ -48,6 +48,15 @@ jobs:
             echo "artifacts-found=false" >> $GITHUB_OUTPUT
           fi
       
+      - name: Get Cargo.lock hash
+        id: cargo-lock
+        run: |
+          if [ -f "Cargo.lock" ]; then
+            echo "hash=$(sha256sum Cargo.lock | cut -d' ' -f1 | cut -c1-16)" >> $GITHUB_OUTPUT
+          else
+            echo "hash=no-lock" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Cache Rust dependencies
         uses: actions/cache@v3
         with:
@@ -55,7 +64,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: rust-cache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-cache-${{ runner.os }}-${{ steps.cargo-lock.outputs.hash }}
           restore-keys: |
             rust-cache-${{ runner.os }}-
           
