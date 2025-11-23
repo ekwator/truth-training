@@ -47,13 +47,7 @@ jobs:
           else
             echo "artifacts-found=false" >> $GITHUB_OUTPUT
           fi
-        
-      - name: Build iOS Rust libraries
-        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found != 'true' }}
-        run: |
-          cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
-          cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p truth_core
-          
+      
       - name: Cache Rust dependencies
         uses: actions/cache@v3
         with:
@@ -61,7 +55,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: rust-cache-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          key: rust-cache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-cache-${{ runner.os }}-
           
       - name: Cache Xcode build artifacts
         uses: actions/cache@v3
@@ -70,6 +66,14 @@ jobs:
             ~/Library/Developer/Xcode/DerivedData
             truth-ios-client/build
           key: xcode-cache-${{ runner.os }}-${{ hashFiles('truth-ios-client/TruthTraining.xcodeproj/project.pbxproj') }}
+          restore-keys: |
+            xcode-cache-${{ runner.os }}-
+        
+      - name: Build iOS Rust libraries
+        if: ${{ github.event_name != 'workflow_run' || steps.check-artifacts.outputs.artifacts-found != 'true' }}
+        run: |
+          cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
+          cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p truth_core
           
       - name: Copy Rust libraries to iOS project
         run: |
