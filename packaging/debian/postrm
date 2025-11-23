@@ -1,10 +1,34 @@
 #!/bin/bash
 set -e
-if [ "$1" = "purge" ]; then
-  userdel truthd || true
-  groupdel truthd || true
-  rm -rf /etc/truth-core /
-  rm -rf /var/log/truth-core
+
+# Get the user's home directory
+INSTALL_USER="${SUDO_USER:-$USER}"
+if [ "$INSTALL_USER" = "root" ]; then
+    INSTALL_USER=$(logname 2>/dev/null || echo "$USER")
 fi
-rm -f /etc/systemd/system/truth-core.service
-systemctl daemon-reload || true
+
+USER_HOME=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
+if [ -z "$USER_HOME" ]; then
+    USER_HOME="$HOME"
+fi
+
+SYSTEMD_USER_DIR="$USER_HOME/.config/systemd/user"
+SERVICE_FILE="$SYSTEMD_USER_DIR/truth-core-server.service"
+
+# Stop and disable the service if it exists
+if [ -f "$SERVICE_FILE" ]; then
+    # Try to stop the service (may fail if already stopped or user logged out)
+    systemctl --user stop truth-core-server.service 2>/dev/null || true
+    systemctl --user disable truth-core-server.service 2>/dev/null || true
+    systemctl --user daemon-reload 2>/dev/null || true
+    
+    # Remove the service file
+    rm -f "$SERVICE_FILE"
+fi
+
+# Clean up on purge
+if [ "$1" = "purge" ]; then
+    rm -rf /etc/truth-core-server
+fi
+
+exit 0

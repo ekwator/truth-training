@@ -1,17 +1,20 @@
-DEB_NAME=truth-core-service.deb
-PACKAGE_ROOT=$(CURDIR)/build/truth-core-service
+DEB_NAME=truth-core-server.deb
+PACKAGE_ROOT=$(CURDIR)/build/truth-core-server
 
 all: deb
 
 deb:
 	rm -rf $(PACKAGE_ROOT) && mkdir -p $(PACKAGE_ROOT)
-	mkdir -p $(PACKAGE_ROOT)/usr/local/bin
-	mkdir -p $(PACKAGE_ROOT)/etc/truth-core
-	mkdir -p $(PACKAGE_ROOT)/etc/systemd/system
+	mkdir -p $(PACKAGE_ROOT)/usr/bin
+	mkdir -p $(PACKAGE_ROOT)/etc/truth-core-server
+	mkdir -p $(PACKAGE_ROOT)/usr/lib/truth-core-server
 	mkdir -p $(PACKAGE_ROOT)/DEBIAN
-	cp ../../target/release/truth_core_server $(PACKAGE_ROOT)/usr/local/bin/truth_core
-	cp config.yml $(PACKAGE_ROOT)/etc/truth-core/config.yml
-	cp truth-core.service $(PACKAGE_ROOT)/etc/systemd/system/truth-core.service
+	# Rename binary from truth_core_server to truth-core-server
+	cp ../../target/release/truth_core_server $(PACKAGE_ROOT)/usr/bin/truth-core-server
+	chmod 755 $(PACKAGE_ROOT)/usr/bin/truth-core-server
+	cp config.yml $(PACKAGE_ROOT)/etc/truth-core-server/config.yml
+	# Copy service file to temporary location for postinst to install to user directory
+	cp truth-core-server.service $(PACKAGE_ROOT)/usr/lib/truth-core-server/truth-core-server.service
 	cp control $(PACKAGE_ROOT)/DEBIAN/control
 	cp postinst $(PACKAGE_ROOT)/DEBIAN/postinst
 	cp postrm $(PACKAGE_ROOT)/DEBIAN/postrm

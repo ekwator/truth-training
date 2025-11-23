@@ -16,6 +16,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-20
 - SQLite (embedded) with Room (Android), rusqlite (Rust modules) (008-specify-md)
 - Rust 1.75+ (CLI/Server/Desktop core), Kotlin (Android), TypeScript/React (Desktop UI), SQLite 3.x + `rusqlite`, `tokio`, `actix-web`, `reqwest`, `clap`, `ed25519-dalek`, Room (Android), WorkManager, Electron/Tauri runtime (008-specify-md)
 - SQLite (shared) with Room entities on Android and rusqlite elsewhere (008-specify-md)
+- Rust 1.75+ (stable toolchain) (009-fix-linux-deb)
+- N/A (packaging only, no data storage changes) (009-fix-linux-deb)
 
 ## Project Structure
 ```
@@ -30,9 +32,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust 1.75+ (existing project): Follow standard conventions
 
 ## Recent Changes
+- 009-fix-linux-deb: Added Rust 1.75+ (stable toolchain)
+- 009-fix-linux-deb: Added Rust 1.75+ (stable toolchain)
 - 008-specify-md: Added Rust 1.75+ (CLI/Server/Desktop core), Kotlin (Android), TypeScript/React (Desktop UI), SQLite 3.x + `rusqlite`, `tokio`, `actix-web`, `reqwest`, `clap`, `ed25519-dalek`, Room (Android), WorkManager, Electron/Tauri runtime
-- 008-specify-md: Added Rust 1.75+ (CLI, Server, Desktop core), Kotlin (Android), TypeScript (Desktop UI), SQLite 3.x
-- 007-title-align-truth: Added Kotlin 2.0.20, Android SDK API 24+ (target 35), JDK 17 + Room 2.6.1, Retrofit 2.11.0, OkHttp 4.12.0, WorkManager 2.9.0, Coroutines 1.9.0, BouncyCastle 1.78 (Ed25519)
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
