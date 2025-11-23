@@ -25,34 +25,39 @@ jobs:
           sudo gem install --no-document fpm
       - name: Build server (release)
         run: cargo build --release --bin truth_core_server --features desktop
-      - name: Prepare systemd unit
+      - name: Rename binary and prepare packaging
         run: |
-          mkdir -p packaging/server/linux
-          cat > packaging/server/linux/truth_core_server.service <<'EOF'
+          mkdir -p packaging-temp/usr/bin
+          mkdir -p packaging-temp/usr/lib/truth-core-server
+          # Rename binary from truth_core_server to truth-core-server
+          cp target/release/truth_core_server packaging-temp/usr/bin/truth-core-server
+          chmod 755 packaging-temp/usr/bin/truth-core-server
+          # Prepare systemd user service file
+          cat > packaging-temp/usr/lib/truth-core-server/truth-core-server.service <<'EOF'
           [Unit]
           Description=Truth Core Server
           After=network.target
 
           [Service]
-          ExecStart=/usr/local/bin/truth_core_server
+          ExecStart=/usr/bin/truth-core-server
           Restart=always
-          User=truth
           Environment=RUST_LOG=info
 
           [Install]
-          WantedBy=multi-user.target
+          WantedBy=default.target
           EOF
       - name: Build DEB
         run: |
           fpm -s dir -t deb -n truth-core-server -v 1.0.0 \
-              --deb-systemd packaging/server/linux/truth_core_server.service \
-              --prefix /usr/local/bin target/release/truth_core_server
+              --prefix / packaging-temp/usr/bin/truth-core-server=/usr/bin/truth-core-server \
+              packaging-temp/usr/lib/truth-core-server/truth-core-server.service=/usr/lib/truth-core-server/truth-core-server.service
       - name: Build RPM
         run: |
           fpm -s dir -t rpm -n truth-core-server -v 1.0.0 \
-              --prefix /usr/local/bin target/release/truth_core_server
+              --prefix / packaging-temp/usr/bin/truth-core-server=/usr/bin/truth-core-server \
+              packaging-temp/usr/lib/truth-core-server/truth-core-server.service=/usr/lib/truth-core-server/truth-core-server.service
       - name: Verify binary
-        run: ./target/release/truth_core_server --version || true
+        run: ./packaging-temp/usr/bin/truth-core-server --version || true
       - name: Upload Linux packages
         uses: actions/upload-artifact@v4
         with:
@@ -128,7 +133,7 @@ jobs:
         shell: pwsh
         continue-on-error: true
         run: |
-          & .\target\release\truth_core_server.exe --help
+          & .\target\release\truth-core-server.exe --help
           Write-Host "Verification invoked"
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
@@ -145,10 +150,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Build server (release)
         run: cargo build --release --bin truth_core_server --features desktop
-      - name: Prepare LaunchDaemon plist
+      - name: Rename binary and prepare LaunchAgent plist
         run: |
-          mkdir -p packaging/server/macos
-          cat > packaging/server/macos/com.truth.training.server.plist <<'EOF'
+          # Rename binary from truth_core_server to truth-core-server
+          mkdir -p payload/usr/local/bin
+          cp target/release/truth_core_server payload/usr/local/bin/truth-core-server
+          chmod 755 payload/usr/local/bin/truth-core-server
+          
+          # Prepare LaunchAgent plist (user service, not LaunchDaemon)
+          mkdir -p payload/usr/lib/truth-core-server
+          cat > payload/usr/lib/truth-core-server/com.truth.training.server.plist <<'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -156,27 +167,22 @@ jobs:
             <key>Label</key><string>com.truth.training.server</string>
             <key>ProgramArguments</key>
             <array>
-              <string>/usr/local/bin/truth_core_server</string>
+              <string>/usr/local/bin/truth-core-server</string>
             </array>
             <key>RunAtLoad</key><true/>
             <key>KeepAlive</key><true/>
           </dict>
           </plist>
           EOF
-      - name: Create .pkg payload
-        run: |
-          mkdir -p payload/usr/local/bin
-          cp target/release/truth_core_server payload/usr/local/bin/
-          mkdir -p payload/Library/LaunchDaemons
-          cp packaging/server/macos/com.truth.training.server.plist payload/Library/LaunchDaemons/
       - name: Build PKG
         run: |
           pkgbuild --root ./payload \
                    --install-location / \
                    --identifier com.truth.training.server \
+                   --scripts packaging/macos \
                    truth-core-server-macos.pkg
       - name: Verify binary
-        run: ./target/release/truth_core_server --version || true
+        run: ./payload/usr/local/bin/truth-core-server --version || true
       - name: Upload macOS package
         uses: actions/upload-artifact@v4
         with:

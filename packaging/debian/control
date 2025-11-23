@@ -1,7 +1,9 @@
-Package: truth-core-service
+Package: truth-core-server
 Version: 1.0.0
 Section: base
 Priority: optional
 Architecture: amd64
 Maintainer: ekwator <admin@yourdomain.tld>
-Description: Truth Core Distributed Trust Engine (systemd сервис, autostart, no-login user)
+Description: Truth Core Server - Distributed Trust Engine
+ Installs truth-core-server executable to /usr/bin/truth-core-server
+ and configures a systemd user service that runs under the installing user account.
