@@ -1,14 +1,129 @@
 #!/bin/bash
 set -e
-id -u truthd &>/dev/null || useradd --system --no-create-home --shell /usr/sbin/nologin truthd
-groupadd -f truthd
-mkdir -p /etc/truth-core/
-chown truthd:truthd /etc/truth-core
-chmod 750 /etc/truth-core
-mkdir -p /var/log/truth-core
-touch /var/log/truth-core/service.log
-chown truthd:truthd /var/log/truth-core -R
-install -m 644 /usr/lib/truth-core/truth-core.service /etc/systemd/system/truth-core.service
-systemctl daemon-reload
-systemctl enable truth-core.service
-systemctl start truth-core.service
+
+# Conflict detection: Check for old naming convention
+OLD_BINARY="/usr/local/bin/truth_core_server"
+OLD_BINARY_ALT="/usr/bin/truth_core_server"
+OLD_SERVICE_SYSTEM="/etc/systemd/system/truth_core_server.service"
+OLD_SERVICE_SYSTEM_ALT="/etc/systemd/system/truth-core.service"
+OLD_SERVICE_USER="$HOME/.config/systemd/user/truth_core_server.service"
+
+# Check if this is a new installation (not upgrade)
+if [ "$1" != "configure" ] || [ -z "$2" ]; then
+    # New installation: Check for conflicts
+    if [ -f "$OLD_BINARY" ] || [ -f "$OLD_BINARY_ALT" ] || \
+       [ -f "$OLD_SERVICE_SYSTEM" ] || [ -f "$OLD_SERVICE_SYSTEM_ALT" ] || \
+       [ -f "$OLD_SERVICE_USER" ]; then
+        echo "ERROR: Conflicting installation detected using old naming convention."
+        echo "Found old installation with 'truth_core_server' or 'truth-core' naming."
+        echo ""
+        echo "Please remove the old installation first:"
+        echo "  sudo apt remove truth-core-service  # or similar package name"
+        echo "  # Or manually remove:"
+        if [ -f "$OLD_BINARY" ]; then
+            echo "  sudo rm $OLD_BINARY"
+        fi
+        if [ -f "$OLD_BINARY_ALT" ]; then
+            echo "  sudo rm $OLD_BINARY_ALT"
+        fi
+        if [ -f "$OLD_SERVICE_SYSTEM" ] || [ -f "$OLD_SERVICE_SYSTEM_ALT" ]; then
+            echo "  sudo systemctl stop truth-core.service"
+            echo "  sudo systemctl disable truth-core.service"
+            echo "  sudo rm /etc/systemd/system/truth-core.service"
+        fi
+        echo ""
+        echo "Then retry installation of truth-core-server package."
+        exit 1
+    fi
+fi
+
+# Upgrade migration: Detect and migrate from old locations
+if [ "$1" = "configure" ] && [ -n "$2" ]; then
+    # This is an upgrade - check for old installation
+    OLD_BINARY_FOUND=""
+    OLD_SERVICE_FOUND=""
+    
+    # Check for old binary locations
+    if [ -f "/usr/local/bin/truth_core_server" ]; then
+        OLD_BINARY_FOUND="/usr/local/bin/truth_core_server"
+    elif [ -f "/usr/local/bin/truth_core" ]; then
+        OLD_BINARY_FOUND="/usr/local/bin/truth_core"
+    fi
+    
+    # Check for old service files
+    if [ -f "/etc/systemd/system/truth-core.service" ]; then
+        OLD_SERVICE_FOUND="/etc/systemd/system/truth-core.service"
+        # Stop old system-wide service
+        systemctl stop truth-core.service 2>/dev/null || true
+        systemctl disable truth-core.service 2>/dev/null || true
+    fi
+    
+    # Migrate binary if found in old location
+    if [ -n "$OLD_BINARY_FOUND" ] && [ -f "$OLD_BINARY_FOUND" ]; then
+        echo "Migrating from old installation location: $OLD_BINARY_FOUND"
+        # Binary is already in new location from package installation
+        # Remove old binary if it's different from new one
+        if [ "$OLD_BINARY_FOUND" != "/usr/bin/truth-core-server" ]; then
+            rm -f "$OLD_BINARY_FOUND" 2>/dev/null || true
+        fi
+    fi
+    
+    # Remove old system-wide service file
+    if [ -n "$OLD_SERVICE_FOUND" ]; then
+        echo "Removing old system-wide service: $OLD_SERVICE_FOUND"
+        rm -f "$OLD_SERVICE_FOUND" 2>/dev/null || true
+        systemctl daemon-reload 2>/dev/null || true
+    fi
+    
+    # Migrate config if needed
+    if [ -d "/etc/truth-core" ] && [ ! -d "/etc/truth-core-server" ]; then
+        echo "Migrating configuration from /etc/truth-core to /etc/truth-core-server"
+        mkdir -p /etc/truth-core-server
+        cp -r /etc/truth-core/* /etc/truth-core-server/ 2>/dev/null || true
+    fi
+fi
+
+# Check if systemctl --user is available
+if ! command -v systemctl >/dev/null 2>&1 || ! systemctl --user --version >/dev/null 2>&1; then
+    echo "WARNING: systemd user services are not supported on this system."
+    echo "The truth-core-server binary has been installed to /usr/bin/truth-core-server"
+    echo "but the service will not start automatically. Please configure the service manually."
+    exit 0
+fi
+
+# Get the installing user's home directory
+INSTALL_USER="${SUDO_USER:-$USER}"
+if [ "$INSTALL_USER" = "root" ]; then
+    INSTALL_USER=$(logname 2>/dev/null || echo "$USER")
+fi
+
+USER_HOME=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
+if [ -z "$USER_HOME" ]; then
+    USER_HOME="$HOME"
+fi
+
+# Create user systemd directory if it doesn't exist
+SYSTEMD_USER_DIR="$USER_HOME/.config/systemd/user"
+mkdir -p "$SYSTEMD_USER_DIR"
+
+# Install service file to user directory
+if [ -f /usr/lib/truth-core-server/truth-core-server.service ]; then
+    cp /usr/lib/truth-core-server/truth-core-server.service "$SYSTEMD_USER_DIR/truth-core-server.service"
+    chmod 644 "$SYSTEMD_USER_DIR/truth-core-server.service"
+    
+    # Reload systemd user daemon
+    systemctl --user daemon-reload || true
+    
+    # Enable and start the service
+    systemctl --user enable truth-core-server.service || true
+    systemctl --user start truth-core-server.service || true
+    
+    echo "truth-core-server service has been installed and started for user $INSTALL_USER"
+    echo "Service location: $SYSTEMD_USER_DIR/truth-core-server.service"
+    echo "Manage with: systemctl --user [start|stop|restart|status] truth-core-server"
+else
+    echo "ERROR: Service file not found at /usr/lib/truth-core-server/truth-core-server.service"
+    exit 1
+fi
+
+exit 0

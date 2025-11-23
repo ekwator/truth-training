@@ -1,0 +1,12 @@
+[Unit]
+Description=Truth Core Server
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/truth-core-server
+Restart=always
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=default.target
+

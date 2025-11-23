@@ -1,3 +1,23 @@
 #!/bin/bash
 set -e
-systemctl stop truth-core.service || true
+
+# Get the user's home directory
+INSTALL_USER="${SUDO_USER:-$USER}"
+if [ "$INSTALL_USER" = "root" ]; then
+    INSTALL_USER=$(logname 2>/dev/null || echo "$USER")
+fi
+
+USER_HOME=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
+if [ -z "$USER_HOME" ]; then
+    USER_HOME="$HOME"
+fi
+
+SYSTEMD_USER_DIR="$USER_HOME/.config/systemd/user"
+SERVICE_FILE="$SYSTEMD_USER_DIR/truth-core-server.service"
+
+# Stop the service before removal if it exists
+if [ -f "$SERVICE_FILE" ]; then
+    systemctl --user stop truth-core-server.service 2>/dev/null || true
+fi
+
+exit 0

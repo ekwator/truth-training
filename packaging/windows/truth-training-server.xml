@@ -1,8 +1,8 @@
 <service>
-  <id>TruthTrainingServer</id>
-  <name>Truth Training Server</name>
-  <description>Local HTTP API server for Truth Training Desktop</description>
-  <executable>%BASE%\truth-training-server.exe</executable>
+  <id>TruthCoreServer</id>
+  <name>Truth Core Server</name>
+  <description>Truth Core Server - Distributed Trust Engine</description>
+  <executable>%BASE%\truth-core-server.exe</executable>
   <logpath>%BASE%\logs</logpath>
   <startmode>Automatic</startmode>
 </service>
