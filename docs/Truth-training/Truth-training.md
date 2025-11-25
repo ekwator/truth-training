@@ -466,12 +466,17 @@ ui/desktop/
 - `truth-android-client/README_ANDROID.md`
 - `integration/android/README_INTEGRATION.md`
 - `integration/android/README_BUILD_ANDROID.md`
+- `docs/ANDROID_MIGRATION.md`
+- `docs/ANDROID_TEST_FIX_SUGGESTIONS.md`
+- `docs/TEST_REPORT_ANDROID_v1.0.0.md`
 
 ### Desktop UI
 - `docs/UI_Desktop.md`
 - `ui/desktop/CHANGELOG.md`
 - `specs/002-ui-desktop-integration/`
 - `specs/003-truth-training-desktop/`
+- **API Reference:** `docs/api_reference/API_REFERENCE.md`
+- **Version Registry:** `docs/VERSION_REGISTRY.md`
 
 ---
 

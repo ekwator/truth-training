@@ -118,7 +118,8 @@ All artifacts are attached to this release and available for download.
 ## 📚 Documentation
 
 - **Migration Guide**: `docs/ANDROID_MIGRATION.md`
-- **Feature Comparison**: `docs/Truth-training.md`
+- **Feature Comparison**: `docs/Truth-training/Truth-training.md`
+- **API Reference**: `docs/api_reference/API_REFERENCE.md`
 - **Test Report**: `docs/TEST_REPORT_ANDROID_v1.0.0.md`
 - **CI/CD Workflows**: `docs/CI_Workflows_Artifacts.md`
 - **Version Registry**: `docs/VERSION_REGISTRY.md`

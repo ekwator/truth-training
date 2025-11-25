@@ -2,56 +2,56 @@
 Truth Android Client v1.0.0
 =================================
 
-**Версия:** 1.0.0 (stable)  
-**Статус:** ✅ Полное соответствие Desktop UI v1.0.0  
-**Дата:** 2025-11-02
+**Version:** 1.0.0 (stable)  
+**Status:** ✅ Feature parity with Desktop UI v1.0.0  
+**Date:** 2025-11-02
 
-Требования:
+Requirements:
 - Android Studio (Giraffe+), JDK 17
 - Android SDK 26+ (minSdk 26, targetSdk 33)
 - Truth Core Server v1.0.0+
 
-Сборка:
+Build:
 ```bash
 ./gradlew assembleLocalDebug
 ```
 
-Базовая конфигурация:
-- BASE_URL задаётся через BuildConfig и productFlavors:
+Base configuration:
+- `BASE_URL` is defined via `BuildConfig` and product flavors:
   - local: `http://10.0.2.2:8080`
-  - remote: замените `https://truth-core.example.com`
+  - remote: replace with your server, e.g. `https://truth-core.example.com`
 
-## Основные возможности v1.0.0
+## Key capabilities in v1.0.0
 
-### ✅ Полная функциональность
-- **Room Database** - Offline-first архитектура с локальным SQLite хранилищем
-- **Context Templates** - Создание, редактирование, поиск и использование шаблонов контекста
-- **Events Management** - Полный CRUD для событий с embedded context fields (v1.0.0 API)
-- **Judgments & Consensus** - Отправка суждений и просмотр статистики консенсуса
-- **P2P Synchronization** - Прямая синхронизация событий между Android клиентами
-- **Jetpack Compose UI** - Современный Material 3 интерфейс
-- **Background Sync** - Автоматическая синхронизация через WorkManager
+### ✅ Full functionality
+- **Room Database** — offline-first architecture backed by local SQLite
+- **Context Templates** — create, edit, search, and reuse context templates
+- **Events Management** — full CRUD with embedded context fields (v1.0.0 API)
+- **Judgments & Consensus** — submit judgments and view consensus statistics
+- **P2P Synchronization** — direct sync between Android clients
+- **Jetpack Compose UI** — modern Material 3 interface
+- **Background Sync** — automated sync via WorkManager
 
-### Архитектура
-- **Offline-First:** Все операции сохраняются локально, синхронизация в фоне
-- **Room Database:** SQLite через Room с Flow поддержкой для reactive UI
-- **Repository Pattern:** Единый слой доступа к данным (Room + API)
-- **Sync Queue:** Отслеживание и автоматическая обработка pending операций
+### Architecture highlights
+- **Offline-first:** all mutations are stored locally and synced in the background
+- **Room Database:** SQLite via Room with Flow-powered reactive UI
+- **Repository Pattern:** unified data access across Room + Retrofit APIs
+- **Sync Queue:** tracks pending operations and replays them when online
 
-Интеграция с Truth Core v1.0.0:
-- **API Endpoints:** Полная поддержка v1.0.0 endpoints (Events, Contexts, Judgments, Impacts)
-- **Authentication:** JWT через `Authorization: Bearer <token>` header
-- **Embedded Fields:** События используют `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id` вместо `context_id`
-- **Token Storage:** JWT в SharedPreferences, автоматическое обновление через RefreshAuthenticator
+Integration with Truth Core v1.0.0:
+- **API Endpoints:** full coverage (Events, Contexts, Judgments, Impacts, Sync)
+- **Authentication:** JWT via `Authorization: Bearer <token>`
+- **Embedded fields:** events use `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`
+- **Token storage:** JWT kept in SharedPreferences, auto-refresh handled by `RefreshAuthenticator`
 
-## Тестирование
+## Testing
 
 Unit tests:
 ```bash
 ./gradlew test
 ```
 
-Integration tests:
+Instrumented / integration tests:
 ```bash
 ./gradlew connectedAndroidTest
 ```
@@ -61,88 +61,88 @@ Contract tests (API endpoints):
 ./gradlew test --tests "*Contract*"
 ```
 
-Примечания по интеграции:
-- Доп. материалы см. в `truthcore_api/api_reference_link.md` и в репозитории Truth Core.
+Integration notes:
+- Additional API details: `truthcore_api/api_reference_link.md` → [`docs/api_reference/API_REFERENCE.md`](../docs/api_reference/API_REFERENCE.md)
+- Platform comparison: [`docs/Truth-training/Truth-training.md`](../docs/Truth-training/Truth-training.md)
 
-Mock-сборка:
-- Запуск: `./gradlew assembleMockDebug`
-- Источники: `app/src/mock/assets/api/*.json`
-- Реализация: `MockTruthApi`, включается при flavor `mock`.
+Mock flavor:
+- Build: `./gradlew assembleMockDebug`
+- Payloads: `app/src/mock/assets/api/*.json`
+- Backend: `MockTruthApi`, enabled by the `mock` flavor
 
-Взаимодействие с Truth Core из Android:
-- Экран `MainDashboardActivity` предоставляет кнопки для действий:
+Interacting with Truth Core from Android:
+- `MainDashboardActivity` exposes quick actions:
   - Sync Peers, Submit Claim, Get Claims, Analyze Text, Get Stats
-- Ответы отображаются как JSON на экране
-- Пример запроса: `{"action":"get_stats"}`
+- Responses are rendered as JSON on screen
+- Example request: `{"action":"get_stats"}`
 
-Local P2P Discovery:
-- Обнаружение пиров через NSD (`_truthnode._tcp.`), запуск локального сервера и обмен JSON.
-- Экран `P2PActivity`: список пиров (LAN), отправка ping/произвольного JSON, вывод ответа.
-- Требования: устройства в одной Wi‑Fi сети; разрешения сети в `AndroidManifest.xml`.
+Local P2P discovery:
+- Discovers peers via NSD (`_truthnode._tcp.`) and exchanges JSON payloads
+- `P2PActivity`: LAN peer list, ping/custom JSON send, response viewer
+- Requirements: devices on the same Wi-Fi network and networking permissions in `AndroidManifest.xml`
 
-Secure P2P Messaging:
-- Генерация Ed25519-ключей в Android Keystore (alias `truth_node_key`, 2048-bit)
-- Каждое исходящее сообщение подписывается и содержит поля `signature` и `public_key` (Base64)
-- Сервер проверяет подпись; при недействительной подписи отвечает `{ "status": "error", "reason": "invalid_signature" }`
-- На экране `P2PActivity` показывается окончание публичного ключа для быстрой идентификации
-- The Rust core now verifies message signatures (RSA/Ed25519) for all incoming JSON packets from Android before further processing.
+Secure P2P messaging:
+- Generates Ed25519 keys via Android Keystore (`truth_node_key`, 2048-bit backing key)
+- Every outgoing message carries `signature` and `public_key` (Base64)
+- Truth Core verifies signatures and returns `{ "status": "error", "reason": "invalid_signature" }` on failure
+- `P2PActivity` displays the tail of the public key for quick identification
+- Rust core validates RSA/Ed25519 signatures for all inbound JSON packets
 
-## Структура проекта
+## Project structure
 
 ### Room Database
-- `data/database/TruthDatabase.kt` - главная база данных
-- `data/database/entities/` - EventEntity, ContextTemplateEntity, JudgmentEntity, ImpactEntity, SummaryEntity, SyncQueueEntity
-- `data/database/daos/` - DAO интерфейсы с Flow поддержкой
+- `data/database/TruthDatabase.kt` — main DB entry point
+- `data/database/entities/` — `EventEntity`, `ContextTemplateEntity`, `JudgmentEntity`, `ImpactEntity`, `SummaryEntity`, `SyncQueueEntity`
+- `data/database/daos/` — DAO interfaces with Flow support
 
 ### Repositories
-- `data/repository/EventRepository.kt` - управление событиями (offline-first)
-- `data/repository/ContextTemplateRepository.kt` - управление шаблонами контекста
-- `data/repository/JudgmentRepository.kt` - управление суждениями и консенсусом
-- `data/repository/ImpactRepository.kt` - управление воздействиями
-- `data/repository/SummaryRepository.kt` - управление резюме
+- `data/repository/EventRepository.kt` — offline-first event management
+- `data/repository/ContextTemplateRepository.kt` — context templates
+- `data/repository/JudgmentRepository.kt` — judgments and consensus
+- `data/repository/ImpactRepository.kt` — impacts tracking
+- `data/repository/SummaryRepository.kt` — summaries
 
-### Sync Infrastructure
-- `data/sync/SyncQueueManager.kt` - управление очередью синхронизации
-- `data/sync/SyncWorker.kt` - WorkManager worker для фоновой синхронизации
+### Sync infrastructure
+- `data/sync/SyncQueueManager.kt` — queueing + retry logic
+- `data/sync/SyncWorker.kt` — WorkManager worker for background sync
 
 ### P2P
-- `p2p/P2PSyncManager.kt` - распространение событий через P2P
-- `p2p/P2PMessageHandler.kt` - обработка зашифрованных P2P сообщений
-- `p2p/P2PDiscoveryService.kt` - обнаружение peer'ов через NSD
+- `p2p/P2PSyncManager.kt` — event propagation over P2P
+- `p2p/P2PMessageHandler.kt` — encrypted message handler
+- `p2p/P2PDiscoveryService.kt` — NSD-based discovery
 
 ### UI (Jetpack Compose)
-- `ui/compose/events/` - экраны событий (список, создание, детали)
-- `ui/compose/contexts/` - экраны шаблонов контекста (список, редактор, выбор)
-- `ui/compose/judgments/` - экраны суждений (список, отправка)
+- `ui/compose/events/` — list, create, and detail screens
+- `ui/compose/contexts/` — templates list/editor/selector
+- `ui/compose/judgments/` — judgments list and submission
 
-## Ed25519 P2P Signatures
+## Ed25519 P2P signatures
 
-Подпись Ed25519 (BouncyCastle) для P2P сообщений:
-- Каждое сообщение подписывается перед отправкой
-- Формат конверта:
+Each P2P payload is signed before transmission:
 ```json
 {
-  "payload": { "type": "EVENT_SYNC", "event_id": "...", ... },
+  "payload": { "type": "EVENT_SYNC", "event_id": "...", "...": "..." },
   "signature": "<base64>",
   "public_key": "<base64>"
 }
 ```
 
-## Миграция с v0.3.0
+## Migration from v0.3.0
 
-Подробное руководство по миграции см. в `docs/ANDROID_MIGRATION.md`.
+Detailed instructions: [`docs/ANDROID_MIGRATION.md`](../docs/ANDROID_MIGRATION.md)
 
-Основные изменения:
-- Версия: `0.3.0` → `1.0.0`
-- minSdk: `24` → `26`
-- Room Database для offline-first режима
-- Jetpack Compose UI
-- Embedded context fields вместо `context_id`
+Key changes:
+- Version bump `0.3.0` → `1.0.0`
+- `minSdk` 24 → 26
+- Room database replaces legacy storage
+- Jetpack Compose UI replaces legacy activities/fragments
+- Embedded context fields instead of `context_id`
 
-## Дополнительная документация
+## Additional documentation
 
-- **Сравнение с Desktop:** `docs/Truth-training.md`
-- **Миграция:** `docs/ANDROID_MIGRATION.md`
-- **Спецификация:** `specs/007-title-align-truth/spec.md`
-- **Data Model:** `specs/007-title-align-truth/data-model.md`
-- **API Contracts:** `specs/007-title-align-truth/contracts/openapi.yaml`
+- **Feature comparison:** `docs/Truth-training/Truth-training.md`
+- **API reference (human-readable + OpenAPI link):** `docs/api_reference/API_REFERENCE.md`
+- **Migration guide:** `docs/ANDROID_MIGRATION.md`
+- **Specification:** `specs/007-title-align-truth/spec.md`
+- **Data model:** `specs/007-title-align-truth/data-model.md`
+- **API contracts (OpenAPI):** `specs/007-title-align-truth/contracts/openapi.yaml`
