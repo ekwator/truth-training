@@ -496,7 +496,10 @@ Primary spec files (in `spec/`):
 - `spec/14-quality-gates.md`
 - `spec/16-test-plan.md`
 
-User docs: `docs/CLI_Usage.md`, `docs/ARCHITECTURE.md`.
+- User docs: `docs/CLI_Usage.md`, `docs/ARCHITECTURE.md`, [`docs/api_reference/API_REFERENCE.md`](docs/api_reference/API_REFERENCE.md).
+- Android docs: `docs/ANDROID_MIGRATION.md`, `docs/ANDROID_TEST_FIX_SUGGESTIONS.md`, `docs/TEST_REPORT_ANDROID_v1.0.0.md`
+- Shared references: `docs/VERSION_REGISTRY.md`
+- Design index: [`docs/DESIGN_INDEX.md`](docs/DESIGN_INDEX.md) — cross-reference for every spec/plan.
 
 ---
 
