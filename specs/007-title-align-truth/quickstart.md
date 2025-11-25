@@ -283,5 +283,5 @@ After quickstart validation:
 2. Perform load testing
 3. Test on multiple Android devices/versions
 4. Validate CI/CD pipeline updates
-5. Update documentation (COMPARISON_ANDROID_VS_DESKTOP.md, ANDROID_MIGRATION.md)
+5. Update documentation (Truth-training.md, ANDROID_MIGRATION.md)
 
