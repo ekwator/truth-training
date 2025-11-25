@@ -146,7 +146,7 @@
 
 ### Documentation
 - [x] T075 [P] Update `truth-android-client/README.md` with v1.0.0 features and Room database information
-- [x] T076 [P] Update `docs/COMPARISON_ANDROID_VS_DESKTOP.md` marking Android v1.0.0 as complete
+- [x] T076 [P] Update `docs/Truth-training.md` marking Android v1.0.0 as complete
 - [x] T077 [P] Create `docs/ANDROID_MIGRATION.md` documenting migration from v0.3.0 to v1.0.0
 
 ### CI/CD Updates

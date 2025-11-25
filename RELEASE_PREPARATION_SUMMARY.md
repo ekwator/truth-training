@@ -81,7 +81,7 @@
 2. `docs/RELEASE_v1.0.0_DRAFT.md` - GitHub Release draft content
 3. `docs/TEST_REPORT_ANDROID_v1.0.0.md` - Complete test report (previously created)
 4. `docs/ANDROID_MIGRATION.md` - Migration guide (previously created)
-5. `docs/COMPARISON_ANDROID_VS_DESKTOP.md` - Feature comparison (previously created)
+5. `docs/Truth-training.md` - Feature comparison (previously created)
 
 ---
 
@@ -162,7 +162,7 @@ The `.github/workflows/android-build.yml` will automatically:
 - **Android Changelog**: `truth-android-client/CHANGELOG.md`
 - **Release Draft**: `docs/RELEASE_v1.0.0_DRAFT.md`
 - **Migration Guide**: `docs/ANDROID_MIGRATION.md`
-- **Feature Comparison**: `docs/COMPARISON_ANDROID_VS_DESKTOP.md`
+- **Feature Comparison**: `docs/Truth-training.md`
 - **Version Registry**: `docs/VERSION_REGISTRY.md`
 
 ---

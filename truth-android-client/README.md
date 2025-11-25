@@ -141,7 +141,7 @@ Secure P2P Messaging:
 
 ## Дополнительная документация
 
-- **Сравнение с Desktop:** `docs/COMPARISON_ANDROID_VS_DESKTOP.md`
+- **Сравнение с Desktop:** `docs/Truth-training.md`
 - **Миграция:** `docs/ANDROID_MIGRATION.md`
 - **Спецификация:** `specs/007-title-align-truth/spec.md`
 - **Data Model:** `specs/007-title-align-truth/data-model.md`
