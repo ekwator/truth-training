@@ -6,6 +6,11 @@
 **Date**: 2025-11-02  
 **Status**: ✅ All Tests Passing
 
+> **Canonical Specifications:**  
+> - API Contract: [`spec/05-api.md`](../spec/05-api.md)  
+> - Data Model: [`spec/04-data-model.md`](../spec/04-data-model.md)  
+> - Test Plan: [`spec/16-test-plan.md`](../spec/16-test-plan.md)
+
 ---
 
 ## Executive Summary

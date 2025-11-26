@@ -1,6 +1,6 @@
 # Requirements
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-11-26
 Spec ID: 02
 
 ### Functional

@@ -3,6 +3,11 @@
 **Date:** 2025-11-02  
 **Version:** Android Client v1.0.0
 
+> **Canonical Specifications:**  
+> - API Contract: [`spec/05-api.md`](../spec/05-api.md)  
+> - Data Model: [`spec/04-data-model.md`](../spec/04-data-model.md)  
+> - API Reference (human-readable): [`docs/api_reference/API_REFERENCE.md`](api_reference/API_REFERENCE.md)
+
 ---
 
 ## 📋 Overview
@@ -73,6 +78,9 @@ The Android client upgraded from v0.3.0 (pre-release) to v1.0.0, reaching full f
 ---
 
 ## 🔄 API changes
+
+> **Canonical API specification:** See [`spec/05-api.md`](../spec/05-api.md) for the complete API contract.  
+> **Human-readable API guide:** See [`docs/api_reference/API_REFERENCE.md`](api_reference/API_REFERENCE.md) for detailed endpoint documentation.
 
 ### Embedded context fields (v1.0.0)
 

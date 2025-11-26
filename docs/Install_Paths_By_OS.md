@@ -46,7 +46,7 @@ Regardless of how the app is installed (from package, workflow artifact, or manu
 - SQLite database:     `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite` (Linux), `~/Library/Application Support/TruthTraining/truth_training.sqlite` (macOS), `%APPDATA%\TruthTraining\truth_training.sqlite` (Windows)
 - Knowledge base override (optional):
   - `~/.truth-training/Data_Schema.md` (Linux/macOS)
-  - `%USERPROFILE%\.truth-training\Data_Schema.md` (Windows)
+  - `%USERPROFILE%\.truth-training\[Data_Schema.md](docs/Data_Schema.md)` (Windows)
 
 **CLI Tools (e.g., truthctl):**
 - By default, the CLI stores config and DB in the current working directory unless you provide `--db` and `--peers` arguments, but may also use paths like:

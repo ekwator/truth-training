@@ -1,7 +1,11 @@
 # Test Plan
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-11-26
 Spec ID: 16
+
+> **For detailed test documentation and reports, see:**
+> - [Android Test Report](../docs/TEST_REPORT_ANDROID_v1.0.0.md)
+> - [Android Test Fix Suggestions](../docs/ANDROID_TEST_FIX_SUGGESTIONS.md)
 
 ## Test Plan
 

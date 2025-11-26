@@ -66,7 +66,7 @@ Spec ID: 13
 - `docs/ui_guidelines.md` → `spec/09-ux-guidelines.md`
 
 #### New Documentation
-- `README.md` → `spec/03-architecture.md` (FidoNet principles)
+- `[README.md](spec/README.md)` → `spec/03-architecture.md` (FidoNet principles)
 - `docs/CLI_Usage.md` → `spec/10-cli.md` (CLI specification)
 - `docs/Concept_Collective_Intelligence.md` → Collective Intelligence Layer
 - `docs/api_reference/API_REFERENCE.md` → API documentation

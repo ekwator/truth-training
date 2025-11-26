@@ -62,7 +62,7 @@ Contract tests (API endpoints):
 ```
 
 Integration notes:
-- Additional API details: `truthcore_api/api_reference_link.md` → [`docs/api_reference/API_REFERENCE.md`](../docs/api_reference/API_REFERENCE.md)
+- Additional API details: `[truthcore_api/api_reference_link.md](truth-android-client/truthcore_api/api_reference_link.md)` → [`docs/api_reference/API_REFERENCE.md`](../docs/api_reference/API_REFERENCE.md)
 - Platform comparison: [`docs/Truth-training/Truth-training.md`](../docs/Truth-training/Truth-training.md)
 
 Mock flavor:

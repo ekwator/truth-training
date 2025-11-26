@@ -10,7 +10,7 @@
 
 ### 1. Version Synchronization
 
-**Updated**: `docs/VERSION_REGISTRY.md`
+**Updated**: `[docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)`
 - ✅ Added Android Client v1.0.0 entry
 - ✅ All platforms now show v1.0.0:
   - Core/Server/CLI: v1.0.0
@@ -19,7 +19,7 @@
 
 ### 2. Changelog & Metadata
 
-**Created**: `truth-android-client/CHANGELOG.md`
+**Created**: `[truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md)`
 - ✅ Complete changelog with v1.0.0 highlights:
   - Full feature parity with Desktop v1.0.0
   - Offline-first architecture
@@ -27,14 +27,14 @@
   - 96% test coverage
   - All performance benchmarks met
 
-**Updated**: Root `CHANGELOG.md`
+**Updated**: Root `[CHANGELOG.md](CHANGELOG.md)`
 - ✅ Added cross-platform milestone section
 - ✅ Android Client v1.0.0 highlights
 - ✅ Link to Android-specific changelog
 
 ### 3. Release Documentation
 
-**Updated**: `README.md`
+**Updated**: `[README.md](README.md)`
 - ✅ Added "Cross-Platform v1.0.0 — Production Ready" banner
 - ✅ Platform availability section
 - ✅ Link to GitHub Release
@@ -70,18 +70,18 @@
 ## 📁 Updated Files
 
 ### Modified Files (11)
-1. `docs/VERSION_REGISTRY.md` - Added Android Client v1.0.0
-2. `CHANGELOG.md` - Added cross-platform milestone
-3. `README.md` - Updated with v1.0.0 banner and platform status
+1. `[docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)` - Added Android Client v1.0.0
+2. `[CHANGELOG.md](CHANGELOG.md)` - Added cross-platform milestone
+3. `[README.md](README.md)` - Updated with v1.0.0 banner and platform status
 4. `specs/007-title-align-truth/spec.md` - Marked as completed
-5. `docs/CI_Workflows_Artifacts.md` - Added Android build section (previously updated)
+5. `[docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)` - Added Android build section (previously updated)
 
 ### New Files (5)
-1. `truth-android-client/CHANGELOG.md` - Android-specific changelog
+1. `[truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md)` - Android-specific changelog
 2. `docs/RELEASE_v1.0.0_DRAFT.md` - GitHub Release draft content
 3. `docs/TEST_REPORT_ANDROID_v1.0.0.md` - Complete test report (previously created)
-4. `docs/ANDROID_MIGRATION.md` - Migration guide (previously created)
-5. `docs/Truth-training/Truth-training.md` - Feature comparison (previously created)
+4. `[docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md)` - Migration guide (previously created)
+5. `[docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md)` - Feature comparison (previously created)
 
 ---
 
@@ -101,9 +101,9 @@ git add .
 git commit -m "chore(release): finalize Truth Training v1.0.0 cross-platform release
 
 - Update VERSION_REGISTRY.md with Android Client v1.0.0
-- Add truth-android-client/CHANGELOG.md with v1.0.0 highlights
-- Update root CHANGELOG.md with cross-platform milestone
-- Update README.md with v1.0.0 production-ready banner
+- Add [truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md) with v1.0.0 highlights
+- Update root [CHANGELOG.md](CHANGELOG.md) with cross-platform milestone
+- Update [README.md](README.md) with v1.0.0 production-ready banner
 - Mark spec.md as Completed — Release v1.0.0
 - Add release summary note to spec document
 - Create RELEASE_v1.0.0_DRAFT.md for GitHub Release
@@ -159,20 +159,20 @@ The `.github/workflows/android-build.yml` will automatically:
 ## 🔗 Reference Links
 
 - **Test Report**: `docs/TEST_REPORT_ANDROID_v1.0.0.md`
-- **Android Changelog**: `truth-android-client/CHANGELOG.md`
+- **Android Changelog**: `[truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md)`
 - **Release Draft**: `docs/RELEASE_v1.0.0_DRAFT.md`
-- **Migration Guide**: `docs/ANDROID_MIGRATION.md`
-- **Feature Comparison**: `docs/Truth-training/Truth-training.md`
-- **Version Registry**: `docs/VERSION_REGISTRY.md`
+- **Migration Guide**: `[docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md)`
+- **Feature Comparison**: `[docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md)`
+- **Version Registry**: `[docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)`
 
 ---
 
 ## ✅ Verification Checklist
 
 - [x] VERSION_REGISTRY.md updated with Android Client v1.0.0
-- [x] Android CHANGELOG.md created with v1.0.0 highlights
-- [x] Root CHANGELOG.md updated with cross-platform milestone
-- [x] README.md updated with v1.0.0 production-ready banner
+- [x] Android [CHANGELOG.md](CHANGELOG.md) created with v1.0.0 highlights
+- [x] Root [CHANGELOG.md](CHANGELOG.md) updated with cross-platform milestone
+- [x] [README.md](README.md) updated with v1.0.0 production-ready banner
 - [x] spec.md marked as Completed — Release v1.0.0
 - [x] Release draft document created
 - [x] CI/CD workflow verified (triggers on release creation)

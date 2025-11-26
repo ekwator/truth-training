@@ -27,7 +27,7 @@ This document summarizes the Desktop UI (Tauri) implementation with text-only in
 - **Events**: `create_event_fast`, `get_event_fast`, `list_events_fast` (with pagination)
 - **Impacts**: `add_impact` (with validation 1-5 range)
 - **Judgments**: `submit_judgment_fast`, `judgments_list_fast`, `get_judgment_stats`
-- **Knowledge Base**: `knowledge_base_list` (parses Data_Schema.md)
+- **Knowledge Base**: `knowledge_base_list` (parses [Data_Schema.md](docs/Data_Schema.md))
 - **Context Templates (v1.0.0)**: `list_contexts`, `get_context_by_name`, `create_context`, `match_context`, `create_context_from_event`
 - **Logs**: `list_logs`, `clear_logs` (35 lines/page pagination)
 - **Summary**: `get_overall_metrics`, `list_event_rows`, `export_overall_summary_txt`

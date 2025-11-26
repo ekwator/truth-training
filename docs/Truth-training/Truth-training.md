@@ -3,6 +3,12 @@
 **Analysis date:** 2025-11-02 (updated)  
 **Versions:** Android v1.0.0 vs Desktop UI v1.0.0
 
+> **Canonical Specifications:**  
+> - API Contract: [`spec/05-api.md`](../../spec/05-api.md)  
+> - Data Model: [`spec/04-data-model.md`](../../spec/04-data-model.md)  
+> - Architecture: [`spec/03-architecture.md`](../../spec/03-architecture.md)  
+> - API Reference (human-readable): [`docs/api_reference/API_REFERENCE.md`](../api_reference/API_REFERENCE.md)
+
 ---
 
 ## 📊 Quick summary
@@ -480,4 +486,4 @@ ui/desktop/
 
 ---
 
-**Conclusion:** Desktop UI is a production-ready application with full v1.0.0 feature coverage, while Android remains at an early stage and needs substantial work to reach feature parity.
+**Conclusion:** Both Desktop UI and Android Client are production-ready applications with full v1.0.0 feature coverage. Android v1.0.0 has achieved complete feature parity with Desktop v1.0.0, including offline-first architecture, Room database integration, and comprehensive test coverage (96.3%).

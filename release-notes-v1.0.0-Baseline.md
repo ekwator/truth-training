@@ -43,7 +43,7 @@ This is the first stable baseline release of Truth Training, marking a significa
 - Removed `context_id` foreign key from `truth_events` table
 - Added five embedded fields: `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`
 - Existing events with `context_id` must be migrated manually
-- See `CHANGELOG.md` for detailed migration notes
+- See `[CHANGELOG.md](CHANGELOG.md)` for detailed migration notes
 
 ### Version Bump
 

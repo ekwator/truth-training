@@ -206,10 +206,10 @@ Peer Sync → HTTP POST → Merge (Local > Global) → Return Merged List
 
 ## 📄 Documents
 
-* **architecture.md** (current file) — module diagram and connections.
+* **[architecture.md](docs/architecture.md)** (current file) — module diagram and connections.
 * **ui\_guidelines.md** — UI integration rules with core.
 * **build\_instructions.md** — core and UI build instructions.
-* **cross_platform_discovery_compatibility.md** — Node discovery format compatibility.
-* **android_discovery_architecture.md** — Android discovery implementation.
-* **CLI_Usage.md** — truthctl command reference.
-* **Data_Schema.md** — Database schema documentation.
+* **[cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)** — Node discovery format compatibility.
+* **[android_discovery_architecture.md](docs/android_discovery_architecture.md)** — Android discovery implementation.
+* **[CLI_Usage.md](docs/CLI_Usage.md)** — truthctl command reference.
+* **[Data_Schema.md](docs/Data_Schema.md)** — Database schema documentation.

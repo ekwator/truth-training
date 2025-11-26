@@ -10,5 +10,5 @@ This file provides quick guidance for integrating the Android client with the Tr
   - Mock JSON endpoints for offline testing
 
 For more detailed integration steps, see:
-- `docs/INTEGRATION_TRUTH_CORE.md`
-- `truthcore_api/api_reference_link.md`
+- `[docs/INTEGRATION_TRUTH_CORE.md](truth-android-client/docs/INTEGRATION_TRUTH_CORE.md)`
+- `[truthcore_api/api_reference_link.md](truth-android-client/truthcore_api/api_reference_link.md)`

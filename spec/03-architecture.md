@@ -1,7 +1,10 @@
 # Architecture Overview
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-11-26
 Spec ID: 03
+
+> **For detailed architecture documentation, see [Architecture Guide](../docs/architecture.md) and [Technical Specification](../docs/Technical_Specification.md).**  
+> This spec provides the structural architecture overview; the guides contain narrative explanations, examples, and implementation details.
 
 This document reflects the current `truth-core` implementation and the CLI utilities, inspired by FidoNet principles for decentralized peer-to-peer communication.
 

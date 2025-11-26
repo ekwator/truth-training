@@ -123,7 +123,7 @@ truth-training/
 │   ├── api_push.rs              # API push tests
 │   └── cli_sync.rs              # CLI synchronization tests
 ├── Cargo.toml                   # Root workspace configuration
-└── README.md                    # Project documentation
+└── [README.md](spec/README.md)                    # Project documentation
 ```
 
 ## Platform-Specific Implementations

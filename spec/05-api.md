@@ -1,7 +1,10 @@
 # HTTP API (current implementation)
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-11-26
 Spec ID: 05
+
+> **For detailed API documentation with examples and usage guides, see [API Reference](../docs/api_reference/API_REFERENCE.md).**  
+> This spec provides the canonical API contract; the reference guide contains human-readable descriptions, examples, and integration patterns.
 
 ## HTTP API (current implementation)
 Base URL: http://<host>:<port>/
@@ -91,9 +94,12 @@ JWT Claims include role and trust_score:
 }
 ```
 
+**Canonical OpenAPI Schema**: See [`specs/007-title-align-truth/contracts/openapi.yaml`](../specs/007-title-align-truth/contracts/openapi.yaml) for machine-consumable API schemas.
+
+**Human-Readable Reference**: See [API Reference](../docs/api_reference/API_REFERENCE.md) for detailed endpoint descriptions, request/response examples, and integration patterns.
+
 Future alignment
 - Consider consolidating GET /events and GET /get_data, and adding pagination.
-- Add OpenAPI in a follow-up.
 
 ### JSON Schemas (informal)
 

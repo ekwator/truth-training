@@ -130,7 +130,7 @@ truth-ios-client/
 │   ├── truth_core.h             # C header
 │   ├── libtruth_core.a          # Rust library
 │   └── Assets.xcassets/         # App assets
-└── README.md                    # This file
+└── [README.md](truth-ios-client/README.md)                    # This file
 ```
 
 ### Testing
