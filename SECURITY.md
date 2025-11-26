@@ -141,11 +141,90 @@ and verification or fix plan **within 7 days**.
 
 ## 🛠 Security Review and Testing
 
-Before each release:
-- ✅ Run `cargo audit`  
-- ✅ Review dependencies  
-- ✅ Test signature and verification routines  
-- ✅ Run fuzz tests for serialization  
+Before each release the following security and stability checks **must** be performed:
+
+- ✅ Run `cargo audit` to identify vulnerable Rust dependencies  
+- ✅ Manually review all new crates and Gradle dependencies  
+- ✅ Test signature generation & Ed25519 verification routines  
+- ✅ Run fuzz tests for all JSON serialization/deserialization paths  
+- 🛡 Ensure that Feature Flags match the target platform matrix  
+- 📦 Verify that SQLite migrations apply cleanly across all platforms  
+
+---
+
+## ⚠️ Important Notice: Android CI Testing Instability
+
+GitHub-hosted Android emulators (AVD) have **significant limitations**:
+
+- Extremely low and inconsistent CPU/MEM/I/O performance  
+- Unstable system service initialization (Settings, Package Manager, Content Provider)  
+- High flakiness during APK installation and split-package deployment  
+- UTP (Unified Test Platform) automatically **skips tests** when AVD is not fully initialized  
+- Performance/UI tests produce **non-deterministic results**  
+- Test count may vary between runs (e.g., 96 → 107 tests)
+
+Because of these limitations, **Android CI results must not be treated as authoritative** for release-blocking security checks.
+
+### Why this happens
+Even for identical source code and identical workflows, GitHub AVD may:
+
+- fail to install split APKs (`install-create` errors)  
+- skip tests requiring UI Thread or ContentProviders  
+- silently filter out Room/Performance/UI tests  
+- report test failures caused by emulator boot state  
+- produce different SHA256 checksums for identical APKs (different timestamps)
+
+These issues are **specific to GitHub-hosted virtual devices** and **do not occur on real Android hardware**.
+
+### Mandatory Recommendations
+
+To ensure testing is meaningful and secure:
+
+1. **Always run a full test suite on a real Android device**  
+   - Required before approving a release  
+   - GitHub Actions results may only serve as a preliminary smoke test  
+
+2. **Treat GitHub Android CI as "best effort", not deterministic**  
+   - Failures caused by AVD instability must not block releases  
+   - Non-deterministic test count is acceptable  
+
+3. **Performance benchmarks must not run on CI**  
+   - They provide invalid results on GitHub runners  
+   - Must be executed only on real hardware  
+
+4. **Security-sensitive tests must run locally or on a physical device**  
+   - Ed25519 signature tests  
+   - JNI integration  
+   - P2P LAN discovery  
+   - Database performance tests  
+
+5. **Document all AVD-specific errors** in `/docs/device_e2e_test_report.md`  
+
+---
+
+## 🧪 Secure Testing Workflow Summary
+
+For each release:
+
+### **1. Desktop / CLI / Server (Linux/Mac/Windows)**
+- ✔ deterministic and stable
+- ✔ GitHub CI tests are authoritative  
+- ✔ all unit + integration + E2E tests must pass
+
+### **2. Android**
+- ❗ GitHub CI = smoke test only  
+- ✔ Real-device testing is mandatory  
+- ✔ JNI + P2P + DB tests must be validated on hardware  
+- ✔ Performance tests only on real phone
+
+### **3. Cross-Platform**
+- ✔ Validate JSON schema compatibility  
+- ✔ Validate DB migrations across all platforms  
+- ✔ Validate signature and trust graph consistency  
+
+---
+
+This ensures that **Truth Training** maintains strong security guarantees while acknowledging the limitations of virtual testing environments on GitHub.
 
 ---
 
