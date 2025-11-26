@@ -1,21 +1,32 @@
 {
-  "rust-analyzer.files.excludeDirs": [
-    "ui/desktop/node_modules",
-    "ui/desktop/dist",
-    "ui/desktop/.vite",
-    "target",
-    ".git",
-    "truth-android-client",
-    "truth-ios-client"
-  ],
-  "files.watcher.exclude": {
-    "ui/desktop/node_modules/**": true,
-    "ui/desktop/dist/**": true,
-    "ui/desktop/.vite/**": true,
-    "target/**": true,
-    ".git/**": true,
-    "truth-android-client/**": true,
-    "truth-ios-client/**": true
-  },
-  "rust-analyzer.checkOnSave": false
+    "rust-analyzer.files.excludeDirs": [
+        "ui/desktop/node_modules",
+        "ui/desktop/dist",
+        "ui/desktop/.vite",
+        "target",
+        ".git",
+        "truth-android-client",
+        "truth-ios-client"
+    ],
+    "files.watcher.exclude": {
+        "ui/desktop/node_modules/**": true,
+        "ui/desktop/dist/**": true,
+        "ui/desktop/.vite/**": true,
+        "target/**": true,
+        ".git/**": true,
+        "truth-android-client/**": true,
+        "truth-ios-client/**": true
+    },
+    "rust-analyzer.checkOnSave": false,
+    "chat.promptFilesRecommendations": {
+        "speckit.constitution": true,
+        "speckit.specify": true,
+        "speckit.plan": true,
+        "speckit.tasks": true,
+        "speckit.implement": true
+    },
+    "chat.tools.terminal.autoApprove": {
+        ".specify/scripts/bash/": true,
+        ".specify/scripts/powershell/": true
+    }
 }
