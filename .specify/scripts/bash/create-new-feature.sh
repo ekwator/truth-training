@@ -154,8 +154,8 @@ check_existing_branches() {
         fi
     done
     
-    # Return next number
-    echo $((max_num + 1))
+    # Return next number (force base 10 to tolerate leading zeros)
+    echo $((10#$max_num + 1))
 }
 
 # Function to clean and format a branch name
