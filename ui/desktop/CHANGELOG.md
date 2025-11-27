@@ -1,4 +1,4 @@
-<!-- Archived from [ui/desktop/CHANGELOG.md](ui/desktop/CHANGELOG.md) -->
+<!-- Archived from [ui/desktop/CHANGELOG.md](CHANGELOG.md) -->
 
 # Changelog
 

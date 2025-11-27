@@ -1,9 +1,9 @@
-<!-- Archived from [docs/api_reference/API_REFERENCE.md](docs/api_reference/API_REFERENCE.md) -->
+<!-- Archived from [docs/api_reference/API_REFERENCE.md](API_REFERENCE.md) -->
 
 ## Truth Training API Reference (v1.0.0)
 
 **Audience:** Android, Desktop, and automation clients targeting Truth Core/Server v1.0.0.  
-**Canonical source:** `specs/007-title-align-truth/contracts/openapi.yaml`. Use that OpenAPI file for machine-consumable schemas; this document provides a human-readable overview and updated examples.
+**Canonical source:** [specs/007-title-align-truth/contracts/openapi.yaml](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/contracts/openapi.yaml). Use that OpenAPI file for machine-consumable schemas; this document provides a human-readable overview and updated examples.
 
 ---
 
@@ -199,9 +199,9 @@ or
 - API version: `1.0.0`. Android v1.0.0 and Desktop v1.0.0 are the baseline clients.  
 - Legacy v0.3.0 endpoints (`context_id`, missing templates/judgments) are **deprecated** and removed from this reference.  
 - For schema details, refer to:
-  - `specs/007-title-align-truth/contracts/openapi.yaml`
-  - [truth-android-client/README.md](truth-android-client/README.md) (networking section)
-  - [docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md) (platform comparison)
+  - [specs/007-title-align-truth/contracts/openapi.yaml](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/contracts/openapi.yaml)
+  - [truth-android-client/README.md](../../truth-android-client/README.md) (networking section)
+  - [docs/Truth-training/Truth-training.md](../Truth-training/Truth-training.md) (platform comparison)
 
 ---
 

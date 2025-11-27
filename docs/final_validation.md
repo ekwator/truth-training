@@ -1,4 +1,4 @@
-<!-- Archived from [docs/final_validation.md](docs/final_validation.md) -->
+<!-- Archived from [docs/final_validation.md](final_validation.md) -->
 
 # Final CLI-Driven Verification Report
 

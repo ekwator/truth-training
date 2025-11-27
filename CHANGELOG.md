@@ -317,7 +317,7 @@ See [truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md) for d
 ## [0.2.1-pre] — CLI Tool & Architecture Separation
 - New CLI tool: `truthctl` (subcommands: sync, verify, ratings, status)
 - Clean separation: `core` ↔ `app` ↔ P2P node; `truthctl` moved to `app/`
-- Architecture docs updated ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [spec/03-architecture.md](spec/03-architecture.md), [spec/11-decision-log.md](spec/11-decision-log.md))
+- Architecture docs updated ([docs/architecture.md](docs/architecture.md), [spec/03-architecture.md](spec/03-architecture.md), [spec/11-decision-log.md](spec/11-decision-log.md))
 - Feature-gated P2P sync (`p2p-client-sync`)
 
 ## [0.2.0] — Ratings System & Verified P2P Sync

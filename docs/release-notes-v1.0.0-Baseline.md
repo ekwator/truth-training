@@ -45,7 +45,7 @@ This is the first stable baseline release of Truth Training, marking a significa
 - Removed `context_id` foreign key from `truth_events` table
 - Added five embedded fields: `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`
 - Existing events with `context_id` must be migrated manually
-- See `[CHANGELOG.md](CHANGELOG.md)` for detailed migration notes
+- See [CHANGELOG.md](../CHANGELOG.md) for detailed migration notes
 
 ### Version Bump
 
@@ -57,6 +57,6 @@ All crates and components bumped to v1.0.0:
 
 ### Full Changelog
 
-See [CHANGELOG.md](CHANGELOG.md)(https:[//github.com/ekwator/truth-training/blob/master/CHANGELOG.md](//github.com/ekwator/truth-training/blob/master/CHANGELOG.md)#100--first-stable-baseline--context-fields-embedded) for complete details.
+See [CHANGELOG.md](../CHANGELOG.md) or the [GitHub history](https://github.com/ekwator/truth-training/blob/master/CHANGELOG.md#100--first-stable-baseline--context-fields-embedded) for complete details.
 
 

@@ -46,7 +46,7 @@ Validation:
 - description (string)
 
 Note:
-- Read-only, parsed from `[docs/Data_Schema.md](docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))`.
+- Read-only, parsed from `[docs/Data_Schema.md](../../docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))`.
 
 ### LogEntry
 - id (UUID)

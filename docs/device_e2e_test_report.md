@@ -1,4 +1,4 @@
-<!-- Archived from [docs/device_e2e_test_report.md](docs/device_e2e_test_report.md) -->
+<!-- Archived from [docs/device_e2e_test_report.md](device_e2e_test_report.md) -->
 
 # Device E2E Test Report
 ## v1.0.0 - Cross-Platform Discovery, Sync, and Multi-Client Integration Release

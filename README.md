@@ -17,6 +17,7 @@ Originally conceived to combat fraud, Truth Training evolves into a **self-learn
 
 ## Documentation
 
-- [Documentation](docs/documentation.md)
+- [Docs index](docs/README.md) — Human-first guides, releases, troubleshooting.
+- [Spec index](spec/README.md) — AI-oriented decision briefs.
 
 _Version: v1.0.0_

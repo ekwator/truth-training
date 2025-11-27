@@ -1,6 +1,6 @@
-<!-- Archived from [docs/Install_Paths_By_OS.md](docs/Install_Paths_By_OS.md) -->
+<!-- Archived from [docs/Install_Paths_By_OS.md](Install_Paths_By_OS.md) -->
 
-⚙️ Version Reference: See [spec/README.md](spec/README.md) or [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md) for current version map.
+⚙️ Version Reference: See [spec/README.md](../spec/README.md) or [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md) for current version map.
 
 ## Installation Layout and Runtime Data Paths by OS
 
@@ -47,8 +47,8 @@ Regardless of how the app is installed (from package, workflow artifact, or manu
 - Configuration file:  `~/.truth-training/config.json` (Linux/macOS), `%USERPROFILE%\.truth-training\config.json` (Windows)
 - SQLite database:     `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite` (Linux), `~/Library/Application Support/TruthTraining/truth_training.sqlite` (macOS), `%APPDATA%\TruthTraining\truth_training.sqlite` (Windows)
 - Knowledge base override (optional):
-  - [~/.truth-training/Data_Schema.md](~/.truth-training/Data_Schema.md) (Linux/macOS)
-  - `%USERPROFILE%\.truth-training\[Data_Schema.md](Data_Schema.md)` (Windows)
+  - Reference schema: [Data_Schema.md](Data_Schema.md)
+  - Windows path reminder: `%USERPROFILE%\.truth-training\` (see [Data_Schema.md](Data_Schema.md) for table definitions)
 
 **CLI Tools (e.g., truthctl):**
 - By default, the CLI stores config and DB in the current working directory unless you provide `--db` and `--peers` arguments, but may also use paths like:
