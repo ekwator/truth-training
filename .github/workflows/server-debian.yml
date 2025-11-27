@@ -8,7 +8,7 @@ on:
       - 'src/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
-    branches: [ master ]
+    branches: [ main ]
     tags:
       - '**'
   workflow_dispatch:
