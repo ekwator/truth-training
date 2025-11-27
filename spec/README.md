@@ -13,12 +13,13 @@ Use /spec as the primary decision source before reading /docs.
 > The Spec Document version refers only to documentation and does not determine software versions.
 
 ## Documentation Index
-- Core Architecture Spec → [spec/README.md](spec/README.md)(.[./[spec/README.md](spec/README.md)(.[/[spec/README.md](spec/README.md)(/spec/README.md)))
-- Build Artifacts → [docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)(.[./[docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)(.[/[docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)(/docs/CI_Workflows_Artifacts.md)))
-- Install Paths by OS → [docs/Install_Paths_By_OS.md](docs/Install_Paths_By_OS.md)(.[./[docs/Install_Paths_By_OS.md](docs/Install_Paths_By_OS.md)(.[/[docs/Install_Paths_By_OS.md](docs/Install_Paths_By_OS.md)(/docs/Install_Paths_By_OS.md)))
-- Desktop UI Guide → [docs/UI_Desktop.md](docs/UI_Desktop.md)(.[./[docs/UI_Desktop.md](docs/UI_Desktop.md)(.[/[docs/UI_Desktop.md](docs/UI_Desktop.md)(/docs/UI_Desktop.md)))
-- Technical Implementation → [docs/Technical_Specification.md](docs/Technical_Specification.md)(.[./[docs/Technical_Specification.md](docs/Technical_Specification.md)(.[/[docs/Technical_Specification.md](docs/Technical_Specification.md)(/docs/Technical_Specification.md)))
-- Version Registry → [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)(.[./[docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)(.[/[docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)(/docs/VERSION_REGISTRY.md)))
+- Spec overview → this page
+- Human-facing docs → [Docs index](../docs/README.md)
+- Build artifacts → [CI workflows](../docs/CI_Workflows_Artifacts.md)
+- Install paths → [Install_Paths_By_OS.md](../docs/Install_Paths_By_OS.md)
+- Desktop UI guide → [UI_Desktop.md](../docs/UI_Desktop.md)
+- Technical reference → [Technical_Specification.md](../docs/Technical_Specification.md)
+- Version registry → [VERSION_REGISTRY.md](../docs/VERSION_REGISTRY.md)
 
 Purpose: A comprehensive guide for building cross-platform Truth Training applications. This Spec-Kit provides precise instructions for AI agents and developers to build mobile (iOS + Android) and desktop versions using platform-specific features and FFI interfaces.
 
@@ -285,18 +286,36 @@ cargo test --target aarch64-apple-ios --features mobile
 
 ## Specification Index (v1.0.0)
 
-| ID | File | Title | |----|-------|--------| | 01 | [01-product-vision.md](01-product-vision.md) | Product Vision | | 02 | [02-requirements.md](02-requirements.md) | Requirements | | 03 | [03-architecture.md](03-architecture.md) | Architecture Overview | | 04 | [04-data-model.md](04-data-model.md) | Data Model | | 05 | [05-api.md](05-api.md) | HTTP API (current implementation) | | 06 | [06-expert-system.md](06-expert-system.md) | Expert System (Heuristics) | | 07 | [07-event-rating-protocol.md](07-event-rating-protocol.md) | Event Rating Protocol | | 08 | [08-p2p-sync.md](08-p2p-sync.md) | P2P & Sync | | 09 | [09-ux-guidelines.md](09-ux-guidelines.md)
-
-| UX Guidelines | | 10 | [10-cli.md](10-cli.md) | CLI Specification (truthctl) | | 11 | [11-decision-log.md](11-decision-log.md) | Decision Log (ADR) | | 12 | [12-open-questions.md](12-open-questions.md) | Open Questions & Risks | | 13 | [13-traceability.md](13-traceability.md) | Traceability Matrix | | 14 | [14-quality-gates.md](14-quality-gates.md) | Quality Gates | | 15 | [15-prompts-and-automation.md](15-prompts-and-automation.md) | Prompts & Automation | | 16 | [16-test-plan.md](16-test-plan.md) | Test Plan | | 17 | [17-offline-reliability.md](17-offline-reliability.md) | Offline Reliability and Data Integrity | | 18 | [18-cross-platform-architecture.md](18-cross-platform-architecture.md)
-
-| Cross-Platform Architecture Specification | | 19 | [19-build-instructions.md](19-build-instructions.md) | Cross-Platform Build Instructions | | 20 | [20-cargo-configuration.md](20-cargo-configuration.md) | Cross-Platform Cargo.toml Configuration | | 21 | [21-roadmap.md](21-roadmap.md) | Roadmap (High-level) |
+| ID | File | Title |
+|----|------|-------|
+| 01 | [01-product-vision.md](01-product-vision.md) | Product Vision |
+| 02 | [02-requirements.md](02-requirements.md) | Requirements |
+| 03 | [03-architecture.md](03-architecture.md) | Architecture Overview |
+| 04 | [04-data-model.md](04-data-model.md) | Data Model |
+| 05 | [05-api.md](05-api.md) | HTTP API (current implementation) |
+| 06 | [06-expert-system.md](06-expert-system.md) | Expert System (Heuristics) |
+| 07 | [07-event-rating-protocol.md](07-event-rating-protocol.md) | Event Rating Protocol |
+| 08 | [08-p2p-sync.md](08-p2p-sync.md) | P2P & Sync |
+| 09 | [09-ux-guidelines.md](09-ux-guidelines.md) | UX Guidelines |
+| 10 | [10-cli.md](10-cli.md) | CLI Specification (truthctl) |
+| 11 | [11-decision-log.md](11-decision-log.md) | Decision Log (ADR) |
+| 12 | [12-open-questions.md](12-open-questions.md) | Open Questions & Risks |
+| 13 | [13-traceability.md](13-traceability.md) | Traceability Matrix |
+| 14 | [14-quality-gates.md](14-quality-gates.md) | Quality Gates |
+| 15 | [15-prompts-and-automation.md](15-prompts-and-automation.md) | Prompts & Automation |
+| 16 | [16-test-plan.md](16-test-plan.md) | Test Plan |
+| 17 | [17-offline-reliability.md](17-offline-reliability.md) | Offline Reliability & Data Integrity |
+| 18 | [18-cross-platform-architecture.md](18-cross-platform-architecture.md) | Cross-Platform Architecture |
+| 19 | [19-build-instructions.md](19-build-instructions.md) | Cross-Platform Build Instructions |
+| 20 | [20-cargo-configuration.md](20-cargo-configuration.md) | Cargo Configuration |
+| 21 | [21-roadmap.md](21-roadmap.md) | Roadmap (High-level) |
 
 ## Integration Guides
 
-- **Android Integration**: `[integration/android/README_INTEGRATION.md](integration/android/README_INTEGRATION.md)` — JNI setup and JSON verification
-- **iOS Integration**: `[integration/ios/README_INTEGRATION.md](integration/ios/README_INTEGRATION.md)` — Swift bindings and FFI setup  
-- **Desktop Integration**: `[integration/desktop/README_INTEGRATION.md](integration/desktop/README_INTEGRATION.md)` — HTTP API and CLI usage
-- **Desktop UI Integration**: `ui/desktop/` — Tauri-based React/TypeScript desktop application
+- **Android Integration**: [integration/android/README_INTEGRATION.md](../integration/android/README_INTEGRATION.md) — JNI setup and JSON verification
+- **iOS Integration**: [integration/ios/README_INTEGRATION.md](../integration/ios/README_INTEGRATION.md) — Swift bindings and FFI setup
+- **Desktop Integration**: [integration/desktop/README_INTEGRATION.md](../integration/desktop/README_INTEGRATION.md) — HTTP API and CLI usage
+- **Desktop UI Integration**: [ui/desktop](../ui/desktop) — Tauri-based React/TypeScript desktop application
 
 ## Desktop UI Implementation
 
@@ -376,18 +395,23 @@ This Spec-Kit ensures consistent cross-platform development while maintaining op
 All Truth Training binaries—Desktop UI, Server, and CLI—store configuration files and databases in the current user's home directory by default, **regardless of whether installed as an application, service, or run via CLI**.
 
 - Desktop UI & Server: `~/.truth-training/config.json` (macOS/Linux), `%USERPROFILE%\.truth-training\config.json` (Windows)
-- SQLite DB: Platform standard (see [Install_Paths_By_OS.md](Install_Paths_By_OS.md))
+- SQLite DB: Platform standard (see [Install_Paths_By_OS.md](../docs/Install_Paths_By_OS.md))
 - CLI: Defaults to current directory, but can use `~/.truthctl/config.json` and user-specified db path via `--db` argument.
 
 This ensures configuration, keys, and offline data persist identically across local builds, installer-based apps, services, or direct CLI execution (unless CLI arguments override them).
 
 ## Build Artifacts and CI Outputs
 
-Artifacts are created and uploaded by distinct GitHub workflows (see [CI_Workflows_Artifacts.md](CI_Workflows_Artifacts.md) for detail):
+Artifacts are created and uploaded by distinct GitHub workflows (see [CI_Workflows_Artifacts.md](../docs/CI_Workflows_Artifacts.md) for detail):
 
-| Workflow | App/OS | Artifact Type | Main Output Path/Name | |---------------------- |--------------- |------------------- |----------------------------------------| | desktop.yml | Linux | UI app, server bin | .deb, .AppImage, truth_core_server-linux-bin | | desktop.yml | Windows | UI app, server bin | .exe (NSIS), .msi, truth_core_server-windows-bin | | desktop.yml | macOS | UI app, server bin | .app, .dmg, truth_core_server-macos-bin | | server-package.yml | Linux | service installer | truth-core-server-linux (deb/rpm) | | server-package.yml | Windows | service installer | truth-core-server-windows (.exe,
-
-NSIS) | | server-package.yml | macOS | service installer | truth-core-server-macos (.pkg) |
+| Workflow | App/OS | Artifact Type | Main Outputs |
+|----------|--------|---------------|--------------|
+| `desktop.yml` | Linux | UI app, server binary | `.deb`, `.AppImage`, `truth_core_server-linux-bin` |
+| `desktop.yml` | Windows | UI app, server binary | `.exe` (NSIS), `.msi`, `truth_core_server-windows-bin` |
+| `desktop.yml` | macOS | UI app, server binary | `.app`, `.dmg`, `truth_core_server-macos-bin` |
+| `server-package.yml` | Linux | Service installer | `truth-core-server-linux` (`.deb`/`.rpm`) |
+| `server-package.yml` | Windows | Service installer | `truth-core-server-windows.exe` (NSIS) |
+| `server-package.yml` | macOS | Service installer | `truth-core-server-macos.pkg` |
 
 ## Platform Data Directories (Summary)
 
@@ -397,6 +421,6 @@ NSIS) | | server-package.yml | macOS | service installer | truth-core-server-mac
 | macOS        | `~/.truth-training/config.json`               | `~/Library/Application Support/TruthTraining/truth_training.sqlite` |
 | Windows      | `%USERPROFILE%\.truth-training\config.json`  | `%APPDATA%\TruthTraining\truth_training.sqlite`                   |
 
-> For more details, see `[docs/Install_Paths_By_OS.md](docs/Install_Paths_By_OS.md)` and `[docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)`.
+> For more details, see [Install_Paths_By_OS.md](../docs/Install_Paths_By_OS.md) and [CI_Workflows_Artifacts.md](../docs/CI_Workflows_Artifacts.md).
 
-- See [docs/README.md](docs/README.md) for detailed explanations.
+- See [docs/README.md](../docs/README.md) for detailed explanations.

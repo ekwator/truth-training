@@ -1,4 +1,4 @@
-<!-- Archived from [docs/Technical_Specification.md](docs/Technical_Specification.md) -->
+<!-- Archived from [docs/Technical_Specification.md](Technical_Specification.md) -->
 
 # Technical Specification: "Truth Training" Platform
 

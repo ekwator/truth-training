@@ -1,4 +1,4 @@
-<!-- Archived from [truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md) -->
+<!-- Archived from [truth-android-client/CHANGELOG.md](CHANGELOG.md) -->
 
 # Android Client Changelog
 
@@ -142,14 +142,14 @@
 - **Performance Benchmarks**: All targets met ✅
 - **CI/CD Pipeline**: Fully functional ✅
 
-See [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md) for detailed test results.
+See [docs/TEST_REPORT_ANDROID_v1.0.0.md](../docs/TEST_REPORT_ANDROID_v1.0.0.md) for detailed test results.
 
 ### 📚 Documentation
 
-- **Migration Guide**: [docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md)
-- **Feature Comparison**: [docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md)
-- **Test Report**: [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md)
-- **CI/CD Workflows**: [docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)
+- **Migration Guide**: [docs/ANDROID_MIGRATION.md](../docs/ANDROID_MIGRATION.md)
+- **Feature Comparison**: [docs/Truth-training/Truth-training.md](../docs/Truth-training/Truth-training.md)
+- **Test Report**: [docs/TEST_REPORT_ANDROID_v1.0.0.md](../docs/TEST_REPORT_ANDROID_v1.0.0.md)
+- **CI/CD Workflows**: [docs/CI_Workflows_Artifacts.md](../docs/CI_Workflows_Artifacts.md)
 
 ### 🐛 Known Issues
 

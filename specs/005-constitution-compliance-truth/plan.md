@@ -1,8 +1,8 @@
 
 # Implementation Plan: Constitution Compliance (Truth Training Core & UI)
 
-**Branch**: `005-constitution-compliance-truth` | **Date**: 2025-10-31 | **Spec**: [/home/ekwator/Code/truth-training/specs/005-constitution-compliance-truth/spec.md](/home/ekwator/Code/truth-training/specs/005-constitution-compliance-truth/spec.md)(/[home/ekwator/Code/truth-training/specs/005-constitution-compliance-truth/spec.md](home/ekwator/Code/truth-training/specs/005-constitution-compliance-truth/spec.md))
-**Input**: Feature specification from `[/specs/005-constitution-compliance-truth/spec.md](/specs/005-constitution-compliance-truth/spec.md)(/[specs/005-constitution-compliance-truth/spec.md](specs/005-constitution-compliance-truth/spec.md))`
+**Branch**: `005-constitution-compliance-truth` | **Date**: 2025-10-31 | **Spec**: [/home/ekwator/Code/truth-training/specs/005-constitution-compliance-truth/spec.md](spec.md)(/[home/ekwator/Code/truth-training/specs/005-constitution-compliance-truth/spec.md](home/ekwator/Code/truth-training/specs/005-constitution-compliance-truth/spec.md))
+**Input**: Feature specification from `[/specs/005-constitution-compliance-truth/spec.md](spec.md)(/[specs/005-constitution-compliance-truth/spec.md](spec.md))`
 
 ## Execution Flow (/plan command scope)
 ```

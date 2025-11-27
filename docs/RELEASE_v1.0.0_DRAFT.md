@@ -1,4 +1,4 @@
-<!-- Archived from [docs/RELEASE_v1.0.0_DRAFT.md](docs/RELEASE_v1.0.0_DRAFT.md) -->
+<!-- Archived from [docs/RELEASE_v1.0.0_DRAFT.md](RELEASE_v1.0.0_DRAFT.md) -->
 
 # Truth Training v1.0.0 – Unified Cross-Platform Release
 
@@ -51,7 +51,7 @@ The Android client has been completely rewritten to achieve full feature parity 
 - **Performance Benchmarks**: All targets met ✅
 - **CI/CD Pipeline**: Fully functional ✅
 
-See [Test Report](docs/TEST_REPORT_ANDROID_v1.0.0.md) for detailed results.
+See [Test Report](TEST_REPORT_ANDROID_v1.0.0.md) for detailed results.
 
 ---
 
@@ -89,7 +89,7 @@ See [Test Report](docs/TEST_REPORT_ANDROID_v1.0.0.md) for detailed results.
 - **Breaking Change**: v0.3.0 data is not compatible
 - Clean install required (uninstall v0.3.0, install v1.0.0)
 - Data will be re-synced from server on first launch
-- See [docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md) for details
+- See [docs/ANDROID_MIGRATION.md](ANDROID_MIGRATION.md) for details
 
 ---
 
@@ -119,12 +119,12 @@ All artifacts are attached to this release and available for download.
 
 ## 📚 Documentation
 
-- **Migration Guide**: [docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md)
-- **Feature Comparison**: [docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md)
-- **API Reference**: [docs/api_reference/API_REFERENCE.md](docs/api_reference/API_REFERENCE.md)
-- **Test Report**: [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md)
-- **CI/CD Workflows**: [docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)
-- **Version Registry**: [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)
+- **Migration Guide**: [docs/ANDROID_MIGRATION.md](ANDROID_MIGRATION.md)
+- **Feature Comparison**: [docs/Truth-training/Truth-training.md](Truth-training/Truth-training.md)
+- **API Reference**: [docs/api_reference/API_REFERENCE.md](api_reference/API_REFERENCE.md)
+- **Test Report**: [docs/TEST_REPORT_ANDROID_v1.0.0.md](TEST_REPORT_ANDROID_v1.0.0.md)
+- **CI/CD Workflows**: [docs/CI_Workflows_Artifacts.md](CI_Workflows_Artifacts.md)
+- **Version Registry**: [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md)
 
 ---
 
@@ -136,9 +136,9 @@ This release represents a complete rewrite of the Android client to achieve feat
 
 ## 🔗 Quick Links
 
-- [Full Changelog](CHANGELOG.md)
-- [Android Changelog](truth-android-client/CHANGELOG.md)
-- [Test Report](docs/TEST_REPORT_ANDROID_v1.0.0.md)
+- [Full Changelog](../CHANGELOG.md)
+- [Android Changelog](../truth-android-client/CHANGELOG.md)
+- [Test Report](TEST_REPORT_ANDROID_v1.0.0.md)
 - [Installation Guide](README.md)#installation)
 
 ---

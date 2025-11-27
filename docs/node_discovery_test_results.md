@@ -1,4 +1,4 @@
-<!-- Archived from [docs/node_discovery_test_results.md](docs/node_discovery_test_results.md) -->
+<!-- Archived from [docs/node_discovery_test_results.md](node_discovery_test_results.md) -->
 
 # Node Discovery Quickstart Test Results
 
@@ -6,7 +6,7 @@
 **Feature**: Unified Cross-Platform Node Discovery  
 **Task**: T053 - Execute quickstart scenarios end-to-end
 
-This document contains test results from executing the quickstart scenarios defined in [specs/008-specify-md/quickstart.md](specs/008-specify-md/quickstart.md).
+This document contains test results from executing the quickstart scenarios defined in [specs/008-specify-md/quickstart.md](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/quickstart.md).
 
 ---
 

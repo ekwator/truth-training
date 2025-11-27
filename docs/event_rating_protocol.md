@@ -1,4 +1,4 @@
-<!-- Archived from [docs/event_rating_protocol.md](docs/event_rating_protocol.md) -->
+<!-- Archived from [docs/event_rating_protocol.md](event_rating_protocol.md) -->
 
 # Event Rating & Propagation Protocol
 Version: v0.4.0

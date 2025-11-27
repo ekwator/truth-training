@@ -1,72 +1,77 @@
-# Archive
+# Truth Training Documentation Hub (v1.0.0)
 
-## Entries
+Use this index to navigate every human-oriented document in the repository. Follow the depth = detail rule: the root `README.md` gives narrative context, these `/docs` pages hold implementation guidance, and AI agents should prefer `/spec`.
 
-- [Bug_Report](.github/ISSUE_TEMPLATE/bug_report.md)
-- [Feature_Request](.github/ISSUE_TEMPLATE/feature_request.md)
-- [Analyze.Prompt](.github/prompts/analyze.prompt.md)
-- [Clarify.Prompt](.github/prompts/clarify.prompt.md)
-- [Constitution.Prompt](.github/prompts/constitution.prompt.md)
-- [Implement.Prompt](.github/prompts/implement.prompt.md)
-- [Plan.Prompt](.github/prompts/plan.prompt.md)
-- [Specify.Prompt](.github/prompts/specify.prompt.md)
-- [Tasks.Prompt](.github/prompts/tasks.prompt.md)
-- [Constitution](.specify/memory/constitution.md)
-- [Agent File Template](.specify/templates/agent-file-template.md)
-- [Checklist Template](.specify/templates/checklist-template.md)
-- [Plan Template](.specify/templates/plan-template.md)
-- [Spec Template](.specify/templates/spec-template.md)
-- [Tasks Template](.specify/templates/tasks-template.md)
-- [Android_Migration](ANDROID_MIGRATION.md)
-- [Android_Test_Fix_Suggestions](ANDROID_TEST_FIX_SUGGESTIONS.md)
-- [Ci_Workflows_Artifacts](CI_Workflows_Artifacts.md)
-- [Concept_Collective_Intelligence](Concept_Collective_Intelligence.md)
-- [Constitution Compliance](Constitution-Compliance.md)
-- [Design_Index](DESIGN_INDEX.md)
-- [Deployment](Deployment.md)
-- [Install_Paths_By_Os](Install_Paths_By_OS.md)
-- [Release_Preparation_Summary](RELEASE_PREPARATION_SUMMARY.md)
-- [Release_V1.0.0_Draft](RELEASE_v1.0.0_DRAFT.md)
-- [Spec_Summary](SPEC_SUMMARY.md)
-- [Test_Report_Android_V1.0.0](TEST_REPORT_ANDROID_v1.0.0.md)
-- [Technical_Specification](Technical_Specification.md)
-- [Truth Training](Truth-training/Truth-training.md)
-- [Ui_Desktop](UI_Desktop.md)
-- [Version_Registry](VERSION_REGISTRY.md)
-- [Api_Reference](api_reference/API_REFERENCE.md)
-- [Build_Instructions](build_instructions.md)
-- [Cross_Device_E2E_Tests](cross_device_e2e_tests.md)
-- [Device_E2E_Test_Report](device_e2e_test_report.md)
-- [Documentation](documentation.md)
-- [Event_Rating_Protocol](event_rating_protocol.md)
-- [Final_Validation](final_validation.md)
-- [Node_Discovery_Test_Results](node_discovery_test_results.md)
-- [P2P_Release](p2p_release.md)
-- [Post_Integration_Hardening](post_integration_hardening.md)
-- [Plan1](prompt/ekwator/specify1/plan/plan1.md)
-- [Spec1](prompt/ekwator/specify1/spec1.md)
-- [Release Notes V1.0.0 Baseline](release-notes-v1.0.0-Baseline.md)
-- [Release Notes V1.0.0 Release](release-notes-v1.0.0-Release.md)
-- [Spec](specs/001-collective-intelligence-layer/spec.md)
-- [Plan](specs/002-ui-desktop-integration/plan.md)
-- [Spec](specs/003-truth-training-desktop/spec.md)
-- [Plan](specs/004-anonymous-trust-propagation/plan.md)
-- [Spec](specs/004-anonymous-trust-propagation/spec.md)
-- [Plan](specs/006-context-fields-embedded/plan.md)
-- [Plan Completion](specs/007-title-align-truth/plan-completion.md)
-- [Roadmap Completion](specs/007-title-align-truth/roadmap-completion.md)
-- [Spec](specs/007-title-align-truth/spec.md)
-- [Spec](specs/008-specify-md/spec.md)
-- [Spec](specs/009-fix-linux-deb/spec.md)
-- [Doc_Refactor_Cli](specs/010-documentation-refactoring-0-0/contracts/doc_refactor_cli.md)
-- [Data Model](specs/010-documentation-refactoring-0-0/data-model.md)
-- [Plan](specs/010-documentation-refactoring-0-0/plan.md)
-- [Quickstart](specs/010-documentation-refactoring-0-0/quickstart.md)
-- [Spec](specs/010-documentation-refactoring-0-0/spec.md)
-- [Tasks](specs/010-documentation-refactoring-0-0/tasks.md)
-- [Troubleshooting](troubleshooting.md)
-- [Changelog](truth-android-client/CHANGELOG.md)
-- [Integration_Truth_Core](truth-android-client/docs/INTEGRATION_TRUTH_CORE.md)
-- [Api_Reference_Link](truth-android-client/truthcore_api/api_reference_link.md)
-- [Changelog](ui/desktop/CHANGELOG.md)
-- [Ui_Guidelines](ui_guidelines.md)
+## How to Read This Tree
+
+- Start here for step-by-step guides, operational playbooks, and release collateral.
+- Jump to [spec/README.md](../spec/README.md) when you need compressed, decision-ready specs.
+- Historical or niche content lives in the Archive section at the end of this file.
+
+---
+
+## Core System Guides
+
+- [Technical_Specification.md](Technical_Specification.md) — End-to-end description of the Truth Training platform.
+- [architecture.md](architecture.md) — System architecture, runtime boundaries, and deployment layouts.
+- [Data_Schema.md](Data_Schema.md) — Database schema, migrations, and entity contracts.
+- [CLI_Usage.md](CLI_Usage.md) — truthctl reference, commands, and workflow examples.
+- [Concept_Collective_Intelligence.md](Concept_Collective_Intelligence.md) — Conceptual model for crowd-sourced truth signals.
+- [event_rating_protocol.md](event_rating_protocol.md) — Calculation rules for scoring events and propagating trust.
+- [SPEC_SUMMARY.md](SPEC_SUMMARY.md) — Human-readable digest of the AI-oriented `/spec` directory.
+
+## Platform & Integration Guides
+
+- [UI_Desktop.md](UI_Desktop.md) — Desktop UX flows, navigation, and component rules.
+- [ui_guidelines.md](ui_guidelines.md) — Consolidated UI/UX guidance across CLI, Desktop, and Android.
+- [ANDROID_MIGRATION.md](ANDROID_MIGRATION.md) — Migration plan for Android client parity with desktop.
+- [ANDROID_TEST_FIX_SUGGESTIONS.md](ANDROID_TEST_FIX_SUGGESTIONS.md) — Known Android regressions plus remediation tactics.
+- [android_discovery_architecture.md](android_discovery_architecture.md) — Discovery subsystem internals on Android.
+- [cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md) — Format review that keeps discovery metadata aligned between platforms.
+- [p2p_release.md](p2p_release.md) — Operational checklist for synchronizing P2P releases across devices.
+
+## Operations, Deployment & Releases
+
+- [Deployment.md](Deployment.md) — Environment preparation, secrets, and rollout flows.
+- [build_instructions.md](build_instructions.md) — Build recipes for CLI, server, and UI targets.
+- [Install_Paths_By_OS.md](Install_Paths_By_OS.md) — Default config/database paths for each OS.
+- [VERSION_REGISTRY.md](VERSION_REGISTRY.md) — Version compatibility grid and upgrade notes.
+- [CI_Workflows_Artifacts.md](CI_Workflows_Artifacts.md) — CI pipelines plus produced artifacts.
+- [RELEASE_PREPARATION_SUMMARY.md](RELEASE_PREPARATION_SUMMARY.md) — End-to-end release readiness checklist.
+- [RELEASE_v1.0.0_DRAFT.md](RELEASE_v1.0.0_DRAFT.md) — Narrative release notes for v1.0.0.
+- [release-notes-v1.0.0-Baseline.md](release-notes-v1.0.0-Baseline.md) — Baseline feature set for the first stable release.
+- [release-notes-v1.0.0-Release.md](release-notes-v1.0.0-Release.md) — Final release announcement collateral.
+- [Constitution-Compliance.md](Constitution-Compliance.md) — Documentation of compliance checks and procedures.
+- [post_integration_hardening.md](post_integration_hardening.md) — Hardening steps after major merges.
+
+## Quality, Testing & Troubleshooting
+
+- [cross_device_e2e_tests.md](cross_device_e2e_tests.md) — Cross-device scenario coverage and status.
+- [device_e2e_test_report.md](device_e2e_test_report.md) — Device-by-device execution log.
+- [TEST_REPORT_ANDROID_v1.0.0.md](TEST_REPORT_ANDROID_v1.0.0.md) — Android verification package for the release.
+- [node_discovery_test_results.md](node_discovery_test_results.md) — Discovery test outcomes and telemetry.
+- [final_validation.md](final_validation.md) — Pre-release validation gates and evidence.
+- [troubleshooting.md](troubleshooting.md) — Known issues, mitigations, and escalation matrix.
+
+## Additional References
+
+- [documentation.md](documentation.md) — Compatibility alias that now forwards readers back to this index.
+- [Truth-training/Truth-training.md](Truth-training/Truth-training.md) — Historical whitepaper for the platform.
+- [api_reference/API_REFERENCE.md](api_reference/API_REFERENCE.md) — REST/FFI API reference docs.
+
+## Archive & Research
+
+These files remain available for audit trails, historical notes, or specification exercises:
+
+- [DESIGN_INDEX.md](DESIGN_INDEX.md)
+- [prompt/ekwator/specify1/plan/plan1.md](prompt/ekwator/specify1/plan/plan1.md)
+- [prompt/ekwator/specify1/spec1.md](prompt/ekwator/specify1/spec1.md)
+- [truth-android-client/CHANGELOG.md](../truth-android-client/CHANGELOG.md)
+- [truth-android-client/docs/INTEGRATION_TRUTH_CORE.md](../truth-android-client/docs/INTEGRATION_TRUTH_CORE.md)
+- [truth-android-client/truthcore_api/api_reference_link.md](../truth-android-client/truthcore_api/api_reference_link.md)
+- [ui/desktop/CHANGELOG.md](../ui/desktop/CHANGELOG.md)
+- [Legacy specs/010 research (GitHub)](https://github.com/ekwator/truth-training/blob/main/specs/010-documentation-refactoring-0-0/research.md) and companion planning files for the refactor itself (archived).
+
+---
+
+_Version: v1.0.0 — Maintainers update this hub whenever a new human-facing document is added or retired._

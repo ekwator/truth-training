@@ -129,7 +129,7 @@ The sync command:
 4. Server returns merged list
 5. Local database is updated with merged results
 
-**Merge Behavior**: See `[specs/008-specify-md/contracts/README.md](specs/008-specify-md/contracts/README.md)` for detailed sync handshake contract.
+**Merge Behavior**: See [specs/008-specify-md/contracts/README.md](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/contracts/README.md) for detailed sync handshake contract.
 
 ### Cleanup Stale Nodes
 

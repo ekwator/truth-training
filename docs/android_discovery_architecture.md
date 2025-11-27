@@ -281,8 +281,8 @@ For cross-device discovery tests:
 
 ## References
 
-- **Cross-Platform Compatibility**: `[docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)`
-- **Post-Integration Hardening**: `[docs/post_integration_hardening.md](docs/post_integration_hardening.md)`
+- **Cross-Platform Compatibility**: [docs/cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md)
+- **Post-Integration Hardening**: [docs/post_integration_hardening.md](post_integration_hardening.md)
 - **Rust Implementation**: `src/p2p/node.rs`
 - **Desktop Implementation**: `ui/desktop/src-tauri/src/discovery.rs`
 - **CLI Implementation**: `app/src/bin/truthctl.rs`

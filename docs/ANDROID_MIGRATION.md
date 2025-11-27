@@ -1,4 +1,4 @@
-<!-- Archived from [docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md) -->
+<!-- Archived from [docs/ANDROID_MIGRATION.md](ANDROID_MIGRATION.md) -->
 
 # Android Client Migration Guide: v0.3.0 → v1.0.0
 
@@ -246,13 +246,13 @@ cd truth-android-client
 
 ## 📚 Additional resources
 
-- **Specification:** [specs/007-title-align-truth/spec.md](specs/007-title-align-truth/spec.md)
-- **Data model:** [specs/007-title-align-truth/data-model.md](specs/007-title-align-truth/data-model.md)
-- **API contracts:** `specs/007-title-align-truth/contracts/openapi.yaml`
-- **Quickstart:** \[specs/007-title-align-truth/quickstart.md](specs/007-title-align-truth/quickstart.md)
-- **Test report:** [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md)
-- **Test fix suggestions:** [docs/ANDROID_TEST_FIX_SUGGESTIONS.md](docs/ANDROID_TEST_FIX_SUGGESTIONS.md)
-- **Version registry:** [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)
+- **Specification:** [specs/007-title-align-truth/plan.md](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/plan.md)
+- **Data model:** [specs/007-title-align-truth/data-model.md](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/data-model.md)
+- **API contracts:** [specs/007-title-align-truth/contracts/openapi.yaml](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/contracts/openapi.yaml)
+- **Quickstart:** [specs/007-title-align-truth/quickstart.md](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/quickstart.md)
+- **Test report:** [docs/TEST_REPORT_ANDROID_v1.0.0.md](TEST_REPORT_ANDROID_v1.0.0.md)
+- **Test fix suggestions:** [docs/ANDROID_TEST_FIX_SUGGESTIONS.md](ANDROID_TEST_FIX_SUGGESTIONS.md)
+- **Version registry:** [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md)
 
 ---
 

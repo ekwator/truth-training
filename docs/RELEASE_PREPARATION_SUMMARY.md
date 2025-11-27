@@ -12,7 +12,7 @@
 
 ### 1. Version Synchronization
 
-**Updated**: [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)
+**Updated**: [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md)
 - ✅ Added Android Client v1.0.0 entry
 - ✅ All platforms now show v1.0.0:
   - Core/Server/CLI: v1.0.0
@@ -21,7 +21,7 @@
 
 ### 2. Changelog & Metadata
 
-**Created**: [truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md)
+**Created**: [truth-android-client/CHANGELOG.md](../truth-android-client/CHANGELOG.md)
 - ✅ Complete changelog with v1.0.0 highlights:
   - Full feature parity with Desktop v1.0.0
   - Offline-first architecture
@@ -29,7 +29,7 @@
   - 96% test coverage
   - All performance benchmarks met
 
-**Updated**: Root [CHANGELOG.md](CHANGELOG.md)
+**Updated**: Root [CHANGELOG.md](../CHANGELOG.md)
 - ✅ Added cross-platform milestone section
 - ✅ Android Client v1.0.0 highlights
 - ✅ Link to Android-specific changelog
@@ -41,7 +41,7 @@
 - ✅ Platform availability section
 - ✅ Link to GitHub Release
 
-**Created**: [docs/RELEASE_v1.0.0_DRAFT.md](docs/RELEASE_v1.0.0_DRAFT.md)
+**Created**: [docs/RELEASE_v1.0.0_DRAFT.md](RELEASE_v1.0.0_DRAFT.md)
 - ✅ Complete release draft content
 - ✅ Summary from test report
 - ✅ Changelog highlights
@@ -59,7 +59,7 @@
 
 ### 5. Spec Document Closeout
 
-**Updated**: [specs/007-title-align-truth/spec.md](specs/007-title-align-truth/spec.md)
+**Updated**: [specs/007-title-align-truth/plan.md](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/plan.md)
 - ✅ Status changed to "Completed — Release v1.0.0"
 - ✅ Added completion date: 2025-11-02
 - ✅ Added Release Summary section:
@@ -72,18 +72,18 @@
 ## 📁 Updated Files
 
 ### Modified Files (11)
-1. [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md) - Added Android Client v1.0.0
-2. [CHANGELOG.md](CHANGELOG.md) - Added cross-platform milestone
+1. [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md) - Added Android Client v1.0.0
+2. [CHANGELOG.md](../CHANGELOG.md) - Added cross-platform milestone
 3. [README.md](README.md) - Updated with v1.0.0 banner and platform status
-4. [specs/007-title-align-truth/spec.md](specs/007-title-align-truth/spec.md) - Marked as completed
-5. [docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md) - Added Android build section (previously updated)
+4. [specs/007-title-align-truth/plan.md](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/plan.md) - Marked as completed
+5. [docs/CI_Workflows_Artifacts.md](CI_Workflows_Artifacts.md) - Added Android build section (previously updated)
 
 ### New Files (5)
-1. [truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md) - Android-specific changelog
-2. [docs/RELEASE_v1.0.0_DRAFT.md](docs/RELEASE_v1.0.0_DRAFT.md) - GitHub Release draft content
-3. [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md) - Complete test report (previously created)
-4. [docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md) - Migration guide (previously created)
-5. [docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md) - Feature comparison (previously created)
+1. [truth-android-client/CHANGELOG.md](../truth-android-client/CHANGELOG.md) - Android-specific changelog
+2. [docs/RELEASE_v1.0.0_DRAFT.md](RELEASE_v1.0.0_DRAFT.md) - GitHub Release draft content
+3. [docs/TEST_REPORT_ANDROID_v1.0.0.md](TEST_REPORT_ANDROID_v1.0.0.md) - Complete test report (previously created)
+4. [docs/ANDROID_MIGRATION.md](ANDROID_MIGRATION.md) - Migration guide (previously created)
+5. [docs/Truth-training/Truth-training.md](Truth-training/Truth-training.md) - Feature comparison (previously created)
 
 ---
 
@@ -103,10 +103,10 @@ git add .
 git commit -m "chore(release): finalize Truth Training v1.0.0 cross-platform release
 
 - Update [VERSION_REGISTRY.md](VERSION_REGISTRY.md) with Android Client v1.0.0
-- Add [truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md) with v1.0.0 highlights
-- Update root [CHANGELOG.md](CHANGELOG.md) with cross-platform milestone
+- Add [truth-android-client/CHANGELOG.md](../truth-android-client/CHANGELOG.md) with v1.0.0 highlights
+- Update root [CHANGELOG.md](../CHANGELOG.md) with cross-platform milestone
 - Update [README.md](README.md) with v1.0.0 production-ready banner
-- Mark [spec.md](spec.md) as Completed — Release v1.0.0
+- Mark [specs/007-title-align-truth/plan.md](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/plan.md) as Completed — Release v1.0.0
 - Add release summary note to spec document
 - Create [RELEASE_v1.0.0_DRAFT.md](RELEASE_v1.0.0_DRAFT.md) for GitHub Release
 
@@ -119,7 +119,7 @@ All platforms (Core, Desktop, Android) aligned to v1.0.0 baseline."
 2. **Tag**: `v1.0.0`
 3. **Target**: `release/v1.0.0` or `007-title-align-truth`
 4. **Release Title**: "Truth Training v1.0.0 – Unified Cross-Platform Release"
-5. **Description**: Copy content from [docs/RELEASE_v1.0.0_DRAFT.md](docs/RELEASE_v1.0.0_DRAFT.md)
+5. **Description**: Copy content from [docs/RELEASE_v1.0.0_DRAFT.md](RELEASE_v1.0.0_DRAFT.md)
 6. **Attach Artifacts**: 
    - Android Debug APK (from CI workflow)
    - Android Release AAB (from CI workflow)
@@ -160,22 +160,22 @@ The `.github/workflows/android-build.yml` will automatically:
 
 ## 🔗 Reference Links
 
-- **Test Report**: [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md)
-- **Android Changelog**: [truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md)
-- **Release Draft**: [docs/RELEASE_v1.0.0_DRAFT.md](docs/RELEASE_v1.0.0_DRAFT.md)
-- **Migration Guide**: [docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md)
-- **Feature Comparison**: [docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md)
-- **Version Registry**: [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)
+- **Test Report**: [docs/TEST_REPORT_ANDROID_v1.0.0.md](TEST_REPORT_ANDROID_v1.0.0.md)
+- **Android Changelog**: [truth-android-client/CHANGELOG.md](../truth-android-client/CHANGELOG.md)
+- **Release Draft**: [docs/RELEASE_v1.0.0_DRAFT.md](RELEASE_v1.0.0_DRAFT.md)
+- **Migration Guide**: [docs/ANDROID_MIGRATION.md](ANDROID_MIGRATION.md)
+- **Feature Comparison**: [docs/Truth-training/Truth-training.md](Truth-training/Truth-training.md)
+- **Version Registry**: [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md)
 
 ---
 
 ## ✅ Verification Checklist
 
 - [x] [VERSION_REGISTRY.md](VERSION_REGISTRY.md) updated with Android Client v1.0.0
-- [x] Android [CHANGELOG.md](CHANGELOG.md) created with v1.0.0 highlights
-- [x] Root [CHANGELOG.md](CHANGELOG.md) updated with cross-platform milestone
+- [x] Android [CHANGELOG.md](../CHANGELOG.md) created with v1.0.0 highlights
+- [x] Root [CHANGELOG.md](../CHANGELOG.md) updated with cross-platform milestone
 - [x] [README.md](README.md) updated with v1.0.0 production-ready banner
-- [x] [spec.md](spec.md) marked as Completed — Release v1.0.0
+- [x] [specs/007-title-align-truth/plan.md](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/plan.md) marked as Completed — Release v1.0.0
 - [x] Release draft document created
 - [x] CI/CD workflow verified (triggers on release creation)
 - [x] Version "1.0.0" confirmed in build.gradle.kts

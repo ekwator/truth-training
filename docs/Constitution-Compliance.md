@@ -1,4 +1,4 @@
-<!-- Archived from [docs/Constitution-Compliance.md](docs/Constitution-Compliance.md) -->
+<!-- Archived from [docs/Constitution-Compliance.md](Constitution-Compliance.md) -->
 
 
 # Constitution Compliance (v2.1.0)
@@ -13,7 +13,7 @@
 
 ## How to Validate
 1. Run `cargo test --all-features`.
-2. Follow [specs/005-constitution-compliance-truth/quickstart.md](specs/005-constitution-compliance-truth/quickstart.md) steps.
+2. Follow [specs/005-constitution-compliance-truth/quickstart.md](https://github.com/ekwator/truth-training/blob/main/specs/005-constitution-compliance-truth/quickstart.md) steps.
 3. Use CLI: `truthctl confess` and `truthctl judge`.
 
 ## Security Note

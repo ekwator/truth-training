@@ -18,14 +18,14 @@ Conventions:
 - Output: All crates versioned as v1.0.0
 - Dependencies: none
 
-**T002. Update [CHANGELOG.md](CHANGELOG.md)(C[HANGELOG.md](HANGELOG.md)) with v1.0.0 breaking changes** [P]
-- Path: `[CHANGELOG.md](CHANGELOG.md)(C[HANGELOG.md](HANGELOG.md))`
+**T002. Update [CHANGELOG.md](../../CHANGELOG.md)(C[HANGELOG.md](HANGELOG.md)) with v1.0.0 breaking changes** [P]
+- Path: `[CHANGELOG.md](../../CHANGELOG.md)(C[HANGELOG.md](HANGELOG.md))`
 - Action: Add new section documenting context_id removal, embedded fields addition, Context Editor UI, breaking changes
 - Output: CHANGELOG entry for v1.0.0
 - Dependencies: none
 
-**T003. Update [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)(d[ocs/VERSION_REGISTRY.md](ocs/VERSION_REGISTRY.md)) with v1.0.0 baseline marker** [P]
-- Path: `[docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)(d[ocs/VERSION_REGISTRY.md](ocs/VERSION_REGISTRY.md))`
+**T003. Update [docs/VERSION_REGISTRY.md](../../docs/VERSION_REGISTRY.md)(d[ocs/VERSION_REGISTRY.md](ocs/VERSION_REGISTRY.md)) with v1.0.0 baseline marker** [P]
+- Path: `[docs/VERSION_REGISTRY.md](../../docs/VERSION_REGISTRY.md)(d[ocs/VERSION_REGISTRY.md](ocs/VERSION_REGISTRY.md))`
 - Action: Add entry marking v1.0.0 as first stable baseline with context fields embedded
 - Output: Version registry updated
 - Dependencies: none
@@ -197,20 +197,20 @@ Conventions:
 
 ### Phase 3.9: Documentation Updates
 
-**T029. Update [docs/Data_Schema.md](docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md)) with new event structure** [P]
-- Path: `[docs/Data_Schema.md](docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))`
+**T029. Update [docs/Data_Schema.md](../../docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md)) with new event structure** [P]
+- Path: `[docs/Data_Schema.md](../../docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))`
 - Action: Update truth_events table schema to show embedded fields, remove context_id. Document FK validation, template matching, duplicate detection behavior
 - Output: Data schema documentation updated
 - Dependencies: T009
 
-**T030. Update [docs/UI_Desktop.md](docs/UI_Desktop.md)(d[ocs/UI_Desktop.md](ocs/UI_Desktop.md)) with Context Editor screen** [P]
-- Path: `[docs/UI_Desktop.md](docs/UI_Desktop.md)(d[ocs/UI_Desktop.md](ocs/UI_Desktop.md))`
+**T030. Update [docs/UI_Desktop.md](../../docs/UI_Desktop.md)(d[ocs/UI_Desktop.md](ocs/UI_Desktop.md)) with Context Editor screen** [P]
+- Path: `[docs/UI_Desktop.md](../../docs/UI_Desktop.md)(d[ocs/UI_Desktop.md](ocs/UI_Desktop.md))`
 - Action: Document new Context Editor screen, template selection workflow, Create Template button behavior
 - Output: UI documentation updated
 - Dependencies: T027, T028
 
-**T031. Update [spec/09-ux-guidelines.md](spec/09-ux-guidelines.md)(s[pec/09-ux-guidelines.md](pec/09-ux-guidelines.md)) with context template patterns** [P]
-- Path: `[spec/09-ux-guidelines.md](spec/09-ux-guidelines.md)(s[pec/09-ux-guidelines.md](pec/09-ux-guidelines.md))`
+**T031. Update [spec/09-ux-guidelines.md](../../spec/09-ux-guidelines.md)(s[pec/09-ux-guidelines.md](pec/09-ux-guidelines.md)) with context template patterns** [P]
+- Path: `[spec/09-ux-guidelines.md](../../spec/09-ux-guidelines.md)(s[pec/09-ux-guidelines.md](pec/09-ux-guidelines.md))`
 - Action: Document UX patterns for template selection, field prefilling, duplicate detection feedback
 - Output: UX guidelines updated
 - Dependencies: T026, T027
@@ -230,13 +230,13 @@ Conventions:
 - Dependencies: T006, all implementation tasks
 
 **T034. Verify [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)) validation steps**
-- Path: `[specs/006-context-fields-embedded/quickstart.md](specs/006-context-fields-embedded/quickstart.md)(s[pecs/006-context-fields-embedded/quickstart.md](pecs/006-context-fields-embedded/quickstart.md))`
+- Path: `[specs/006-context-fields-embedded/quickstart.md](quickstart.md)(s[pecs/006-context-fields-embedded/quickstart.md](pecs/006-context-fields-embedded/quickstart.md))`
 - Action: Execute all quickstart steps manually and verify expected outcomes
 - Output: Quickstart validation complete
 - Dependencies: All implementation tasks
 
 **T035. Update docs to note manual migration requirement** [P]
-- Path: `[docs/Data_Schema.md](docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))`, `[docs/Deployment.md](docs/Deployment.md)(d[ocs/Deployment.md](ocs/Deployment.md))`
+- Path: `[docs/Data_Schema.md](../../docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))`, `[docs/Deployment.md](../../docs/Deployment.md)(d[ocs/Deployment.md](ocs/Deployment.md))`
 - Action: Add explicit note that no automatic database migrations are executed. Manual migration script/instructions required for existing context_id data
 - Output: Migration notes documented
 - Dependencies: T009
@@ -263,8 +263,8 @@ Conventions:
 **Group A** (Setup - can all run immediately):
 ```
 T001: Update version numbers
-T002: Update [CHANGELOG.md](CHANGELOG.md)(C[HANGELOG.md](HANGELOG.md))
-T003: Update [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)(d[ocs/VERSION_REGISTRY.md](ocs/VERSION_REGISTRY.md))
+T002: Update [CHANGELOG.md](../../CHANGELOG.md)(C[HANGELOG.md](HANGELOG.md))
+T003: Update [docs/VERSION_REGISTRY.md](../../docs/VERSION_REGISTRY.md)(d[ocs/VERSION_REGISTRY.md](ocs/VERSION_REGISTRY.md))
 ```
 
 **Group B** (Contract Tests - can all run after T001):
@@ -282,9 +282,9 @@ T008: Add NewContext struct
 
 **Group D** (Documentation - can run after implementation):
 ```
-T029: Update [docs/Data_Schema.md](docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))
-T030: Update [docs/UI_Desktop.md](docs/UI_Desktop.md)(d[ocs/UI_Desktop.md](ocs/UI_Desktop.md))
-T031: Update [spec/09-ux-guidelines.md](spec/09-ux-guidelines.md)(s[pec/09-ux-guidelines.md](pec/09-ux-guidelines.md))
+T029: Update [docs/Data_Schema.md](../../docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))
+T030: Update [docs/UI_Desktop.md](../../docs/UI_Desktop.md)(d[ocs/UI_Desktop.md](ocs/UI_Desktop.md))
+T031: Update [spec/09-ux-guidelines.md](../../spec/09-ux-guidelines.md)(s[pec/09-ux-guidelines.md](pec/09-ux-guidelines.md))
 T035: Add migration notes
 ```
 

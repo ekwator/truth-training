@@ -1,4 +1,4 @@
-<!-- Archived from [docs/p2p_release.md](docs/p2p_release.md) -->
+<!-- Archived from [docs/p2p_release.md](p2p_release.md) -->
 
 P2P Module Functionality Analysis
 The p2p module implements peer-to-peer functionality for the "Truth Training" application:

@@ -83,7 +83,7 @@
 - v1.0.0 marks first stable baseline with breaking changes (context_id removal).
 - Coordinated version bump ensures consistency and clear migration path.
 - CHANGELOG entries in each crate document breaking changes.
-- Version registry ([docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)(d[ocs/VERSION_REGISTRY.md](ocs/VERSION_REGISTRY.md) updated with baseline marker.
+- Version registry ([docs/VERSION_REGISTRY.md](../../docs/VERSION_REGISTRY.md)(d[ocs/VERSION_REGISTRY.md](ocs/VERSION_REGISTRY.md) updated with baseline marker.
 
 **Alternatives Considered**:
 - Incremental versioning per crate: Creates confusion about compatibility; breaking change affects all layers.
