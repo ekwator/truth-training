@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["Cross-Platform Build"]
     types: [completed]
-    branches: [master]
+    branches: [main]
     tags:
       - '**'
   workflow_dispatch:
