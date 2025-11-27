@@ -21,3 +21,5 @@ Note: Exact signatures to be refined to match existing codebase patterns. Tests 
 
 ## File Export
 - Overall Summary exported to `.txt` file using fixed template.
+
+_Version: v1.0.0_

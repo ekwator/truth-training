@@ -1,3 +1,5 @@
+<!-- Archived from [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md) -->
+
 # Truth Training – Version Registry
 
 This document tracks all current versions across the Truth Training ecosystem.
@@ -17,12 +19,13 @@ This document tracks all current versions across the Truth Training ecosystem.
 ## 🔄 Update Policy
 - All version updates must be reflected in:
   - `Cargo.toml` for each crate
-  - `spec/README.md` (Version Map)
+  - [spec/README.md](spec/README.md) (Version Map)
   - This registry file
 
 ---
 
 ## 📦 Build References
-- CI/CD Artifacts: [docs/CI_Workflows_Artifacts.md](./CI_Workflows_Artifacts.md)
-- Install Paths by OS: [docs/Install_Paths_By_OS.md](./Install_Paths_By_OS.md)
+- CI/CD Artifacts: [docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)(.[/CI_Workflows_Artifacts.md](/CI_Workflows_Artifacts.md))
+- Install Paths by OS: [docs/Install_Paths_By_OS.md](docs/Install_Paths_By_OS.md)(.[/Install_Paths_By_OS.md](/Install_Paths_By_OS.md))
 - Release Notes: [GitHub Releases](https://github.com/ekwator/truth-training/releases)
+

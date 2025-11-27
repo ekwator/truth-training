@@ -234,3 +234,4 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 - **Batch Operations**: Merge operations should batch DB writes for efficiency
 - **Async Health Checks**: Health checks run in background to avoid blocking discovery
 
+_Version: v1.0.0_

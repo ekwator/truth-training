@@ -1,3 +1,5 @@
+<!-- Archived from [docs/event_rating_protocol.md](docs/event_rating_protocol.md) -->
+
 # Event Rating & Propagation Protocol
 Version: v0.4.0
 Updated: 2025-01-18  
@@ -236,3 +238,6 @@ flowchart TD
     AA -->|Fail| CC[Event Ignored]
     BB --> DD[Event Participates in Recalc Again]
 ```
+
+_Version: v1.0.0_
+

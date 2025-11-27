@@ -74,19 +74,19 @@ docs/
 └── prompt/
     └── ekwator/
         ├── specify1/
-        │   ├── spec1.md
+        │   ├── [spec1.md](spec1.md)
         │   └── plan/
-        │       └── plan1.md
+        │       └── [plan1.md](plan1.md)
         └── specify2/
             └── plan/
 ```
 
 #### 📌 What each file contains:
 
-- **specify1/spec1.md**  
+- **[specify1/spec1.md](specify1/spec1.md)**  
 - 📄 [Complete template + real example of a `/specify` command for a development task.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/spec1.md)
 
-- **specify1/plan/plan1.md**  
+- **[specify1/plan/plan1.md](specify1/plan/plan1.md)**  
 - 🗂 [Example of a fully structured `/plan` request derived from the specification.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/plan/plan1.md)
 
 - **specify2/**  
@@ -198,7 +198,7 @@ To ensure testing is meaningful and secure:
    - P2P LAN discovery  
    - Database performance tests  
 
-5. **Document all AVD-specific errors** in `/docs/device_e2e_test_report.md`  
+5. **Document all AVD-specific errors** in [docs/device_e2e_test_report.md](docs/device_e2e_test_report.md)
 
 ---
 

@@ -168,3 +168,4 @@ See `tests/integration/test_sync_handshake.rs` for:
 
 This ensures all platforms converge to the same state: `LAN` node with `last_seen=1000`.
 
+_Version: v1.0.0_

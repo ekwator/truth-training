@@ -1,3 +1,5 @@
+<!-- Archived from [docs/troubleshooting.md](docs/troubleshooting.md) -->
+
 # Troubleshooting Guide
 
 This document provides solutions to common compilation and build issues encountered when working with the Truth Training platform.
@@ -285,4 +287,7 @@ cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p 
 4. **Check file permissions** for generated files
 5. **Clear build caches** if needed: `cargo clean`, `rm -rf node_modules`
 
-For additional help, check the main build instructions in `docs/build_instructions.md` and `spec/19-build-instructions.md`.
+For additional help, check the main build instructions in [docs/build_instructions.md](docs/build_instructions.md) and [spec/19-build-instructions.md](spec/19-build-instructions.md).
+
+_Version: v1.0.0_
+

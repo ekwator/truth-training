@@ -1,3 +1,5 @@
+<!-- Archived from [docs/device_e2e_test_report.md](docs/device_e2e_test_report.md) -->
+
 # Device E2E Test Report
 ## v1.0.0 - Cross-Platform Discovery, Sync, and Multi-Client Integration Release
 
@@ -352,4 +354,5 @@ All real-device testing workflows have been completed successfully. The unified 
 **Report Generated:** 2024-11-19  
 **Test Engineer:** AI Assistant  
 **Approval Status:** Pending final review
+
 

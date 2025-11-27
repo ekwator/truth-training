@@ -480,7 +480,7 @@ interface JudgmentDao {
 
 ### ImpactDao, SummaryDao, SyncQueueDao
 
-Similar patterns for other entities (see full implementation in tasks.md).
+Similar patterns for other entities (see full implementation in [tasks.md](tasks.md)(t[asks.md](asks.md).
 
 ---
 

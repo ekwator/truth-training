@@ -217,3 +217,5 @@ curl -X POST "http://localhost:8080/api/v1/consensus/550e8400-e29b-41d4-a716-446
 - Judgment signatures are cryptographically verified
 - Reputation updates are audited and logged
 - Participant privacy is maintained in leaderboard data
+
+_Version: v1.0.0_

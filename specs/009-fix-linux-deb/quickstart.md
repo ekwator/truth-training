@@ -250,3 +250,4 @@ All verification steps must pass:
 - ✅ Package upgrade preserves configuration
 - ✅ Package uninstall removes all files and services
 
+_Version: v1.0.0_

@@ -283,5 +283,5 @@ After quickstart validation:
 2. Perform load testing
 3. Test on multiple Android devices/versions
 4. Validate CI/CD pipeline updates
-5. Update documentation (Truth-training.md, ANDROID_MIGRATION.md)
+5. Update documentation ([Truth-training.md](Truth-training.md)(T[ruth-training.md](ruth-training.md)), [ANDROID_MIGRATION.md](ANDROID_MIGRATION.md)(A[NDROID_MIGRATION.md](NDROID_MIGRATION.md)
 

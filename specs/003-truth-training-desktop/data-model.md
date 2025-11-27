@@ -46,7 +46,7 @@ Validation:
 - description (string)
 
 Note:
-- Read-only, parsed from `docs/Data_Schema.md`.
+- Read-only, parsed from `[docs/Data_Schema.md](docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))`.
 
 ### LogEntry
 - id (UUID)
@@ -70,3 +70,5 @@ Note:
 - No event save if KB empty or missing (Context required)
 - Offline-first; conflicts: Local-wins
 - Logs: pagination 35 lines/page
+
+_Version: v1.0.0_

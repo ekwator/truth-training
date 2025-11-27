@@ -1,3 +1,5 @@
+<!-- Archived from [docs/p2p_release.md](docs/p2p_release.md) -->
+
 P2P Module Functionality Analysis
 The p2p module implements peer-to-peer functionality for the "Truth Training" application:
 
@@ -86,3 +88,6 @@ POST /events - add truth events
 POST /impacts - add impacts
 
 The P2P module is fully functional and integrated into the main application to provide decentralized data synchronization between nodes.
+
+_Version: v1.0.0_
+

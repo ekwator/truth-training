@@ -1,4 +1,6 @@
 # Cross-Platform Build Instructions
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.2
 Updated: 2025-01-18
 Spec ID: 19
@@ -304,7 +306,7 @@ jobs:
       - run: cd ui/desktop && cargo tauri build
       - run: cd ui/desktop && cargo tauri build --target x86_64-pc-windows-gnu
 
-  desktop:
+desktop:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -317,7 +319,7 @@ jobs:
       - run: cargo build --release --features desktop
       - run: cargo test --features desktop
 
-  android:
+android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -328,7 +330,7 @@ jobs:
       - run: cargo build --release --target aarch64-linux-android --features mobile
       - run: cargo build --release --target x86_64-linux-android --features mobile
 
-  ios:
+ios:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -559,3 +561,7 @@ RUSTFLAGS="-C opt-level=z" cargo build --release --target aarch64-linux-android 
 - **Headers**: `android/truth_core.h`, `ios/truth_core.h`
 
 This build system ensures consistent cross-platform development while maintaining optimal performance and minimal resource usage for each target platform.
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

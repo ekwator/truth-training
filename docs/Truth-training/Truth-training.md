@@ -1,3 +1,5 @@
+<!-- Archived from [docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md) -->
+
 # Comparative Analysis: Android vs Desktop UI
 
 **Analysis date:** 2025-11-02 (updated)  
@@ -462,22 +464,23 @@ ui/desktop/
 ## 🔗 Documentation references
 
 ### Android
-- `truth-android-client/README.md`
-- `truth-android-client/README_ANDROID.md`
-- `integration/android/README_INTEGRATION.md`
-- `integration/android/README_BUILD_ANDROID.md`
-- `docs/ANDROID_MIGRATION.md`
-- `docs/ANDROID_TEST_FIX_SUGGESTIONS.md`
-- `docs/TEST_REPORT_ANDROID_v1.0.0.md`
+- [truth-android-client/README.md](truth-android-client/README.md)
+- [truth-android-client/README_ANDROID.md](truth-android-client/README_ANDROID.md)
+- [integration/android/README_INTEGRATION.md](integration/android/README_INTEGRATION.md)
+- [integration/android/README_BUILD_ANDROID.md](integration/android/README_BUILD_ANDROID.md)
+- [docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md)
+- [docs/ANDROID_TEST_FIX_SUGGESTIONS.md](docs/ANDROID_TEST_FIX_SUGGESTIONS.md)\
+- [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md)
 
 ### Desktop UI
-- `docs/UI_Desktop.md`
-- `ui/desktop/CHANGELOG.md`
+- [docs/UI_Desktop.md](docs/UI_Desktop.md)
+- [ui/desktop/CHANGELOG.md](ui/desktop/CHANGELOG.md)
 - `specs/002-ui-desktop-integration/`
 - `specs/003-truth-training-desktop/`
-- **API Reference:** `docs/api_reference/API_REFERENCE.md`
-- **Version Registry:** `docs/VERSION_REGISTRY.md`
+- **API Reference:** [docs/api_reference/API_REFERENCE.md](docs/api_reference/API_REFERENCE.md)
+- **Version Registry:** [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)
 
 ---
 
 **Conclusion:** Desktop UI is a production-ready application with full v1.0.0 feature coverage, while Android remains at an early stage and needs substantial work to reach feature parity.
+

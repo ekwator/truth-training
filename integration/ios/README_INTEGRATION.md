@@ -361,3 +361,5 @@ overflow-checks = true
 ```
 
 This integration guide ensures smooth iOS development with Truth Core's minimal mobile feature set while maintaining optimal performance and battery efficiency.
+
+_Version: v1.0.0_

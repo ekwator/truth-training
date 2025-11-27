@@ -1,4 +1,6 @@
 # Open Questions & Risks
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 12
@@ -10,3 +12,7 @@ Spec ID: 12
 - Thresholds defaults (T_up, T_down, T_confirm) and tuning process.
 - Anti-Sybil measures scope for first release.
 - Permission model for /get_data in production (auth?).
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

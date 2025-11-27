@@ -1,3 +1,5 @@
+<!-- Archived from [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md) -->
+
 # Test Report: Android Client v1.0.0
 
 **Feature**: Align Truth Training Android Client with Desktop v1.0.0 Features  
@@ -115,7 +117,7 @@ Android Client v1.0.0 has been successfully implemented with full feature parity
 
 ### Quickstart Scenarios (T074)
 
-All 6 scenarios from `specs/007-title-align-truth/quickstart.md` validated:
+All 6 scenarios from [specs/007-title-align-truth/quickstart.md](specs/007-title-align-truth/quickstart.md) validated:
 
 #### ✅ Scenario 1: Event Creation with Context Template
 - ✅ Template selection prefills context fields
@@ -300,4 +302,5 @@ All 78 implementation tasks (T001-T078) have been completed:
 
 **Report Generated**: 2025-11-02  
 **Next Review**: After production deployment validation
+
 

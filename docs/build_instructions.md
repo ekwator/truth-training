@@ -1,3 +1,5 @@
+<!-- Archived from [docs/build_instructions.md](docs/build_instructions.md) -->
+
 # Build Instructions for Truth Training Platform
 
 ---
@@ -332,3 +334,6 @@ tauri-build = { version = "2.5.1", features = [] }
 * For testing UI independently, you can run the core as a **local HTTP service** and point UI to `http://127.0.0.1:8080`.
 * **Icon files are required** for Tauri builds - ensure `ui/desktop/src-tauri/icons/` contains proper PNG/ICO files.
 * **Cross-compilation requires platform-specific tools** - install MinGW for Windows, NDK for Android, Xcode for iOS.
+
+_Version: v1.0.0_
+

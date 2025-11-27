@@ -1,3 +1,5 @@
+<!-- Archived from [docs/Concept_Collective_Intelligence.md](docs/Concept_Collective_Intelligence.md) -->
+
 ## Collective Intelligence Layer (Wisdom of the Crowd)
 
 The Collective Intelligence Layer aggregates multiple independent judgments into a unified collective truth score for each event: `collective_score ∈ [0,1]`.
@@ -13,6 +15,9 @@ Example
 - Users evaluate an event by posting `impact` entries. If votes split evenly, `collective_score ≈ 0.5`. With a strong majority of positive confirmations, `collective_score → 1.0`; with a strong majority of negative evaluations, `collective_score → 0.0`.
 
 Roadmap
-- Weight votes by validator trust (`W_v`) consistent with `spec/07-event-rating-protocol.md` (`S_e`).
+- Weight votes by validator trust (`W_v`) consistent with [spec/07-event-rating-protocol.md](spec/07-event-rating-protocol.md) (`S_e`).
 - Integrate thresholds to influence `truth_events.code` transitions.
 - Propagate and reconcile weighted consensus in the P2P layer.
+
+_Version: v1.0.0_
+

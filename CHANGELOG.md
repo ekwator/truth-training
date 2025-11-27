@@ -126,10 +126,10 @@ This release delivers a fully unified cross-platform node discovery and synchron
 
 ### 📚 Documentation
 
-- **Architecture Documentation**: `docs/android_discovery_architecture.md` (navigation and device testing)
-- **Compatibility Documentation**: `docs/cross_platform_discovery_compatibility.md` (full implementation status)
-- **Post-Integration Hardening**: `docs/post_integration_hardening.md` (complete hardening phase)
-- **CLI Usage**: `docs/CLI_Usage.md` (command reference)
+- **Architecture Documentation**: [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md) (navigation and device testing)
+- **Compatibility Documentation**: [docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md) (full implementation status)
+- **Post-Integration Hardening**: [docs/post_integration_hardening.md](docs/post_integration_hardening.md) (complete hardening phase)
+- **CLI Usage**: [docs/CLI_Usage.md](docs/CLI_Usage.md) (command reference)
 - **README Updates**: Added "Running Tests" section with all platform instructions
 
 ### 🔧 Bug Fixes & Improvements
@@ -151,10 +151,10 @@ All components aligned to v1.0.0-Release:
 
 ### 🔗 References
 
-- **Cross-Platform Compatibility**: `docs/cross_platform_discovery_compatibility.md`
-- **Android Architecture**: `docs/android_discovery_architecture.md`
-- **Post-Integration Hardening**: `docs/post_integration_hardening.md`
-- **CLI Usage**: `docs/CLI_Usage.md`
+- **Cross-Platform Compatibility**: [docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)
+- **Android Architecture**: [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)
+- **Post-Integration Hardening**: [docs/post_integration_hardening.md](docs/post_integration_hardening.md)
+- **CLI Usage**: [docs/CLI_Usage.md](docs/CLI_Usage.md)
 
 ---
 
@@ -180,7 +180,7 @@ The Android client has been completely rewritten to achieve full feature parity 
 - **Performance Targets Met**: All benchmarks under thresholds
 - **Full Feature Parity**: Events, Context Templates, Judgments, Impacts, P2P sync
 
-See `truth-android-client/CHANGELOG.md` for detailed Android-specific changes.
+See [truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md) for detailed Android-specific changes.
 
 ### 🖥️ Desktop UI & Core (v1.0.0)
 
@@ -263,7 +263,7 @@ See `truth-android-client/CHANGELOG.md` for detailed Android-specific changes.
 - **Testing & Documentation**:
   - Contract tests for `/events` and `/judgments` endpoints
   - Integration tests for quickstart compliance scenarios
-  - Constitution compliance documentation (`docs/Constitution-Compliance.md`)
+  - Constitution compliance documentation ([docs/Constitution-Compliance.md](docs/Constitution-Compliance.md))
 - **Cross-Platform Fixes**:
   - Conditional compilation for `get_if_addrs` (excluded on Windows and Android)
   - Windows fallback for local IP detection
@@ -317,7 +317,7 @@ See `truth-android-client/CHANGELOG.md` for detailed Android-specific changes.
 ## [0.2.1-pre] — CLI Tool & Architecture Separation
 - New CLI tool: `truthctl` (subcommands: sync, verify, ratings, status)
 - Clean separation: `core` ↔ `app` ↔ P2P node; `truthctl` moved to `app/`
-- Architecture docs updated (`docs/ARCHITECTURE.md`, `spec/03-architecture.md`, `spec/11-decision-log.md`)
+- Architecture docs updated ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [spec/03-architecture.md](spec/03-architecture.md), [spec/11-decision-log.md](spec/11-decision-log.md))
 - Feature-gated P2P sync (`p2p-client-sync`)
 
 ## [0.2.0] — Ratings System & Verified P2P Sync

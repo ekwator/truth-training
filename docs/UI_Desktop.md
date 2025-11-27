@@ -1,3 +1,5 @@
+<!-- Archived from [docs/UI_Desktop.md](docs/UI_Desktop.md) -->
+
 ## Current Version
 Truth UI Desktop v1.0.0
 Compatible with Core/Server v1.0.0
@@ -12,7 +14,7 @@ This document summarizes the Desktop UI (Tauri) implementation with text-only in
 - **Text-Only Interface**: No icons, emojis, or graphical assets - pure text and structured layout
 - **SQLite Persistence**: Events, impacts, summaries, and judgments stored in SQLite (rusqlite 0.31, bundled)
 - **Offline-First**: Local-wins conflict resolution with background sync when online
-- **Knowledge Base Integration**: Dynamic context selection from `docs/Data_Schema.md`
+- **Knowledge Base Integration**: Dynamic context selection from [docs/Data_Schema.md](docs/Data_Schema.md)
 - **Context Template System (v1.0.0)**: Reusable context templates with template selection, matching, and duplicate detection
 
 ### Data Models
@@ -27,7 +29,7 @@ This document summarizes the Desktop UI (Tauri) implementation with text-only in
 - **Events**: `create_event_fast`, `get_event_fast`, `list_events_fast` (with pagination)
 - **Impacts**: `add_impact` (with validation 1-5 range)
 - **Judgments**: `submit_judgment_fast`, `judgments_list_fast`, `get_judgment_stats`
-- **Knowledge Base**: `knowledge_base_list` (parses Data_Schema.md)
+- **Knowledge Base**: `knowledge_base_list` (parses [Data_Schema.md](Data_Schema.md))
 - **Context Templates (v1.0.0)**: `list_contexts`, `get_context_by_name`, `create_context`, `match_context`, `create_context_from_event`
 - **Logs**: `list_logs`, `clear_logs` (35 lines/page pagination)
 - **Summary**: `get_overall_metrics`, `list_event_rows`, `export_overall_summary_txt`
@@ -114,4 +116,5 @@ The Context Editor screen allows users to create and manage context templates:
 - ✅ Desktop builds: Linux/Windows/macOS (rusqlite bundled)
 - ✅ Mobile builds: Android/iOS (truth_core only)
 - ✅ Cross-platform artifacts: libtruth_core-desktop per OS
+
 

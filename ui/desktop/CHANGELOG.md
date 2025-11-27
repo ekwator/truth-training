@@ -1,3 +1,5 @@
+<!-- Archived from [ui/desktop/CHANGELOG.md](ui/desktop/CHANGELOG.md) -->
+
 # Changelog
 
 All notable changes to the Truth Training Desktop UI will be documented in this file.
@@ -55,3 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offline-first architecture with sync capabilities
 - Health monitoring and status reporting
 - Cross-platform desktop support (Linux/Windows/macOS)
+
+_Version: v1.0.0_
+

@@ -1,3 +1,5 @@
+<!-- Archived from [docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md) -->
+
 # Android Client Migration Guide: v0.3.0 → v1.0.0
 
 **Date:** 2025-11-02  
@@ -244,15 +246,16 @@ cd truth-android-client
 
 ## 📚 Additional resources
 
-- **Specification:** `specs/007-title-align-truth/spec.md`
-- **Data model:** `specs/007-title-align-truth/data-model.md`
+- **Specification:** [specs/007-title-align-truth/spec.md](specs/007-title-align-truth/spec.md)
+- **Data model:** [specs/007-title-align-truth/data-model.md](specs/007-title-align-truth/data-model.md)
 - **API contracts:** `specs/007-title-align-truth/contracts/openapi.yaml`
-- **Quickstart:** `specs/007-title-align-truth/quickstart.md`
-- **Test report:** `docs/TEST_REPORT_ANDROID_v1.0.0.md`
-- **Test fix suggestions:** `docs/ANDROID_TEST_FIX_SUGGESTIONS.md`
-- **Version registry:** `docs/VERSION_REGISTRY.md`
+- **Quickstart:** \[specs/007-title-align-truth/quickstart.md](specs/007-title-align-truth/quickstart.md)
+- **Test report:** [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md)
+- **Test fix suggestions:** [docs/ANDROID_TEST_FIX_SUGGESTIONS.md](docs/ANDROID_TEST_FIX_SUGGESTIONS.md)
+- **Version registry:** [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)
 
 ---
 
 **Status:** ✅ Migration complete — Android v1.0.0 is ready for production.
+
 

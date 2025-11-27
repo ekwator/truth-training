@@ -1,4 +1,6 @@
 # Decision Log (ADR)
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 11
@@ -65,3 +67,7 @@ Spec ID: 11
 - **Reconciliation**: Idempotent operations with conflict resolution by timestamp
 - **CLI integration**: Reuses `CryptoIdentity` signing logic from server codepaths
 - **Feature gating**: `p2p-client-sync` feature for conditional compilation
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

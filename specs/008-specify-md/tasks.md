@@ -1,10 +1,10 @@
 # Tasks: Unified Node Discovery & Address Exchange
 
 **Input**: Design documents from `/specs/008-specify-md/`  
-**Prerequisites**: plan.md, research.md, data-model.md, contracts/, quickstart.md
+**Prerequisites**: [plan.md](plan.md)(p[lan.md](lan.md)), [research.md](research.md)(r[esearch.md](esearch.md)), [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)), contracts/, [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md))
 
 ## Phase 3.1: Setup
-- [x] T001 Define shared discovery interval & TTL configuration (FR-012) in `core/src/config.rs` (or new module) and document defaults in `docs/Data_Schema.md` + `docs/CLI_Usage.md`, ensuring spec + plan values are codified.
+- [x] T001 Define shared discovery interval & TTL configuration (FR-012) in `core/src/config.rs` (or new module) and document defaults in `[docs/Data_Schema.md](docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))` + `[docs/CLI_Usage.md](docs/CLI_Usage.md)(d[ocs/CLI_Usage.md](ocs/CLI_Usage.md))`, ensuring spec + plan values are codified.
 - [x] T002 Update workspace dependencies for multicast + networking (root `Cargo.toml`, `app/Cargo.toml`, `truth-android-client/build.gradle.kts`, `ui/desktop/package.json`) and run `cargo check`/`npm install` to confirm compatibility.
 
 ## Phase 3.2: Tests First (TDD)
@@ -70,7 +70,7 @@ Integration tests (Quickstart scenarios → [P]):
 ## Phase 3.4: Integration & Observability
 - [x] T048 Implement shared logging/metrics for discovery events (counters, TTL cleanup stats) in `src/main.rs`, `app/src/cli.rs`, and `ui/desktop/src-tauri/src/logging.rs`.
 - [x] T049 Update `tests/cli_sync.rs` to cover new CLI commands end-to-end (list/discover/sync/cleanup/validate).
-- [x] T050 Ensure Desktop ↔ Server ↔ Android sync handshake uses new merge helpers (update `tests/integration/cli_sync.rs` or new test) and document handshake contract in `contracts/README.md`.
+- [x] T050 Ensure Desktop ↔ Server ↔ Android sync handshake uses new merge helpers (update `tests/integration/cli_sync.rs` or new test) and document handshake contract in `[contracts/README.md](contracts/README.md)(c[ontracts/README.md](ontracts/README.md))`.
 
 ## Phase 3.6: Post-Integration Hardening & Reliability
 - [x] T055 Fix `lan_announcement_roundtrip` test feature flag gating (`#[cfg(feature = "desktop")]`).
@@ -85,10 +85,10 @@ Integration tests (Quickstart scenarios → [P]):
 - [x] T064 Update CI to run desktop feature tests (`cargo test --features desktop`).
 
 ## Phase 3.5: Polish & Documentation
-- [x] T051 [P] Update documentation (`README.md`, `docs/Data_Schema.md`, `docs/CLI_Usage.md`, `docs/architecture.md`) with schema, discovery flow, CLI usage, and Android/Desktop behaviors.
+- [x] T051 [P] Update documentation (`[README.md](README.md)(R[EADME.md](EADME.md))`, `[docs/Data_Schema.md](docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))`, `[docs/CLI_Usage.md](docs/CLI_Usage.md)(d[ocs/CLI_Usage.md](ocs/CLI_Usage.md))`, `[docs/architecture.md](docs/architecture.md)(d[ocs/architecture.md](ocs/architecture.md))`) with schema, discovery flow, CLI usage, and Android/Desktop behaviors.
 - [x] T052 [P] Add performance regression tests/benchmarks for discovery + merge in `tests/test_discovery_perf.rs` ensuring targets (<5s scan, <100ms merge).
-- [x] T053 [P] Execute quickstart scenarios end-to-end and capture results in `test-results/reports/node_discovery.md`, attaching logs/screenshots from each platform.
-- [x] T054 Run final CLI-driven verification (fresh DB, migrations, sync across modules) and record evidence in `docs/final_validation.md`.
+- [x] T053 [P] Execute quickstart scenarios end-to-end and capture results in `[test-results/reports/node_discovery.md](test-results/reports/node_discovery.md)(t[est-results/reports/node_discovery.md](est-results/reports/node_discovery.md))`, attaching logs/screenshots from each platform.
+- [x] T054 Run final CLI-driven verification (fresh DB, migrations, sync across modules) and record evidence in `[docs/final_validation.md](docs/final_validation.md)(d[ocs/final_validation.md](ocs/final_validation.md))`.
 
 ## Dependencies
 - T002 depends on T001 (config values referenced in deps).
@@ -134,3 +134,4 @@ task-agent run T047
 - Use structured logging + metrics per constitution.
 - Capture evidence (logs, screenshots) for validation tasks (T053–T054).
 
+_Version: v1.0.0_

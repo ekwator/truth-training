@@ -1,3 +1,5 @@
+<!-- Archived from .[specify/memory/constitution.md](specify/memory/constitution.md) -->
+
 <!--
 Sync Impact Report:
 Version change: 1.0.0 → 2.0.0
@@ -11,9 +13,9 @@ Added sections:
 - Truth Training Methodology
 Removed sections: None
 Templates requiring updates:
-- ✅ plan-template.md (constitution check references updated)
-- ✅ spec-template.md (philosophical alignment added)
-- ✅ tasks-template.md (collective intelligence principles integrated)
+- ✅ [plan-template.md](plan-template.md) (constitution check references updated)
+- ✅ [spec-template.md](spec-template.md) (philosophical alignment added)
+- ✅ [tasks-template.md](tasks-template.md) (collective intelligence principles integrated)
 Follow-up TODOs: None
 -->
 
@@ -135,38 +137,38 @@ Even without central connectivity, nodes can exchange and synchronize events ove
 - Extend `app` crate to integrate with the P2P layer via API.
 
 ### Documentation References
-- `spec/01-product-vision.md`
-- `spec/02-requirements.md`
-- `spec/03-architecture.md`
-- `spec/04-data-model.md`
-- `spec/05-api.md`
-- `spec/06-expert-system.md`
-- `spec/07-event-rating-protocol.md`
-- `spec/08-p2p-sync.md`
-- `spec/09-ux-guidelines.md`
-- `spec/10-roadmap.md`
-- `spec/11-decision-log.md`
-- `spec/12-open-questions.md`
-- `spec/13-traceability.md`
-- `spec/14-quality-gates.md`
-- `spec/15-prompts-and-automation.md`
-- `spec/16-test-plan.md`
-- `spec/18-cross-platform-architecture.md`
-- `spec/19-build-instructions.md`
-- `spec/20-cargo-configuration.md`
+- `[spec/01-product-vision.md](spec/01-product-vision.md)`
+- `[spec/02-requirements.md](spec/02-requirements.md)`
+- `[spec/03-architecture.md](spec/03-architecture.md)`
+- `[spec/04-data-model.md](spec/04-data-model.md)`
+- `[spec/05-api.md](spec/05-api.md)`
+- `[spec/06-expert-system.md](spec/06-expert-system.md)`
+- `[spec/07-event-rating-protocol.md](spec/07-event-rating-protocol.md)`
+- `[spec/08-p2p-sync.md](spec/08-p2p-sync.md)`
+- `[spec/09-ux-guidelines.md](spec/09-ux-guidelines.md)`
+- `[spec/10-roadmap.md](spec/10-roadmap.md)`
+- `[spec/11-decision-log.md](spec/11-decision-log.md)`
+- `[spec/12-open-questions.md](spec/12-open-questions.md)`
+- `[spec/13-traceability.md](spec/13-traceability.md)`
+- `[spec/14-quality-gates.md](spec/14-quality-gates.md)`
+- `[spec/15-prompts-and-automation.md](spec/15-prompts-and-automation.md)`
+- `[spec/16-test-plan.md](spec/16-test-plan.md)`
+- `[spec/18-cross-platform-architecture.md](spec/18-cross-platform-architecture.md)`
+- `[spec/19-build-instructions.md](spec/19-build-instructions.md)`
+- `[spec/20-cargo-configuration.md](spec/20-cargo-configuration.md)`
 
 ### Primary Goal
 Ensure coherence between API, storage, and P2P layers; maintain cryptographic integrity of communications; provide a foundation for a portable, extensible truth‑evaluation platform that enables collective intelligence through distributed consensus.
 
 ## Development Workflow and Quality Gates
 
-- Test-first: follow `spec/16-test-plan.md`; Red-Green-Refactor cycle enforced.
-- Quality gates: see `spec/14-quality-gates.md`; CI runs fmt, clippy, unit/integration tests; coverage thresholds enforced.
+- Test-first: follow `[spec/16-test-plan.md](spec/16-test-plan.md)`; Red-Green-Refactor cycle enforced.
+- Quality gates: see `[spec/14-quality-gates.md](spec/14-quality-gates.md)`; CI runs fmt, clippy, unit/integration tests; coverage thresholds enforced.
 - Reviews: PRs must verify compliance with this constitution and relevant specs.
-- Traceability: keep `spec/13-traceability.md` in sync; link commits/PRs to requirements.
-- Breaking changes: require updates to `spec/03-architecture.md`, `spec/04-data-model.md`, `spec/05-api.md`, `spec/08-p2p-sync.md` and a migration plan.
+- Traceability: keep `[spec/13-traceability.md](spec/13-traceability.md)` in sync; link commits/PRs to requirements.
+- Breaking changes: require updates to `[spec/03-architecture.md](spec/03-architecture.md)`, `[spec/04-data-model.md](spec/04-data-model.md)`, `[spec/05-api.md](spec/05-api.md)`, `[spec/08-p2p-sync.md](spec/08-p2p-sync.md)` and a migration plan.
 - Storage migrations: provide forward/backward migrations and seed updates in `core`.
-- API/P2P contracts: add/extend contract tests; bump versions; document in `spec/11-decision-log.md`.
+- API/P2P contracts: add/extend contract tests; bump versions; document in `[spec/11-decision-log.md](spec/11-decision-log.md)`.
 - Release process: per-crate semver bump, changelog entry, artifacts; maintain compatibility notes in specs.
 
 ## Governance
@@ -175,8 +177,11 @@ This constitution supersedes other practices. Amendments require documentation, 
 - All PRs/reviews must assert compliance and link to updated specs.
 - Complexity must be justified; prefer simple, observable solutions.
 - Cryptographic/protocol changes require security review and test evidence.
-- Use `spec/15-prompts-and-automation.md` for automation and agent guidance.
+- Use `[spec/15-prompts-and-automation.md](spec/15-prompts-and-automation.md)` for automation and agent guidance.
 - Collective intelligence principles must be preserved in all architectural decisions.
 - Truth training methodology must be reflected in all user-facing interfaces and data flows.
 
 **Version**: 2.1.0 | **Ratified**: 2025-10-31 | **Last Amended**: 2025-10-31
+
+_Version: v1.0.0_
+

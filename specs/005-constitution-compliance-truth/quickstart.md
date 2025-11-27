@@ -15,4 +15,4 @@
 - Plaintext storage observed; risk warning displayed in UI docs.
 - Mesh sync functions over Wi‑Fi Direct.
 
-
+_Version: v1.0.0_

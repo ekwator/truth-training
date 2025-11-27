@@ -225,3 +225,4 @@ fn should_replace(existing: Option<&Node>, candidate: &Node) -> bool {
 
 **All NEEDS CLARIFICATION markers resolved**: ✅
 
+_Version: v1.0.0_

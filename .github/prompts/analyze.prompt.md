@@ -1,5 +1,7 @@
+<!-- Archived from .[github/prompts/analyze.prompt.md](github/prompts/analyze.prompt.md) -->
+
 ---
-description: Perform a non-destructive cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md after task generation.
+description: Perform a non-destructive cross-artifact consistency and quality analysis across [spec.md](spec.md), [plan.md](plan.md), and [tasks.md](tasks.md) after task generation.
 ---
 
 The user input to you can be provided directly by the agent or as a command argument - you **MUST** consider it before proceeding with the prompt (if not empty).
@@ -8,25 +10,25 @@ User input:
 
 $ARGUMENTS
 
-Goal: Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This command MUST run only after `/tasks` has successfully produced a complete `tasks.md`.
+Goal: Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`[spec.md](spec.md)`, `[plan.md](plan.md)`, `[tasks.md](tasks.md)`) before implementation. This command MUST run only after `/tasks` has successfully produced a complete `[tasks.md](tasks.md)`.
 
 STRICTLY READ-ONLY: Do **not** modify any files. Output a structured analysis report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing commands would be invoked manually).
 
-Constitution Authority: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/analyze`.
+Constitution Authority: The project constitution (`[.specify/memory/constitution.md](.specify/memory/constitution.md)`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/analyze`.
 
 Execution steps:
 
 1. Run `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks` once from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS. Derive absolute paths:
-   - SPEC = FEATURE_DIR/spec.md
-   - PLAN = FEATURE_DIR/plan.md
-   - TASKS = FEATURE_DIR/tasks.md
+   - SPEC = [FEATURE_DIR/spec.md](FEATURE_DIR/spec.md)
+   - PLAN = [FEATURE_DIR/plan.md](FEATURE_DIR/plan.md)
+   - TASKS = [FEATURE_DIR/tasks.md](FEATURE_DIR/tasks.md)
    Abort with an error message if any required file is missing (instruct the user to run missing prerequisite command).
 
 2. Load artifacts:
-   - Parse spec.md sections: Overview/Context, Functional Requirements, Non-Functional Requirements, User Stories, Edge Cases (if present).
-   - Parse plan.md: Architecture/stack choices, Data Model references, Phases, Technical constraints.
-   - Parse tasks.md: Task IDs, descriptions, phase grouping, parallel markers [P], referenced file paths.
-   - Load constitution `.specify/memory/constitution.md` for principle validation.
+   - Parse [spec.md](spec.md) sections: Overview/Context, Functional Requirements, Non-Functional Requirements, User Stories, Edge Cases (if present).
+   - Parse [plan.md](plan.md): Architecture/stack choices, Data Model references, Phases, Technical constraints.
+   - Parse [tasks.md](tasks.md): Task IDs, descriptions, phase grouping, parallel markers [P], referenced file paths.
+   - Load constitution `[.specify/memory/constitution.md](.specify/memory/constitution.md)` for principle validation.
 
 3. Build internal semantic models:
    - Requirements inventory: Each functional + non-functional requirement with a stable key (derive slug based on imperative phrase; e.g., "User can upload file" -> `user-can-upload-file`).
@@ -68,7 +70,7 @@ Execution steps:
    ### Specification Analysis Report
    | ID | Category | Severity | Location(s) | Summary | Recommendation |
    |----|----------|----------|-------------|---------|----------------|
-   | A1 | Duplication | HIGH | spec.md:L120-134 | Two similar requirements ... | Merge phrasing; keep clearer version |
+   | A1 | Duplication | HIGH | [spec.md](spec.md):L120-134 | Two similar requirements ... | Merge phrasing; keep clearer version |
    (Add one row per finding; generate stable IDs prefixed by category initial.)
 
    Additional subsections:
@@ -87,7 +89,7 @@ Execution steps:
 7. At end of report, output a concise Next Actions block:
    - If CRITICAL issues exist: Recommend resolving before `/implement`.
    - If only LOW/MEDIUM: User may proceed, but provide improvement suggestions.
-   - Provide explicit command suggestions: e.g., "Run /specify with refinement", "Run /plan to adjust architecture", "Manually edit tasks.md to add coverage for 'performance-metrics'".
+   - Provide explicit command suggestions: e.g., "Run /specify with refinement", "Run /plan to adjust architecture", "Manually edit [tasks.md](tasks.md) to add coverage for 'performance-metrics'".
 
 8. Ask the user: "Would you like me to suggest concrete remediation edits for the top N issues?" (Do NOT apply them automatically.)
 
@@ -99,3 +101,6 @@ Behavior rules:
 - If zero issues found, emit a success report with coverage statistics and proceed recommendation.
 
 Context: $ARGUMENTS
+
+_Version: v1.0.0_
+

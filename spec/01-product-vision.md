@@ -1,4 +1,6 @@
 # Product Vision
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 01
@@ -14,3 +16,7 @@ Truth Training fosters a resilient, decentralized information space where collec
 Stakeholders: end users, validators, app developers, UI teams.
 
 Success metrics: adoption, sync reliability, evaluation consistency, time to verify, reduced conflicting states.
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

@@ -1,4 +1,6 @@
 # Roadmap (High-level)
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 21
@@ -27,3 +29,7 @@ Milestone M3 (Security & Sync)
 Milestone M4 (UX/DevEx)
 - CI gates; reproducible builds; tests.
 - UI prototypes (web/tui) against API.
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

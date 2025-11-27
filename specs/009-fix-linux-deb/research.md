@@ -174,3 +174,4 @@
 
 All research questions resolved. Ready for Phase 1 design.
 
+_Version: v1.0.0_

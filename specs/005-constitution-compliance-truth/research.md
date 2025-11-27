@@ -21,4 +21,4 @@
 - Confidence scalar: deferred; adds UX and math complexity.
 - Bluetooth LE first: deferred due to bandwidth and platform constraints.
 
-
+_Version: v1.0.0_

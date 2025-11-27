@@ -191,3 +191,5 @@ CREATE INDEX idx_events_created_at ON events(created_at);
 CREATE INDEX idx_reputation_history_participant_id ON reputation_history(participant_id);
 CREATE INDEX idx_reputation_history_updated_at ON reputation_history(updated_at);
 ```
+
+_Version: v1.0.0_

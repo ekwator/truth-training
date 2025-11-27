@@ -169,3 +169,4 @@ ServiceDefinition {
 - Future config location: `/etc/truth-core-server/` (new installations)
 - Migration script: Move config from old to new location if needed
 
+_Version: v1.0.0_

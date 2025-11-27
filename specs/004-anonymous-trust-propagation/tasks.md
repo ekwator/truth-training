@@ -32,7 +32,7 @@ T020. [X] E2E user-flow: verify UI update for ETF and not_confirmed message (int
 
 ## Polish & Docs ([P])
 T021. [X] Финализировать и описать миграции/инициализацию моделей для ATPP
-T022. [X] Написать документацию для devs (docs/atpp-impl.md) с примерами использования API и настроек лимитов
+T022. [X] Написать документацию для devs ([docs/atpp-impl.md](docs/atpp-impl.md)(d[ocs/atpp-impl.md](ocs/atpp-impl.md) с примерами использования API и настроек лимитов
 T023. [X] Добавить/улучшить логи, мониторинг лимитов и событий ошибок
 T024. [X] Провести code review & рефакторинг моделей/endpoint-ов
 
@@ -40,3 +40,5 @@ T024. [X] Провести code review & рефакторинг моделей/e
 - Все [P]-tasks без явных пересечений могут выполняться параллельно (contract tests, models, integration scenarios).
 - Реализация endpoints возможна только после соответствующих моделей и прохода контрактных тестов.
 - Polish-задачи и документация делаются после основных core и тестовых фич.
+
+_Version: v1.0.0_

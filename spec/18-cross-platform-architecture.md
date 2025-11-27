@@ -1,4 +1,6 @@
 # Cross-Platform Architecture Specification
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 18
@@ -78,53 +80,13 @@ mod crypto;            // Cryptographic operations
 
 ## Directory Structure
 
-```
-truth-training/
-├── src/                         # Main library source
-│   ├── lib.rs                   # Main library entry point with feature gates
-│   ├── api.rs                   # HTTP REST API (desktop only)
-│   ├── expert.rs                # Expert system implementation
-│   ├── net.rs                   # Network utilities (desktop only)
-│   ├── server_diagnostics.rs   # Server health checks (desktop only)
-│   ├── sync.rs                  # Synchronization logic (desktop only)
-│   ├── p2p/                     # P2P networking (desktop only)
-│   │   ├── mod.rs               # P2P module exports
-│   │   ├── encryption.rs        # Ed25519 crypto operations
-│   │   ├── node.rs              # P2P node implementation
-│   │   └── sync.rs              # P2P synchronization protocol
-│   └── android/                 # Android-specific modules (mobile only)
-│       ├── mod.rs               # Android JNI bindings
-│       └── verify_json.rs       # JSON signature verification
-├── core/                        # Core library (shared)
-│   ├── src/
-│   │   ├── lib.rs               # Core library exports
-│   │   ├── auth.rs              # Authentication logic
-│   │   ├── expert_simple.rs     # Truth assessment algorithms
-│   │   ├── knowledge.rs         # Knowledge management
-│   │   ├── models.rs            # Data models
-│   │   ├── storage.rs           # Database operations
-│   │   ├── sync.rs              # Core synchronization
-│   │   └── trust_propagation.rs # Trust propagation logic
-│   └── Cargo.toml               # Core dependencies
-├── app/                         # Desktop application
-│   ├── src/
-│   │   ├── main.rs              # Desktop app entry point
-│   │   ├── cli.rs                # CLI command handling
-│   │   ├── config_utils.rs      # Configuration utilities
-│   │   ├── diagnostics.rs       # Diagnostic tools
-│   │   └── status_utils.rs      # Status utilities
-│   └── Cargo.toml               # Desktop app dependencies
-├── integration/                 # Platform integration guides
-│   ├── android/                 # Android integration
-│   ├── ios/                     # iOS integration
-│   └── desktop/                 # Desktop integration
-├── tests/                       # Integration tests
-│   ├── android_verify.rs        # Android signature verification tests
-│   ├── api_push.rs              # API push tests
-│   └── cli_sync.rs              # CLI synchronization tests
-├── Cargo.toml                   # Root workspace configuration
-└── README.md                    # Project documentation
-```
+``` truth-training/ ├── src/ # Main library source │ ├── lib.rs # Main library entry point with feature gates │ ├── api.rs # HTTP REST API (desktop only) │ ├── expert.rs # Expert system implementation │ ├── net.rs # Network utilities (desktop only) │ ├── server_diagnostics.rs # Server health checks (desktop only) │ ├── sync.rs # Synchronization logic (desktop only) │ ├── p2p/ # P2P networking (desktop only) │ │ ├── mod.rs # P2P module exports │ │ ├── encryption.rs
+
+# Ed25519 crypto operations │ │ ├── node.rs # P2P node implementation │ │ └── sync.rs # P2P synchronization protocol │ └── android/ # Android-specific modules (mobile only) │ ├── mod.rs # Android JNI bindings │ └── verify_json.rs # JSON signature verification ├── core/ # Core library (shared) │ ├── src/ │ │ ├── lib.rs # Core library exports │ │ ├── auth.rs # Authentication logic │ │ ├── expert_simple.rs # Truth assessment algorithms │ │ ├── knowledge.rs # Knowledge
+
+management │ │ ├── models.rs # Data models │ │ ├── storage.rs # Database operations │ │ ├── sync.rs # Core synchronization │ │ └── trust_propagation.rs # Trust propagation logic │ └── Cargo.toml # Core dependencies ├── app/ # Desktop application │ ├── src/ │ │ ├── main.rs # Desktop app entry point │ │ ├── cli.rs # CLI command handling │ │ ├── config_utils.rs # Configuration utilities │ │ ├── diagnostics.rs # Diagnostic tools │ │ └── status_utils.rs #
+
+Status utilities │ └── Cargo.toml # Desktop app dependencies ├── integration/ # Platform integration guides │ ├── android/ # Android integration │ ├── ios/ # iOS integration │ └── desktop/ # Desktop integration ├── tests/ # Integration tests │ ├── android_verify.rs # Android signature verification tests │ ├── api_push.rs # API push tests │ └── cli_sync.rs # CLI synchronization tests ├── Cargo.toml # Root workspace configuration └── [README.md](README.md) # Project documentation ```
 
 ## Platform-Specific Implementations
 
@@ -197,7 +159,7 @@ pub extern "system" fn Java_com_truth_training_client_TruthCore_processJsonReque
         Err(_) => return env.new_string(r#"{"error":"invalid_input"}"#).unwrap().into_raw(),
     };
 
-    // Process JSON request using core logic
+// Process JSON request using core logic
     let response = process_json_request(&input);
     
     match env.new_string(response) {
@@ -227,7 +189,7 @@ pub extern "C" fn truth_core_process_json(
         }
     };
 
-    // Process JSON using core logic
+// Process JSON using core logic
     let response = process_json_request(json_str);
     
     match CString::new(response) {
@@ -437,3 +399,7 @@ cargo test --features desktop
 - **Shared**: Ed25519 cryptographic operations, secure P2P communication
 
 This architecture ensures optimal performance and functionality for each target platform while maintaining code reusability and consistency across the Truth Training ecosystem.
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.
