@@ -130,7 +130,7 @@ truth-ios-client/
 │   ├── truth_core.h             # C header
 │   ├── libtruth_core.a          # Rust library
 │   └── Assets.xcassets/         # App assets
-└── README.md                    # This file
+└── [README.md](README.md)(R[EADME.md](EADME.md))                    # This file
 ```
 
 ### Testing
@@ -148,3 +148,5 @@ The iOS client is integrated with GitHub Actions for automated building and test
 ## License
 
 This project is part of the Truth Training platform. See the main repository for licensing information.
+
+_Version: v1.0.0_

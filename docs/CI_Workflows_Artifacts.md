@@ -1,4 +1,6 @@
-⚙️ Version Reference: See spec/README.md or docs/VERSION_REGISTRY.md for current version map.
+<!-- Archived from [docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md) -->
+
+⚙️ Version Reference: See [spec/README.md](spec/README.md) or [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md) for current version map.
 
 ## CI Workflows: Directory Structure and Artifacts
 
@@ -236,4 +238,5 @@ When a GitHub release is created:
 - AAB (Android App Bundle) is preferred for Google Play distribution
 - APK is provided for direct installation/testing
 
+_Version: v1.0.0_
 

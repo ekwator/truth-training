@@ -200,16 +200,16 @@ Peer Sync → HTTP POST → Merge (Local > Global) → Return Merged List
 ```
 
 **Reference Documentation:**
-- `docs/cross_platform_discovery_compatibility.md` - Format specifications
-- `docs/android_discovery_architecture.md` - Android implementation details
-- `specs/008-specify-md/contracts/README.md` - Sync handshake contract
+- [docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md) - Format specifications
+- [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md) - Android implementation details
+- [specs/008-specify-md/contracts/README.md](specs/008-specify-md/contracts/README.md) - Sync handshake contract
 
 ## 📄 Documents
 
-* **architecture.md** (current file) — module diagram and connections.
-* **ui\_guidelines.md** — UI integration rules with core.
-* **build\_instructions.md** — core and UI build instructions.
-* **cross_platform_discovery_compatibility.md** — Node discovery format compatibility.
-* **android_discovery_architecture.md** — Android discovery implementation.
-* **CLI_Usage.md** — truthctl command reference.
-* **Data_Schema.md** — Database schema documentation.
+* **[architecture.md](architecture.md)** (current file) — module diagram and connections.
+* **[ui_guidelines.md](ui_guidelines.md)** — UI integration rules with core.
+* **[build_instructions.md](build_instructions.md)** — core and UI build instructions.
+* **[cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md)** — Node discovery format compatibility.
+* **[android_discovery_architecture.md](android_discovery_architecture.md)** — Android discovery implementation.
+* **[CLI_Usage.md](CLI_Usage.md)** — truthctl command reference.
+* **[Data_Schema.md](Data_Schema.md)** — Database schema documentation.

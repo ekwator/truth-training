@@ -1,3 +1,5 @@
+<!-- Archived from .[github/prompts/clarify.prompt.md](github/prompts/clarify.prompt.md) -->
+
 ---
 description: Identify underspecified areas in the current feature spec by asking up to 5 highly targeted clarification questions and encoding answers back into the spec.
 ---
@@ -156,3 +158,6 @@ Behavior rules:
  - If quota reached with unresolved high-impact categories remaining, explicitly flag them under Deferred with rationale.
 
 Context for prioritization: $ARGUMENTS
+
+_Version: v1.0.0_
+

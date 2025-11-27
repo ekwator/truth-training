@@ -18,18 +18,18 @@ Given the implementation details provided as an argument, do this:
    - Success criteria and acceptance criteria
    - Any technical constraints or dependencies mentioned
 
-3. Read the constitution at `.specify/memory/constitution.md` to understand constitutional requirements.
+3. Read the constitution at `.[specify/memory/constitution.md](specify/memory/constitution.md)` to understand constitutional requirements.
 
 4. Execute the implementation plan template:
-   - Load `.specify/templates/plan-template.md` (already copied to IMPL_PLAN path)
+   - Load `.[specify/templates/plan-template.md](specify/templates/plan-template.md)` (already copied to IMPL_PLAN path)
    - Set Input path to FEATURE_SPEC
    - Run the Execution Flow (main) function steps 1-9
    - The template is self-contained and executable
    - Follow error handling and gate checks as specified
    - Let the template guide artifact generation in $SPECS_DIR:
-     * Phase 0 generates research.md
-     * Phase 1 generates data-model.md, contracts/, quickstart.md
-     * Phase 2 generates tasks.md
+     * Phase 0 generates [research.md](research.md)
+     * Phase 1 generates [data-model.md](data-model.md), contracts/, [quickstart.md](quickstart.md)
+     * Phase 2 generates [tasks.md](tasks.md)
    - Incorporate user-provided details from arguments into Technical Context: $ARGUMENTS
    - Update Progress Tracking as you complete each phase
 

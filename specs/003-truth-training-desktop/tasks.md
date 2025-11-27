@@ -1,7 +1,7 @@
 # Tasks: Truth Training Desktop UI — Text-Only Interface
 
 **Input**: Design documents from `/specs/003-truth-training-desktop/`
-**Prerequisites**: plan.md (required), research.md, data-model.md, contracts/
+**Prerequisites**: [plan.md](plan.md)(p[lan.md](lan.md)) (required), [research.md](research.md)(r[esearch.md](esearch.md)), [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)), contracts/
 
 ## Phase 3.1: Setup
 - [x] T001 Update UI version to 0.2.0 surfaced on Home (ui/desktop frontend)
@@ -22,7 +22,7 @@
 - [x] T012 [P] Data model: add/verify Event schema (context_id required) in `ui/desktop/src-tauri/src/storage.rs`
 - [x] T013 [P] Data model: Impact (level 1..5) in `storage.rs`
 - [x] T014 [P] Data model: Summary (1:1 per Event) in `storage.rs`
-- [x] T015 Service/command: `list_kb_contexts` parse from `docs/Data_Schema.md` in `ui/desktop/src-tauri/src/commands/knowledge_base.rs`
+- [x] T015 Service/command: `list_kb_contexts` parse from `[docs/Data_Schema.md](docs/Data_Schema.md)(d[ocs/Data_Schema.md](ocs/Data_Schema.md))` in `ui/desktop/src-tauri/src/commands/knowledge_base.rs`
 - [x] T016 Service/command: `create_event` validates Context presence; forbid save if KB empty
 - [x] T017 Service/command: `list_events` with paging
 - [x] T018 Service/command: `add_impact` validation and insert
@@ -44,7 +44,7 @@
 ## Phase 3.5: Polish
 - [x] T031 [P] Unit tests: validation rules (dates order, impact level)
 - [x] T032 [P] Performance: navigation + pagination < 100ms on baseline
-- [x] T033 [P] Docs: update `docs/UI_Desktop.md` with text-only flows and shortcuts
+- [x] T033 [P] Docs: update `[docs/UI_Desktop.md](docs/UI_Desktop.md)(d[ocs/UI_Desktop.md](ocs/UI_Desktop.md))` with text-only flows and shortcuts
 - [x] T034 [P] CI: ensure desktop builds (Linux/Windows/macOS) still pass
 
 ## Dependencies
@@ -69,3 +69,5 @@ Run T020, T021, T026
 ## Notes
 - [P] tasks only when files don’t conflict.
 - Commit after each task; keep diffs focused.
+
+_Version: v1.0.0_

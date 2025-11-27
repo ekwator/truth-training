@@ -24,3 +24,5 @@ sudo systemctl stop truth-core.service
 - Перезапуск/автостарт настроены через systemd.
 - Ограничение: никакой модификации/логирования identities или acknowledgment — только автостарт, перезапуск, чистое event propagation.
 - Для удаления с очисткой: sudo dpkg --purge truth-core-service
+
+_Version: v1.0.0_

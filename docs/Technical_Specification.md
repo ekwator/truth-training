@@ -1,3 +1,5 @@
+<!-- Archived from [docs/Technical_Specification.md](docs/Technical_Specification.md) -->
+
 # Technical Specification: "Truth Training" Platform
 
 ## 1. General Concept
@@ -75,3 +77,6 @@ The application models the development process of civilization and an individual
 * **Storage**: SQLite (separate databases for locales).
 * **Synchronization**: JSON via REST API.
 * **UI**: cross-platform (Tauri + Rust).
+
+_Version: v1.0.0_
+

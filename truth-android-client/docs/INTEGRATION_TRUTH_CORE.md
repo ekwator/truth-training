@@ -1,3 +1,5 @@
+<!-- Archived from [truth-android-client/docs/INTEGRATION_TRUTH_CORE.md](truth-android-client/docs/INTEGRATION_TRUTH_CORE.md) -->
+
 # Truth Core Integration (JNI)
 
 ## Overview
@@ -97,3 +99,6 @@ Otherwise:
 ```json
 { "status": "ok", "trusted": true }
 ```
+
+_Version: v1.0.0_
+

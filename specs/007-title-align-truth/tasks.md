@@ -1,11 +1,11 @@
 # Tasks: Align Truth Training Android Client with Desktop v1.0.0 Features
 
 **Input**: Design documents from `/specs/007-title-align-truth/`
-**Prerequisites**: plan.md ✓, research.md ✓, data-model.md ✓, contracts/ ✓, quickstart.md ✓
+**Prerequisites**: [plan.md](plan.md)(p[lan.md](lan.md)) ✓, [research.md](research.md)(r[esearch.md](esearch.md)) ✓, [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)) ✓, contracts/ ✓, [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)) ✓
 
 ## Execution Flow (main)
 ```
-1. Load plan.md from feature directory ✓
+1. Load [plan.md](plan.md)(p[lan.md](lan.md)) from feature directory ✓
 2. Load optional design documents ✓
 3. Generate tasks by category ✓
 4. Apply task rules ✓
@@ -142,15 +142,15 @@
 ### Performance and Validation
 - [x] T072 Performance tests for Room queries in `truth-android-client/app/src/androidTest/java/com/truth/training/client/performance/RoomPerformanceTest.kt`. Benchmarks: pagination query (< 50ms for 35 events), single entity retrieval (< 10ms for event by ID), bulk insert (< 100ms for 100 events), complex query (< 30ms for filtered list with status), Flow emission (< 20ms initial latency). Use AndroidBenchmarkRule, measure average of 10 iterations, test with database sizes: 100, 1000, 10000 events. Store results in PerformanceBenchmark data class (operation, averageTime, minTime, maxTime, databaseSize). Validate query plans and indices.
 - [x] T073 Validate UI response times in `truth-android-client/app/src/androidTest/java/com/truth/training/client/performance/UIResponseTimeTest.kt`. Benchmarks: screen rendering (< 200ms for EventListScreen), data loading (< 500ms for initial data fetch), user interaction (< 100ms for button clicks), navigation (< 150ms for screen transitions). Use Espresso for UI automation, androidx.benchmark.macro (API 29+). Test scenarios: cold start with empty database, warm start with cached data, large dataset rendering (100+ events). Test on physical devices. Validate Compose recomposition counts.
-- [x] T074 Execute quickstart.md validation scenarios manually. File: `specs/007-title-align-truth/quickstart.md`. Execute all 6 scenarios: Scenario 1 (Event creation with context template), Scenario 2 (Context template duplicate detection), Scenario 3 (Judgment submission and consensus), Scenario 4 (Offline-first operation), Scenario 5 (Template matching), Scenario 6 (Cross-platform data consistency). Document results with screenshots/logs, verify cross-platform consistency, test offline-first behavior end-to-end. Generate test report in `docs/TEST_REPORT_ANDROID_v1.0.0.md` including: unit test summary (coverage by component, total coverage percentage), performance benchmarks (Room query performance table, UI response time table, comparison vs Desktop UI), integration test results (quickstart scenario validation, cross-platform consistency checks).
+- [x] T074 Execute [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)) validation scenarios manually. File: `[specs/007-title-align-truth/quickstart.md](specs/007-title-align-truth/quickstart.md)(s[pecs/007-title-align-truth/quickstart.md](pecs/007-title-align-truth/quickstart.md))`. Execute all 6 scenarios: Scenario 1 (Event creation with context template), Scenario 2 (Context template duplicate detection), Scenario 3 (Judgment submission and consensus), Scenario 4 (Offline-first operation), Scenario 5 (Template matching), Scenario 6 (Cross-platform data consistency). Document results with screenshots/logs, verify cross-platform consistency, test offline-first behavior end-to-end. Generate test report in `[docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md)(d[ocs/TEST_REPORT_ANDROID_v1.0.0.md](ocs/TEST_REPORT_ANDROID_v1.0.0.md))` including: unit test summary (coverage by component, total coverage percentage), performance benchmarks (Room query performance table, UI response time table, comparison vs Desktop UI), integration test results (quickstart scenario validation, cross-platform consistency checks).
 
 ### Documentation
-- [x] T075 [P] Update `truth-android-client/README.md` with v1.0.0 features and Room database information
-- [x] T076 [P] Update `docs/Truth-training/Truth-training.md` marking Android v1.0.0 as complete
-- [x] T077 [P] Create `docs/ANDROID_MIGRATION.md` documenting migration from v0.3.0 to v1.0.0
+- [x] T075 [P] Update `[truth-android-client/README.md](truth-android-client/README.md)(t[ruth-android-client/README.md](ruth-android-client/README.md))` with v1.0.0 features and Room database information
+- [x] T076 [P] Update `[docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md)(d[ocs/Truth-training/Truth-training.md](ocs/Truth-training/Truth-training.md))` marking Android v1.0.0 as complete
+- [x] T077 [P] Create `[docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md)(d[ocs/ANDROID_MIGRATION.md](ocs/ANDROID_MIGRATION.md))` documenting migration from v0.3.0 to v1.0.0
 
 ### CI/CD Updates
-- [x] T078 Update `.github/workflows/android-build.yml` for v1.0.0 versioning and release artifacts. Requirements: build Debug and Release (AAB) artifacts, run all test suites (unit, integration, performance), cache Gradle dependencies (`.gradle/caches`, `~/.gradle/caches/modules-2`), upload artifacts to GitHub Releases on tag builds. Matrix build for multiple API levels (26, 27, 28, 29, 30, 31, 32, 33). Workflow: test job (run all tests), build job (Debug/Release matrix), release job (upload to GitHub Releases on release event). Optimizations: Gradle build cache, dependency cache, test result caching. Ensure versionName "1.0.0" is used in build. Updated `docs/CI_Workflows_Artifacts.md` with Android build section.
+- [x] T078 Update `.github/workflows/android-build.yml` for v1.0.0 versioning and release artifacts. Requirements: build Debug and Release (AAB) artifacts, run all test suites (unit, integration, performance), cache Gradle dependencies (`.gradle/caches`, `~/.gradle/caches/modules-2`), upload artifacts to GitHub Releases on tag builds. Matrix build for multiple API levels (26, 27, 28, 29, 30, 31, 32, 33). Workflow: test job (run all tests), build job (Debug/Release matrix), release job (upload to GitHub Releases on release event). Optimizations: Gradle build cache, dependency cache, test result caching. Ensure versionName "1.0.0" is used in build. Updated `[docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)(d[ocs/CI_Workflows_Artifacts.md](ocs/CI_Workflows_Artifacts.md))` with Android build section.
 
 ## Dependencies
 

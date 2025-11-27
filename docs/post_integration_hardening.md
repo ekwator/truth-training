@@ -1,3 +1,5 @@
+<!-- Archived from [docs/post_integration_hardening.md](docs/post_integration_hardening.md) -->
+
 # Post-Integration Hardening & Reliability Phase
 
 **Date**: 2025-01-XX  
@@ -141,26 +143,26 @@ cargo test --features desktop lan_announcement_roundtrip
 **Required Updates**:
 
 1. **Android Navigation Instructions**
-   - File: `docs/android_discovery_architecture.md`
+   - File: [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)
    - Add section: "Navigation Integration"
    - Document route: `"nodes"`
    - Document ViewModel factory usage
 
 2. **Device Test Instructions**
-   - File: `docs/android_discovery_architecture.md` or new file
+   - File: [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md) or new file
    - Add section: "Running Tests on Physical Devices"
    - Instructions for `connectedDebugAndroidTest`
    - Network requirements
    - Firewall configuration
 
 3. **Feature Flag Instructions**
-   - File: `README.md` or `docs/development.md`
+   - File: [README.md](README.md) or [docs/development.md](docs/development.md)
    - Add section: "Running Desktop Feature Tests"
    - Command: `cargo test --features desktop`
    - CI configuration
 
 4. **Cross-Platform Test Matrix**
-   - File: `docs/cross_platform_discovery_compatibility.md`
+   - File: [docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)
    - Update compatibility matrix
    - Add test execution instructions
 
@@ -240,7 +242,9 @@ cd truth-android-client
 
 ## References
 
-- **Tasks**: `specs/008-specify-md/tasks.md` (Phase 3.6)
-- **Compatibility**: `docs/cross_platform_discovery_compatibility.md`
-- **Android Architecture**: `docs/android_discovery_architecture.md`
+- **Tasks**: [specs/008-specify-md/tasks.md](specs/008-specify-md/tasks.md) (Phase 3.6)
+- **Compatibility**: [docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)
+- **Android Architecture**: [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)
+
+_Version: v1.0.0_
 

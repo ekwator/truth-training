@@ -51,7 +51,7 @@ Every contribution must begin with a **specification** describing:
 The output is stored in:
 
 ```
-docs/prompt/<author>/specifyN/specN.md
+docs/prompt/<author>/[specifyN/specN.md](specifyN/specN.md)
 ```
 
 ---
@@ -61,7 +61,7 @@ docs/prompt/<author>/specifyN/specN.md
 Each specification must include a **plan folder**:
 
 ```
-docs/prompt/<author>/specifyN/plan/planN.md
+docs/prompt/<author>/[specifyN/plan/planN.md](specifyN/plan/planN.md)
 ```
 
 The plan describes:
@@ -366,6 +366,30 @@ Push is allowed only when all of the above succeed.
 
 ---
 
+## 4.1 Documentation Refactor Automation
+
+The v1.0.0 release ships with an automated documentation pipeline (`scripts/doc_refactor/`) that enforces README hierarchy, `/docs` depth, `/spec` compression, link integrity, and archive hygiene. Contributors touching Markdown must validate their changes with these tools before opening a PR:
+
+1. **Bootstrap the environment**
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+2. **Targeted phase runs**
+   - Inventory + link validation: `python scripts/doc_refactor/main.py run --phases inventory,link_discovery,validation`
+   - README / archive restructuring: `python scripts/doc_refactor/main.py run --phases restructuring`
+   - Spec optimization pass: `python scripts/doc_refactor/main.py run --phases spec_opt`
+3. **End-to-end verification**
+   ```bash
+   make doc-refactor-run   # executes --phases all
+   make doc-refactor-test  # runs pytest suite under scripts/doc_refactor/tests
+   ```
+
+Reports (inventory, link graph, validation, restructure, spec_opt, dedupe, run_summary) are written to `reports/doc_refactor/…`. Scenario details and acceptance criteria live in [specs/010-documentation-refactoring-0-0/quickstart.md](specs/010-documentation-refactoring-0-0/quickstart.md); follow Scenario 6 before submitting documentation-heavy PRs.
+
+---
+
 ## 4. Pull Request Requirements
 
 Every PR must include the following sections:
@@ -623,7 +647,7 @@ Android tests must be written and run using:
 #### Instrumentation Tests
 Run on:
 - physical Android device (mandatory for PR)  
-- emulator in CI (expected to occasionally fail — see SECURITY.md warnings)
+- emulator in CI (expected to occasionally fail — see [SECURITY.md](SECURITY.md) warnings)
 
 #### Performance Benchmarks
 We require:
@@ -1443,7 +1467,7 @@ Forbidden:
 Every PR touching logic must update:
 
 ```
-/docs/cross_platform_discovery_compatibility.md
+[docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)
 ```
 
 This ensures:
@@ -1540,7 +1564,7 @@ Required updates:
 - `package.json`  
 - `tauri.conf.json`  
 - `truthctl --version` output  
-- `/docs/version_matrix.md`  
+- [docs/version_matrix.md](docs/version_matrix.md)  
 
 ### ✔ Release notes must describe **features**, not tasks
 The file:
@@ -1652,7 +1676,7 @@ The release must include:
 
 ### **Documentation**
 - `release-info.txt`  
-- `/docs/changelog/vX.Y.Z.md`  
+- `/[docs/changelog/vX.Y.Z.md](docs/changelog/vX.Y.Z.md)`  
 - Updated version matrix  
 
 ---
@@ -1930,7 +1954,7 @@ A PR may be merged **only if all conditions are met**:
 ✔ Rebase onto latest `master`  
 ✔ Signed commits required  
 ✔ No TODOs left in code  
-✔ `CHANGELOG.md` updated  
+✔ [CHANGELOG.md](CHANGELOG.md) updated  
 ✔ Documentation updated  
 
 ---
@@ -2014,8 +2038,8 @@ These files show **real working examples** of `/specify`, `/plan`, `/clarify`, `
 ```
 
 ### Example Set 1  
-- 📄 `/docs/prompt/ekwator/specify1/spec1.md`  
-- 🗂 `/docs/prompt/ekwator/specify1/plan/plan1.md`
+- 📄 [docs/prompt/ekwator/specify1/spec1.md](docs/prompt/ekwator/specify1/spec1.md)  
+- 🗂 [docs/prompt/ekwator/specify1/plan/plan1.md](docs/prompt/ekwator/specify1/plan/plan1.md)
 
 ### Example Set 2  
 - 📁 `/docs/prompt/ekwator/specify2/plan/`
@@ -2129,12 +2153,12 @@ Must be used before merge:
 
 Use these files to understand how Truth Training works internally:
 
-- `/docs/architecture/core.md` — Core engine architecture  
-- `/docs/architecture/event-flow.md` — Event propagation model  
-- `/docs/protocol/sync.md` — Sync rules  
-- `/docs/security/crypto.md` — Cryptographic rules  
-- `/docs/android/discovery.md` — Local discovery protocol  
-- `/docs/desktop/state.md` — Desktop state model  
+- [docs/architecture/core.md](docs/architecture/core.md) — Core engine architecture  
+- [docs/architecture/event-flow.md](docs/architecture/event-flow.md) — Event propagation model  
+- [docs/protocol/sync.md](docs/protocol/sync.md) — Sync rules  
+- [docs/security/crypto.md](docs/security/crypto.md) — Cryptographic rules  
+- [docs/android/discovery.md](docs/android/discovery.md) — Local discovery protocol  
+- [docs/desktop/state.md](docs/desktop/state.md) — Desktop state model  
 
 ---
 
@@ -2184,10 +2208,10 @@ The following files are essential for understanding the project:
 
 | File | Purpose |
 |------|---------|
-| `README.md` | Project overview |
-| `SECURITY.md` | Security policies |
-| `CONTRIBUTING.md` | Contribution rules |
-| `14-quality-gates.md` | PR acceptance criteria |
+| [README.md](README.md) | Project overview |
+| [SECURITY.md](SECURITY.md) | Security policies |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution rules |
+| [14-quality-gates.md](14-quality-gates.md) | PR acceptance criteria |
 | `docs/prompt/*` | Spec-Kit examples |
 | `Cargo.toml` | Rust workspace definition |
 | `android/app/src/*` | Android client |
@@ -2223,7 +2247,7 @@ This analogy guides algorithm evaluation and system design.
 
 ---
 
-## 🎉 End of CONTRIBUTING.md
+## 🎉 End of [CONTRIBUTING.md](CONTRIBUTING.md)
 
 You are now ready to contribute safely, consistently, and effectively.
 

@@ -44,3 +44,5 @@ atpp-cli observe-etf --event-id=<event_id>
 
 ## 4. Результат
 Если все пункты работают как описано — реализация протокола ATPP проходит quickstart/минимальный smoke-test.
+
+_Version: v1.0.0_

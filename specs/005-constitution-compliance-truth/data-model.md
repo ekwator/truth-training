@@ -45,4 +45,4 @@ Constraints:
 - status_weight = sum(weights(confirm)) - sum(weights(reject))
 - decay_score increases with inconsistent signals over time.
 
-
+_Version: v1.0.0_

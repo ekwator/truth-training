@@ -100,3 +100,6 @@ Podfile.lock
 test-results/
 analysis/
 truth-android-client/.idea/misc.xml
+.venv/
+reports/
+scripts/__pycache__/

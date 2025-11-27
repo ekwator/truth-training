@@ -1,4 +1,6 @@
 # Cross-Platform Cargo.toml Configuration
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 20
@@ -52,24 +54,9 @@ logging = []
 metrics = []
 testing = []
 
-[dependencies]
-# Core shared dependencies (always included)
-core_lib = { version = "0.4.0", path = "core" }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-rusqlite = { version = "0.31", features = ["bundled"] }
-uuid = { version = "1.8", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-once_cell = "1.19"
-anyhow = "1.0"
-rand = "0.8"
-ed25519-dalek = { version = "2.0", features = ["rand_core"] }
-hex = "0.4"
-log = "0.4"
-base64ct = "=1.7.3"
-sha2 = "0.10"
-thiserror = "1.0"
-base64 = "0.22"
+[dependencies] # Core shared dependencies (always included) core_lib = { version = "0.4.0", path = "core" } serde = { version = "1.0", features = ["derive"] } serde_json = "1.0" rusqlite = { version = "0.31", features = ["bundled"] } uuid = { version = "1.8", features = ["v4", "serde"] } chrono = { version = "0.4", features = ["serde"] } once_cell = "1.19" anyhow = "1.0" rand = "0.8" ed25519-dalek = { version = "2.0", features = ["rand_core"] }
+
+hex = "0.4" log = "0.4" base64ct = "=1.7.3" sha2 = "0.10" thiserror = "1.0" base64 = "0.22"
 
 # Desktop-only dependencies
 [target.'cfg(feature = "desktop")'.dependencies]
@@ -375,3 +362,7 @@ strip = true
 ```
 
 This configuration ensures optimal performance and minimal resource usage for each target platform while maintaining code reusability and consistency across the Truth Training ecosystem.
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

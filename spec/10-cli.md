@@ -1,4 +1,6 @@
 # CLI Specification (truthctl)
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 10
@@ -113,7 +115,7 @@ Files:
 
 `--auto-peer` appends the node to peers.json if not present.
 
-See also: `docs/CLI_Usage.md` for examples.
+See also: [docs/CLI_Usage.md](docs/CLI_Usage.md) for examples.
 
 ## Configuration Management
 Command group to manage node configuration at `~/.truthctl/config.json`.
@@ -175,4 +177,6 @@ truthctl logs clear --db truth.db
 ```
 Entries are appended from `peers sync-all` after each peer attempt (success or failure).
 
+_Version: v1.0.0_
 
+- See [docs/README.md](docs/README.md) for detailed explanations.

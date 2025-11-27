@@ -1,9 +1,11 @@
 # Data Model
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 04
 
-Authoritative source: `docs/Data_Schema.md`.
+Authoritative source: [docs/Data_Schema.md](docs/Data_Schema.md).
 
 Implemented tables
 - knowledge_base: category, cause, develop, effect, forma, context, impact_type.
@@ -17,3 +19,7 @@ Notes
 Gaps
 - impact.user_id (validator) missing; planned per Event Rating Protocol.
 - Optional event_score persistence not implemented.
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

@@ -1,7 +1,7 @@
 # Implementation Plan: Fix Installer Packaging for Truth Core Server
 
-**Branch**: `009-fix-linux-deb` | **Date**: 2025-11-23 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/specs/009-fix-linux-deb/spec.md`
+**Branch**: `009-fix-linux-deb` | **Date**: 2025-11-23 | **Spec**: [[spec.md](spec.md)(s[pec.md](pec.md)(.[/spec.md](/spec.md)(/[spec.md](spec.md)
+**Input**: Feature specification from `[/specs/009-fix-linux-deb/spec.md](/specs/009-fix-linux-deb/spec.md)(/[specs/009-fix-linux-deb/spec.md](specs/009-fix-linux-deb/spec.md))`
 
 ## Execution Flow (/plan command scope)
 ```
@@ -16,18 +16,18 @@
    → If no justification possible: ERROR "Simplify approach first"
    → Ensure collective intelligence principles are preserved
    → Update Progress Tracking: Initial Constitution Check
-5. Execute Phase 0 → research.md
+5. Execute Phase 0 → [research.md](research.md)(r[esearch.md](esearch.md))
    → If NEEDS CLARIFICATION remain: ERROR "Resolve unknowns"
-6. Execute Phase 1 → contracts, data-model.md, quickstart.md, agent-specific template file (e.g., `CLAUDE.md` for Claude Code, `.github/copilot-instructions.md` for GitHub Copilot, `GEMINI.md` for Gemini CLI, `QWEN.md` for Qwen Code, or `AGENTS.md` for all other agents).
+6. Execute Phase 1 → contracts, [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)), [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)), agent-specific template file (e.g., `[CLAUDE.md](CLAUDE.md)(C[LAUDE.md](LAUDE.md))` for Claude Code, `[.github/copilot-instructions.md](.github/copilot-instructions.md)(.[github/copilot-instructions.md](github/copilot-instructions.md))` for GitHub Copilot, `[GEMINI.md](GEMINI.md)(G[EMINI.md](EMINI.md))` for Gemini CLI, `[QWEN.md](QWEN.md)(Q[WEN.md](WEN.md))` for Qwen Code, or `[AGENTS.md](AGENTS.md)(A[GENTS.md](GENTS.md))` for all other agents).
 7. Re-evaluate Constitution Check section
    → If new violations: Refactor design, return to Phase 1
    → Update Progress Tracking: Post-Design Constitution Check
-8. Plan Phase 2 → Describe task generation approach (DO NOT create tasks.md)
+8. Plan Phase 2 → Describe task generation approach (DO NOT create [tasks.md](tasks.md)(t[asks.md](asks.md)
 9. STOP - Ready for /tasks command
 ```
 
 **IMPORTANT**: The /plan command STOPS at step 7. Phases 2-4 are executed by other commands:
-- Phase 2: /tasks command creates tasks.md
+- Phase 2: /tasks command creates [tasks.md](tasks.md)(t[asks.md](asks.md))
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
@@ -99,12 +99,12 @@ Fix Linux (DEB/RPM), macOS (.pkg), and Windows installer packaging for truth_cor
 ### Documentation (this feature)
 ```
 specs/009-fix-linux-deb/
-├── plan.md              # This file (/plan command output)
-├── research.md          # Phase 0 output (/plan command)
-├── data-model.md        # Phase 1 output (/plan command)
-├── quickstart.md        # Phase 1 output (/plan command)
+├── [plan.md](plan.md)(p[lan.md](lan.md))              # This file (/plan command output)
+├── [research.md](research.md)(r[esearch.md](esearch.md))          # Phase 0 output (/plan command)
+├── [data-model.md](data-model.md)(d[ata-model.md](ata-model.md))        # Phase 1 output (/plan command)
+├── [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md))        # Phase 1 output (/plan command)
 ├── contracts/           # Phase 1 output (/plan command)
-└── tasks.md             # Phase 2 output (/tasks command - NOT created by /plan)
+└── [tasks.md](tasks.md)(t[asks.md](asks.md))             # Phase 2 output (/tasks command - NOT created by /plan)
 ```
 
 ### Source Code (repository root)
@@ -151,17 +151,17 @@ packaging/
    Task: "Research binary renaming strategies in Rust build process"
    ```
 
-3. **Consolidate findings** in `research.md` using format:
+3. **Consolidate findings** in `[research.md](research.md)(r[esearch.md](esearch.md))` using format:
    - Decision: [what was chosen]
    - Rationale: [why chosen]
    - Alternatives considered: [what else evaluated]
 
-**Output**: research.md with all NEEDS CLARIFICATION resolved
+**Output**: [research.md](research.md)(r[esearch.md](esearch.md)) with all NEEDS CLARIFICATION resolved
 
 ## Phase 1: Design & Contracts
-*Prerequisites: research.md complete*
+*Prerequisites: [research.md](research.md)(r[esearch.md](esearch.md)) complete*
 
-1. **Extract entities from feature spec** → `data-model.md`:
+1. **Extract entities from feature spec** → `[data-model.md](data-model.md)(d[ata-model.md](ata-model.md))`:
    - InstallationPackage entity (format, platform, paths)
    - ServiceDefinition entity (type, user, paths)
    - InstallationLayout entity (executable, config, service locations)
@@ -180,13 +180,13 @@ packaging/
    - Run `.specify/scripts/bash/update-agent-context.sh cursor`
    - Add packaging tools (FPM, pkgbuild, NSIS, WinSW, systemd user services)
 
-**Output**: data-model.md, quickstart.md, agent-specific file
+**Output**: [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)), [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)), agent-specific file
 
 ## Phase 2: Task Planning Approach
 *This section describes what the /tasks command will do - DO NOT execute during /plan*
 
 **Task Generation Strategy**:
-- Load `.specify/templates/tasks-template.md` as base
+- Load `[.specify/templates/tasks-template.md](.specify/templates/tasks-template.md)(.[specify/templates/tasks-template.md](specify/templates/tasks-template.md))` as base
 - Generate tasks from Phase 1 design docs (data model, quickstart)
 - Each platform (Linux DEB, Linux RPM, macOS, Windows) → packaging update tasks [P]
 - Each CI workflow → update task
@@ -200,16 +200,16 @@ packaging/
 - CI workflow updates after packaging scripts
 - Testing tasks last (manual verification)
 
-**Estimated Output**: 15-20 numbered, ordered tasks in tasks.md
+**Estimated Output**: 15-20 numbered, ordered tasks in [tasks.md](tasks.md)(t[asks.md](asks.md))
 
 **IMPORTANT**: This phase is executed by the /tasks command, NOT by /plan
 
 ## Phase 3+: Future Implementation
 *These phases are beyond the scope of the /plan command*
 
-**Phase 3**: Task execution (/tasks command creates tasks.md)  
-**Phase 4**: Implementation (execute tasks.md following constitutional principles)  
-**Phase 5**: Validation (run tests, execute quickstart.md, package installation verification)
+**Phase 3**: Task execution (/tasks command creates [tasks.md](tasks.md)(t[asks.md](asks.md)  
+**Phase 4**: Implementation (execute [tasks.md](tasks.md)(t[asks.md](asks.md)) following constitutional principles)  
+**Phase 5**: Validation (run tests, execute [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)), package installation verification)
 
 ## Complexity Tracking
 *Fill ONLY if Constitution Check has violations that must be justified*
@@ -234,4 +234,6 @@ No violations requiring justification.
 - [x] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.0 - See `.specify/memory/constitution.md`*
+*Based on Constitution v2.1.0 - See `[.specify/memory/constitution.md](.specify/memory/constitution.md)(.[specify/memory/constitution.md](specify/memory/constitution.md))`*
+
+_Version: v1.0.0_

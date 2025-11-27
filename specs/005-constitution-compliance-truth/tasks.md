@@ -17,7 +17,7 @@ T001. Create compliance contract tests for endpoints [P] [X]
 
 T002. Add core data models (TruthEvent, Judgment, NodeReputation, SyncEnvelope) [X]
 - Paths: /home/ekwator/Code/truth-training/core/
-- Action: Define structs and SQLite schema migrations aligned with data-model.md (no author metadata; envelope fields; ternary judgment enum)
+- Action: Define structs and SQLite schema migrations aligned with [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)) (no author metadata; envelope fields; ternary judgment enum)
 - Output: models.rs, storage migration scripts, compile-only (no logic yet)
 - Dependencies: T001
 
@@ -65,14 +65,14 @@ T009. CLI (app) text-only flows for confession and judgment [P] [X]
 
 T010. Integration tests: quickstart scenarios [X]
 - Paths: /home/ekwator/Code/truth-training/tests/integration/
-- Action: Implement steps from quickstart.md including multi-node confirmations and Wi‑Fi Direct stubbed sync
+- Action: Implement steps from [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)) including multi-node confirmations and Wi‑Fi Direct stubbed sync
 - Output: failing tests first; then pass with T011–T013
 - Dependencies: T004–T009
 
 T011. Documentation updates: constitution alignment notes [X]
 - Paths: /home/ekwator/Code/truth-training/docs/
 - Action: Add/Update docs to reflect authorship removal, plaintext-at-rest policy, ternary judgments, independence definition, Wi‑Fi Direct
-- Output: docs/Constitution-Compliance.md
+- Output: [docs/Constitution-Compliance.md](docs/Constitution-Compliance.md)(d[ocs/Constitution-Compliance.md](ocs/Constitution-Compliance.md))
 - Dependencies: T004–T009
 
 T012. Observability: structured logs for envelope verification and consensus [X]
@@ -83,8 +83,8 @@ T012. Observability: structured logs for envelope verification and consensus [X]
 
 T013. Post-Design Constitution Check gate [X]
 - Paths: /home/ekwator/Code/truth-training/specs/005-constitution-compliance-truth/
-- Action: Revalidate plan against constitution; update plan.md Gate Status
-- Output: plan.md updated gate check
+- Action: Revalidate plan against constitution; update [plan.md](plan.md)(p[lan.md](lan.md)) Gate Status
+- Output: [plan.md](plan.md)(p[lan.md](lan.md)) updated gate check
 - Dependencies: T004–T012
 
 ## Parallelization Guidance
@@ -98,4 +98,4 @@ T013. Post-Design Constitution Check gate [X]
 - Build server: `cargo build -p server`
 - Build app: `cargo build -p app`
 
-
+_Version: v1.0.0_

@@ -1,3 +1,5 @@
+<!-- Archived from [docs/final_validation.md](docs/final_validation.md) -->
+
 # Final CLI-Driven Verification Report
 
 **Date**: 2025-01-XX  
@@ -420,4 +422,6 @@ The node discovery system is fully functional and ready for production use:
 1. **T062**: Add cross-device E2E tests (requires physical devices)
 2. **Manual Testing**: Desktop UI and Android manual verification
 3. **CI Integration**: Add validation steps to CI pipeline
+
+_Version: v1.0.0_
 

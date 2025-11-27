@@ -9,3 +9,5 @@
 7) Go to Training Results → set filters → Update → see ASCII progress and average.
 8) Go to Logs → scroll, paginate 35 lines/page; Clear, Save to file, Refresh.
 9) Disable network; create/edit content → works offline; re-enable network → background sync; local-wins on conflict.
+
+_Version: v1.0.0_

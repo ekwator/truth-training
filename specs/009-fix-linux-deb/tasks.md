@@ -1,16 +1,16 @@
 # Tasks: Fix Installer Packaging for Truth Core Server
 
 **Input**: Design documents from `/specs/009-fix-linux-deb/`
-**Prerequisites**: plan.md (required), research.md, data-model.md, quickstart.md
+**Prerequisites**: [plan.md](plan.md)(p[lan.md](lan.md)) (required), [research.md](research.md)(r[esearch.md](esearch.md)), [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)), [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md))
 
 ## Execution Flow (main)
 ```
-1. Load plan.md from feature directory
+1. Load [plan.md](plan.md)(p[lan.md](lan.md)) from feature directory
    → Extract: tech stack, libraries, structure
 2. Load optional design documents:
-   → data-model.md: Extract entities → model tasks
-   → research.md: Extract decisions → setup tasks
-   → quickstart.md: Extract test scenarios → verification tasks
+   → [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)): Extract entities → model tasks
+   → [research.md](research.md)(r[esearch.md](esearch.md)): Extract decisions → setup tasks
+   → [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)): Extract test scenarios → verification tasks
 3. Generate tasks by category:
    → Setup: common script updates, binary rename logic
    → Core: platform-specific packaging updates
@@ -71,11 +71,11 @@
 - [x] T020 Update packaging/debian/postinst: Add upgrade migration logic to detect files in old locations (/usr/local/bin/truth_core_server), stop old service, migrate binary to /usr/bin/truth-core-server, update service definitions
 
 ## Phase 3.8: Manual Verification & Testing
-- [ ] T021 [P] Manual test: Linux DEB installation verification per quickstart.md (install package, verify binary location /usr/bin/truth-core-server, verify user service status, test service management without root)
-- [ ] T022 [P] Manual test: Linux RPM installation verification per quickstart.md (same as DEB)
-- [ ] T023 [P] Manual test: macOS .pkg installation verification per quickstart.md (install package, verify binary location /usr/local/bin/truth-core-server, verify LaunchAgent status, test service management)
-- [ ] T024 [P] Manual test: Windows EXE installation verification per quickstart.md (install package, verify binary location and name, verify service status, test service management)
-- [ ] T025 Manual test: Package upgrade scenario per quickstart.md (install old version, upgrade to new, verify migration and service continuity)
+- [ ] T021 [P] Manual test: Linux DEB installation verification per [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)) (install package, verify binary location /usr/bin/truth-core-server, verify user service status, test service management without root)
+- [ ] T022 [P] Manual test: Linux RPM installation verification per [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)) (same as DEB)
+- [ ] T023 [P] Manual test: macOS .pkg installation verification per [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)) (install package, verify binary location /usr/local/bin/truth-core-server, verify LaunchAgent status, test service management)
+- [ ] T024 [P] Manual test: Windows EXE installation verification per [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)) (install package, verify binary location and name, verify service status, test service management)
+- [ ] T025 Manual test: Package upgrade scenario per [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)) (install old version, upgrade to new, verify migration and service continuity)
 - [ ] T026 Manual test: Conflict detection scenario (install old version, attempt new installation, verify error message)
 - [ ] T027 Manual test: User service permission edge case (system without user service support, verify warning message and partial installation)
 
@@ -159,3 +159,4 @@ Task: "Manual test: Windows EXE installation verification"
 - [x] Each task specifies exact file path
 - [x] Parallel tasks truly independent (different files/platforms)
 
+_Version: v1.0.0_

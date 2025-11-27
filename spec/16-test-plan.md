@@ -1,4 +1,6 @@
 # Test Plan
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 16
@@ -28,3 +30,7 @@ Spec ID: 16
 Security
 - verify_signature success on correct message; failure on tampered message
 - consistent message construction for `sync_request`, `sync_push`, `incremental_sync`
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

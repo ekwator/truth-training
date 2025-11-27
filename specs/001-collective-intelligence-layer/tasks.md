@@ -1,17 +1,17 @@
 # Tasks: Collective Intelligence Layer (Wisdom of the Crowd)
 
 **Input**: Design documents from `/specs/001-collective-intelligence-layer/`
-**Prerequisites**: plan.md (required), research.md, data-model.md, contracts/
+**Prerequisites**: [plan.md](plan.md)(p[lan.md](lan.md)) (required), [research.md](research.md)(r[esearch.md](esearch.md)), [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)), contracts/
 
 ## Execution Flow (main)
 ```
-1. Load plan.md from feature directory
+1. Load [plan.md](plan.md)(p[lan.md](lan.md)) from feature directory
    → If not found: ERROR "No implementation plan found"
    → Extract: tech stack, libraries, structure
 2. Load optional design documents:
-   → data-model.md: Extract entities → model tasks
+   → [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)): Extract entities → model tasks
    → contracts/: Each file → contract test task
-   → research.md: Extract decisions → setup tasks
+   → [research.md](research.md)(r[esearch.md](esearch.md)): Extract decisions → setup tasks
 3. Generate tasks by category:
    → Setup: project init, dependencies, linting
    → Tests: contract tests, integration tests
@@ -40,7 +40,7 @@
 - **Single project**: `src/`, `tests/` at repository root
 - **Web app**: `backend/src/`, `frontend/src/`
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
+- Paths shown below assume single project - adjust based on [plan.md](plan.md)(p[lan.md](lan.md)) structure
 
 ## Phase 3.1: Setup
 - [X] T001 Create collective intelligence module structure in core/src/collective_intelligence/
@@ -91,9 +91,9 @@
 - [ ] T036 [P] Unit tests for judgment validation in tests/collective_intelligence/judgment_tests.rs
 - [ ] T037 Performance tests for consensus calculation (<100ms target)
 - [ ] T038 [P] Update API documentation with collective intelligence endpoints
-- [ ] T039 [P] Add collective intelligence examples to quickstart.md
+- [ ] T039 [P] Add collective intelligence examples to [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md))
 - [ ] T040 Remove code duplication and optimize database queries
-- [ ] T041 Run manual testing scenarios from quickstart.md
+- [ ] T041 Run manual testing scenarios from [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md))
 
 ## Dependencies
 - Tests (T004-T012) before implementation (T013-T026)
@@ -180,3 +180,5 @@ Task: "Unit tests for judgment validation in tests/collective_intelligence/judgm
 - [x] Parallel tasks truly independent
 - [x] Each task specifies exact file path
 - [x] No task modifies same file as another [P] task
+
+_Version: v1.0.0_

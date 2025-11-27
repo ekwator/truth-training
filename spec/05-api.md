@@ -1,4 +1,6 @@
 # HTTP API (current implementation)
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 05
@@ -187,3 +189,7 @@ SyncResult
   "avg_quality_index": 0.82
 }
 ```
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

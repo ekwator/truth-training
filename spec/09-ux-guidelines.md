@@ -1,11 +1,13 @@
 # UX Guidelines
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 09
 
 ## UX Guidelines
 
-See `docs/ui_guidelines.md`. This spec aligns endpoint names with current API.
+See [docs/ui_guidelines.md](docs/ui_guidelines.md). This spec aligns endpoint names with current API.
 
 Principles
 - No business logic in UI; use API/FFI.
@@ -90,3 +92,5 @@ CLI UX (truthctl)
 - **Field-level feedback**: Highlights which fields caused the duplicate
 - **Actionable guidance**: Suggests using existing template or modifying fields
 - **Non-blocking**: Error does not prevent form editing; user can adjust and retry
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

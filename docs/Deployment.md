@@ -1,3 +1,5 @@
+<!-- Archived from [docs/Deployment.md](docs/Deployment.md) -->
+
 ## Deployment: Desktop UI with Background Server Service
 
 This document describes how the Desktop UI bundles and installs the background service `truth-training-server` and how services are installed and verified across OSes.
@@ -81,6 +83,7 @@ This document describes how the Desktop UI bundles and installs the background s
    - Indexes are created for query performance
    - Template matching works correctly
 
-For detailed migration instructions, see `docs/Data_Schema.md` section "Migration Notes".
+For detailed migration instructions, see [docs/Data_Schema.md](docs/Data_Schema.md) section "Migration Notes".
+
 
 

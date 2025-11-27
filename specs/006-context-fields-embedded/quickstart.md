@@ -196,3 +196,4 @@ curl -X POST http://localhost:8080/events \
 
 **No automatic rollback path** — manual database restoration required.
 
+_Version: v1.0.0_

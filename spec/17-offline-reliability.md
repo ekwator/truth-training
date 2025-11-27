@@ -1,4 +1,6 @@
 # Offline Reliability and Data Integrity
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 17
@@ -11,13 +13,9 @@ This specification compares Truth Training’s decentralized semantic reliabilit
 
 The comparison highlights how Truth Core v0.4.0 preserves semantic truth and collective consensus even under offline conditions.
 
-| Parameter | Truth Training (v0.4.0) | Digital Money (Offline) |
-|-----------|-------------------------|-------------------------|
-| **Data Type** | Semantic statements, trust ratings, events, collective judgments | Financial transactions |
-| **Network** | Local P2P mesh (Wi-Fi / LAN / Bluetooth bridge) | P2P between wallets or NFC devices |
-| **Node State** | May be offline; synchronizes later with consensus recalculation | May be offline until reconnected |
-| **Data Protection** | Ed25519 signatures, trust propagation, collective verification | RSA/ECC signatures, secure enclave validation |
-| **Verification** | Distributed trust graph + collective intelligence + weighted consensus | Central validator (upon sync) or TEE hardware trust |
+| Parameter | Truth Training (v0.4.0) | Digital Money (Offline) | |-----------|-------------------------|-------------------------| | **Data Type** | Semantic statements, trust ratings, events, collective judgments | Financial transactions | | **Network** | Local P2P mesh (Wi-Fi / LAN / Bluetooth bridge) | P2P between wallets or NFC devices | | **Node State** | May be offline; synchronizes later with consensus recalculation | May be offline until reconnected | | **Data Protection** | Ed25519 signatures, trust propagation, collective verification | RSA/ECC signatures, secure
+
+enclave validation | | **Verification** | Distributed trust graph + collective intelligence + weighted consensus | Central validator (upon sync) or TEE hardware trust |
 
 🔁 2. Data Transmission Reliability
 
@@ -81,14 +79,9 @@ Full reconciliation occurs only after online synchronization.
 
 🧩 3. Integrity Model Comparison
 
-| Criterion | Truth Training | Digital Money |
-|-----------|----------------|---------------|
-| **Consensus Type** | Distributed trust graph + collective evaluation | Central validator or blockchain ledger |
-| **Duplication Level** | High (redundant P2P copies) | Minimal (single issuer record) |
-| **Data Loss Offline** | ≈ 0 (recovered via sync merge) | Possible if device is lost |
-| **"Double Send" Risk** | None (idempotent events) | Possible before reconciliation |
-| **Forgery Resistance** | High (Ed25519 + trust chain) | Very high (RSA/ECC + hardware trust) |
-| **Integrity Without Internet** | High (semantic continuity) | Moderate (depends on hardware) |
+| Criterion | Truth Training | Digital Money | |-----------|----------------|---------------| | **Consensus Type** | Distributed trust graph + collective evaluation | Central validator or blockchain ledger | | **Duplication Level** | High (redundant P2P copies) | Minimal (single issuer record) | | **Data Loss Offline** | ≈ 0 (recovered via sync merge) | Possible if device is lost | | **"Double Send" Risk** | None (idempotent events) | Possible before reconciliation | | **Forgery Resistance** | High (Ed25519 + trust
+
+chain) | Very high (RSA/ECC + hardware trust) | | **Integrity Without Internet** | High (semantic continuity) | Moderate (depends on hardware) |
 
 🧠 4. Philosophical Difference in Reliability
 
@@ -96,7 +89,6 @@ Full reconciliation occurs only after online synchronization.
 |--------|----------------|---------------|
 | **Reliability Definition** | Ability to preserve and restore semantic information without a central authority | Ability to prevent double spending during offline operation |
 | **Primary Goal** | Semantic Consistency (truth persists) | Monetary Consistency (value doesn't duplicate) |
-
 
 🧮 5. Collective Reliability Layer (v0.4.0 Addition)
 
@@ -121,7 +113,6 @@ When nodes resynchronize:
 
 🔄 6. Comparative Diagram: Trust Graph vs Digital Money
 
-
 📊 Truth Training Architecture
 ```mermaid
 flowchart TD
@@ -137,7 +128,7 @@ flowchart TD
         style L1 fill:#c7f7e5,stroke:#16a085,stroke-width:2px
     end
 
-    subgraph L2["Network Layer: Local Caches and Deferred Sync"]
+subgraph L2["Network Layer: Local Caches and Deferred Sync"]
         subgraph NodeA["Node A"]
             cacheA["Local Cache"]
             syncA["Deferred Sync"]
@@ -145,19 +136,19 @@ flowchart TD
             cacheA --> syncA --> dbA
         end
 
-        subgraph NodeB["Node B"]
+subgraph NodeB["Node B"]
             cacheB["Local Cache"]
             syncB["Deferred Sync"]
             dbB["Remote DB"]
             cacheB --> syncB --> dbB
         end
 
-        NodeA <-->|P2P Exchange| NodeB
+NodeA <-->|P2P Exchange| NodeB
     end
 
-    L1 --> L2
+L1 --> L2
 
-    style L2 fill:#a3e4d7,stroke:#1abc9c,stroke-width:1.5px
+style L2 fill:#a3e4d7,stroke:#1abc9c,stroke-width:1.5px
 ```
 🔄 Digital Money — Centralized Ledger
 ```mermaid
@@ -169,7 +160,7 @@ flowchart TD
         style Wallets fill:#f9e79f,stroke:#f1c40f,stroke-width:1px
     end
 
-    subgraph Ledger["Centralized Ledger System"]
+subgraph Ledger["Centralized Ledger System"]
         tx1["Tx Record 1"]
         tx2["Tx Record 2"]
         tx3["Tx Record 3"]
@@ -180,7 +171,7 @@ flowchart TD
         style Ledger fill:#fef9e7,stroke:#f1c40f,stroke-width:2px
     end
 
-    B -->|When Online: Sync Validation| central
+B -->|When Online: Sync Validation| central
 ```
 🧩 7. Summary
 
@@ -196,14 +187,18 @@ Digital Money — stricter for value preservation.
 
 🗂 9. Spec-Kit Links
 
-Added in: spec/README.md → Network & Reliability
+Added in: [spec/README.md](spec/README.md) → Network & Reliability
 
 Related specs:
 
-spec/03-architecture.md — Core topology
+[spec/03-architecture.md](spec/03-architecture.md) — Core topology
 
-spec/04-data-model.md — Event + Impact schema
+[spec/04-data-model.md](spec/04-data-model.md) — Event + Impact schema
 
-spec/08-p2p-sync.md — Trust propagation and synchronization
+[spec/08-p2p-sync.md](spec/08-p2p-sync.md) — Trust propagation and synchronization
 
-spec/17-offline-reliability.md — Current document
+[spec/17-offline-reliability.md](spec/17-offline-reliability.md) — Current document
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

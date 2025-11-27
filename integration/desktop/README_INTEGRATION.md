@@ -519,3 +519,5 @@ nc -u 192.168.1.100 37020
 ```
 
 This integration guide provides comprehensive desktop development with Truth Core's full feature set while maintaining optimal performance and reliability.
+
+_Version: v1.0.0_

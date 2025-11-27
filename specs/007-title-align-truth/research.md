@@ -142,7 +142,7 @@ Repository (TruthRepository)
 
 **Rationale**:
 - **API Compatibility**: FR-022 requires embedded fields matching Desktop v1.0.0
-- **Breaking Change**: VERSION_REGISTRY.md documents v1.0.0 breaking change (context_id removed)
+- **Breaking Change**: [VERSION_REGISTRY.md](VERSION_REGISTRY.md)(V[ERSION_REGISTRY.md](ERSION_REGISTRY.md)) documents v1.0.0 breaking change (context_id removed)
 - **Reference Model**: Desktop uses embedded fields: `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id` (all optional)
 
 **Migration Strategy**:

@@ -1,8 +1,8 @@
 
 # Implementation Plan: Unified Node Discovery & Address Exchange
 
-**Branch**: `008-specify-md` | **Date**: 2025-11-17 | **Spec**: `/specs/008-specify-md/spec.md`
-**Input**: Feature specification from `/specs/008-specify-md/spec.md`
+**Branch**: `008-specify-md` | **Date**: 2025-11-17 | **Spec**: `[/specs/008-specify-md/spec.md](/specs/008-specify-md/spec.md)(/[specs/008-specify-md/spec.md](specs/008-specify-md/spec.md))`
+**Input**: Feature specification from `[/specs/008-specify-md/spec.md](/specs/008-specify-md/spec.md)(/[specs/008-specify-md/spec.md](specs/008-specify-md/spec.md))`
 
 ## Execution Flow (/plan command scope)
 ```
@@ -17,18 +17,18 @@
    → If no justification possible: ERROR "Simplify approach first"
    → Ensure collective intelligence principles are preserved
    → Update Progress Tracking: Initial Constitution Check
-5. Execute Phase 0 → research.md
+5. Execute Phase 0 → [research.md](research.md)(r[esearch.md](esearch.md))
    → If NEEDS CLARIFICATION remain: ERROR "Resolve unknowns"
-6. Execute Phase 1 → contracts, data-model.md, quickstart.md, agent-specific template file (e.g., `CLAUDE.md` for Claude Code, `.github/copilot-instructions.md` for GitHub Copilot, `GEMINI.md` for Gemini CLI, `QWEN.md` for Qwen Code, or `AGENTS.md` for all other agents).
+6. Execute Phase 1 → contracts, [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)), [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)), agent-specific template file (e.g., `[CLAUDE.md](CLAUDE.md)(C[LAUDE.md](LAUDE.md))` for Claude Code, `[.github/copilot-instructions.md](.github/copilot-instructions.md)(.[github/copilot-instructions.md](github/copilot-instructions.md))` for GitHub Copilot, `[GEMINI.md](GEMINI.md)(G[EMINI.md](EMINI.md))` for Gemini CLI, `[QWEN.md](QWEN.md)(Q[WEN.md](WEN.md))` for Qwen Code, or `[AGENTS.md](AGENTS.md)(A[GENTS.md](GENTS.md))` for all other agents).
 7. Re-evaluate Constitution Check section
    → If new violations: Refactor design, return to Phase 1
    → Update Progress Tracking: Post-Design Constitution Check
-8. Plan Phase 2 → Describe task generation approach (DO NOT create tasks.md)
+8. Plan Phase 2 → Describe task generation approach (DO NOT create [tasks.md](tasks.md)(t[asks.md](asks.md)
 9. STOP - Ready for /tasks command
 ```
 
 **IMPORTANT**: The /plan command STOPS at step 7. Phases 2-4 are executed by other commands:
-- Phase 2: /tasks command creates tasks.md
+- Phase 2: /tasks command creates [tasks.md](tasks.md)(t[asks.md](asks.md))
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
@@ -82,12 +82,12 @@ Design and implement a unified node discovery and address exchange system so eve
 ### Documentation (this feature)
 ```
 specs/[###-feature]/
-├── plan.md              # This file (/plan command output)
-├── research.md          # Phase 0 output (/plan command)
-├── data-model.md        # Phase 1 output (/plan command)
-├── quickstart.md        # Phase 1 output (/plan command)
+├── [plan.md](plan.md)(p[lan.md](lan.md))              # This file (/plan command output)
+├── [research.md](research.md)(r[esearch.md](esearch.md))          # Phase 0 output (/plan command)
+├── [data-model.md](data-model.md)(d[ata-model.md](ata-model.md))        # Phase 1 output (/plan command)
+├── [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md))        # Phase 1 output (/plan command)
 ├── contracts/           # Phase 1 output (/plan command)
-└── tasks.md             # Phase 2 output (/tasks command - NOT created by /plan)
+└── [tasks.md](tasks.md)(t[asks.md](asks.md))             # Phase 2 output (/tasks command - NOT created by /plan)
 ```
 
 ### Source Code (repository root)
@@ -131,7 +131,7 @@ tests/
 **Structure Decision**: Multi-platform monorepo anchored on `core/` schema with platform adapters per module; ensures canonical data + separation of concerns.
 
 ## Phase 0: Outline & Research
-**Research Output**: `/specs/008-specify-md/research.md` (updated 2025-11-17)
+**Research Output**: `[/specs/008-specify-md/research.md](/specs/008-specify-md/research.md)(/[specs/008-specify-md/research.md](specs/008-specify-md/research.md))` (updated 2025-11-17)
 
 Key findings:
 1. **Canonical SQLite Schema** – Use identical DDL (INTEGER PRIMARY KEY AUTOINCREMENT, indexed `address`, `last_seen`, `type`, `reachable`). Avoid platform-specific SQLite features to keep Room + rusqlite compatible.
@@ -146,10 +146,10 @@ Outstanding Clarification: Explicit SLA for discovery intervals still confirmed 
 
 ## Phase 1: Design & Contracts
 **Artifacts Generated**:
-- `/specs/008-specify-md/data-model.md` – Node entity schema, validation rules, migration strategy, Room/Rust struct parity.
+- `[/specs/008-specify-md/data-model.md](/specs/008-specify-md/data-model.md)(/[specs/008-specify-md/data-model.md](specs/008-specify-md/data-model.md))` – Node entity schema, validation rules, migration strategy, Room/Rust struct parity.
 - `/specs/008-specify-md/contracts/nodes-api.yaml` – OpenAPI spec for node listing, discovery trigger, sync, CRUD, health.
-- `/specs/008-specify-md/contracts/README.md` – Contract usage + testing guidance.
-- `/specs/008-specify-md/quickstart.md` – Seven scenario validation guide covering schema parity, LAN discovery, sync, TTL cleanup, reachability, cross-platform DB, merge priority (local-over-global).
+- `[/specs/008-specify-md/contracts/README.md](/specs/008-specify-md/contracts/README.md)(/[specs/008-specify-md/contracts/README.md](specs/008-specify-md/contracts/README.md))` – Contract usage + testing guidance.
+- `[/specs/008-specify-md/quickstart.md](/specs/008-specify-md/quickstart.md)(/[specs/008-specify-md/quickstart.md](specs/008-specify-md/quickstart.md))` – Seven scenario validation guide covering schema parity, LAN discovery, sync, TTL cleanup, reachability, cross-platform DB, merge priority (local-over-global).
 - Agent context updated via `.specify/scripts/bash/update-agent-context.sh cursor`.
 
 Design highlights:
@@ -162,8 +162,8 @@ Design highlights:
 *This section describes what the /tasks command will do - DO NOT execute during /plan*
 
 **Task Generation Strategy**:
-- Base template: `.specify/templates/tasks-template.md`
-- Inputs: `data-model.md`, `contracts/nodes-api.yaml`, `quickstart.md`, research findings.
+- Base template: `[.specify/templates/tasks-template.md](.specify/templates/tasks-template.md)(.[specify/templates/tasks-template.md](specify/templates/tasks-template.md))`
+- Inputs: `[data-model.md](data-model.md)(d[ata-model.md](ata-model.md))`, `contracts/nodes-api.yaml`, `[quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md))`, research findings.
 - Schema & migrations:
   - Rust `core/src/storage.rs` migration (nodes table + indexes) [P]
   - Android Room migration + DAO update [P]
@@ -202,9 +202,9 @@ Design highlights:
 ## Phase 3+: Future Implementation
 *These phases are beyond the scope of the /plan command*
 
-**Phase 3**: Task execution (/tasks command creates tasks.md)  
-**Phase 4**: Implementation (execute tasks.md following constitutional principles)  
-**Phase 5**: Validation (run tests, execute quickstart.md, performance validation)
+**Phase 3**: Task execution (/tasks command creates [tasks.md](tasks.md)(t[asks.md](asks.md)  
+**Phase 4**: Implementation (execute [tasks.md](tasks.md)(t[asks.md](asks.md)) following constitutional principles)  
+**Phase 5**: Validation (run tests, execute [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)), performance validation)
 
 ## Complexity Tracking
 No deviations from constitutional constraints identified at this stage.
@@ -227,4 +227,6 @@ No deviations from constitutional constraints identified at this stage.
 - [x] Complexity deviations documented (none outstanding)
 
 ---
-*Based on Constitution v2.0.0 - See `/memory/constitution.md`*
+*Based on Constitution v2.0.0 - See `[/memory/constitution.md](/memory/constitution.md)(/[memory/constitution.md](memory/constitution.md))`*
+
+_Version: v1.0.0_

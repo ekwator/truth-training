@@ -1,4 +1,6 @@
 # Architecture Overview
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 03
@@ -158,3 +160,7 @@ flowchart LR
   style E fill:#f3e5f5
   style G fill:#e8f5e8
 ```
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

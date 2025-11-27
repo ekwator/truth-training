@@ -1,4 +1,6 @@
 # Expert System (Heuristics)
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 06
@@ -13,3 +15,7 @@ Implementation: `core_lib::expert_simple`
 Open improvements
 - Calibrate weights per context; persist suggestions and rationale to statements.
 - Integrate with rating protocol (use score/confidence as prior for S_e).
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

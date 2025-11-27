@@ -1,3 +1,5 @@
+<!-- Archived from [truth-android-client/CHANGELOG.md](truth-android-client/CHANGELOG.md) -->
+
 # Android Client Changelog
 
 ## [1.0.0] — First Stable Release — Full Feature Parity with Desktop v1.0.0
@@ -140,14 +142,14 @@
 - **Performance Benchmarks**: All targets met ✅
 - **CI/CD Pipeline**: Fully functional ✅
 
-See `docs/TEST_REPORT_ANDROID_v1.0.0.md` for detailed test results.
+See [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md) for detailed test results.
 
 ### 📚 Documentation
 
-- **Migration Guide**: `docs/ANDROID_MIGRATION.md`
-- **Feature Comparison**: `docs/Truth-training/Truth-training.md`
-- **Test Report**: `docs/TEST_REPORT_ANDROID_v1.0.0.md`
-- **CI/CD Workflows**: `docs/CI_Workflows_Artifacts.md`
+- **Migration Guide**: [docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md)
+- **Feature Comparison**: [docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md)
+- **Test Report**: [docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md)
+- **CI/CD Workflows**: [docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)
 
 ### 🐛 Known Issues
 
@@ -168,4 +170,5 @@ This release represents a complete rewrite of the Android client to achieve feat
 - SharedPreferences-based storage
 
 **Note**: v0.3.0 is not compatible with v1.0.0. Upgrade requires clean install.
+
 

@@ -1,4 +1,6 @@
 # Traceability Matrix
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 13
@@ -38,7 +40,7 @@ Spec ID: 13
 #### Collective Intelligence Layer
 - **Collective Score** → `core-lib/src/models.rs` (`TruthEvent.collective_score`), `core-lib/src/storage.rs` (`recalc_collective_truth`)
 - **API Recalculation** → `src/api.rs` (`POST /api/v1/recalc_collective`)
-- **P2P Propagation** → `spec/08-p2p-sync.md` (shared among nodes)
+- **P2P Propagation** → [spec/08-p2p-sync.md](spec/08-p2p-sync.md) (shared among nodes)
 
 #### Android Integration
 - **JSON Signature Verification** → `src/android/verify_json.rs` (Ed25519 verification)
@@ -47,30 +49,25 @@ Spec ID: 13
 
 ### Requirements Traceability
 
-| Requirement ID | Title | Module | Implementation | Status |
-|----------------|-------|--------|----------------|--------|
-| R-CI-01 | Collective Intelligence Layer | core-lib, api | `collective_score` field, `/api/v1/recalc_collective` | ✅ Implemented |
-| R-TR-02 | Trust Propagation Model | core-lib | `trust_propagation.rs`, blend algorithms | ✅ Implemented |
-| R-OF-03 | Offline Reliability Consistency | core-lib, p2p | Quality index, no time-based decay | ✅ Implemented |
-| R-AN-04 | Android JSON Verification | android | Ed25519 signature verification | ✅ Implemented |
-| R-P2P-05 | P2P Sync Protocol | p2p | Bidirectional sync, conflict resolution | ✅ Implemented |
-| R-CLI-06 | CLI Management Tools | app | truthctl commands, diagnostics | ✅ Implemented |
+| Requirement ID | Title | Module | Implementation | Status | |----------------|-------|--------|----------------|--------| | R-CI-01 | Collective Intelligence Layer | core-lib, api | `collective_score` field, `/api/v1/recalc_collective` | ✅ Implemented | | R-TR-02 | Trust Propagation Model | core-lib | `trust_propagation.rs`, blend algorithms | ✅ Implemented | | R-OF-03 | Offline Reliability Consistency | core-lib, p2p | Quality index, no time-based decay | ✅ Implemented | | R-AN-04 | Android JSON Verification | android | Ed25519 signature verification | ✅ Implemented
+
+| | R-P2P-05 | P2P Sync Protocol | p2p | Bidirectional sync, conflict resolution | ✅ Implemented | | R-CLI-06 | CLI Management Tools | app | truthctl commands, diagnostics | ✅ Implemented |
 
 ### Documentation → Specification Mapping
 
 #### Legacy Docs → Spec Kit
-- `docs/Technical_Specification.md` → `spec/02-requirements.md`
-- `docs/Data_Schema.md` → `spec/04-data-model.md`
-- `docs/event_rating_protocol.md` → `spec/07-event-rating-protocol.md`
-- `docs/p2p_release.md` → `spec/08-p2p-sync.md`
-- `docs/ui_guidelines.md` → `spec/09-ux-guidelines.md`
+- [docs/Technical_Specification.md](docs/Technical_Specification.md)` → `[spec/02-requirements.md](spec/02-requirements.md)
+- [docs/Data_Schema.md](docs/Data_Schema.md)` → `[spec/04-data-model.md](spec/04-data-model.md)
+- [docs/event_rating_protocol.md](docs/event_rating_protocol.md)` → `[spec/07-event-rating-protocol.md](spec/07-event-rating-protocol.md)
+- [docs/p2p_release.md](docs/p2p_release.md)` → `[spec/08-p2p-sync.md](spec/08-p2p-sync.md)
+- [docs/ui_guidelines.md](docs/ui_guidelines.md)` → `[spec/09-ux-guidelines.md](spec/09-ux-guidelines.md)
 
 #### New Documentation
-- `README.md` → `spec/03-architecture.md` (FidoNet principles)
-- `docs/CLI_Usage.md` → `spec/10-cli.md` (CLI specification)
-- `docs/Concept_Collective_Intelligence.md` → Collective Intelligence Layer
-- `docs/api_reference/API_REFERENCE.md` → API documentation
-- `integration/android/README_INTEGRATION.md` → Android integration guide
+- [README.md](README.md) → [spec/03-architecture.md](spec/03-architecture.md) (FidoNet principles)
+- [docs/CLI_Usage.md](docs/CLI_Usage.md) → [spec/10-cli.md](spec/10-cli.md)\(CLI specification)
+- [docs/Concept_Collective_Intelligence.md](docs/Concept_Collective_Intelligence.md) → Collective Intelligence Layer
+- [docs/api_reference/API_REFERENCE.md](docs/api_reference/API_REFERENCE.md) → API documentation
+- [integration/android/README_INTEGRATION.md](integration/android/README_INTEGRATION.md) → Android integration guide
 
 ### Feature Implementation Status
 
@@ -106,3 +103,7 @@ Spec ID: 13
 #### Feature Tests
 - `cargo test --workspace --features p2p-client-sync` → Full feature testing
 - `cargo test --test android_verify` → Android verification testing
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

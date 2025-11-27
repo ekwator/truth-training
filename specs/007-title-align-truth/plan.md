@@ -53,7 +53,7 @@ Complete final 9 tasks for Android Client v1.0.0, achieving 100% implementation.
 
 ## Constitution Check
 
-*Based on Constitution v2.0.0 - See `/memory/constitution.md`*
+*Based on Constitution v2.0.0 - See `[/memory/constitution.md](/memory/constitution.md)(/[memory/constitution.md](memory/constitution.md))`*
 
 ### I. Separation of Concerns ✅
 **Status**: PASS  
@@ -100,11 +100,11 @@ Complete final 9 tasks for Android Client v1.0.0, achieving 100% implementation.
 ### Completion Tasks
 ```
 specs/007-title-align-truth/
-├── plan.md                    # This file (completion roadmap)
-├── roadmap-completion.md      # Detailed task breakdown
-├── plan-completion.md         # Alternative plan format
-├── tasks.md                   # Updated with completion tasks
-└── [existing artifacts]      # spec.md, data-model.md, contracts/, quickstart.md
+├── [plan.md](plan.md)(p[lan.md](lan.md))                    # This file (completion roadmap)
+├── [roadmap-completion.md](roadmap-completion.md)(r[oadmap-completion.md](oadmap-completion.md))      # Detailed task breakdown
+├── [plan-completion.md](plan-completion.md)(p[lan-completion.md](lan-completion.md))         # Alternative plan format
+├── [tasks.md](tasks.md)(t[asks.md](asks.md))                   # Updated with completion tasks
+└── [existing artifacts]      # [spec.md](spec.md)(s[pec.md](pec.md)), [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)), contracts/, [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md))
 ```
 
 ### Source Code (Completion Phase)
@@ -130,9 +130,9 @@ truth-android-client/app/src/
 ### Documentation (Completion Phase)
 ```
 docs/
-├── TEST_REPORT_ANDROID_v1.0.0.md         # T075 (test report with benchmarks)
-├── CI_Workflows_Artifacts.md             # T076 (Android build section)
-└── ANDROID_MIGRATION.md                 # ✅ Already created (T077)
+├── [TEST_REPORT_ANDROID_v1.0.0.md](TEST_REPORT_ANDROID_v1.0.0.md)(T[EST_REPORT_ANDROID_v1.0.0.md](EST_REPORT_ANDROID_v1.0.0.md))         # T075 (test report with benchmarks)
+├── [CI_Workflows_Artifacts.md](CI_Workflows_Artifacts.md)(C[I_Workflows_Artifacts.md](I_Workflows_Artifacts.md))             # T076 (Android build section)
+└── [ANDROID_MIGRATION.md](ANDROID_MIGRATION.md)(A[NDROID_MIGRATION.md](NDROID_MIGRATION.md))                 # ✅ Already created (T077)
 ```
 
 ### CI/CD (Completion Phase)
@@ -149,7 +149,7 @@ docs/
 
 **Status**: ✅ Complete (from main implementation)
 
-**Key Decisions from research.md**:
+**Key Decisions from [research.md](research.md)(r[esearch.md](esearch.md))**:
 - Room database selection (SQLite with Room)
 - Offline-first architecture (local-wins conflict resolution)
 - Jetpack Compose for modern UI
@@ -164,9 +164,9 @@ docs/
 **Status**: ✅ Complete (from main implementation)
 
 **Existing Artifacts**:
-- `data-model.md` - Room schema with 6 entities defined
+- `[data-model.md](data-model.md)(d[ata-model.md](ata-model.md))` - Room schema with 6 entities defined
 - `contracts/openapi.yaml` - API v1.0.0 contracts for all endpoints
-- `quickstart.md` - 6 test scenarios for validation
+- `[quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md))` - 6 test scenarios for validation
 - 13 contract tests created (T005-T017)
 - 6 integration tests created (T018-T023)
 
@@ -198,9 +198,9 @@ docs/
 - T064 can run parallel with unit tests
 - T072, T073 can run in parallel (different test types)
 
-**Estimated Output**: 9 numbered, ordered tasks in tasks.md (T064, T069-T078)
+**Estimated Output**: 9 numbered, ordered tasks in [tasks.md](tasks.md)(t[asks.md](asks.md)) (T064, T069-T078)
 
-**IMPORTANT**: Tasks T064, T069-T078 are already defined in tasks.md. This plan provides roadmap for execution.
+**IMPORTANT**: Tasks T064, T069-T078 are already defined in [tasks.md](tasks.md)(t[asks.md](asks.md)). This plan provides roadmap for execution.
 
 ---
 
@@ -275,16 +275,16 @@ docs/
 **Dependencies**: T072-T073 (for test report data)
 
 **T074: Quickstart Validation**
-- Manually execute all 6 scenarios from quickstart.md
+- Manually execute all 6 scenarios from [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md))
 - Document results with screenshots/logs
 - Verify cross-platform consistency
 
 **T075: Test Report**
-- Generate `docs/TEST_REPORT_ANDROID_v1.0.0.md`
+- Generate `[docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md)(d[ocs/TEST_REPORT_ANDROID_v1.0.0.md](ocs/TEST_REPORT_ANDROID_v1.0.0.md))`
 - Include: unit test coverage summary, performance benchmarks, comparison vs Desktop
 
 **T076: CI Documentation**
-- Update `docs/CI_Workflows_Artifacts.md` with Android build section
+- Update `[docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)(d[ocs/CI_Workflows_Artifacts.md](ocs/CI_Workflows_Artifacts.md))` with Android build section
 - Document artifact formats (APK, AAB), release process
 
 ### Execution Sequence
@@ -328,9 +328,9 @@ No constitutional violations. All completion tasks align with existing architect
 - [ ] T072: Room performance tests (< 50ms targets)
 - [ ] T073: UI response time tests (< 200ms targets)
 - [ ] T074: Quickstart validation (manual execution)
-- [ ] T075: Test report generation (TEST_REPORT_ANDROID_v1.0.0.md)
-- [ ] T076: CI documentation (CI_Workflows_Artifacts.md)
-- [x] T077: Migration documentation (✅ ANDROID_MIGRATION.md created)
+- [ ] T075: Test report generation ([TEST_REPORT_ANDROID_v1.0.0.md](TEST_REPORT_ANDROID_v1.0.0.md)(T[EST_REPORT_ANDROID_v1.0.0.md](EST_REPORT_ANDROID_v1.0.0.md)
+- [ ] T076: CI documentation ([CI_Workflows_Artifacts.md](CI_Workflows_Artifacts.md)(C[I_Workflows_Artifacts.md](I_Workflows_Artifacts.md)
+- [x] T077: Migration documentation (✅ [ANDROID_MIGRATION.md](ANDROID_MIGRATION.md)(A[NDROID_MIGRATION.md](NDROID_MIGRATION.md)) created)
 - [ ] T078: CI/CD workflow updates (android-build.yml)
 
 **Gate Status**:
@@ -384,8 +384,8 @@ No constitutional violations. All completion tasks align with existing architect
 
 **Ready for Execution** ✅
 
-See `roadmap-completion.md` for detailed task breakdown and execution guidance.
+See `[roadmap-completion.md](roadmap-completion.md)(r[oadmap-completion.md](oadmap-completion.md))` for detailed task breakdown and execution guidance.
 
 ---
 
-*Based on Constitution v2.0.0 - See `/memory/constitution.md`*
+*Based on Constitution v2.0.0 - See `[/memory/constitution.md](/memory/constitution.md)(/[memory/constitution.md](memory/constitution.md))`*

@@ -1,3 +1,5 @@
+<!-- Archived from [docs/cross_device_e2e_tests.md](docs/cross_device_e2e_tests.md) -->
+
 # Cross-Device E2E Tests Documentation
 
 **Task**: T062 - Add cross-device E2E tests (Linux Desktop ↔ Android device, CLI ↔ Android ↔ Desktop)
@@ -14,7 +16,7 @@ Cross-device E2E tests verify that node discovery and synchronization work corre
 ### Location
 
 - **Test File**: `tests/test_cross_device_e2e.rs`
-- **Documentation**: `tests/e2e/README.md`
+- **Documentation**: [tests/e2e/README.md](tests/e2e/README.md)
 - **Test Runner Script**: `scripts/run_cross_device_tests.sh`
 
 ### Test Categories
@@ -243,8 +245,10 @@ For CI environments, tests are structured to:
 
 ## Related Documentation
 
-- `tests/e2e/README.md` - Detailed test execution guide
-- `specs/008-specify-md/quickstart.md` - Quickstart scenarios
-- `docs/node_discovery_test_results.md` - Quickstart test results
-- `docs/final_validation.md` - CLI validation results
+- [tests/e2e/README.md](tests/e2e/README.md) - Detailed test execution guide
+- [specs/008-specify-md/quickstart.md](specs/008-specify-md/quickstart.md) - Quickstart scenarios
+- [docs/node_discovery_test_results.md](docs/node_discovery_test_results.md) - Quickstart test results
+- [docs/final_validation.md](docs/final_validation.md) - CLI validation results
+
+_Version: v1.0.0_
 

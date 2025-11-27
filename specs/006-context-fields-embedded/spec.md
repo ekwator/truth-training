@@ -156,3 +156,5 @@ As a user creating events, I want to select a context template by name so that t
 - [x] Review checklist passed
 
 ---
+
+_Version: v1.0.0_

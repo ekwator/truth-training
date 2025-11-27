@@ -19,3 +19,5 @@
 
 ## Open Items
 - None
+
+_Version: v1.0.0_

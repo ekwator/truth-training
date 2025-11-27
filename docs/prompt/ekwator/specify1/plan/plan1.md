@@ -1,3 +1,5 @@
+<!-- Archived from [docs/prompt/ekwator/specify1/plan/plan1.md](docs/prompt/ekwator/specify1/plan/plan1.md) -->
+
 /plan
 Create a complete modification plan for implementing the changes defined in the previous /specify request:
 
@@ -47,3 +49,6 @@ Generate:
 - Explicit file paths and modifications.
 - Dependencies between steps.
 - A ready-to-execute plan suitable for subsequent tasks and /implementation.
+
+_Version: v1.0.0_
+

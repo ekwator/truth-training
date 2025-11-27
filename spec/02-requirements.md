@@ -1,10 +1,12 @@
 # Requirements
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 02
 
 ### Functional
-- Knowledge Base: seed RU/EN contexts, causes, forms, effects, impact types. [docs/Data_Schema.md]
+- Knowledge Base: seed RU/EN contexts, causes, forms, effects, impact types. [docs/Data_Schema.md](docs/Data_Schema.md)
 - Event Tracking: create events (description, context_id, vector, timestamps, code), update detected/corrected, add statements. [core/storage.rs]
 - Impact Assessment: record impacts per event with type and polarity. [core/storage.rs]
 - Expert Heuristics: provide questions, compute score (-1..1), confidence (0..1), suggested detection. [core/expert_simple.rs]
@@ -27,3 +29,7 @@ Spec ID: 02
 ### Acceptance Criteria (MVP)
 - Can init/seed DB, add events/statements/impacts, run recalc, and read metrics via API.
 - Nodes discover peers on LAN and can exchange data via signed sync endpoints.
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

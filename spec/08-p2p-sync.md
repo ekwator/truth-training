@@ -1,4 +1,6 @@
 # P2P & Sync
+
+Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 08
@@ -148,7 +150,7 @@ The system tracks relay success rates dynamically during sync operations:
 
 - `collective_score` — aggregated event score (0..1), recalculated locally from `impact` entries and shared among nodes as part of distributed consensus propagation.
 - Consensus converges iteratively: nodes recompute and exchange values; discrepancies diminish with subsequent recalculations and new evaluations.
-- See `docs/Concept_Collective_Intelligence.md` for detailed implementation.
+- See `[docs/Concept_Collective_Intelligence.md](docs/Concept_Collective_Intelligence.md)` for detailed implementation.
 
 ## Propagation Priority Exchange
 
@@ -175,3 +177,7 @@ The system tracks relay success rates dynamically during sync operations:
 - Add validator user_id to impacts and enforce sign/verify.
 - Implement zone-based routing for large networks.
 - Add peer reputation scoring based on sync reliability.
+
+_Version: v1.0.0_
+
+- See [docs/README.md](docs/README.md) for detailed explanations.
