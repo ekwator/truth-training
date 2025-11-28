@@ -394,7 +394,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
     
     steps:
       - name: Checkout code
