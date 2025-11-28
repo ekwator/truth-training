@@ -1,10 +1,10 @@
 name: Cross-Platform Build
 
 on:
-  # push:
+  push:
   #   branches: [ main ]
-  #   tags:
-  #     - '**'
+    tags:
+      - '**'
   pull_request:
     branches: [ main ]
   workflow_dispatch:

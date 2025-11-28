@@ -1,10 +1,10 @@
 name: Android Build & Test
 
 on:
-  # push:
+  push:
   #   branches: [ main ]
-  #   tags:
-  #     - '**'
+    tags:
+      - '**'
   # workflow_run:
   #   workflows: ["Cross-Platform Build"]
   #   types: [completed]
