@@ -1,18 +1,18 @@
 name: Android Build & Test
 
 on:
-  push:
-    branches: [ main ]
-    tags:
-      - '**'
-  pull_request:
-    branches: [ main ]
-  workflow_run:
-    workflows: ["Cross-Platform Build"]
-    types: [completed]
-    branches: [main]
-    tags:
-      - '**'
+  # push:
+  #   branches: [ main ]
+  #   tags:
+  #     - '**'
+  # pull_request:
+  #   branches: [ main ]
+  # workflow_run:
+  #   workflows: ["Cross-Platform Build"]
+  #   types: [completed]
+  #   branches: [main]
+  #   tags:
+  #     - '**'
   workflow_dispatch:
   
 permissions:
