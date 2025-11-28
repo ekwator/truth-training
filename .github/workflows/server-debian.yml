@@ -26,8 +26,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-      - name: Build truth_core_server binary
-        run: cargo build --release --bin truth_core_server
+      - name: Build truth_core_server binary (desktop feature)
+        run: cargo build --release --bin truth_core_server --features desktop
       - name: Prepare packaging deps
         run: sudo apt-get update && sudo apt-get install -y dpkg-dev
       - name: Build .deb package

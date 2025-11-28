@@ -1,28 +1,28 @@
-# Debian packaging for truth-core-service.deb
+## Debian packaging for truth-core-service.deb
 
-## Состав пакета:
-- /usr/local/bin/truth_core (бинарник, предоставьте заранее)
-- /etc/truth-core/config.yml (пример конфигурации)
-- /etc/systemd/system/truth-core.service (systemd unit)
-- system user: truthd (без login, без home)
-- postinst/prerm/postrm скрипты (создание пользователя, enable/start/stop/purge)
+### Package contents
+- `/usr/local/bin/truth_core` (binary, provide ahead of time, built via `cargo build --release --bin truth_core_server --features desktop`)
+- `/etc/truth-core/config.yml` (sample configuration)
+- `/etc/systemd/system/truth-core.service` (systemd unit)
+- System user `truthd` (no login, no home)
+- `postinst` / `prerm` / `postrm` scripts (create user, enable/start/stop/purge)
 
-## Установка:
+### Installation
 ```
 sudo dpkg -i truth-core-service.deb
 ```
 
-## Управление сервисом:
+### Service control
 ```
 sudo systemctl status truth-core.service
 sudo systemctl restart truth-core.service
 sudo systemctl stop truth-core.service
 ```
 
-## Примечания
-- Пользователь truthd создаётся без home и shell (безопасный сервисный юзер).
-- Перезапуск/автостарт настроены через systemd.
-- Ограничение: никакой модификации/логирования identities или acknowledgment — только автостарт, перезапуск, чистое event propagation.
-- Для удаления с очисткой: sudo dpkg --purge truth-core-service
+### Notes
+- User `truthd` is created without home or shell (hardened service account).
+- Auto-start and restart handled through systemd.
+- Constraint: no modification/logging of identities or acknowledgments—service is limited to auto-start, restart, and clean event propagation.
+- To remove with purge: `sudo dpkg --purge truth-core-service`
 
 _Version: v1.0.0_
