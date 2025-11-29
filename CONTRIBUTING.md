@@ -5,6 +5,10 @@ This document explains **how to contribute correctly**, which **tools are mandat
 
 ---
 
+**⚠️ Attention: all requirements of this manual when using this repository are fulfilled automatically when using Cursor AI IDE !!!**
+
+---
+
 ## 🧰 Required Tools and Workflow
 
 The following tools are **mandatory** for all contributors:
