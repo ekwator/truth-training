@@ -1567,15 +1567,10 @@ Required updates:
 - [docs/UI_Desktop.md](docs/UI_Desktop.md) *(must mention `Core/Server vX.Y.Z` exactly as in tags)*  
 
 ### ✔ Release notes must describe **features**, not tasks
-The file:
 
-```
-release-info.txt
-```
+The file [release-info.txt](release-info.txt) must be filled out with release information **before** running the release script. The file must contain:
 
-must contain:
-
-- Release tag on the first line
+- Release tag on the first line (e.g., `v1.0.0-Release`)
 - Name release on the second line
 - Summary of the changes  
 - Highlights of major improvements  
@@ -1584,15 +1579,20 @@ must contain:
 
 **Task IDs or internal Spec-Kit logs are not allowed in release notes.**
 
+**After the release script completes**, rename `release-info.txt` to `release-info-vX_Y_Z.txt` (replace `X_Y_Z` with the version number using underscores, e.g., `release-info-v1_0_0.txt`). This versioned file is then referenced in [CHANGELOG.md](CHANGELOG.md).
+
 ---
 
 ## 3. Mandatory Release Script Usage
 
-All releases must be created using the required script:
+**Release workflow steps:**
 
-[create-release.sh](create-release.sh)
+1. Fill out [release-info.txt](release-info.txt) with the release tag (first line), release name (second line), and release information
+2. Run the release script: [create-release.sh](create-release.sh)
+3. After the script completes, rename `release-info.txt` to `release-info-vX_Y_Z.txt` (e.g., `release-info-v1_0_0.txt`)
+4. Update [CHANGELOG.md](CHANGELOG.md) to reference the versioned release-info file
 
-The script:
+The release script:
 
 - Reads the release tag from the first line of [release-info.txt](release-info.txt)  
 - Builds Rust Core  
@@ -1621,14 +1621,7 @@ Example:
 - `v1.1.0-Beta`  
 - `v1.0.1-Patch1`  
 
-### ✔ Tags must be signed
-All release tags must be created using:
 
-```
-git tag -s <tag>
-```
-
-Unsigned tags are not permitted.
 
 ### ✔ Tags must be immutable
 After publishing:
@@ -1673,8 +1666,8 @@ The release must include:
 - Config template files  
 
 ### **Documentation**
-- [release-info.txt](release-info.txt)  
-- [CHANGELOG.md](CHANGELOG.md)  
+- Versioned `release-info-vX_Y_Z.txt` file (e.g., `release-info-v1_0_0.txt`)  
+- [CHANGELOG.md](CHANGELOG.md) (references the versioned release-info file)  
 - [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)  
 - [spec/README.md](spec/README.md)  
 - [docs/UI_Desktop.md](docs/UI_Desktop.md)  
@@ -1716,21 +1709,25 @@ Every release must include:
 
 ## 8. Required Release Checklist
 
-Before calling the release script:
+**Before calling the release script:**
 
 - [ ] All tests pass  
 - [ ] No warnings in any platform  
 - [ ] Version numbers updated everywhere  
 - [ ] Documentation updated  
-- [ ] [release-info.txt](release-info.txt)  prepared  
 - [ ] [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)  
 - [ ] [spec/README.md](spec/README.md) references the new `vX.Y.Z`  
 - [ ] [docs/UI_Desktop.md](docs/UI_Desktop.md) references `Core/Server vX.Y.Z`  
+- [ ] [release-info.txt](release-info.txt) prepared with tag (first line), release name (second line), and release information
 - [ ] Android physical device tests completed  
 - [ ] Desktop E2E tests completed  
 - [ ] Sync tests across devices completed  
 - [ ] All Spec-Kit tasks finalized  
-- [ ] Tag name prepared and placed in release-info.txt  
+
+**After the release script completes:**
+
+- [ ] `release-info.txt` renamed to `release-info-vX_Y_Z.txt` (e.g., `release-info-v1_0_0.txt`)
+- [ ] [CHANGELOG.md](CHANGELOG.md) updated with reference to the versioned release-info file  
 
 ---
 

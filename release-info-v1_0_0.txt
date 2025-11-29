@@ -1,0 +1,35 @@
+v1.0.0
+Truth Training v1.0.0 — Network of Anonymous Trust, fully realized
+
+Truth Training v1.0.0 is the first and only GA release of the project. It delivers the complete anonymous-trust stack—from the Ed25519-secured Rust core to truthctl, desktop UI, mobile clients, automation hooks, and governance specifications—aligned under one version banner. Every capability built since project inception (planning kits 001–010, cross-platform experiments, prompt frameworks, and documentation refactors) lands here in production-ready form.
+
+Highlights
+- Cross-platform core (`truth_core` + `core_lib`):
+  - Feature-gated builds for desktop (HTTP server, diagnostics, CLI integration) and mobile (FFI layer, lightweight runtime) sharing identical data models.
+  - Event, statement, impact, metrics, and trust-propagation engines hardened for 100–1000 concurrent participants and 10k–100k events/day.
+- Truthctl CLI:
+  - Full command surface for node bootstrap, peer discovery, sync, ratings, configuration, and health checks.
+  - P2P sync wiring to `truth_core::p2p` plus conflict resolution and trust visualization primitives.
+- Desktop UI (Tauri + React/TypeScript):
+  - Compose-inspired Material flows rebuilt in web tech with stateful dashboards, expert workflows, and offline-first networking.
+  - Shared storage layout (`~/.truth-training`) and instrumentation consistent with CLI/server deployments.
+- Android client:
+  - Room-backed offline mode, Jetpack Compose UI, WorkManager background sync, NSD-based P2P discovery, and secure Ed25519/RSA message signing.
+  - Full API parity with desktop/CLI, including context templates, judgments, consensus, and registry-driven node management.
+- Unified discovery + sync fabric:
+  - LAN/Wi-Fi UDP multicast (239.255.0.1:52525), HTTPS registry polling, and TTL-governed reachability checks operating on a single schema.
+  - Conflict-free deduplication, auto-cleanup, and shared observability metrics across server, desktop, CLI, and Android runtimes.
+- Specifications & governance:
+  - Comprehensive `/spec` kit (01–21) covering product vision, architecture, data model, API, expert system, UX, CLI, quality gates, prompts, testing, offline reliability, cross-platform builds, cargo configuration, and roadmap.
+  - `/docs` hub with architecture, API references, deployment guides, release collateral, troubleshooting, quality reports, and archive indices—all updated to v1.0.0.
+- Tooling & automation:
+  - Make targets, doc refactor CLI, duplicate detectors, spec optimizers, and constitution-based agent workflows ensuring consistent planning/execution.
+  - GitHub Actions pipelines for desktop, server, Android, iOS, cross-platform packaging, and artifact publishing.
+
+Quality & Validation
+- Multi-tier testing suites: Rust unit/integration tests, CLI contract tests, Android instrumentation (107 on-device cases), desktop end-to-end, and cross-device scenarios (desktop ↔ CLI ↔ Android).
+- Observability: Discovery counts, TTL pruning, reachability/latency metrics, and relay success rates surfaced across clients and workflows.
+- Documentation integrity: Complete link graph from root README through `/docs` and `/spec`, archived references preserved via GitHub URLs, and spec compression directives enforcing AI-ready briefs.
+- Security & compliance: Constitution adherence, Ed25519 signature enforcement, privacy-preserving judgment aggregation, and version registry synchronization across artifacts.
+
+Truth Training v1.0.0 represents the fully aligned "Network of Anonymous Trust": anonymous signaling, collective adjudication, platform-consistent discovery, and production-grade tooling released together for the first time.
