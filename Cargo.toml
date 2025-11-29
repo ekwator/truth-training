@@ -92,3 +92,9 @@ anyhow = "1.0"
 tempfile = "3.8"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
 
+# Force glib >= 0.20.0 to fix vulnerability RUSTSEC-2024-0429
+# Note: This is a transitive dependency through Tauri (GTK3 on Linux only)
+# The dependency is only used at runtime on Linux, not in the code directly
+# However, [patch.crates-io] cannot patch from the same source, so this won't work
+# The vulnerability only affects Linux builds where GTK3 is used at runtime
+
