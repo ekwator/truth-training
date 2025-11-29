@@ -2022,19 +2022,21 @@ Use this appendix whenever you need to quickly access tools, documentation, work
 
 ### Important Documentation Directories
 - [`docs/README.md`](docs/README.md) — entry point for all human-facing guides  
-- [`spec/`](spec/README.md) — authoritative Spec-Kit references (AI-first)  
 - [`docs/prompt/`](docs/prompt/) — per-author Spec-Kit prompt library  
-- [`docs/architecture/`](docs/architecture.md) — diagrams and architecture narratives  
-- [`docs/protocol/`](docs/protocol/sync.md) — wire format, sync rules, event models  
-- [`docs/security/`](docs/security/crypto.md) — cryptographic documentation and guidelines  
-- [`docs/android/`](docs/android/) — Android-specific instructions and reports  
-- [`docs/desktop/`](docs/desktop/) — Desktop UI documentation and state model notes  
+- [`docs/architecture.md`](docs/architecture.md) — high-level system architecture  
+- [`docs/Technical_Specification.md`](docs/Technical_Specification.md) — core/server data model and APIs  
+- [`docs/cross_platform_discovery_compatibility.md`](docs/cross_platform_discovery_compatibility.md) — discovery/sync protocol compatibility  
+- [`docs/Constitution-Compliance.md`](docs/Constitution-Compliance.md) — security, governance, and compliance notes  
+- Android docs: [`docs/ANDROID_MIGRATION.md`](docs/ANDROID_MIGRATION.md), [`docs/ANDROID_TEST_FIX_SUGGESTIONS.md`](docs/ANDROID_TEST_FIX_SUGGESTIONS.md), [`docs/android_discovery_architecture.md`](docs/android_discovery_architecture.md), [`docs/TEST_REPORT_ANDROID_v1.0.0.md`](docs/TEST_REPORT_ANDROID_v1.0.0.md)  
+- Desktop docs: [`docs/UI_Desktop.md`](docs/UI_Desktop.md), [`docs/ui_guidelines.md`](docs/ui_guidelines.md)  
 
 ### Specify Documentation Directory
 ```
 /spec/
 ```
 - `spec/` — all official specifications  
+- [`spec/README.md`](spec/README.md) — authoritative Spec-Kit references (AI-first)  
+
 ---
 
 ## 🧩 2. Spec-Kit Prompt Library (Developer Examples)
