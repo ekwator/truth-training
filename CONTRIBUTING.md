@@ -1466,9 +1466,7 @@ Forbidden:
 
 Every PR touching logic must update:
 
-```
 [docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)
-```
 
 This ensures:
 
@@ -1564,7 +1562,9 @@ Required updates:
 - `package.json`  
 - `tauri.conf.json`  
 - `truthctl --version` output  
-- [docs/version_matrix.md](docs/version_matrix.md)  
+- [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)  
+- [spec/README.md](spec/README.md) *(required by `.github/workflows/desktop.yml` version gate)*  
+- [docs/UI_Desktop.md](docs/UI_Desktop.md) *(must mention `Core/Server vX.Y.Z` exactly as in tags)*  
 
 ### ✔ Release notes must describe **features**, not tasks
 The file:
@@ -1575,7 +1575,8 @@ release-info.txt
 
 must contain:
 
-- Release tag on the first line  
+- Release tag on the first line
+- Name release on the second line
 - Summary of the changes  
 - Highlights of major improvements  
 - Security impact  
@@ -1589,13 +1590,11 @@ must contain:
 
 All releases must be created using the required script:
 
-```
-./scripts/create-release.sh
-```
+[create-release.sh](create-release.sh)
 
 The script:
 
-- Reads the release tag from the first line of `release-info.txt`  
+- Reads the release tag from the first line of [release-info.txt](release-info.txt)  
 - Builds Rust Core  
 - Builds Desktop UI installers  
 - Builds Android APK/AAB  
@@ -1615,7 +1614,7 @@ Reproducibility must be guaranteed.
 
 ## 4. Tagging Rules
 
-### ✔ Tag must match `release-info.txt`
+### ✔ Tag must match [release-info.txt](release-info.txt) 
 Example:
 
 - `v1.0.0-Release`  
@@ -1664,7 +1663,6 @@ The release must include:
 - E2E test logs  
 
 ### **Android**
-- `app-debug.apk`  
 - `app-release.aab`  
 - JNI `.so` libraries for all architectures  
 - Instrumentation test results  
@@ -1675,9 +1673,11 @@ The release must include:
 - Config template files  
 
 ### **Documentation**
-- `release-info.txt`  
-- `/[docs/changelog/vX.Y.Z.md](docs/changelog/vX.Y.Z.md)`  
-- Updated version matrix  
+- [release-info.txt](release-info.txt)  
+- [CHANGELOG.md](CHANGELOG.md)  
+- [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)  
+- [spec/README.md](spec/README.md)  
+- [docs/UI_Desktop.md](docs/UI_Desktop.md)  
 
 ---
 
@@ -1722,7 +1722,10 @@ Before calling the release script:
 - [ ] No warnings in any platform  
 - [ ] Version numbers updated everywhere  
 - [ ] Documentation updated  
-- [ ] `release-info.txt` prepared  
+- [ ] [release-info.txt](release-info.txt)  prepared  
+- [ ] [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)  
+- [ ] [spec/README.md](spec/README.md) references the new `vX.Y.Z`  
+- [ ] [docs/UI_Desktop.md](docs/UI_Desktop.md) references `Core/Server vX.Y.Z`  
 - [ ] Android physical device tests completed  
 - [ ] Desktop E2E tests completed  
 - [ ] Sync tests across devices completed  
@@ -1951,7 +1954,7 @@ A PR may be merged **only if all conditions are met**:
 ✔ CI green  
 ✔ Review approvals completed  
 ✔ No merge conflicts  
-✔ Rebase onto latest `master`  
+✔ Rebase onto latest `main`  
 ✔ Signed commits required  
 ✔ No TODOs left in code  
 ✔ [CHANGELOG.md](CHANGELOG.md) updated  
@@ -2017,15 +2020,21 @@ Use this appendix whenever you need to quickly access tools, documentation, work
 /docs/
 ```
 
-### Important Subdirectories
-- `docs/spec/` — all official specifications  
-- `docs/prompt/` — Spec-Kit prompt library  
-- `docs/architecture/` — diagrams and architectural explanations  
-- `docs/protocol/` — wire format, sync rules, event model  
-- `docs/security/` — cryptographic documentation and guidelines  
-- `docs/android/` — Android-specific instructions  
-- `docs/desktop/` — Desktop UI documentation  
+### Important Documentation Directories
+- [`docs/README.md`](docs/README.md) — entry point for all human-facing guides  
+- [`spec/`](spec/README.md) — authoritative Spec-Kit references (AI-first)  
+- [`docs/prompt/`](docs/prompt/) — per-author Spec-Kit prompt library  
+- [`docs/architecture/`](docs/architecture.md) — diagrams and architecture narratives  
+- [`docs/protocol/`](docs/protocol/sync.md) — wire format, sync rules, event models  
+- [`docs/security/`](docs/security/crypto.md) — cryptographic documentation and guidelines  
+- [`docs/android/`](docs/android/) — Android-specific instructions and reports  
+- [`docs/desktop/`](docs/desktop/) — Desktop UI documentation and state model notes  
 
+### Specify Documentation Directory
+```
+/spec/
+```
+- `spec/` — all official specifications  
 ---
 
 ## 🧩 2. Spec-Kit Prompt Library (Developer Examples)
@@ -2153,12 +2162,12 @@ Must be used before merge:
 
 Use these files to understand how Truth Training works internally:
 
-- [docs/architecture/core.md](docs/architecture/core.md) — Core engine architecture  
-- [docs/architecture/event-flow.md](docs/architecture/event-flow.md) — Event propagation model  
-- [docs/protocol/sync.md](docs/protocol/sync.md) — Sync rules  
-- [docs/security/crypto.md](docs/security/crypto.md) — Cryptographic rules  
-- [docs/android/discovery.md](docs/android/discovery.md) — Local discovery protocol  
-- [docs/desktop/state.md](docs/desktop/state.md) — Desktop state model  
+- [docs/architecture.md](docs/architecture.md) — System architecture, runtime boundaries, deployment layouts  
+- [docs/Technical_Specification.md](docs/Technical_Specification.md) — End-to-end component breakdown  
+- [docs/Data_Schema.md](docs/Data_Schema.md) — Database schema, migrations, entity contracts  
+- [docs/Concept_Collective_Intelligence.md](docs/Concept_Collective_Intelligence.md) — Trust propagation concepts  
+- [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md) — Android discovery subsystem internals  
+- [docs/UI_Desktop.md](docs/UI_Desktop.md) — Desktop state model and UX flows  
 
 ---
 
@@ -2206,18 +2215,21 @@ Core    Android    Desktop    Server
 
 The following files are essential for understanding the project:
 
-| File | Purpose |
-|------|---------|
+| File / Directory | Purpose |
+|------------------|---------|
 | [README.md](README.md) | Project overview |
 | [SECURITY.md](SECURITY.md) | Security policies |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution rules |
 | [14-quality-gates.md](14-quality-gates.md) | PR acceptance criteria |
-| `docs/prompt/*` | Spec-Kit examples |
-| `Cargo.toml` | Rust workspace definition |
-| `android/app/src/*` | Android client |
-| `desktop/src/*` | Desktop client |
-| `server/src/*` | Sync server |
-| `core/src/*` | Rust core (shared) |
+| [docs/README.md](docs/README.md) | Human-facing documentation hub |
+| [spec/README.md](spec/README.md) | Spec-Kit index / decision source |
+| [docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md) | Version matrix enforced by CI |
+| [docs/prompt/](docs/prompt/) | Spec-Kit prompt library by author |
+| [Cargo.toml](Cargo.toml) | Rust workspace definition |
+| [truth-android-client/](truth-android-client/) | Android client sources |
+| [ui/desktop/](ui/desktop/) | Desktop (React + Tauri) sources |
+| [src/](src/) | truth_core server binary |
+| [core/](core/) | Shared Rust core library |
 
 ---
 

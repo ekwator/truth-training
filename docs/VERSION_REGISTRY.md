@@ -1,5 +1,3 @@
-<!-- Archived from [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md) -->
-
 # Truth Training – Version Registry
 
 This document tracks all current versions across the Truth Training ecosystem.
