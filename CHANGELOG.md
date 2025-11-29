@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.0] — Unified Discovery & Sync Release — Network of Anonymous Trust, fully realized
+
+This tag represents the **first and only GA release** of Truth Training where the entire anonymous-trust stack lands together: Rust core, truthctl CLI, desktop UI, Android client, automation, and specs, all aligned on `v1.0.0`.  
+For a narrative overview of this release, see [`release-info.txt`](release-info.txt); the sections below break down the same milestone by subsystem and historical sub-tags.
+
 ## [1.0.0-Release] — Unified Discovery & Sync Release
 
 **Release Date**: 2025-01-XX  
@@ -142,7 +147,7 @@ This release delivers a fully unified cross-platform node discovery and synchron
 
 ### 📦 Version Information
 
-All components aligned to v1.0.0-Release:
+All components aligned to v1.0.0:
 - `core_lib`: v1.0.0
 - `truth_core`: v1.0.0
 - `app` (truthctl): v1.0.0
