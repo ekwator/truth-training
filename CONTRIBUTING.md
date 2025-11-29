@@ -1626,15 +1626,13 @@ Example:
 ### ✔ Tags must be immutable
 After publishing:
 
-- Tags cannot be moved  
-- Tags cannot be deleted  
-- Releases must not be retroactively modified  
+- Tags cannot be moved
+- Tags cannot be deleted
+- Releases cannot be modified retroactively
 
-If a tag was pushed accidentally, a **new** tag must be created:
+If a tag was added accidentally, without tag-based workflows enabled, simply delete the tag.
 
-```
-v1.0.0-Release-R1
-```
+If a tag was added accidentally, with tag-based workflows enabled, first delete the released release, then delete all workflows running for that tag, and then delete the tag.
 
 ---
 
