@@ -12,6 +12,23 @@ from . import file_creator
 from .models import DocumentationFile, LinkGraphReport
 
 DEFAULT_REPORT_DIR = Path(os.environ.get("DOC_REFACTOR_REPORT_DIR", "reports/doc_refactor"))
+READ_ME_WORD_CAP = 400
+DOC_SECTION_RULES = [
+    ("Release Notes & Plans", ("release", "version", "deployment", "artifact", "p2p")),
+    ("Tutorials & Guides", ("guide", "tutorial", "howto", "build", "install", "cli")),
+    ("Troubleshooting & Quality", ("troubleshooting", "test", "validation", "report", "qa")),
+    ("Architecture & Concepts", ("architecture", "concept", "specification", "overview")),
+]
+DEFAULT_DOC_SECTION = "Core References"
+PROTECTED_DOCS = {
+    "docs/CLI_Usage.md",
+    "docs/Deployment.md",
+    "docs/UI_Desktop.md",
+    "docs/android_discovery_architecture.md",
+    "docs/Documentation_Refactor_Overview.md",
+    "docs/Documentation_Refactor_Inventory.md",
+    "docs/Documentation_Refactor_Links.md",
+}
 
 
 def run_restructuring(
@@ -28,7 +45,9 @@ def run_restructuring(
 
     moved_sections = _compress_readme(root, dry_run=dry_run)
     archived_entries = _archive_documents(root, records, link_report, report_directory, dry_run=dry_run)
-    _update_archive_indexes(root, [entry["destination"] for entry in archived_entries], dry_run=dry_run)
+    archived_paths = [entry["destination"] for entry in archived_entries]
+    _update_archive_indexes(root, archived_paths, dry_run=dry_run)
+    _rewrite_docs_readme(root, archived_paths=archived_paths, dry_run=dry_run)
 
     report = {
         "moved_sections": moved_sections,
@@ -52,7 +71,7 @@ def _compress_readme(root: Path, *, dry_run: bool) -> List[dict]:
     moved: List[dict] = []
     docs_dir = root / "docs"
     docs_dir.mkdir(parents=True, exist_ok=True)
-    nav_lines = ["## Documentation", ""]
+    nav_lines: List[str] = []
 
     for section in sections:
         slug = _slugify(section["heading"])
@@ -72,10 +91,19 @@ def _compress_readme(root: Path, *, dry_run: bool) -> List[dict]:
             }
         )
 
-    nav_lines.append("")
-    new_readme = summary.strip() + "\n\n" + "\n".join(nav_lines)
+    navigation_block = _build_navigation_block(nav_lines)
+    summary_block = _truncate_summary(summary)
+    release_block = _release_surfaces_block()
+    entry_points_block = _entry_points_block()
+
+    assembled = "\n\n".join(
+        block
+        for block in [summary_block, release_block, entry_points_block, navigation_block]
+        if block
+    ).strip() + "\n"
+
     if not dry_run:
-        readme_path.write_text(new_readme.strip() + "\n", encoding="utf-8")
+        readme_path.write_text(assembled, encoding="utf-8")
 
     return moved
 
@@ -135,9 +163,23 @@ def _archive_documents(
 
     archived: List[dict] = []
     for rel_path in sorted(candidates):
+        if not rel_path.startswith("docs/"):
+            continue
+        if rel_path in PROTECTED_DOCS:
+            continue
         if rel_path.startswith("docs/archive"):
             continue
         if rel_path.startswith("spec/"):
+            continue
+        if rel_path.startswith("specs/"):
+            # Keep Spec-Kit feature specs in place; they are part of the
+            # development workflow rather than end-user docs.
+            continue
+        source_path = root / rel_path
+        if not source_path.exists():
+            # Skip orphan entries that no longer exist on disk (e.g., deleted
+            # templates or generated files). We still want restructuring to
+            # succeed for the rest of the documentation set.
             continue
         dest_rel = _archive_destination(rel_path)
         archived_rel = file_creator.archive_document(
@@ -178,36 +220,98 @@ def _update_archive_indexes(root: Path, archived_paths: Sequence[str], *, dry_ru
         archive_readme.write_text("\n".join(lines), encoding="utf-8")
 
     docs_readme = root / "docs" / "README.md"
-    existing = docs_readme.read_text(encoding="utf-8") if docs_readme.exists() else "# Documentation\n"
-    updated = _inject_archive_section(existing, archived_paths)
-    if not dry_run:
+    if not docs_readme.exists():
         docs_readme.parent.mkdir(parents=True, exist_ok=True)
-        docs_readme.write_text(updated, encoding="utf-8")
+        docs_readme.write_text("# Documentation\n", encoding="utf-8")
 
 
-def _inject_archive_section(content: str, archived_paths: Sequence[str]) -> str:
-    lines = content.splitlines()
-    new_lines: List[str] = []
-    skipping = False
+def _build_navigation_block(nav_lines: List[str]) -> str:
+    if not nav_lines:
+        return ""
+    lines = ["## Documentation Topics", ""]
+    lines.extend(nav_lines)
+    lines.append("")
+    return "\n".join(lines).strip()
 
-    for line in lines:
-        if line.startswith("## Archive"):
-            skipping = True
+
+def _truncate_summary(summary: str) -> str:
+    words = summary.split()
+    if len(words) <= READ_ME_WORD_CAP:
+        return summary.strip()
+    truncated = " ".join(words[:READ_ME_WORD_CAP]) + " …"
+    return truncated.strip()
+
+
+def _release_surfaces_block() -> str:
+    lines = [
+        "## Release Surfaces",
+        "",
+        "- **CLI** — interact via [docs/CLI_Usage.md](docs/CLI_Usage.md)",
+        "- **Server** — deploy following [docs/Deployment.md](docs/Deployment.md)",
+        "- **Desktop UI** — reference [docs/UI_Desktop.md](docs/UI_Desktop.md)",
+        "- **Mobile** — architecture in [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)",
+    ]
+    return "\n".join(lines).strip()
+
+
+def _entry_points_block() -> str:
+    lines = [
+        "## Documentation Entry Points",
+        "",
+        "- [docs/README.md](docs/README.md) — Human-readable, narrative depth",
+        "- [spec/README.md](spec/README.md) — AI-focused directives and constraints",
+        "- [docs/Documentation_Refactor_Overview.md](docs/Documentation_Refactor_Overview.md) — Pipeline summary",
+        "- [docs/Documentation_Refactor_Inventory.md](docs/Documentation_Refactor_Inventory.md) — Inventory instructions",
+        "- [docs/Documentation_Refactor_Links.md](docs/Documentation_Refactor_Links.md) — Link validation workflow",
+    ]
+    return "\n".join(lines).strip()
+
+
+def _rewrite_docs_readme(root: Path, *, archived_paths: Sequence[str], dry_run: bool) -> None:
+    docs_dir = root / "docs"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    index: Dict[str, List[str]] = {title: [] for title, _ in DOC_SECTION_RULES}
+    index[DEFAULT_DOC_SECTION] = []
+
+    for path in docs_dir.rglob("*.md"):
+        relative = path.relative_to(root)
+        if relative.parts and relative.parts[0].lower() == "docs" and len(relative.parts) > 1:
+            if relative.parts[1].lower() == "archive":
+                continue
+        if path.name.lower() == "readme.md" and relative == Path("docs/README.md"):
             continue
-        if skipping and line.startswith("## "):
-            skipping = False
-        if not skipping:
-            new_lines.append(line)
+        section = _match_doc_section(path.name)
+        index[section].append(str(relative))
 
-    if new_lines and new_lines[-1] != "":
-        new_lines.append("")
+    lines = ["# Truth Training Documentation Hub (v1.0.0)", "", "Use this index to reach every human-facing reference."]
+    for title, _ in DOC_SECTION_RULES + [(DEFAULT_DOC_SECTION, tuple())]:
+        documents = sorted(index.get(title, []))
+        if not documents:
+            continue
+        lines.append("")
+        lines.append(f"## {title}")
+        lines.append("")
+        for rel in documents:
+            display = Path(rel).stem.replace("_", " ").replace("-", " ").title()
+            lines.append(f"- [{display}]({rel})")
 
-    new_lines.append("## Archive")
-    new_lines.append("")
-    for rel in sorted(archived_paths):
-        name = Path(rel).stem.replace("-", " ").title()
-        new_lines.append(f"- [{name}]({rel})")
-    new_lines.append("")
+    if archived_paths:
+        lines.append("")
+        lines.append("## Archive")
+        lines.append("")
+        for rel in sorted(archived_paths):
+            lines.append(f"- [{Path(rel).name}]({rel})")
 
-    return "\n".join(line for line in new_lines if line is not None).strip() + "\n"
+    content = "\n".join(lines).strip() + "\n"
+    if not dry_run:
+        (root / "docs" / "README.md").write_text(content, encoding="utf-8")
+
+
+def _match_doc_section(filename: str) -> str:
+    lowered = filename.lower()
+    for title, keywords in DOC_SECTION_RULES:
+        if any(keyword in lowered for keyword in keywords):
+            return title
+    return DEFAULT_DOC_SECTION
+
 

@@ -62,8 +62,8 @@ Contract tests (API endpoints):
 ```
 
 Integration notes:
-- Additional API details: [truthcore_api/api_reference_link.md](truthcore_api/api_reference_link.md) → [docs/api_reference/API_REFERENCE.md](../docs/api_reference/API_REFERENCE.md)
-- Platform comparison: [docs/Truth-training/Truth-training.md](../docs/Truth-training/Truth-training.md)
+- Additional API details: [truthcore_api/api_reference_link.md](truthcore_api/api_reference_link.md) → [[docs/api_reference/API_REFERENCE.md](docs/api_reference/API_REFERENCE.md)](../docs/api_reference/API_REFERENCE.md)
+- Platform comparison: [[docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md)](../docs/Truth-training/Truth-training.md)
 
 Mock flavor:
 - Build: `./gradlew assembleMockDebug`
@@ -129,7 +129,7 @@ Each P2P payload is signed before transmission:
 
 ## Migration from v0.3.0
 
-Detailed instructions: [docs/ANDROID_MIGRATION.md](../docs/ANDROID_MIGRATION.md)
+Detailed instructions: [[docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md)](../docs/ANDROID_MIGRATION.md)
 
 Key changes:
 - Version bump `0.3.0` → `1.0.0`
@@ -140,9 +140,9 @@ Key changes:
 
 ## Additional documentation
 
-- **Feature comparison:** [docs/Truth-training/Truth-training.md](../docs/Truth-training/Truth-training.md)
-- **API reference:** [docs/api_reference/API_REFERENCE.md](../docs/api_reference/API_REFERENCE.md)
-- **Migration guide:** [docs/ANDROID_MIGRATION.md](../docs/ANDROID_MIGRATION.md)
-- **Specification:** [spec/21-roadmap.md](../spec/21-roadmap.md)
-- **Data model:** [spec/04-data-model.md](../spec/04-data-model.md)
-- **API contracts (OpenAPI):** [spec/05-api.md](../spec/05-api.md)
+- **Feature comparison:** [[docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md)](../docs/Truth-training/Truth-training.md)
+- **API reference:** [[docs/api_reference/API_REFERENCE.md](docs/api_reference/API_REFERENCE.md)](../docs/api_reference/API_REFERENCE.md)
+- **Migration guide:** [[docs/ANDROID_MIGRATION.md](docs/ANDROID_MIGRATION.md)](../docs/ANDROID_MIGRATION.md)
+- **Specification:** [[spec/21-roadmap.md](spec/21-roadmap.md)](../spec/21-roadmap.md)
+- **Data model:** [[spec/04-data-model.md](spec/04-data-model.md)](../spec/04-data-model.md)
+- **API contracts (OpenAPI):** [[spec/05-api.md](spec/05-api.md)](../spec/05-api.md)

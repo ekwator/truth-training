@@ -1,18 +1,17 @@
-"""Duplicate detection using TF-IDF cosine similarity."""
+"""Duplicate paragraph detection between docs and spec."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
-from typing import List, Optional
-
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from .models import DocumentationFile
 
 DEFAULT_REPORT_DIR = Path(os.environ.get("DOC_REFACTOR_REPORT_DIR", "reports/doc_refactor"))
+MIN_WORDS = 30
 
 
 def run_duplicate_detection(
@@ -21,53 +20,92 @@ def run_duplicate_detection(
     *,
     dry_run: bool = False,
     report_dir: Optional[Path] = None,
-    threshold: float = 0.8,
+    threshold: float = 0.8,  # kept for backward compatibility, unused
 ) -> dict:
+    del dry_run
+    del threshold
+
     report_directory = report_dir or DEFAULT_REPORT_DIR
     report_directory.mkdir(parents=True, exist_ok=True)
 
-    candidate_records = [record for record in records if record.role in {"DETAIL", "SPEC"}]
-    if len(candidate_records) < 2:
-        payload = {"actions": []}
-        (report_directory / "dedupe.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        return payload
-
-    texts = [_read_text(record.path) for record in candidate_records]
-    vectorizer = TfidfVectorizer(stop_words="english")
-    matrix = vectorizer.fit_transform(texts)
-    similarities = cosine_similarity(matrix)
-
+    blocks = _collect_blocks(root, records)
     actions = []
-    for i in range(len(candidate_records)):
-        for j in range(i + 1, len(candidate_records)):
-            score = similarities[i, j]
-            if score < threshold:
-                continue
-            category = _categorize_score(score)
-            if category == "safe":
-                continue
-            actions.append(
-                {
-                    "pair": [
-                        str(candidate_records[i].path.relative_to(root)),
-                        str(candidate_records[j].path.relative_to(root)),
-                    ],
-                    "score": round(float(score), 3),
-                    "category": category,
-                }
-            )
+    for content_hash, occurrences in blocks.items():
+        if len(occurrences) < 2:
+            continue
+        classification = _classify_occurrences(occurrences)
+        actions.append(
+            {
+                "content_hash": content_hash,
+                "classification": classification,
+                "occurrences": [
+                    {
+                        "path": occurrence["path"],
+                        "audience": occurrence["audience"],
+                        "line_range": occurrence["line_range"],
+                        "text": occurrence["text"],
+                    }
+                    for occurrence in occurrences
+                ],
+            }
+        )
 
     payload = {"actions": actions}
     (report_directory / "dedupe.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return payload
 
 
-def _categorize_score(score: float) -> str:
-    if score >= 0.92:
-        return "probable_duplicate"
-    if score >= 0.85:
-        return "needs_merge"
-    return "safe"
+def _collect_blocks(root: Path, records: List[DocumentationFile]) -> Dict[str, List[dict]]:
+    blocks: Dict[str, List[dict]] = {}
+    for record in records:
+        if record.audience not in {"docs", "spec"}:
+            continue
+        text = _read_text(record.path)
+        for start, end, block_text in _iter_blocks(text):
+            word_count = len(block_text.split())
+            if word_count < MIN_WORDS:
+                continue
+            normalized = _normalize_block(block_text)
+            content_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+            blocks.setdefault(content_hash, []).append(
+                {
+                    "path": str(record.path.relative_to(root)),
+                    "audience": record.audience,
+                    "line_range": [start, end],
+                    "text": block_text.strip(),
+                }
+            )
+    return blocks
+
+
+def _iter_blocks(text: str) -> Iterable[Tuple[int, int, str]]:
+    lines = text.splitlines()
+    block: List[str] = []
+    start_line = 1
+
+    for idx, line in enumerate(lines, start=1):
+        if line.strip():
+            if not block:
+                start_line = idx
+            block.append(line)
+            continue
+        if block:
+            yield start_line, idx - 1, "\n".join(block)
+            block = []
+    if block:
+        yield start_line, len(lines), "\n".join(block)
+
+
+def _normalize_block(block: str) -> str:
+    collapsed = " ".join(block.split())
+    return collapsed.lower()
+
+
+def _classify_occurrences(occurrences: List[dict]) -> str:
+    audiences = {entry["audience"] for entry in occurrences}
+    if "docs" in audiences and "spec" in audiences:
+        return "needs_review"
+    return "harmless"
 
 
 def _read_text(path: Path) -> str:

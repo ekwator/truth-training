@@ -4,7 +4,7 @@ Use /spec as the primary decision source before reading /docs.
 Version: v0.4.0
 Updated: 2025-01-18
 Spec ID: 07
-Source: [docs/event_rating_protocol.md](../docs/event_rating_protocol.md)
+Source: [[docs/event_rating_protocol.md](docs/event_rating_protocol.md)](../docs/event_rating_protocol.md)
 
 Status: MVP logic in place; full protocol pending.
 - Implemented (MVP):
@@ -25,4 +25,6 @@ Action items
 
 _Version: v1.0.0_
 
-- See [docs/README.md](../docs/README.md) for detailed explanations.
+- See [[docs/README.md](docs/README.md)](../docs/README.md) for detailed explanations.
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

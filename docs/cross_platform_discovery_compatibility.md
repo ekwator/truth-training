@@ -362,7 +362,7 @@ Error handling implemented in:
 - `truth-android-client/app/src/main/java/com/truth/training/client/data/models/NodeType.kt` - NodeType enum
 - `truth-android-client/app/src/main/java/com/truth/training/client/data/models/NodeSource.kt` - NodeSource enum
 
-**Reference**: See [docs/android_discovery_architecture.md](android_discovery_architecture.md) for detailed architecture documentation.
+**Reference**: See [[docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)](android_discovery_architecture.md) for detailed architecture documentation.
 
 ## Android Implementation Summary
 
@@ -400,9 +400,9 @@ All Android integration tasks have been fully implemented:
 
 - **NodeType Enum**: `data/models/NodeType.kt` - Matches Rust enum
 - **NodeSource Enum**: `data/models/NodeSource.kt` - Matches Rust enum
-- **Architecture Documentation**: [docs/android_discovery_architecture.md](android_discovery_architecture.md)
+- **Architecture Documentation**: [[docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)](android_discovery_architecture.md)
 
-**Reference**: See [docs/android_discovery_architecture.md](android_discovery_architecture.md) for detailed architecture documentation.
+**Reference**: See [[docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)](android_discovery_architecture.md) for detailed architecture documentation.
 
 ## Compatibility Matrix
 
@@ -423,11 +423,11 @@ All Android integration tasks have been fully implemented:
 1. **Cross-Platform Compatibility**: ✅ All platforms (Desktop, CLI, Server, Android) are fully integrated and compatible.
 2. **Format Consistency**: ✅ All platforms use identical JSON formats, database schemas, and enums.
 3. **Testing**: ✅ Cross-platform compatibility tests implemented in `NodeDiscoveryTest.kt`.
-4. **Documentation**: ✅ Complete architecture documentation in [docs/android_discovery_architecture.md](android_discovery_architecture.md).
+4. **Documentation**: ✅ Complete architecture documentation in [[docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)](android_discovery_architecture.md).
 
 ## References
 
-- [specs/008-specify-md/data-model.md](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/data-model.md) - Canonical schema
+- [[specs/008-specify-md/data-model.md](specs/008-specify-md/data-model.md)](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/data-model.md) - Canonical schema
 - [specs/008-specify-md/contracts/nodes-api.yaml](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/contracts/nodes-api.yaml) - API specification
 - `src/p2p/node.rs` - Rust discovery implementation
 - `core/src/models.rs` - Shared data models

@@ -37,7 +37,10 @@ def generate_inventory(root: Path | str = ".", save_report: bool = True) -> List
                 slug=slug,
                 depth=0 if role == "README" else depth,
                 role=role,
+                audience=_audience(root_path, path),
+                version_tag=_infer_version_tag(root_path, path),
                 word_count=word_count,
+                is_excluded=path.name in EXCLUDED_NAMES,
             )
         )
 
@@ -81,6 +84,27 @@ def _classify_role(root: Path, path: Path) -> str:
     if name.startswith("readme"):
         return "README"
     return "DETAIL"
+
+
+def _audience(root: Path, path: Path) -> str:
+    relative = path.relative_to(root)
+    if not relative.parts:
+        return "root"
+    first = relative.parts[0].lower()
+    if first == "docs":
+        return "docs"
+    if first == "spec":
+        return "spec"
+    return "root" if len(relative.parts) == 1 else "other"
+
+
+def _infer_version_tag(root: Path, path: Path) -> str:
+    relative = path.relative_to(root)
+    if any(part.lower() == "archive" for part in relative.parts):
+        return "legacy"
+    if relative.parts and relative.parts[0].lower() == "specs":
+        return "legacy"
+    return "v1.0.0"
 
 
 def _slugify(root: Path, path: Path) -> str:

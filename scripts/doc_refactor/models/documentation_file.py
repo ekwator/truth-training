@@ -9,6 +9,7 @@ from typing import Dict, List, Literal
 from .base import BaseModel
 
 Role = Literal["README", "INDEX", "DETAIL", "SPEC", "ARCHIVE"]
+Audience = Literal["root", "docs", "spec", "other"]
 
 
 def _default_flags() -> Dict[str, bool]:
@@ -23,17 +24,20 @@ class DocumentationFile(BaseModel):
     slug: str
     depth: int
     role: Role
-    version: str = "v1.0.0"
+    audience: Audience = "other"
+    version_tag: str = "legacy"
     word_count: int = 0
-    inbound_links: List[str] = field(default_factory=list)
-    outbound_links: List[str] = field(default_factory=list)
+    linked_from: List[str] = field(default_factory=list)
+    links_to: List[str] = field(default_factory=list)
+    is_orphan: bool = False
+    is_excluded: bool = False
     flags: Dict[str, bool] = field(default_factory=_default_flags)
 
     def add_outbound(self, target: str) -> None:
-        if target not in self.outbound_links:
-            self.outbound_links.append(target)
+        if target not in self.links_to:
+            self.links_to.append(target)
 
     def add_inbound(self, source: str) -> None:
-        if source not in self.inbound_links:
-            self.inbound_links.append(source)
+        if source not in self.linked_from:
+            self.linked_from.append(source)
 
