@@ -1,5 +1,3 @@
-<!-- Archived from [docs/RELEASE_v1.0.0_DRAFT.md](RELEASE_v1.0.0_DRAFT.md) -->
-
 # Truth Training v1.0.0 – Unified Cross-Platform Release
 
 **Release Date**: 2025-11-02  

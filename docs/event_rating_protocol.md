@@ -1,5 +1,3 @@
-<!-- Archived from [docs/event_rating_protocol.md](event_rating_protocol.md) -->
-
 # Event Rating & Propagation Protocol
 Version: v0.4.0
 Updated: 2025-01-18  

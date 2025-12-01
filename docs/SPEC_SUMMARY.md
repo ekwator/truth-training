@@ -1,5 +1,3 @@
-<!-- Archived from [SPEC_SUMMARY.md](SPEC_SUMMARY.md) -->
-
 # Truth Training Specification Summary (v0.4.0)
 
 ## Spec Index Table

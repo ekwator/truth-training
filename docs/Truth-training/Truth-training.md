@@ -1,5 +1,3 @@
-<!-- Archived from [docs/Truth-training/Truth-training.md](Truth-training.md) -->
-
 # Comparative Analysis: Android vs Desktop UI
 
 **Analysis date:** 2025-11-02 (updated)  

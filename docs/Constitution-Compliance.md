@@ -1,6 +1,3 @@
-<!-- Archived from [docs/Constitution-Compliance.md](Constitution-Compliance.md) -->
-
-
 # Constitution Compliance (v2.1.0)
 
 ## Principles Coverage

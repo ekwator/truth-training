@@ -1,5 +1,3 @@
-<!-- Archived from [release-notes-v1.0.0-Baseline.md](release-notes-v1.0.0-Baseline.md) -->
-
 ## v1.0.0 Baseline — First Stable Release
 
 **Context Fields Embedded in Events**

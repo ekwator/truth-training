@@ -1,5 +1,3 @@
-<!-- Archived from [docs/ANDROID_TEST_FIX_SUGGESTIONS.md](ANDROID_TEST_FIX_SUGGESTIONS.md) -->
-
 # 🧠 Android Test Fix Suggestions
 
 **Analysis Date**: 2025-01-27  

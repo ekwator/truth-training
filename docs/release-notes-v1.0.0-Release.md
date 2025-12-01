@@ -1,5 +1,3 @@
-<!-- Archived from [release-notes-v1.0.0-Release.md](release-notes-v1.0.0-Release.md) -->
-
 ## v1.0.0-Release — Unified Discovery & Sync Release
 
 **Cross-Platform Node Discovery System**

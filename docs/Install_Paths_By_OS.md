@@ -1,5 +1,3 @@
-<!-- Archived from [docs/Install_Paths_By_OS.md](Install_Paths_By_OS.md) -->
-
 ⚙️ Version Reference: See [spec/README.md](../spec/README.md) or [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md) for current version map.
 
 ## Installation Layout and Runtime Data Paths by OS

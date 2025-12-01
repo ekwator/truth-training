@@ -1,5 +1,3 @@
-<!-- Archived from [docs/ANDROID_MIGRATION.md](ANDROID_MIGRATION.md) -->
-
 # Android Client Migration Guide: v0.3.0 → v1.0.0
 
 **Date:** 2025-11-02  

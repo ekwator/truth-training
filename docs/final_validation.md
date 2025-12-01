@@ -1,5 +1,3 @@
-<!-- Archived from [docs/final_validation.md](final_validation.md) -->
-
 # Final CLI-Driven Verification Report
 
 **Date**: 2025-01-XX  
