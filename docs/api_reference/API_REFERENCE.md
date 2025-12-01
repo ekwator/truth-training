@@ -198,8 +198,8 @@ or
 - Legacy v0.3.0 endpoints (`context_id`, missing templates/judgments) are **deprecated** and removed from this reference.  
 - For schema details, refer to:
   - [specs/007-title-align-truth/contracts/openapi.yaml](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/contracts/openapi.yaml)
-  - [truth-android-client/README.md](../../truth-android-client/README.md) (networking section)
-  - [docs/Truth-training/Truth-training.md](../Truth-training/Truth-training.md) (platform comparison)
+  - [[truth-android-client/README.md](truth-android-client/README.md)](../../truth-android-client/README.md) (networking section)
+  - [[docs/Truth-training/Truth-training.md](docs/Truth-training/Truth-training.md)](../Truth-training/Truth-training.md) (platform comparison)
 
 ---
 

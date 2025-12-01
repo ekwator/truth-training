@@ -115,7 +115,7 @@ Android Client v1.0.0 has been successfully implemented with full feature parity
 
 ### Quickstart Scenarios (T074)
 
-All 6 scenarios from [specs/007-title-align-truth/quickstart.md](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/quickstart.md) validated:
+All 6 scenarios from [[specs/007-title-align-truth/quickstart.md](specs/007-title-align-truth/quickstart.md)](https://github.com/ekwator/truth-training/blob/main/specs/007-title-align-truth/quickstart.md) validated:
 
 #### ✅ Scenario 1: Event Creation with Context Template
 - ✅ Template selection prefills context fields

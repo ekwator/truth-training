@@ -99,6 +99,6 @@ All crates and components aligned to v1.0.0-Release:
 
 ### Full Changelog
 
-See [CHANGELOG.md](../CHANGELOG.md) or the [GitHub history](https://github.com/ekwator/truth-training/blob/master/CHANGELOG.md#100-release--unified-discovery--sync-release) for complete details.
+See [[CHANGELOG.md](CHANGELOG.md)](../CHANGELOG.md) or the [GitHub history](https://[github.com/ekwator/truth-training/blob/master/CHANGELOG.md](github.com/ekwator/truth-training/blob/master/CHANGELOG.md)#100-release--unified-discovery--sync-release) for complete details.
 
 

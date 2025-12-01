@@ -226,4 +226,4 @@ DELETE FROM nodes WHERE reachable = 0 AND (strftime('%s','now') - last_seen) > (
 - **Android** (Kotlin): Uses Room with `NodeEntity` matching the canonical schema
 - **Database migrations**: Android uses `MIGRATION_2_3` to create the `nodes` table
 
-**Reference**: See [docs/cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md) for detailed format specifications and [docs/android_discovery_architecture.md](android_discovery_architecture.md) for Android-specific implementation details.
+**Reference**: See [[docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)](cross_platform_discovery_compatibility.md) for detailed format specifications and [[docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)](android_discovery_architecture.md) for Android-specific implementation details.

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from .models import DocumentationFile, SpecCompressionProfile
 
@@ -27,12 +27,21 @@ def run_spec_optimizer(
 
     profiles: List[SpecCompressionProfile] = []
     updated_files: List[str] = []
+    duplicate_map = _load_duplicate_map(report_directory)
+    removals: List[dict] = []
 
     for record in records:
         if record.role != "SPEC":
             continue
         current_text = _read_text(record.path)
-        compressed_text, profile = _optimize_spec_file(current_text, record)
+        dedupe_entries = duplicate_map.get(str(record.path.relative_to(root)), [])
+        cleaned_text, removed = _remove_duplicate_blocks(current_text, dedupe_entries)
+        if removed:
+            removals.extend(
+                {"path": str(record.path.relative_to(root)), "content_hash": entry["content_hash"]}
+                for entry in removed
+            )
+        compressed_text, profile = _optimize_spec_file(cleaned_text, record)
         profiles.append(profile)
         if compressed_text != current_text:
             if not dry_run:
@@ -43,6 +52,7 @@ def run_spec_optimizer(
         "profiles": [_profile_to_dict(profile, root) for profile in profiles],
         "updated_files": updated_files,
         "directive": DIRECTIVE,
+        "duplicate_removals": removals,
     }
     (report_directory / "spec_opt.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return payload
@@ -124,6 +134,42 @@ def _ensure_docs_link(text: str) -> str:
     if DOC_LINK in text:
         return text
     return text.rstrip() + f"\n\n- {DOC_LINK}\n"
+
+
+def _load_duplicate_map(report_dir: Path) -> Dict[str, List[dict]]:
+    dedupe_path = report_dir / "dedupe.json"
+    if not dedupe_path.exists():
+        return {}
+    data = json.loads(dedupe_path.read_text(encoding="utf-8"))
+    mapping: Dict[str, List[dict]] = {}
+    for action in data.get("actions", []):
+        if action.get("classification") != "needs_review":
+            continue
+        for occurrence in action.get("occurrences", []):
+            if occurrence.get("audience") != "spec":
+                continue
+            entry = {
+                "content_hash": action.get("content_hash"),
+                "text": occurrence.get("text", ""),
+            }
+            mapping.setdefault(occurrence.get("path", ""), []).append(entry)
+    return mapping
+
+
+def _remove_duplicate_blocks(text: str, duplicates: Sequence[dict]) -> Tuple[str, List[dict]]:
+    if not duplicates:
+        return text, []
+    updated = text
+    removed: List[dict] = []
+    for duplicate in duplicates:
+        snippet = (duplicate.get("text") or "").strip()
+        if not snippet:
+            continue
+        if snippet not in updated:
+            continue
+        updated = updated.replace(snippet, "", 1).strip()
+        removed.append(duplicate)
+    return updated.strip() + ("\n" if updated.strip() else ""), removed
 
 
 def _read_text(path: Path) -> str:

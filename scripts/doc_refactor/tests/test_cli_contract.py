@@ -31,7 +31,7 @@ def test_cli_contract_phases(repo_root: Path, tmp_repo: Path) -> None:
     assert result.returncode == 0, result.stderr
 
     report_dir = tmp_repo / "reports"
-    for filename in ("inventory.json", "link_graph.json", "validation.json"):
+    for filename in ("inventory.json", "link_report.json", "validation.json"):
         assert (report_dir / filename).exists(), f"expected {filename} in {report_dir}"
 
     run_artifacts = report_dir / "run_artifacts"
