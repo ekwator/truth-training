@@ -10,11 +10,11 @@
 
 ## How to Validate
 1. Run `cargo test --all-features`.
-2. Follow [specs/005-constitution-compliance-truth/quickstart.md](https://github.com/ekwator/truth-training/blob/main/specs/005-constitution-compliance-truth/quickstart.md) steps.
+2. Follow [[specs/005-constitution-compliance-truth/quickstart.md](specs/005-constitution-compliance-truth/quickstart.md)](https://github.com/ekwator/truth-training/blob/main/specs/005-constitution-compliance-truth/quickstart.md) steps.
 3. Use CLI: `truthctl confess` and `truthctl judge`.
+4. Execute the documentation refactor workflow (`make doc-refactor-run`) and confirm `reports/doc_refactor/link_report.json` contains zero `status: "missing"` edges. Reference [[docs/Documentation_Refactor_Overview.md](docs/Documentation_Refactor_Overview.md)](Documentation_Refactor_Overview.md) for remediation.
 
 ## Security Note
 - Anonymous confessions are stored plaintext-at-rest by design; ensure environment trust and backups policies.
 
 _Version: v1.0.0_
-

@@ -103,3 +103,13 @@ truth-android-client/.idea/misc.xml
 .venv/
 reports/
 scripts/__pycache__/
+
+# Editor & OS general
+.idea/
+.vscode/
+
+# Node / JS tooling
+node_modules/
+*.tmp
+*.swp
+.env*

@@ -18,6 +18,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-20
 - SQLite (shared) with Room entities on Android and rusqlite elsewhere (008-specify-md)
 - Rust 1.75+ (stable toolchain) (009-fix-linux-deb)
 - N/A (packaging only, no data storage changes) (009-fix-linux-deb)
+- Python 3.11 (documentation refactor tooling), Rust stable (core project), Node.js 20+ (desktop tooling), Bash (automation scripts) + Spec-Kit (`.specify`), `scripts/doc_refactor` Python package, Git, Markdown parsers, existing GitHub Actions/CI jobs (001-docs-refactor)
+- File system (Markdown files, JSON/Markdown reports); no new database storage introduced (001-docs-refactor)
 
 ## Project Structure
 ```
@@ -32,9 +34,9 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust 1.75+ (existing project): Follow standard conventions
 
 ## Recent Changes
+- 001-docs-refactor: Added Python 3.11 (documentation refactor tooling), Rust stable (core project), Node.js 20+ (desktop tooling), Bash (automation scripts) + Spec-Kit (`.specify`), `scripts/doc_refactor` Python package, Git, Markdown parsers, existing GitHub Actions/CI jobs
 - 009-fix-linux-deb: Added Rust 1.75+ (stable toolchain)
 - 009-fix-linux-deb: Added Rust 1.75+ (stable toolchain)
-- 008-specify-md: Added Rust 1.75+ (CLI/Server/Desktop core), Kotlin (Android), TypeScript/React (Desktop UI), SQLite 3.x + `rusqlite`, `tokio`, `actix-web`, `reqwest`, `clap`, `ed25519-dalek`, Room (Android), WorkManager, Electron/Tauri runtime
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

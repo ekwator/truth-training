@@ -16,6 +16,18 @@ def _seed_repo(root: Path) -> None:
     (root / "docs" / "README.md").write_text("# Docs\n", encoding="utf-8")
     (root / "spec" / "README.md").write_text("# Specs\n", encoding="utf-8")
     (root / "spec" / "01-overview.md").write_text("# Overview\n\nLong paragraph " + "word " * 120, encoding="utf-8")
+    # Create stub files referenced by the release surfaces + entry points block.
+    doc_stubs = [
+        "CLI_Usage.md",
+        "Deployment.md",
+        "UI_Desktop.md",
+        "android_discovery_architecture.md",
+        "Documentation_Refactor_Overview.md",
+        "Documentation_Refactor_Inventory.md",
+        "Documentation_Refactor_Links.md",
+    ]
+    for stub in doc_stubs:
+        (root / "docs" / stub).write_text("# Stub\n", encoding="utf-8")
 
 
 def test_full_run_generates_run_summary(tmp_path: Path, repo_root: Path) -> None:

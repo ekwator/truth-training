@@ -12,7 +12,7 @@ This document summarizes the Desktop UI (Tauri) implementation with text-only in
 - **Text-Only Interface**: No icons, emojis, or graphical assets - pure text and structured layout
 - **SQLite Persistence**: Events, impacts, summaries, and judgments stored in SQLite (rusqlite 0.31, bundled)
 - **Offline-First**: Local-wins conflict resolution with background sync when online
-- **Knowledge Base Integration**: Dynamic context selection from [docs/Data_Schema.md](Data_Schema.md)
+- **Knowledge Base Integration**: Dynamic context selection from [[docs/Data_Schema.md](docs/Data_Schema.md)](Data_Schema.md)
 - **Context Template System (v1.0.0)**: Reusable context templates with template selection, matching, and duplicate detection
 
 ### Data Models

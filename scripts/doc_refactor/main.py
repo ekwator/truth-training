@@ -188,7 +188,7 @@ def phase_link_discovery(context: CLIContext) -> Optional[Path]:
     records = _ensure_records(context)
     context.link_report = link_graph.build_link_graph(context.root, records)
     payload = _serialize_link_report(context)
-    return context.ensure_report("link_graph.json", payload)
+    return context.ensure_report("link_report.json", payload)
 
 
 def phase_validation(context: CLIContext) -> Optional[Path]:
@@ -288,6 +288,7 @@ def _serialize_link_report(context: CLIContext) -> dict:
         "orphans": graph.orphans,
         "broken_urls": graph.broken_urls,
         "plain_paths": graph.plain_paths,
+        "normalizations": graph.normalizations,
         "stats": graph.stats,
     }
 
@@ -304,7 +305,8 @@ def phase_restructuring(context: CLIContext) -> Optional[Path]:
         report_dir=context.report_dir,
     )
     if not context.dry_run:
-        context.link_report = link_graph.build_link_graph(context.root, records)
+        context.records = inventory.generate_inventory(context.root)
+        context.link_report = link_graph.build_link_graph(context.root, context.records)
     return context.report_dir / "restructure.json"
 
 
@@ -329,7 +331,7 @@ def _coverage_ratio(context: CLIContext) -> int:
         return 100
     linked = 0
     for record in context.records:
-        if record.role in {"README", "INDEX", "ARCHIVE", "SPEC"} or record.inbound_links:
+        if record.role in {"README", "INDEX", "ARCHIVE", "SPEC"} or record.linked_from:
             linked += 1
     return int(round((linked / len(context.records)) * 100))
 

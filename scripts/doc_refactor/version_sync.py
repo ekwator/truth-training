@@ -28,12 +28,12 @@ def run_version_sync(
         path = record.path
         text = _read_text(path)
         if TARGET_VERSION in text:
-            record.version = TARGET_VERSION
+            record.version_tag = TARGET_VERSION
             continue
         new_text = text.rstrip() + f"\n\n_Version: {TARGET_VERSION}_\n"
         if not dry_run:
             path.write_text(new_text, encoding="utf-8")
-        record.version = TARGET_VERSION
+        record.version_tag = TARGET_VERSION
         updated.append(str(path.relative_to(root)))
 
     payload = {"updated": updated, "version": TARGET_VERSION}

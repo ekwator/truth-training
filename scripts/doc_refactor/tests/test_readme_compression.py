@@ -31,8 +31,10 @@ def test_readme_compression_creates_docs_and_limits_word_count(tmp_path: Path) -
 
     readme_text = (tmp_path / "README.md").read_text(encoding="utf-8")
     word_count = len(readme_text.split())
-    assert word_count <= 700
-    assert "## Documentation" in readme_text
+    assert word_count <= 520
+    assert "## Release Surfaces" in readme_text
+    assert "## Documentation Entry Points" in readme_text
+    assert "## Documentation Topics" in readme_text
 
     section_doc = tmp_path / "docs" / "release-information.md"
     assert section_doc.exists()
