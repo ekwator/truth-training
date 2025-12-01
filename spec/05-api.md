@@ -192,4 +192,6 @@ SyncResult
 
 _Version: v1.0.0_
 
-- See [docs/README.md](../docs/README.md) for detailed explanations.
+- See [[docs/README.md](docs/README.md)](../docs/README.md) for detailed explanations.
+
+- See [docs/README.md](docs/README.md) for detailed explanations.

@@ -200,9 +200,9 @@ Peer Sync → HTTP POST → Merge (Local > Global) → Return Merged List
 ```
 
 **Reference Documentation:**
-- [docs/cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md) - Format specifications
-- [docs/android_discovery_architecture.md](android_discovery_architecture.md) - Android implementation details
-- [specs/008-specify-md/contracts/README.md](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/contracts/README.md) - Sync handshake contract
+- [[docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)](cross_platform_discovery_compatibility.md) - Format specifications
+- [[docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)](android_discovery_architecture.md) - Android implementation details
+- [[specs/008-specify-md/contracts/README.md](specs/008-specify-md/contracts/README.md)](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/contracts/README.md) - Sync handshake contract
 
 ## 📄 Documents
 

@@ -141,13 +141,13 @@ cargo test --features desktop lan_announcement_roundtrip
 **Required Updates**:
 
 1. **Android Navigation Instructions**
-   - File: [docs/android_discovery_architecture.md](android_discovery_architecture.md)
+   - File: [[docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)](android_discovery_architecture.md)
    - Add section: "Navigation Integration"
    - Document route: `"nodes"`
    - Document ViewModel factory usage
 
 2. **Device Test Instructions**
-   - File: [docs/android_discovery_architecture.md](android_discovery_architecture.md) or new file
+   - File: [[docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)](android_discovery_architecture.md) or new file
    - Add section: "Running Tests on Physical Devices"
    - Instructions for `connectedDebugAndroidTest`
    - Network requirements
@@ -160,7 +160,7 @@ cargo test --features desktop lan_announcement_roundtrip
    - CI configuration
 
 4. **Cross-Platform Test Matrix**
-   - File: [docs/cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md)
+   - File: [[docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)](cross_platform_discovery_compatibility.md)
    - Update compatibility matrix
    - Add test execution instructions
 
@@ -240,9 +240,9 @@ cd truth-android-client
 
 ## References
 
-- **Tasks**: [specs/008-specify-md/tasks.md](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/tasks.md) (Phase 3.6)
-- **Compatibility**: [docs/cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md)
-- **Android Architecture**: [docs/android_discovery_architecture.md](android_discovery_architecture.md)
+- **Tasks**: [[specs/008-specify-md/tasks.md](specs/008-specify-md/tasks.md)](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/tasks.md) (Phase 3.6)
+- **Compatibility**: [[docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)](cross_platform_discovery_compatibility.md)
+- **Android Architecture**: [[docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)](android_discovery_architecture.md)
 
 _Version: v1.0.0_
 

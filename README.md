@@ -15,9 +15,21 @@ Originally conceived to combat fraud, Truth Training evolves into a **self-learn
 
 ---
 
-## Documentation
+## Release Surfaces
 
-- [Docs index](docs/README.md) — Human-first guides, releases, troubleshooting.
-- [Spec index](spec/README.md) — AI-oriented decision briefs.
+- **CLI** — interact via [docs/CLI_Usage.md](docs/CLI_Usage.md)
+- **Server** — deploy following [docs/Deployment.md](docs/Deployment.md)
+- **Desktop UI** — reference [docs/UI_Desktop.md](docs/UI_Desktop.md)
+- **Mobile** — architecture in [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)
 
-_Version: v1.0.0_
+## Documentation Entry Points
+
+- [docs/README.md](docs/README.md) — Human-readable, narrative depth
+- [spec/README.md](spec/README.md) — AI-focused directives and constraints
+- [docs/Documentation_Refactor_Overview.md](docs/Documentation_Refactor_Overview.md) — Pipeline summary
+- [docs/Documentation_Refactor_Inventory.md](docs/Documentation_Refactor_Inventory.md) — Inventory instructions
+- [docs/Documentation_Refactor_Links.md](docs/Documentation_Refactor_Links.md) — Link validation workflow
+
+## Documentation Topics
+
+- [Documentation](docs/documentation.md)

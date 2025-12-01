@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
-from scripts.doc_refactor import inventory, spec_optimizer
+from scripts.doc_refactor import duplicate_detector, inventory, spec_optimizer
 
 
 def _seed_spec(tmp_path: Path) -> None:
@@ -46,4 +47,33 @@ def test_spec_compression_enforces_word_limit_and_directive(tmp_path: Path) -> N
 
     spec_opt_report = report_dir / "spec_opt.json"
     assert spec_opt_report.exists()
+
+
+def test_spec_optimizer_removes_duplicates_flagged_in_report(tmp_path: Path) -> None:
+    spec_dir = tmp_path / "spec"
+    docs_dir = tmp_path / "docs"
+    spec_dir.mkdir(parents=True, exist_ok=True)
+    docs_dir.mkdir(parents=True, exist_ok=True)
+
+    duplicate_block = " ".join(["paragraph"] * 35)
+    (docs_dir / "tutorial.md").write_text(f"# Tutorial\n\n{duplicate_block}\n", encoding="utf-8")
+    spec_path = spec_dir / "02-duplicate.md"
+    spec_path.write_text(f"# Spec\n\n{duplicate_block}\n", encoding="utf-8")
+    (spec_dir / "README.md").write_text("# Specs\n", encoding="utf-8")
+
+    records = inventory.generate_inventory(root=tmp_path, save_report=False)
+    report_dir = tmp_path / "reports"
+    duplicate_detector.run_duplicate_detection(root=tmp_path, records=records, report_dir=report_dir)
+    spec_optimizer.run_spec_optimizer(
+        root=tmp_path,
+        records=records,
+        report_dir=report_dir,
+        dry_run=False,
+    )
+
+    text = spec_path.read_text(encoding="utf-8")
+    assert duplicate_block not in text
+
+    spec_opt_report = json.loads((report_dir / "spec_opt.json").read_text(encoding="utf-8"))
+    assert spec_opt_report["duplicate_removals"]
 
