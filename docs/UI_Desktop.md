@@ -1,5 +1,3 @@
-<!-- Archived from [docs/UI_Desktop.md](UI_Desktop.md) -->
-
 ## Current Version
 Truth UI Desktop v1.0.0
 Compatible with Core/Server v1.0.0

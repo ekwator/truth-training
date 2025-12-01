@@ -1,5 +1,3 @@
-<!-- Archived from [RELEASE_PREPARATION_SUMMARY.md](RELEASE_PREPARATION_SUMMARY.md) -->
-
 # Release Preparation Summary: Truth Training v1.0.0
 
 **Date**: 2025-11-02  

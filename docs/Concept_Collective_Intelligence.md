@@ -1,5 +1,3 @@
-<!-- Archived from [docs/Concept_Collective_Intelligence.md](Concept_Collective_Intelligence.md) -->
-
 ## Collective Intelligence Layer (Wisdom of the Crowd)
 
 The Collective Intelligence Layer aggregates multiple independent judgments into a unified collective truth score for each event: `collective_score ∈ [0,1]`.

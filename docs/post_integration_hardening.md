@@ -1,5 +1,3 @@
-<!-- Archived from [docs/post_integration_hardening.md](post_integration_hardening.md) -->
-
 # Post-Integration Hardening & Reliability Phase
 
 **Date**: 2025-01-XX  

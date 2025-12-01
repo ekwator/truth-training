@@ -1,5 +1,3 @@
-<!-- Archived from [docs/prompt/ekwator/specify1/plan/plan1.md](plan1.md) -->
-
 /plan
 Create a complete modification plan for implementing the changes defined in the previous /specify request:
 

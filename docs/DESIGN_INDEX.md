@@ -1,5 +1,3 @@
-<!-- Archived from [docs/DESIGN_INDEX.md](DESIGN_INDEX.md) -->
-
 # Design Documentation Index
 
 This index keeps cross-references for every design-focused document under `docs/` and `specs/`, ensuring no file is orphaned or "stuck" without inbound links.

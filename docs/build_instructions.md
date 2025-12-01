@@ -1,5 +1,3 @@
-<!-- Archived from [docs/build_instructions.md](build_instructions.md) -->
-
 # Build Instructions for Truth Training Platform
 
 ---

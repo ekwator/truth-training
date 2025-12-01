@@ -1,5 +1,3 @@
-<!-- Archived from [docs/TEST_REPORT_ANDROID_v1.0.0.md](TEST_REPORT_ANDROID_v1.0.0.md) -->
-
 # Test Report: Android Client v1.0.0
 
 **Feature**: Align Truth Training Android Client with Desktop v1.0.0 Features  

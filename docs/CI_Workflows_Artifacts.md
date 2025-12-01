@@ -1,5 +1,3 @@
-<!-- Archived from [docs/CI_Workflows_Artifacts.md](CI_Workflows_Artifacts.md) -->
-
 ⚙️ Version Reference: See [spec/README.md](../spec/README.md) or [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md) for current version map.
 
 ## CI Workflows: Directory Structure and Artifacts

@@ -1,5 +1,3 @@
-<!-- Archived from [docs/cross_device_e2e_tests.md](cross_device_e2e_tests.md) -->
-
 # Cross-Device E2E Tests Documentation
 
 **Task**: T062 - Add cross-device E2E tests (Linux Desktop ↔ Android device, CLI ↔ Android ↔ Desktop)

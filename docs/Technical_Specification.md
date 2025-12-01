@@ -1,5 +1,3 @@
-<!-- Archived from [docs/Technical_Specification.md](Technical_Specification.md) -->
-
 # Technical Specification: "Truth Training" Platform
 
 ## 1. General Concept

@@ -1,5 +1,3 @@
-<!-- Archived from [docs/api_reference/API_REFERENCE.md](API_REFERENCE.md) -->
-
 ## Truth Training API Reference (v1.0.0)
 
 **Audience:** Android, Desktop, and automation clients targeting Truth Core/Server v1.0.0.  

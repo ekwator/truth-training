@@ -1,5 +1,3 @@
-<!-- Archived from [docs/troubleshooting.md](troubleshooting.md) -->
-
 # Troubleshooting Guide
 
 This document provides solutions to common compilation and build issues encountered when working with the Truth Training platform.

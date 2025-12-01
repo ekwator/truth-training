@@ -1,5 +1,3 @@
-<!-- Archived from [docs/node_discovery_test_results.md](node_discovery_test_results.md) -->
-
 # Node Discovery Quickstart Test Results
 
 **Date**: 2025-01-XX  
