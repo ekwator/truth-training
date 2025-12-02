@@ -54,9 +54,9 @@ Exact fields are defined by the `DocumentationFile` / `DocumentationNode` model 
 ## 3. How to Use the Inventory
 
 - **Coverage checks**: Verify that every Markdown file in the repo appears as a node in the report.
-- **Audience classification**: Use the `audience` field to confirm that root-level entry points (`[README.md](../README.md)`, `[docs/README.md](README.md)`, `[spec/README.md](../spec/README.md)`) are correctly identified.
+- **Audience classification**: Use the `audience` field to confirm that root-level entry points ([README.md](../README.md), [docs/README.md](README.md), [spec/README.md](../spec/README.md)) are correctly identified.
 - **Link coverage**: `linked_from` / `links_to` lists mirror the `ReferenceEdge` graph, letting you audit orphaned docs before the restructuring phase runs.
-- **Exclusions**: Ensure governance files such as `[CONTRIBUTING.md](../CONTRIBUTING.md)`, `[SECURITY.md](../SECURITY.md)`, `[CHANGELOG.md](../CHANGELOG.md)`, and `LICENSE.txt` are marked as excluded where appropriate.
+- **Exclusions**: Ensure governance files such as [CONTRIBUTING.md](../CONTRIBUTING.md), [SECURITY.md](../SECURITY.md), [CHANGELOG.md](../CHANGELOG.md), and [LICENSE.txt](../LICENSE.txt) are marked as excluded where appropriate.
 
 ## 4. Success Criteria
 
