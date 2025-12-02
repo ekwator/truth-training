@@ -50,6 +50,5 @@ Use this index to reach every human-facing reference.
 - [Ui Desktop](UI_Desktop.md)
 - [Api Reference](api_reference/API_REFERENCE.md)
 - [Cross Platform Discovery Compatibility](cross_platform_discovery_compatibility.md)
-- [Documentation](documentation.md)
 - [Event Rating Protocol](event_rating_protocol.md)
 - [Post Integration Hardening](post_integration_hardening.md)
