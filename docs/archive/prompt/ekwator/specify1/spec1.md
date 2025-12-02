@@ -2,7 +2,7 @@
 
 <!-- Archived from [[docs/prompt/ekwator/specify1/spec1.md](docs/prompt/ekwator/specify1/spec1.md)](spec1.md) -->
 
-/specify
+/speckit.specify
 Goal:
 Fix the issue in truth-android-client where the application starts and instantly disappears from the screen while continuing to run in the background. The objective is to properly register the required UI screens and activities in AndroidManifest.xml so the application opens normally and stays visible.
 
