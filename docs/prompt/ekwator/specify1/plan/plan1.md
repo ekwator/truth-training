@@ -1,5 +1,5 @@
-/plan
-Create a complete modification plan for implementing the changes defined in the previous /specify request:
+/speckit.plan
+Create a complete modification plan for implementing the changes defined in the previous /speckit.specify request:
 
 Goal:
 Fix the issue in the truth-android-client where the application launches and immediately disappears from the screen, while still running in the background. The solution must properly register the UI entry point and screen structure in AndroidManifest.xml and ensure that the application opens normally and remains visible.

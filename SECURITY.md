@@ -48,20 +48,20 @@ To ensure consistency, safety, and traceability in development, the following to
 
    In our project, the following Spec-Kit slash commands (available after installation) must be used:
 
-   - `/specify` — creates a GitHub PR with a new branch based on the specification  
-   - `/plan` — creates, modifies, and executes a plan from a specification  
-   - `/clarify` — verifies the consistency of plan items among themselves and with the specification  
-   - `/plan` (without a prompt) — finalizes the plan after clarification  
-   - `/task` — creates, modifies, and executes tasks defined in the plan  
-   - `/implementation` — executes part of the specification  
-   - `/implementation` (without arguments) — executes the entire specification
+   - `/speckit.specify` — creates a GitHub PR with a new branch based on the specification  
+   - `/speckit.plan` — creates, modifies, and executes a plan from a specification  
+   - `/speckit.clarify` — verifies the consistency of plan items among themselves and with the specification  
+   - `/speckit.plan` (without a prompt) — finalizes the plan after clarification  
+   - `/speckit.task` — creates, modifies, and executes tasks defined in the plan  
+   - `/speckit.implementation` — executes part of the specification  
+   - `/speckit.implementation` (without arguments) — executes the entire specification
 
 Failure to use Spec-Kit as described may result in misaligned development, unreviewable code, or divergence from project standards.  
 
 ### 📁 Spec-Kit Prompt Library (Developer Examples)
 
 This project includes a dedicated directory with **real, working examples** of proper Spec-Kit usage.  
-These files serve as canonical templates for creating correct `/specify`, `/plan`, `/task`, and `/implementation` requests.
+These files serve as canonical templates for creating correct `/speckit.specify`, `/speckit.plan`, `/speckit.task`, and `/speckit.implementation` requests.
 
 All examples are stored in:
 - **/docs/prompt/ekwator/**  
@@ -84,10 +84,10 @@ docs/
 #### 📌 What each file contains:
 
 - **[specify1/spec1.md](specify1/spec1.md)**  
-- 📄 [Complete template + real example of a `/specify` command for a development task.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/spec1.md)
+- 📄 [Complete template + real example of a `/speckit.specify` command for a development task.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/spec1.md)
 
 - **[specify1/plan/plan1.md](specify1/plan/plan1.md)**  
-- 🗂 [Example of a fully structured `/plan` request derived from the specification.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/plan/plan1.md)
+- 🗂 [Example of a fully structured `/speckit.plan` request derived from the specification.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/plan/plan1.md)
 
 - **specify2/**  
 - 📁 A second set of examples demonstrating variations of specifications and plans.
@@ -98,11 +98,33 @@ These examples are intended to:
 - Preserve consistent Spec-Kit workflow quality across contributors.  
 - Demonstrate correct formatting, structure, and writing style.  
 - Provide “copy–adapt–apply” patterns for:
-  - `/specify`  
-  - `/plan`  
-  - `/clarify`  
-  - `/task`  
-  - `/implementation`
+#### Core Commands
+
+Essential commands for the Spec-Driven Development workflow:
+
+| Command                  | Description                                                           |
+|--------------------------|-----------------------------------------------------------------------|
+| `/speckit.constitution`  | Create or update project governing principles and development guidelines |
+| `/speckit.specify`       | Define what you want to build (requirements and user stories)        |
+| `/speckit.plan`          | Create technical implementation plans with your chosen tech stack     |
+| `/speckit.tasks`         | Generate actionable task lists for implementation                     |
+| `/speckit.implement`     | Execute all tasks to build the feature according to the plan         |
+
+#### Optional Commands
+
+Additional commands for enhanced quality and validation:
+
+| Command              | Description                                                           |
+|----------------------|-----------------------------------------------------------------------|
+| `/speckit.clarify`   | Clarify underspecified areas (recommended before `/speckit.plan`; formerly `/quizme`) |
+| `/speckit.analyze`   | Cross-artifact consistency & coverage analysis (run after `/speckit.tasks`, before `/speckit.implement`) |
+| `/speckit.checklist` | Generate custom quality checklists that validate requirements completeness, clarity, and consistency (like "unit tests for English") |
+
+### Environment Variables
+
+| Variable         | Description                                                                                    |
+|------------------|------------------------------------------------------------------------------------------------|
+| `SPECIFY_FEATURE` | Override feature detection for non-Git repositories. Set to the feature directory name (e.g., `001-photo-albums`) to work on a specific feature when not using Git branches.<br/>**Must be set in the context of the agent you're working with prior to using `/speckit.plan` or follow-up commands. |
 
 ---
 

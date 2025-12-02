@@ -42,7 +42,7 @@ All changes must follow this sequence:
 
 ---
 
-## 1. `/specify` — Define the task
+## 1. `/speckit.specify` — Define the task
 
 Every contribution must begin with a **specification** describing:
 
@@ -60,7 +60,7 @@ docs/prompt/<author>/[specifyN/specN.md](specifyN/specN.md)
 
 ---
 
-## 2. `/plan` — Create an implementation plan
+## 2. `/speckit.plan` — Create an implementation plan
 
 Each specification must include a **plan folder**:
 
@@ -78,14 +78,14 @@ The plan describes:
 
 ---
 
-## 3. `/task` — Developer tasks
+## 3. `/speckit.task` — Developer tasks
 
 Spec-Kit converts the plan into **atomic tasks** that can be implemented safely.  
 Every task must be small, testable, and reversible.
 
 ---
 
-## 4. `/implementation` — Apply changes
+## 4. `/speckit.implementation` — Apply changes
 
 Only after the plan is approved can implementation proceed.  
 Cursor AI IDE applies changes automatically or semi-automatically, ensuring:
@@ -100,8 +100,8 @@ Cursor AI IDE applies changes automatically or semi-automatically, ensuring:
 📌 **Important:**  
 A Pull Request **cannot be reviewed** unless it includes:
 
-- A `/specify` file  
-- A `/plan` file  
+- A `/speckit.specify` file  
+- A `/speckit.plan` file  
 - A full task chain  
 - A summary of changes linked to Spec-Kit  
 # 🔐 Security Requirements for Contributors
@@ -404,9 +404,9 @@ Every PR must include the following sections:
 Short description of the change.
 
 ## Spec-Kit Chain
-/specify link  
-/plan link  
-/task or /implementation link  
+/speckit.specify link  
+/speckit.plan link  
+/speckit.task or /speckit.implementation link  
 
 ## Testing
 - Local tests passed
@@ -1173,9 +1173,9 @@ Any change to:
 
 must go through:
 
-- `/specify`  
-- `/plan`  
-- `/clarify`  
+- `/speckit.specify`  
+- `/speckit.plan`  
+- `/speckit.clarify`  
 - schema sync review  
 
 ---
@@ -1773,11 +1773,11 @@ These requirements ensure that Truth Training remains **secure, stable, auditabl
 Every Pull Request **must** include:
 
 ### ✔ A valid Spec-Kit workflow
-- A `/specify` branch must exist  
-- A finished `/plan`  
-- All tasks (`/task`) implemented  
-- `/clarify` completed  
-- Final `/implementation` performed  
+- A `/speckit.specify` branch must exist  
+- A finished `/speckit.plan`  
+- All tasks (`/speckit.task`) implemented  
+- `/speckit.clarify` completed  
+- Final `/speckit.implementation` performed  
 
 PRs **not backed by a Spec-Kit workflow will be closed without review.**
 
@@ -2040,7 +2040,7 @@ Use this appendix whenever you need to quickly access tools, documentation, work
 
 ## 🧩 2. Spec-Kit Prompt Library (Developer Examples)
 
-These files show **real working examples** of `/specify`, `/plan`, `/clarify`, `/task`, and `/implementation` usage.
+These files show **real working examples** of `/speckit.specify`, `/plan`, `/clarify`, `/task`, and `/implementation` usage.
 
 ### Directory:
 ```
@@ -2052,7 +2052,7 @@ These files show **real working examples** of `/specify`, `/plan`, `/clarify`, `
 - 🗂 [docs/prompt/ekwator/specify1/plan/plan1.md](docs/prompt/ekwator/specify1/plan/plan1.md)
 
 ### Example Set 2  
-- 📁 `/docs/prompt/ekwator/specify2/plan/`
+- 📁 `/docs/prompt/ekwator/specify2/`
 
 These serve as templates to ensure contributors follow the correct Spec-Kit structure.
 
