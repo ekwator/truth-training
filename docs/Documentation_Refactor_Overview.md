@@ -52,4 +52,4 @@ python scripts/doc_refactor/main.py run --phases link_discovery
 - `link_report.json` contains zero `status: "missing"` entries before merging changes.
 - `dedupe.json` contains only `classification: "harmless"` after spec optimization (any `needs_review` entries must be resolved or documented).
 
-Keep this document close when triaging documentation PRs or running the release prep automation. It serves as the canonical entry point for the refactor workflow referenced by [README.md](README.md).
+Keep this document close when triaging documentation PRs or running the release prep automation. It serves as the canonical entry point for the refactor workflow referenced by [README.md](../README.md)
