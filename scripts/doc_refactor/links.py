@@ -258,9 +258,20 @@ def _normalize_plain_paths(text: str) -> Tuple[str, List[str]]:
         if in_code_block:
             continue
 
+        # Pre-compute spans of existing Markdown links in this line so we don't
+        # try to "normalize" paths that are already valid link targets.
+        existing_link_spans: List[Tuple[int, int]] = [
+            (m.start(), m.end()) for m in MARKDOWN_LINK_PATTERN.finditer(line)
+        ]
+
         def _repl(match: re.Match[str]) -> str:
             path = match.group("path")
-            # Avoid re-wrapping entries already part of Markdown links in the same line.
+            start, _ = match.span()
+            # Skip matches that fall inside an already well-formed Markdown link.
+            for span_start, span_end in existing_link_spans:
+                if span_start <= start < span_end:
+                    return match.group(0)
+            # Avoid re-wrapping entries that already appear as `[path](path)` on this line.
             if f"[{path}]" in line and f"]({path})" in line:
                 return match.group(0)
             replacements.append(path)
