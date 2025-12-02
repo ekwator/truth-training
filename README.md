@@ -31,5 +31,3 @@ Originally conceived to combat fraud, Truth Training evolves into a **self-learn
 - [docs/Documentation_Refactor_Links.md](docs/Documentation_Refactor_Links.md) — Link validation workflow
 
 ## Documentation Topics
-
-- [Documentation](docs/documentation.md)
