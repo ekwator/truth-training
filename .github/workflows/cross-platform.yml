@@ -13,25 +13,6 @@ permissions:
   contents: write
 
 jobs:
-  doc-refactor:
-    name: Documentation Refactor (inventory, links, restructure)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install doc-refactor dependencies
-        run: |
-          python3 -m venv .venv
-          . .venv/bin/activate && pip install -r requirements.txt
-      - name: Run doc-refactor pipeline
-        run: |
-          . .venv/bin/activate
-          make doc-refactor-run
-          make doc-refactor-test
-
   android:
     name: Android (ARM64 + x86_64)
     runs-on: ubuntu-latest
