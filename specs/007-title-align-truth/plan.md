@@ -280,11 +280,11 @@ docs/
 - Verify cross-platform consistency
 
 **T075: Test Report**
-- Generate `[[docs/TEST_REPORT_ANDROID_v1.0.0.md](docs/TEST_REPORT_ANDROID_v1.0.0.md)](../../docs/TEST_REPORT_ANDROID_v1.0.0.md)(d[ocs/TEST_REPORT_ANDROID_v1.0.0.md](ocs/TEST_REPORT_ANDROID_v1.0.0.md))`
+- Generate `[docs/TEST_REPORT_ANDROID_v1.0.0.md](../../docs/TEST_REPORT_ANDROID_v1.0.0.md)(d[ocs/TEST_REPORT_ANDROID_v1.0.0.md](ocs/TEST_REPORT_ANDROID_v1.0.0.md))`
 - Include: unit test coverage summary, performance benchmarks, comparison vs Desktop
 
 **T076: CI Documentation**
-- Update `[[docs/CI_Workflows_Artifacts.md](docs/CI_Workflows_Artifacts.md)](../../docs/CI_Workflows_Artifacts.md)(d[ocs/CI_Workflows_Artifacts.md](ocs/CI_Workflows_Artifacts.md))` with Android build section
+- Update `[docs/CI_Workflows_Artifacts.md](../../docs/CI_Workflows_Artifacts.md)(d[ocs/CI_Workflows_Artifacts.md](ocs/CI_Workflows_Artifacts.md))` with Android build section
 - Document artifact formats (APK, AAB), release process
 
 ### Execution Sequence

@@ -7,7 +7,7 @@ Spec ID: 09
 
 ## UX Guidelines
 
-See [[docs/ui_guidelines.md](docs/ui_guidelines.md)](../docs/ui_guidelines.md). This spec aligns endpoint names with current API.
+See [docs/ui_guidelines.md](../docs/ui_guidelines.md). This spec aligns endpoint names with current API.
 
 Principles
 - No business logic in UI; use API/FFI.
@@ -93,6 +93,6 @@ CLI UX (truthctl)
 - **Actionable guidance**: Suggests using existing template or modifying fields
 - **Non-blocking**: Error does not prevent form editing; user can adjust and retry
 
-- See [[docs/README.md](docs/README.md)](../docs/README.md) for detailed explanations.
+- See [docs/README.md](../docs/README.md) for detailed explanations.
 
 - See [docs/README.md](docs/README.md) for detailed explanations.

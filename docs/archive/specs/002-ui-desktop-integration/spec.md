@@ -92,7 +92,7 @@ A desktop user needs a graphical interface to interact with the Truth Collective
 - **FR-005**: System MUST visualize collective progress through basic metrics - consensus values, participant counts, and simple trend indicators
 - **FR-006**: System MUST operate in offline-first mode, queuing actions locally when disconnected
 - **FR-007**: System MUST automatically synchronize with the collective intelligence system when connectivity is restored
-- **FR-008**: System MUST follow UX guidelines from [[spec/09-ux-guidelines.md](spec/09-ux-guidelines.md)](../../spec/09-ux-guidelines.md)(s[pec/09-ux-guidelines.md](pec/09-ux-guidelines.md)) for consistent user experience
+- **FR-008**: System MUST follow UX guidelines from [spec/09-ux-guidelines.md](../../spec/09-ux-guidelines.md)(s[pec/09-ux-guidelines.md](pec/09-ux-guidelines.md)) for consistent user experience
 - **FR-009**: System MUST connect to the core system via both HTTP API and FFI - UI can use either method depending on operation type
 - **FR-010**: System MUST handle all error types comprehensively - network errors, core system errors, user input errors, and data corruption scenarios
 - **FR-011**: System MUST support anonymous access only - users participate without requiring accounts or authentication

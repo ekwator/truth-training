@@ -40,7 +40,7 @@ Spec ID: 13
 #### Collective Intelligence Layer
 - **Collective Score** → `core-lib/src/models.rs` (`TruthEvent.collective_score`), `core-lib/src/storage.rs` (`recalc_collective_truth`)
 - **API Recalculation** → `src/api.rs` (`POST /api/v1/recalc_collective`)
-- **P2P Propagation** → [[spec/08-p2p-sync.md](spec/08-p2p-sync.md)](08-p2p-sync.md) (shared among nodes)
+- **P2P Propagation** → [spec/08-p2p-sync.md](08-p2p-sync.md) (shared among nodes)
 
 #### Android Integration
 - **JSON Signature Verification** → `src/android/verify_json.rs` (Ed25519 verification)
@@ -56,18 +56,18 @@ Spec ID: 13
 ### Documentation → Specification Mapping
 
 #### Legacy Docs → Spec Kit
-- [[docs/Technical_Specification.md](docs/Technical_Specification.md)](../docs/Technical_Specification.md)` → `[[spec/02-requirements.md](spec/02-requirements.md)](02-requirements.md)
-- [[docs/Data_Schema.md](docs/Data_Schema.md)](../docs/Data_Schema.md)` → `[[spec/04-data-model.md](spec/04-data-model.md)](04-data-model.md)
-- [[docs/event_rating_protocol.md](docs/event_rating_protocol.md)](../docs/event_rating_protocol.md)` → `[[spec/07-event-rating-protocol.md](spec/07-event-rating-protocol.md)](07-event-rating-protocol.md)
-- [[docs/p2p_release.md](docs/p2p_release.md)](../docs/p2p_release.md)` → `[[spec/08-p2p-sync.md](spec/08-p2p-sync.md)](08-p2p-sync.md)
-- [[docs/ui_guidelines.md](docs/ui_guidelines.md)](../docs/ui_guidelines.md)` → `[[spec/09-ux-guidelines.md](spec/09-ux-guidelines.md)](09-ux-guidelines.md)
+- [docs/Technical_Specification.md](../docs/Technical_Specification.md)` → `[spec/02-requirements.md](02-requirements.md)
+- [docs/Data_Schema.md](../docs/Data_Schema.md)` → `[spec/04-data-model.md](04-data-model.md)
+- [docs/event_rating_protocol.md](../docs/event_rating_protocol.md)` → `[spec/07-event-rating-protocol.md](07-event-rating-protocol.md)
+- [docs/p2p_release.md](../docs/p2p_release.md)` → `[spec/08-p2p-sync.md](08-p2p-sync.md)
+- [docs/ui_guidelines.md](../docs/ui_guidelines.md)` → `[spec/09-ux-guidelines.md](09-ux-guidelines.md)
 
 #### New Documentation
-- [README.md](README.md) → [[spec/03-architecture.md](spec/03-architecture.md)](03-architecture.md) (FidoNet principles)
-- [[docs/CLI_Usage.md](docs/CLI_Usage.md)](../docs/CLI_Usage.md) → [[spec/10-cli.md](spec/10-cli.md)](10-cli.md)\(CLI specification)
-- [[docs/Concept_Collective_Intelligence.md](docs/Concept_Collective_Intelligence.md)](../docs/Concept_Collective_Intelligence.md) → Collective Intelligence Layer
-- [[docs/api_reference/API_REFERENCE.md](docs/api_reference/API_REFERENCE.md)](../docs/api_reference/API_REFERENCE.md) → API documentation
-- [[integration/android/README_INTEGRATION.md](integration/android/README_INTEGRATION.md)](../integration/android/README_INTEGRATION.md) → Android integration guide
+- [README.md](README.md) → [spec/03-architecture.md](03-architecture.md) (FidoNet principles)
+- [docs/CLI_Usage.md](../docs/CLI_Usage.md) → [spec/10-cli.md](10-cli.md)\(CLI specification)
+- [docs/Concept_Collective_Intelligence.md](../docs/Concept_Collective_Intelligence.md) → Collective Intelligence Layer
+- [docs/api_reference/API_REFERENCE.md](../docs/api_reference/API_REFERENCE.md) → API documentation
+- [integration/android/README_INTEGRATION.md](../integration/android/README_INTEGRATION.md) → Android integration guide
 
 ### Feature Implementation Status
 
@@ -106,6 +106,6 @@ Spec ID: 13
 
 _Version: v1.0.0_
 
-- See [[docs/README.md](docs/README.md)](../docs/README.md) for detailed explanations.
+- See [docs/README.md](../docs/README.md) for detailed explanations.
 
 - See [docs/README.md](docs/README.md) for detailed explanations.

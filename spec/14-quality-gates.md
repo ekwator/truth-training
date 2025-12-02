@@ -17,6 +17,6 @@ Note: Current environment cargo 1.82.0 lacks edition2024; CI should use nightly 
 
 _Version: v1.0.0_
 
-- See [[docs/README.md](docs/README.md)](../docs/README.md) for detailed explanations.
+- See [docs/README.md](../docs/README.md) for detailed explanations.
 
 - See [docs/README.md](docs/README.md) for detailed explanations.

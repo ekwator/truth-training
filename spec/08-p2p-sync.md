@@ -150,7 +150,7 @@ The system tracks relay success rates dynamically during sync operations:
 
 - `collective_score` — aggregated event score (0..1), recalculated locally from `impact` entries and shared among nodes as part of distributed consensus propagation.
 - Consensus converges iteratively: nodes recompute and exchange values; discrepancies diminish with subsequent recalculations and new evaluations.
-- See [[docs/Concept_Collective_Intelligence.md](docs/Concept_Collective_Intelligence.md)](../docs/Concept_Collective_Intelligence.md) for detailed implementation.
+- See [docs/Concept_Collective_Intelligence.md](../docs/Concept_Collective_Intelligence.md) for detailed implementation.
 
 ## Propagation Priority Exchange
 
@@ -180,6 +180,6 @@ The system tracks relay success rates dynamically during sync operations:
 
 _Version: v1.0.0_
 
-- See [[docs/README.md](docs/README.md)](../docs/README.md) for detailed explanations.
+- See [docs/README.md](../docs/README.md) for detailed explanations.
 
 - See [docs/README.md](docs/README.md) for detailed explanations.

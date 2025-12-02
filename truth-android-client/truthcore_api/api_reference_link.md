@@ -1,4 +1,4 @@
-<!-- Archived from [[truth-android-client/truthcore_api/api_reference_link.md](truth-android-client/truthcore_api/api_reference_link.md)](api_reference_link.md) -->
+<!-- Archived from [truth-android-client/truthcore_api/api_reference_link.md](api_reference_link.md) -->
 
 # Linked API Reference
 

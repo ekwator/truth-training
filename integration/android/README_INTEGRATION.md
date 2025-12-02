@@ -55,7 +55,7 @@ Copy the resulting libraries into your Android client's `app/src/main/jniLibs/<a
 - Base URL: your node (e.g., `http://10.0.2.2:8080` for Android emulator)
 - Content-Type: `application/json; charset=utf-8`
 - Authentication: JWT (`Authorization: Bearer <jwt>`) for protected endpoints
-- Full API reference: see [[docs/api_reference/API_REFERENCE.md](docs/api_reference/API_REFERENCE.md)](../../docs/api_reference/API_REFERENCE.md)
+- Full API reference: see [docs/api_reference/API_REFERENCE.md](../../docs/api_reference/API_REFERENCE.md)
 - Collective Intelligence API: `POST /api/v1/recalc_collective` for consensus recalculation
 
 ### Retrofit Setup (Kotlin)

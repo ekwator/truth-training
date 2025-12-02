@@ -142,13 +142,13 @@ Conventions:
     - Paths: `tests/integration/*.test.ts`
     - Dep: T207..T210
 35. [X] T403 Update quickstart with final commands [P]
-    - Path: `[[/home/ekwator/Code/truth-training/specs/002-ui-desktop-integration/quickstart.md](/home/ekwator/Code/truth-training/specs/002-ui-desktop-integration/quickstart.md)](quickstart.md)(/[home/ekwator/Code/truth-training/specs/002-ui-desktop-integration/quickstart.md](home/ekwator/Code/truth-training/specs/002-ui-desktop-integration/quickstart.md))`
+    - Path: `[/home/ekwator/Code/truth-training/specs/002-ui-desktop-integration/quickstart.md](quickstart.md)(/[home/ekwator/Code/truth-training/specs/002-ui-desktop-integration/quickstart.md](home/ekwator/Code/truth-training/specs/002-ui-desktop-integration/quickstart.md))`
     - Dep: All
 36. [X] T404 Update spec references and API contracts if drift [P]
     - Paths: `contracts/api.yaml`, `[data-model.md](data-model.md)(d[ata-model.md](ata-model.md))`
     - Dep: All
 37. [X] T405 CI: add desktop test job and badges
-    - Paths: `.github/workflows/desktop.yml`, `[[README.md](README.md)](../../README.md)(R[EADME.md](EADME.md))`
+    - Paths: `.github/workflows/desktop.yml`, `[README.md](../../README.md)(R[EADME.md](EADME.md))`
     - Dep: T402
 
 ## Parallel Execution Guidance

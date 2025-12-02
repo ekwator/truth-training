@@ -1,6 +1,6 @@
 <!-- Archived from [docs/prompt/ekwator/specify1/spec1.md](docs/prompt/ekwator/specify1/spec1.md) -->
 
-<!-- Archived from [[docs/prompt/ekwator/specify1/spec1.md](docs/prompt/ekwator/specify1/spec1.md)](spec1.md) -->
+<!-- Archived from [docs/prompt/ekwator/specify1/spec1.md](spec1.md) -->
 
 /speckit.specify
 Goal:

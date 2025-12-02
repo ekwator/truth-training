@@ -115,7 +115,7 @@ Files:
 
 `--auto-peer` appends the node to peers.json if not present.
 
-See also: [[docs/CLI_Usage.md](docs/CLI_Usage.md)](../docs/CLI_Usage.md) for examples.
+See also: [docs/CLI_Usage.md](../docs/CLI_Usage.md) for examples.
 
 ## Configuration Management
 Command group to manage node configuration at `~/.truthctl/config.json`.
@@ -179,6 +179,6 @@ Entries are appended from `peers sync-all` after each peer attempt (success or f
 
 _Version: v1.0.0_
 
-- See [[docs/README.md](docs/README.md)](../docs/README.md) for detailed explanations.
+- See [docs/README.md](../docs/README.md) for detailed explanations.
 
 - See [docs/README.md](docs/README.md) for detailed explanations.

@@ -187,20 +187,20 @@ Digital Money — stricter for value preservation.
 
 🗂 9. Spec-Kit Links
 
-Added in: [[spec/README.md](spec/README.md)](README.md) → Network & Reliability
+Added in: [spec/README.md](README.md) → Network & Reliability
 
 Related specs:
 
-[[spec/03-architecture.md](spec/03-architecture.md)](03-architecture.md) — Core topology
+[spec/03-architecture.md](03-architecture.md) — Core topology
 
-[[spec/04-data-model.md](spec/04-data-model.md)](04-data-model.md) — Event + Impact schema
+[spec/04-data-model.md](04-data-model.md) — Event + Impact schema
 
-[[spec/08-p2p-sync.md](spec/08-p2p-sync.md)](08-p2p-sync.md) — Trust propagation and synchronization
+[spec/08-p2p-sync.md](08-p2p-sync.md) — Trust propagation and synchronization
 
-[[spec/17-offline-reliability.md](spec/17-offline-reliability.md)](17-offline-reliability.md) — Current document
+[spec/17-offline-reliability.md](17-offline-reliability.md) — Current document
 
 _Version: v1.0.0_
 
-- See [[docs/README.md](docs/README.md)](../docs/README.md) for detailed explanations.
+- See [docs/README.md](../docs/README.md) for detailed explanations.
 
 - See [docs/README.md](docs/README.md) for detailed explanations.
