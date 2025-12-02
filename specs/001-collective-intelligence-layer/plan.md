@@ -107,7 +107,7 @@ app/
    - Alternatives considered: [what else evaluated]
 
 **Output**: [research.md](research.md)(r[esearch.md](esearch.md)) with all NEEDS CLARIFICATION resolved
-Status: COMPLETE → `[[/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/research.md](/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/research.md)](research.md)(/[home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/research.md](home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/research.md))`
+Status: COMPLETE → `[/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/research.md](research.md)(/[home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/research.md](home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/research.md))`
 
 ## Phase 1: Design & Contracts
 *Prerequisites: [research.md](research.md)(r[esearch.md](esearch.md)) complete*
@@ -141,7 +141,7 @@ Status: COMPLETE → `[[/home/ekwator/Code/truth-training/specs/001-collective-i
    - Output to repository root
 
 **Output**: [data-model.md](data-model.md)(d[ata-model.md](ata-model.md)), /contracts/*, failing tests, [quickstart.md](quickstart.md)(q[uickstart.md](uickstart.md)), agent-specific file
-Status: COMPLETE → data model at `[[/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/data-model.md](/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/data-model.md)](data-model.md)(/[home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/data-model.md](home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/data-model.md))`, contracts at `/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/contracts/*.yaml`, quickstart at `[[/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/quickstart.md](/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/quickstart.md)](quickstart.md)(/[home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/quickstart.md](home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/quickstart.md))`
+Status: COMPLETE → data model at `[/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/data-model.md](data-model.md)(/[home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/data-model.md](home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/data-model.md))`, contracts at `/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/contracts/*.yaml`, quickstart at `[/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/quickstart.md](quickstart.md)(/[home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/quickstart.md](home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/quickstart.md))`
 
 ## Phase 2: Task Planning Approach
 *This section describes what the /tasks command will do - DO NOT execute during /plan*
@@ -160,7 +160,7 @@ Status: COMPLETE → data model at `[[/home/ekwator/Code/truth-training/specs/00
 - Mark [P] for parallel execution (independent files)
 
 **Estimated Output**: 25-30 numbered, ordered tasks in [tasks.md](tasks.md)(t[asks.md](asks.md))
-Note: Executed separately; generated at `[[/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/tasks.md](/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/tasks.md)](tasks.md)(/[home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/tasks.md](home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/tasks.md))`.
+Note: Executed separately; generated at `[/home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/tasks.md](tasks.md)(/[home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/tasks.md](home/ekwator/Code/truth-training/specs/001-collective-intelligence-layer/tasks.md))`.
 
 ## Phase 3+: Future Implementation
 *These phases are beyond the scope of the /plan command*

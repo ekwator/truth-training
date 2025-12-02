@@ -1,4 +1,4 @@
-<!-- Archived from [[truth-android-client/docs/INTEGRATION_TRUTH_CORE.md](truth-android-client/docs/INTEGRATION_TRUTH_CORE.md)](INTEGRATION_TRUTH_CORE.md) -->
+<!-- Archived from [truth-android-client/docs/INTEGRATION_TRUTH_CORE.md](INTEGRATION_TRUTH_CORE.md) -->
 
 # Truth Core Integration (JNI)
 

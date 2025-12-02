@@ -17,7 +17,7 @@ This document tracks all current versions across the Truth Training ecosystem.
 ## 🔄 Update Policy
 - All version updates must be reflected in:
   - `Cargo.toml` for each crate
-  - [[spec/README.md](spec/README.md)](../spec/README.md) (Version Map)
+  - [spec/README.md](../spec/README.md) (Version Map)
   - This registry file
 
 ---

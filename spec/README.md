@@ -16,16 +16,16 @@ Use /spec as the primary decision source before reading /docs.
 - Spec overview → this page
 - Human-facing docs → [Docs index](../docs/README.md)
 - Build artifacts → [CI workflows](../docs/CI_Workflows_Artifacts.md)
-- Install paths → [[Install_Paths_By_OS.md](Install_Paths_By_OS.md)](../docs/Install_Paths_By_OS.md)
-- Desktop UI guide → [[UI_Desktop.md](UI_Desktop.md)](../docs/UI_Desktop.md)
-- Technical reference → [[Technical_Specification.md](Technical_Specification.md)](../docs/Technical_Specification.md)
-- Version registry → [[VERSION_REGISTRY.md](VERSION_REGISTRY.md)](../docs/VERSION_REGISTRY.md)
+- Install paths → [Install_Paths_By_OS.md](../docs/Install_Paths_By_OS.md)
+- Desktop UI guide → [UI_Desktop.md](../docs/UI_Desktop.md)
+- Technical reference → [Technical_Specification.md](../docs/Technical_Specification.md)
+- Version registry → [VERSION_REGISTRY.md](../docs/VERSION_REGISTRY.md)
 
 ## Documentation Refactor Controls
 
 - **Follow `/spec` first**: AI agents must make plan decisions from `/spec` before consulting `/docs`. `/docs` is referenced only for narrative depth or OS-specific walkthroughs.
-- **Doc Refactor spec**: Implementation requirements live in [[specs/001-docs-refactor/spec.md](specs/001-docs-refactor/spec.md)](../specs/001-docs-refactor/spec.md). Audit this file when updating documentation automation.
-- **Pipeline references**: Link integrity, inventory, and restructuring workflows are described in [[docs/Documentation_Refactor_Overview.md](docs/Documentation_Refactor_Overview.md)](../docs/Documentation_Refactor_Overview.md).
+- **Doc Refactor spec**: Implementation requirements live in [specs/001-docs-refactor/spec.md](../specs/001-docs-refactor/spec.md). Audit this file when updating documentation automation.
+- **Pipeline references**: Link integrity, inventory, and restructuring workflows are described in [docs/Documentation_Refactor_Overview.md](../docs/Documentation_Refactor_Overview.md).
 
 Purpose: A comprehensive guide for building cross-platform Truth Training applications. This Spec-Kit provides precise instructions for AI agents and developers to build mobile (iOS + Android) and desktop versions using platform-specific features and FFI interfaces.
 
@@ -300,9 +300,9 @@ cargo test --target aarch64-apple-ios --features mobile
 
 ## Integration Guides
 
-- **Android Integration**: [[integration/android/README_INTEGRATION.md](integration/android/README_INTEGRATION.md)](../integration/android/README_INTEGRATION.md) — JNI setup and JSON verification
-- **iOS Integration**: [[integration/ios/README_INTEGRATION.md](integration/ios/README_INTEGRATION.md)](../integration/ios/README_INTEGRATION.md) — Swift bindings and FFI setup
-- **Desktop Integration**: [[integration/desktop/README_INTEGRATION.md](integration/desktop/README_INTEGRATION.md)](../integration/desktop/README_INTEGRATION.md) — HTTP API and CLI usage
+- **Android Integration**: [integration/android/README_INTEGRATION.md](../integration/android/README_INTEGRATION.md) — JNI setup and JSON verification
+- **iOS Integration**: [integration/ios/README_INTEGRATION.md](../integration/ios/README_INTEGRATION.md) — Swift bindings and FFI setup
+- **Desktop Integration**: [integration/desktop/README_INTEGRATION.md](../integration/desktop/README_INTEGRATION.md) — HTTP API and CLI usage
 - **Desktop UI Integration**: [ui/desktop](../ui/desktop) — Tauri-based React/TypeScript desktop application
 
 ## Desktop UI Implementation
@@ -383,14 +383,14 @@ This Spec-Kit ensures consistent cross-platform development while maintaining op
 All Truth Training binaries—Desktop UI, Server, and CLI—store configuration files and databases in the current user's home directory by default, **regardless of whether installed as an application, service, or run via CLI**.
 
 - Desktop UI & Server: `~/.truth-training/config.json` (macOS/Linux), `%USERPROFILE%\.truth-training\config.json` (Windows)
-- SQLite DB: Platform standard (see [[Install_Paths_By_OS.md](Install_Paths_By_OS.md)](../docs/Install_Paths_By_OS.md))
+- SQLite DB: Platform standard (see [Install_Paths_By_OS.md](../docs/Install_Paths_By_OS.md))
 - CLI: Defaults to current directory, but can use `~/.truthctl/config.json` and user-specified db path via `--db` argument.
 
 This ensures configuration, keys, and offline data persist identically across local builds, installer-based apps, services, or direct CLI execution (unless CLI arguments override them).
 
 ## Build Artifacts and CI Outputs
 
-Artifacts are created and uploaded by distinct GitHub workflows (see [[CI_Workflows_Artifacts.md](CI_Workflows_Artifacts.md)](../docs/CI_Workflows_Artifacts.md) for detail):
+Artifacts are created and uploaded by distinct GitHub workflows (see [CI_Workflows_Artifacts.md](../docs/CI_Workflows_Artifacts.md) for detail):
 
 | Workflow | App/OS | Artifact Type | Main Outputs | |----------|--------|---------------|--------------| | `desktop.yml` | Linux | UI app, server binary | `.deb`, `.AppImage`, `truth_core_server-linux-bin` | | `desktop.yml` | Windows | UI app, server binary | `.exe` (NSIS), `.msi`, `truth_core_server-windows-bin` | | `desktop.yml` | macOS | UI app, server binary | `.app`, `.dmg`, `truth_core_server-macos-bin` | | `server-package.yml` | Linux | Service installer | `truth-core-server-linux` (`.deb`/`.rpm`) | | `server-package.yml` | Windows | Service installer | `truth-core-server-windows.exe` (NSIS) | | `server-package.yml` |
 
@@ -404,7 +404,7 @@ macOS | Service installer | `truth-core-server-macos.pkg` |
 | macOS        | `~/.truth-training/config.json`               | `~/Library/Application Support/TruthTraining/truth_training.sqlite` |
 | Windows      | `%USERPROFILE%\.truth-training\config.json`  | `%APPDATA%\TruthTraining\truth_training.sqlite`                   |
 
-> For more details, see [[Install_Paths_By_OS.md](Install_Paths_By_OS.md)](../docs/Install_Paths_By_OS.md) and [[CI_Workflows_Artifacts.md](CI_Workflows_Artifacts.md)](../docs/CI_Workflows_Artifacts.md).
+> For more details, see [Install_Paths_By_OS.md](../docs/Install_Paths_By_OS.md) and [CI_Workflows_Artifacts.md](../docs/CI_Workflows_Artifacts.md).
 
 - See [docs/README.md](../docs/README.md) for detailed explanations.
 

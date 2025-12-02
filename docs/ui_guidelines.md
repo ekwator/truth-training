@@ -220,7 +220,7 @@ truthctl metrics show --json
 
 ---
 
-*This document aligns with [[spec/09-ux-guidelines.md](spec/09-ux-guidelines.md)](../spec/09-ux-guidelines.md) and is maintained for Truth Training v1.0.0.*
+*This document aligns with [spec/09-ux-guidelines.md](../spec/09-ux-guidelines.md) and is maintained for Truth Training v1.0.0.*
 
 ## Related Documentation
 

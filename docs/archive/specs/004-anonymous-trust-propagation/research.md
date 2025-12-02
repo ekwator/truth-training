@@ -26,6 +26,6 @@ Anonymous Trust Propagation Protocol (ATPP) предназначен для ан
 - **Игнорировать TTL/ошибки доставки**: ведёт к неявным сбоям, нарушает прозрачность.
 
 ## 5. Заключение
-Все критически важные проектные trade-offs согласованы, финальные нормы зафиксированы в разделе clarifications (см. [[plan.md/spec.md](plan.md/spec.md)](p[lan.md](lan.md)/spec.md)(p[[lan.md/spec.md](lan.md/spec.md)](l[an.md](an.md)/spec.md). Ключевые архитектурные решения полностью покрыты. Фазу 1 (design/data-model/contracts) разрешено запускать.
+Все критически важные проектные trade-offs согласованы, финальные нормы зафиксированы в разделе clarifications (см. [plan.md/spec.md](p[lan.md](lan.md)/spec.md)(p[lan.md/spec.md](l[an.md](an.md)/spec.md). Ключевые архитектурные решения полностью покрыты. Фазу 1 (design/data-model/contracts) разрешено запускать.
 
 _Version: v1.0.0_

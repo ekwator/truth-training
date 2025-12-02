@@ -9,7 +9,7 @@
 ## Research Questions
 
 ### 1. How do we build a complete Markdown inventory without breaking validator depth rules?
-**Decision**: Walk the repo with `Path.rglob('*.md')`, skip `[[CONTRIBUTING.md](CONTRIBUTING.md)](../../CONTRIBUTING.md)(C[ONTRIBUTING.md](ONTRIBUTING.md))`, `LICENSE.txt`, `[[SECURITY.md](SECURITY.md)](../../SECURITY.md)(S[ECURITY.md](ECURITY.md))`, `[[CHANGELOG.md](CHANGELOG.md)](../../CHANGELOG.md)(C[HANGELOG.md](HANGELOG.md))`, and coerce any `README*.md` depth to 0. Depth derives from the number of path segments under repo root, capped at 3 to keep navigation shallow.  
+**Decision**: Walk the repo with `Path.rglob('*.md')`, skip `[CONTRIBUTING.md](../../CONTRIBUTING.md)(C[ONTRIBUTING.md](ONTRIBUTING.md))`, `LICENSE.txt`, `[SECURITY.md](../../SECURITY.md)(S[ECURITY.md](ECURITY.md))`, `[CHANGELOG.md](../../CHANGELOG.md)(C[HANGELOG.md](HANGELOG.md))`, and coerce any `README*.md` depth to 0. Depth derives from the number of path segments under repo root, capped at 3 to keep navigation shallow.  
 **Rationale**: Prior validator failures originated from README files inheriting folder depth. Explicit coercion plus capped depth keeps the navigation graph predictable.  
 **Alternatives**: Custom glob lists (fragile), manual manifest (incomplete).  
 **References**: Existing `scripts/doc_refactor/inventory.py`, Speckit docs on README depth enforcement.
@@ -21,7 +21,7 @@
 **References**: `mistune` AST docs, Markdown CommonMark spec, prior linter failures.
 
 ### 3. How do we ensure `/docs` stays deep while `/spec` remains compressed for AI agents?
-**Decision**: Introduce `spec_optimizer.py` that enforces <80-word paragraphs, mandates "Use /spec before /docs" admonition in `[[spec/README.md](spec/README.md)](../../spec/README.md)(s[pec/README.md](pec/README.md))`, and keeps decision/context sections in bullet lists. `/docs` receives the detailed sections extracted from README + specs, with archive relocation for pre-v1.0.0 materials.  
+**Decision**: Introduce `spec_optimizer.py` that enforces <80-word paragraphs, mandates "Use /spec before /docs" admonition in `[spec/README.md](../../spec/README.md)(s[pec/README.md](pec/README.md))`, and keeps decision/context sections in bullet lists. `/docs` receives the detailed sections extracted from README + specs, with archive relocation for pre-v1.0.0 materials.  
 **Rationale**: Aligns with AI-first constitution goals and success criteria SC-003/SC-005. Automation prevents regressions during future edits.  
 **Alternatives**: Manual editing (error-prone), soft guidance only (no enforcement).  
 **References**: Feature spec success criteria, prior doc-refactor prototypes.

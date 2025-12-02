@@ -131,7 +131,7 @@ tests/
 **Structure Decision**: Multi-platform monorepo anchored on `core/` schema with platform adapters per module; ensures canonical data + separation of concerns.
 
 ## Phase 0: Outline & Research
-**Research Output**: `[/[specs/008-specify-md/research.md](specs/008-specify-md/research.md)](research.md)(/[[specs/008-specify-md/research.md](specs/008-specify-md/research.md)](research.md))` (updated 2025-11-17)
+**Research Output**: `[/[specs/008-specify-md/research.md](specs/008-specify-md/research.md)](research.md)(/[specs/008-specify-md/research.md](research.md))` (updated 2025-11-17)
 
 Key findings:
 1. **Canonical SQLite Schema** – Use identical DDL (INTEGER PRIMARY KEY AUTOINCREMENT, indexed `address`, `last_seen`, `type`, `reachable`). Avoid platform-specific SQLite features to keep Room + rusqlite compatible.
@@ -146,10 +146,10 @@ Outstanding Clarification: Explicit SLA for discovery intervals still confirmed 
 
 ## Phase 1: Design & Contracts
 **Artifacts Generated**:
-- `[/[specs/008-specify-md/data-model.md](specs/008-specify-md/data-model.md)](data-model.md)(/[[specs/008-specify-md/data-model.md](specs/008-specify-md/data-model.md)](data-model.md))` – Node entity schema, validation rules, migration strategy, Room/Rust struct parity.
+- `[/[specs/008-specify-md/data-model.md](specs/008-specify-md/data-model.md)](data-model.md)(/[specs/008-specify-md/data-model.md](data-model.md))` – Node entity schema, validation rules, migration strategy, Room/Rust struct parity.
 - `/specs/008-specify-md/contracts/nodes-api.yaml` – OpenAPI spec for node listing, discovery trigger, sync, CRUD, health.
-- `[/[specs/008-specify-md/contracts/README.md](specs/008-specify-md/contracts/README.md)](contracts/README.md)(/[[specs/008-specify-md/contracts/README.md](specs/008-specify-md/contracts/README.md)](contracts/README.md))` – Contract usage + testing guidance.
-- `[/[specs/008-specify-md/quickstart.md](specs/008-specify-md/quickstart.md)](quickstart.md)(/[[specs/008-specify-md/quickstart.md](specs/008-specify-md/quickstart.md)](quickstart.md))` – Seven scenario validation guide covering schema parity, LAN discovery, sync, TTL cleanup, reachability, cross-platform DB, merge priority (local-over-global).
+- `[/[specs/008-specify-md/contracts/README.md](specs/008-specify-md/contracts/README.md)](contracts/README.md)(/[specs/008-specify-md/contracts/README.md](contracts/README.md))` – Contract usage + testing guidance.
+- `[/[specs/008-specify-md/quickstart.md](specs/008-specify-md/quickstart.md)](quickstart.md)(/[specs/008-specify-md/quickstart.md](quickstart.md))` – Seven scenario validation guide covering schema parity, LAN discovery, sync, TTL cleanup, reachability, cross-platform DB, merge priority (local-over-global).
 - Agent context updated via `.specify/scripts/bash/update-agent-context.sh cursor`.
 
 Design highlights:

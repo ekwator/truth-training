@@ -72,7 +72,7 @@ T010. Integration tests: quickstart scenarios [X]
 T011. Documentation updates: constitution alignment notes [X]
 - Paths: /home/ekwator/Code/truth-training/docs/
 - Action: Add/Update docs to reflect authorship removal, plaintext-at-rest policy, ternary judgments, independence definition, Wi‑Fi Direct
-- Output: [[docs/Constitution-Compliance.md](docs/Constitution-Compliance.md)](../../docs/Constitution-Compliance.md)(d[ocs/Constitution-Compliance.md](ocs/Constitution-Compliance.md))
+- Output: [docs/Constitution-Compliance.md](../../docs/Constitution-Compliance.md)(d[ocs/Constitution-Compliance.md](ocs/Constitution-Compliance.md))
 - Dependencies: T004–T009
 
 T012. Observability: structured logs for envelope verification and consensus [X]
