@@ -1,7 +1,7 @@
 name: doc-refactor
 
 on:
-  push:
+  # push:
   #   branches: [ main ]
   #  tags:
   #    - '**'
