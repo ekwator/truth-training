@@ -83,10 +83,11 @@ docs/
 
 #### 📌 What each file contains:
 
-- **[specify1/spec1.md](specify1/spec1.md)**  
+- **specify1/**  
+- 📁 A first set of examples demonstrating variations of specifications and plans.
+
 - 📄 [Complete template + real example of a `/speckit.specify` command for a development task.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/spec1.md)
 
-- **[specify1/plan/plan1.md](specify1/plan/plan1.md)**  
 - 🗂 [Example of a fully structured `/speckit.plan` request derived from the specification.](https://github.com/ekwator/truth-training/blob/master/docs/prompt/ekwator/specify1/plan/plan1.md)
 
 - **specify2/**  
