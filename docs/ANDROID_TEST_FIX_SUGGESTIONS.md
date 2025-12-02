@@ -452,7 +452,7 @@ After implementing fixes:
 ## 📚 References
 
 - [Kotlin Coroutines Testing Guide](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-test/)
-- [Android Testing Best Practices](https://developer.android.com/training/testing/best-practices)
+- [Android Testing Best Practices](https://developer.android.com/training/testing)
 - [Room Testing Guide](https://developer.android.com/training/data-storage/room/testing-db)
 
 ---
