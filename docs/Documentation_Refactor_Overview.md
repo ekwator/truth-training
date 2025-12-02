@@ -7,7 +7,7 @@ Use this checklist to run the complete documentation refactor workflow for Truth
 1. **Inventory** — scan every `*.md` file and produce `reports/doc_refactor/inventory.json`.
 2. **Link Discovery & Validation** — normalize inline `.md` references, build `link_report.json`, and flag missing or external warnings.
 3. **Version Sync** — ensure every doc surfaces `_Version: v1.0.0_`.
-4. **Restructuring** — compress `[README.md](README.md)`, migrate verbose sections to `/docs`, archive orphans, and refresh index gateways.
+4. **Restructuring** — compress `[README.md](../README.md)`, migrate verbose sections to `/docs`, archive orphans, and refresh index gateways.
 5. **Duplicate Detection** — record overlapping blocks between `/docs` and `/spec` in `dedupe.json`.
 6. **Spec Optimization** — condense `/spec` files, enforce AI directives, and remove duplicated blocks flagged as `needs_review`.
 
@@ -46,7 +46,7 @@ python scripts/doc_refactor/main.py run --phases link_discovery
 
 ## Success Criteria
 
-- `[README.md](README.md)` summary ≤400 words and links into `/docs` and `/spec`.
+- `[README.md](../README.md)` summary ≤400 words and links into `/docs` and `/spec`.
 - `[/docs/README.md](/docs/README.md)` indexes every non-archived human-facing doc.
 - `[/spec/README.md](/spec/README.md)` directs AI agents to rely on `/spec` first and acknowledges the doc refactor spec.
 - `link_report.json` contains zero `status: "missing"` entries before merging changes.
