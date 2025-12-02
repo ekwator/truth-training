@@ -1,4 +1,4 @@
-⚙️ Version Reference: See [[spec/README.md](spec/README.md)](../spec/README.md) or [[docs/VERSION_REGISTRY.md](docs/VERSION_REGISTRY.md)](VERSION_REGISTRY.md) for current version map.
+⚙️ Version Reference: See [spec/README.md](../spec/README.md) or [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md) for current version map.
 
 ## Installation Layout and Runtime Data Paths by OS
 
