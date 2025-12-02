@@ -6,7 +6,7 @@ Version: 2.1.0 → 2.2.0
 Modified Principles: New Rule 1–7 block replaced prior implicit guidance
 Added Sections: Summary, Formal Rules, Change History table
 Removed Sections: Legacy trailing version banner only
-Templates: .specify/templates/plan-template.md ✅, .specify/templates/spec-template.md ✅, .specify/templates/tasks-template.md ✅, .specify/templates/commands (dir missing) ⚠ document added follow-up
+Templates: [.specify/templates/plan-template.md](.specify/templates/plan-template.md) ✅, [.specify/templates/spec-template.md](.specify/templates/spec-template.md) ✅, [.specify/templates/tasks-template.md](.specify/templates/tasks-template.md) ✅, .specify/templates/commands (dir missing) ⚠ document added follow-up
 Follow-ups: TODO(COMMAND_TEMPLATES): Recreate or document actual command templates under .specify/templates/commands to keep references resolvable.
 -->
 
@@ -19,18 +19,18 @@ Truth Training orchestrates a cryptographically verifiable, anonymous truth netw
 ### Rule 1 — Cross-Platform Scope & Parity
 
 1. The project simultaneously ships four first-class surfaces and keeps them feature-aligned: `app/src/bin/truthctl.rs` (CLI control & diagnostics), the Actix-based server node (autonomous FidoNet-style behavior with no sysop intervention), the Desktop UI for Linux/Windows/macOS (Tauri backend with glib/GTK renderer on Linux, operating both offline and network-connected), and mobile clients implemented in Kotlin (Android) and Swift (iOS) that mirror Desktop functionality.
-2. Platform parity is verified through cross-platform specs/tests (e.g., `docs/cross_platform_discovery_compatibility.md`) and enforced for every API, schema, and consensus rule; drift is not permitted.
+2. Platform parity is verified through cross-platform specs/tests (e.g., `[docs/cross_platform_discovery_compatibility.md](docs/cross_platform_discovery_compatibility.md)`) and enforced for every API, schema, and consensus rule; drift is not permitted.
 
 ### Rule 2 — Source Documents as Authority
 
-1. `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, and `CHANGELOG.md` are binding references. When they change, this constitution must be updated accordingly; when this constitution adds constraints, those documents must be updated in the same pull request.
+1. `[README.md](README.md)`, `[CONTRIBUTING.md](CONTRIBUTING.md)`, `[SECURITY.md](SECURITY.md)`, and `[CHANGELOG.md](CHANGELOG.md)` are binding references. When they change, this constitution must be updated accordingly; when this constitution adds constraints, those documents must be updated in the same pull request.
 2. Any deviation from those sources is recorded (with justification) in the Change History table below so auditors see when and why governance diverged.
 
 ### Rule 3 — Releases, Installation & Automation
 
 1. Every tagged release must be installable in four choices (CLI binary, server node, desktop UI installers, mobile binaries). If a surface is not ready, the release is blocked.
 2. The README must contain up-to-date install instructions for each surface before a release is approved.
-3. Release preparation and automation must remain executable by the Cursor AI agent exactly as described in `CONTRIBUTING.md` section “## 2. Release Preparation Requirements,” using `create-release.sh`, `release-info.txt`, and the associated versioned release-info files. Scripts and docs must be maintained alongside the code.
+3. Release preparation and automation must remain executable by the Cursor AI agent exactly as described in `[CONTRIBUTING.md](CONTRIBUTING.md)` section “## 2. Release Preparation Requirements,” using `create-release.sh`, `release-info.txt`, and the associated versioned release-info files. Scripts and docs must be maintained alongside the code.
 4. Release automation outputs (artifacts, CHANGELOG entry, README install sections) are audited by Spec-Kit workflows, making this policy testable.
 
 ### Rule 4 — Dependency, Vulnerability & Platform Safeguards
@@ -44,19 +44,19 @@ Truth Training orchestrates a cryptographically verifiable, anonymous truth netw
 
 1. Truth Training data schemas MUST satisfy 1NF, 2NF, 3NF, BCNF, 4NF, and 5NF; 6NF/DKNF may be adopted for temporal/domain-heavy modules when justified in specs.
 2. Every table requires a unique key, unused tables are removed, and each schema change ships with documented forward/backward migrations plus cleanup scripts.
-3. Release checklists include a database/schema review referencing `spec/04-data-model.md`, `docs/Data_Schema.md`, and migration scripts; releases are blocked if documentation or migrations lag behind.
+3. Release checklists include a database/schema review referencing `[spec/04-data-model.md](spec/04-data-model.md)`, `[docs/Data_Schema.md](docs/Data_Schema.md)`, and migration scripts; releases are blocked if documentation or migrations lag behind.
 
 ### Rule 6 — CI, Tooling & Automation Discipline
 
 1. Spec-Kit artifacts (specs, plans, tasks), docs, release scripts, lint/test runners, and validation checks MUST exist, be versioned, and remain runnable by Cursor agents without manual intervention.
-2. `.specify/memory/constitution.md` is the canonical constitution; all `/speckit.*` commands reference it and update Spec-Kit templates when new governance gates appear.
-3. Templates checked during this amendment (`.specify/templates/{spec,plan,tasks}-template.md`) stay aligned; missing command templates are tracked until restored.
+2. `[.specify/memory/constitution.md](.specify/memory/constitution.md)` is the canonical constitution; all `/speckit.*` commands reference it and update Spec-Kit templates when new governance gates appear.
+3. Templates checked during this amendment (`.specify/templates/{spec,plan,tasks}[-template.md](-template.md)`) stay aligned; missing command templates are tracked until restored.
 
 ### Rule 7 — Security & Privacy Enforcement
 
-1. `SECURITY.md` defines the security model; this constitution requires periodic dependency scans (Dependabot/CodeQL or equivalent) plus manual `cargo audit`, `npm audit`, and Android/Desktop security tooling runs before releases.
+1. `[SECURITY.md](SECURITY.md)` defines the security model; this constitution requires periodic dependency scans (Dependabot/CodeQL or equivalent) plus manual `cargo audit`, `npm audit`, and Android/Desktop security tooling runs before releases.
 2. Remediation SLAs: Critical vulnerabilities addressed within 48 hours, High within 7 days, Medium within 14 days, and documentation recorded in issues/specs.
-3. Privacy rules from `SECURITY.md` (no persistent identity, no telemetry, no plaintext secrets) are binding on every platform and must be validated during code review and release automation.
+3. Privacy rules from `[SECURITY.md](SECURITY.md)` (no persistent identity, no telemetry, no plaintext secrets) are binding on every platform and must be validated during code review and release automation.
 
 ## Philosophical Foundation
 
@@ -211,7 +211,7 @@ Ensure coherence between API, storage, and P2P layers; maintain cryptographic in
 - Storage migrations: provide forward/backward migrations and seed updates in `core` while meeting the normal form guarantees in Rule 5.
 - API/P2P contracts: add/extend contract tests; bump versions; document in [spec/11-decision-log.md](spec/11-decision-log.md).
 - Release process: per-crate semver bump, changelog entry, artifacts; maintain compatibility notes in specs; ensure README install sections reflect the four release surfaces before running `create-release.sh`.
-- Release automation must also confirm glib version checks, dependency audits, and schema reviews, logging outcomes in `CHANGELOG.md` and the versioned release-info files.
+- Release automation must also confirm glib version checks, dependency audits, and schema reviews, logging outcomes in `[CHANGELOG.md](CHANGELOG.md)` and the versioned release-info files.
 
 ## Governance
 
@@ -222,7 +222,7 @@ This constitution supersedes other practices. Amendments require documentation, 
 - Use [spec/15-prompts-and-automation.md](spec/15-prompts-and-automation.md) for automation and agent guidance; `/speckit.*` commands MUST confirm they sourced assumptions from this file.
 - Collective intelligence principles must be preserved in all architectural decisions.
 - Truth training methodology must be reflected in all user-facing interfaces and data flows.
-- Acceptance criteria: this file (and associated Spec-Kit state) stays at `.specify/memory/constitution.md`, referenced by all governance-related commands, and deviations from authoritative docs are captured in the Change History table.
+- Acceptance criteria: this file (and associated Spec-Kit state) stays at `[.specify/memory/constitution.md](.specify/memory/constitution.md)`, referenced by all governance-related commands, and deviations from authoritative docs are captured in the Change History table.
 
 ## Change History
 
@@ -232,4 +232,3 @@ This constitution supersedes other practices. Amendments require documentation, 
 | 2025-10-31 | 2.1.0   | Maintainers | Prior governance uplift aligning constitution with anonymous confession and collective intelligence.     | Not recorded                                          |
 
 **Version**: 2.2.0 | **Ratified**: 2025-10-31 | **Last Amended**: 2025-12-01
-

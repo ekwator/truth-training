@@ -16,7 +16,7 @@ make doc-refactor-run
 
 During `link_discovery` the CLI:
 
-1. Normalizes bare `.md` paths (e.g., `docs/Guide.md`) into `[docs/Guide.md](docs/Guide.md)`.
+1. Normalizes bare `.md` paths (e.g., `docs/Guide.md`) into [docs/Guide.md](docs/Guide.md).
 2. Builds a reference graph rooted at every documentation node.
 3. Validates each internal `.md` target against the inventory and marks status `ok` or `missing`.
 4. Performs best-effort `HEAD` requests for external URLs and records `external_ok` or `external_warning`.
@@ -62,4 +62,4 @@ Each edge in `link_report.json` looks like:
 - `validation.json["plain_paths"]` is empty.
 - Any `external_warning` entries either link to reachable targets or are documented in the PR summary.
 
-Link integrity gates are part of the overall release criteria (`[docs/Constitution-Compliance.md](Constitution-Compliance.md)` and `[spec/14-quality-gates.md](../spec/14-quality-gates.md)` now reference this workflow). Keep this document linked from the root `[README.md](../README.md)` and triage failures before shipping v1.0.0 documentation updates.
+Link integrity gates are part of the overall release criteria ([docs/Constitution-Compliance.md](Constitution-Compliance.md) and [spec/14-quality-gates.md](../spec/14-quality-gates.md) now reference this workflow). Keep this document linked from the root [README.md](../README.md) and triage failures before shipping v1.0.0 documentation updates.
