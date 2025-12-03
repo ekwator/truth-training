@@ -17,10 +17,12 @@ Originally conceived to combat fraud, Truth Training evolves into a **self-learn
 
 ## Release Surfaces
 
-- **CLI** — interact via [docs/CLI_Usage.md](docs/CLI_Usage.md)
-- **Server** — deploy following [docs/Deployment.md](docs/Deployment.md)
-- **Desktop UI** — reference [docs/UI_Desktop.md](docs/UI_Desktop.md)
-- **Mobile** — architecture in [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)
+- **Core Library** — integration guide: [docs/quickstart_core.md](docs/quickstart_core.md)
+- **CLI** — quickstart: [docs/quickstart_cli.md](docs/quickstart_cli.md), reference: [docs/CLI_Usage.md](docs/CLI_Usage.md)
+- **Server** — quickstart: [docs/quickstart_server.md](docs/quickstart_server.md), deployment: [docs/Deployment.md](docs/Deployment.md)
+- **Desktop UI** — quickstart: [docs/quickstart_desktop.md](docs/quickstart_desktop.md), reference: [docs/UI_Desktop.md](docs/UI_Desktop.md)
+- **Android Mobile** — quickstart: [docs/quickstart_android.md](docs/quickstart_android.md), architecture: [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md)
+- **iOS Mobile** — quickstart: [docs/quickstart_ios.md](docs/quickstart_ios.md)
 
 ## Documentation Entry Points
 

@@ -34,8 +34,8 @@ cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECH
 Rust 1.75+ (existing project): Follow standard conventions
 
 ## Recent Changes
+- 001-init-schema-fix: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 001-docs-refactor: Added Python 3.11 (documentation refactor tooling), Rust stable (core project), Node.js 20+ (desktop tooling), Bash (automation scripts) + Spec-Kit (`.specify`), `scripts/doc_refactor` Python package, Git, Markdown parsers, existing GitHub Actions/CI jobs
-- 009-fix-linux-deb: Added Rust 1.75+ (stable toolchain)
 - 009-fix-linux-deb: Added Rust 1.75+ (stable toolchain)
 
 <!-- MANUAL ADDITIONS START -->

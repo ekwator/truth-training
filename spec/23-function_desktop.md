@@ -118,14 +118,9 @@ User Input → Keyboard Event → setCurrentScreen → renderScreen() → Compon
   - Description (optional)
   - Start Date (optional)
   - End Date (optional, must be >= start date)
-  - Context Fields (prefilled from template, all optional):
-    - Category ID
-    - Forma ID
-    - Cause ID
-    - Develop ID
-    - Effect ID
+  - Context Fields (prefilled from template, all optional). **Important:** each field is currently a numeric text input that accepts raw IDs (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`). There is no lookup dialog or dropdown; users must know the numeric IDs from the underlying tables or a previously selected template.
 - **Submit Button:** Creates event with embedded context fields
-- **Cancel Button:** Returns to Dashboard
+- **Cancel Button:** Clears form and stays on screen (navigation back to Dashboard must be done manually)
 
 **State Flow:**
 ```
@@ -133,14 +128,18 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 ```
 
 **Expected Behavior:**
-- Template selection prefills five context fields
+- Template selection prefills the five numeric context fields
 - User can modify prefilled fields before submission
 - Form validation:
   - Title required
   - End date >= start date
-  - Context field FKs must reference existing records
-- On success: Navigate to Dashboard, show success toast
+  - Context field inputs are not validated client-side; invalid IDs will be rejected by the backend
+- On success: Event is created and form resets (navigation to Dashboard is manual)
 - On error: Display error message, remain on form
+
+**Known Limitations:**
+- Context attribute inputs are numeric fields rather than record pickers; users cannot browse the underlying tables from this screen yet.
+- There is no inline validation or auto-complete for context IDs.
 
 **Responsibilities:**
 - Event creation with embedded context
@@ -295,9 +294,12 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 - **Server Configuration:**
   - IP Address input (validation: `^\d{1,3}(\.\d{1,3}){3}$`)
   - Port input (validation: 1-65535)
-- **Test Connection Button:** Tests Core or HTTP connection
-- **Save Button:** Saves configuration
-- **Connection Status:** Real-time connection status display
+- **Nearby Sync Toggle + Interval Input:** Enables UDP broadcast discovery and sets interval (500–60000 ms)
+- **Discovery Worker Settings:** Background discovery enable switch plus numeric inputs for LAN/Wi-Fi/Global intervals and TTLs
+- **Test Connection Button:** Tests Core or HTTP connection depending on selected mode
+- **Init (Initialize App) Button:** Calls the Tauri `init_app` command to reset configuration and rebuild the local SQLite schema
+- **Save Buttons:** Separate actions for connection settings and discovery worker settings
+- **Connection Status Panel:** Displays latest test result, timestamp, online/offline information, and pending operations
 
 **Configuration Schema:**
 ```json
@@ -312,17 +314,23 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 - Uses Tauri commands for configuration
 
 **Expected Behavior:**
-- Load current configuration on mount
-- Validate IP and port formats
-- Test connection with real-time feedback
-- Save configuration to `~/.truth-training/config.json`
-- Display connection status
+- Load current configuration and discovery settings on mount
+- Validate IP, port, nearby interval, and discovery cadence inputs before saving
+- Test connection with real-time feedback (Core mode uses direct invocation, HTTP mode hits `/status`)
+- Save configuration to `~/.truth-training/config.json` and update discovery worker runtime state
+- `Init` button resets `~/.truth-training/config.json`, truncates the local SQLite database, and recreates tables using the legacy `events` schema (not the new `truth_events` embedding). This mismatch currently recreates the deprecated `events` table on Linux and must be addressed by aligning `init_app` with the v1.0.0 schema.
+- Display connection status, pending operations, and discovery errors inline
 
 **Responsibilities:**
 - Configuration management
 - Connection testing
-- Validation
-- Persistence
+- Discovery cadence tuning
+- Database initialization (currently legacy schema)
+- Validation and persistence
+
+**Known Limitations:**
+- The `Init` workflow rebuilds the legacy `events` table. Until `init_app` is updated to mirror the embedded `truth_events` schema, running this action on Linux/macOS will recreate constitutionally deprecated tables and should be avoided in production data directories.
+- There is no localization selector even though the core supports Russian/English seeding; the UI always operates in English, and language preference is not surfaced.
 
 ## Components
 

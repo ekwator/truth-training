@@ -1,12 +1,10 @@
-<!-- Archived from .[specify/templates/agent-file-template.md](specify/templates/agent-file-template.md) -->
-
 # [PROJECT NAME] Development Guidelines
 
 Auto-generated from all feature plans. Last updated: [DATE]
 
 ## Active Technologies
 
-[EXTRACTED FROM ALL [PLAN.MD](PLAN.MD) FILES]
+[EXTRACTED FROM ALL PLAN.MD FILES]
 
 ## Project Structure
 
@@ -28,6 +26,3 @@ Auto-generated from all feature plans. Last updated: [DATE]
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
-
-_Version: v1.0.0_
-
