@@ -1,4 +1,4 @@
-# Truth Training Specification Summary (v0.4.0)
+# Truth Training Specification Summary (v1.0.0)
 
 ## Spec Index Table
 
@@ -15,6 +15,9 @@
 | 11 | Decision Log | Architecture Decision Records | [spec/11-decision-log.md](../spec/11-decision-log.md) |
 | 13 | Traceability | Requirements mapping and implementation status | [spec/13-traceability.md](../spec/13-traceability.md) |
 | 17 | Offline Reliability | Offline consensus, semantic preservation | [spec/17-offline-reliability.md](../spec/17-offline-reliability.md) |
+| 22 | Functional Specification: Rust Core | Comprehensive functional spec for all Rust core modules | [spec/22-function_core.md](../spec/22-function_core.md) |
+| 23 | Functional Specification: Desktop UI | Functional spec for Desktop UI (TypeScript/React + Tauri) | [spec/23-function_desktop.md](../spec/23-function_desktop.md) |
+| 24 | Functional Specification: Android Mobile | Functional spec for Android mobile client (Kotlin) | [spec/24-function_mobile_android.md](../spec/24-function_mobile_android.md) |
 
 ## Core Layer Relationships
 
@@ -60,7 +63,12 @@
 
 ## Version History
 
-### v0.4.0 (Current)
+### v1.0.0 (Current)
+- **Functional Specifications**: Comprehensive cross-platform functional specs for Core, Desktop UI, and Android Mobile
+- **Context Template System**: Embedded context fields in events with template matching
+- **Cross-Platform Functional Documentation**: Unified functional specifications for all platforms
+
+### v0.4.0
 - **Collective Intelligence Layer**: Wisdom of the Crowd consensus mechanism
 - **Offline Reliability Model**: Quality index without time-based decay
 - **Android JSON Verification**: Ed25519 signature verification

@@ -38,6 +38,12 @@ Use this index to reach every human-facing reference.
 - [Android Discovery Architecture](android_discovery_architecture.md)
 - [Architecture](architecture.md)
 
+## Functional Specifications
+
+- [Rust Core Modules](../spec/22-function_core.md) - Comprehensive functional spec for all Rust core modules
+- [Desktop UI (TypeScript/React + Tauri)](../spec/23-function_desktop.md) - Functional spec for Desktop UI
+- [Android Mobile Client (Kotlin)](../spec/24-function_mobile_android.md) - Functional spec for Android mobile client
+
 ## Core References
 
 - [Android Migration](ANDROID_MIGRATION.md)

@@ -2,6 +2,11 @@
 Version: v1.0.0
 Updated: 2025-01-XX
 
+> **For comprehensive functional specifications, see:**
+> - [spec/22-function_core.md](../spec/22-function_core.md) - Rust Core Modules
+> - [spec/23-function_desktop.md](../spec/23-function_desktop.md) - Desktop UI
+> - [spec/24-function_mobile_android.md](../spec/24-function_mobile_android.md) - Android Mobile
+
 ---
 
 ## 🔄 General Concept

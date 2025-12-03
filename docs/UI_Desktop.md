@@ -4,6 +4,8 @@ Compatible with Core/Server v1.0.0
 
 > Note: This UI uses a text-only interface (no graphical icons) for all functionality unless otherwise stated.
 
+> **For comprehensive functional specification, see:** [spec/23-function_desktop.md](../spec/23-function_desktop.md)
+
 ## Desktop UI Updates (Tauri) - Text-Only Interface
 
 This document summarizes the Desktop UI (Tauri) implementation with text-only interface design.
