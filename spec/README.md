@@ -334,11 +334,32 @@ cargo test --target aarch64-apple-ios --features mobile
 
 ## Specification Index (v1.0.0)
 
-| ID | File | Title | |----|------|-------| | 01 | [01-product-vision.md](01-product-vision.md) | Product Vision | | 02 | [02-requirements.md](02-requirements.md) | Requirements | | 03 | [03-architecture.md](03-architecture.md) | Architecture Overview | | 04 | [04-data-model.md](04-data-model.md) | Data Model | | 05 | [05-api.md](05-api.md) | HTTP API (current implementation) | | 06 | [06-expert-system.md](06-expert-system.md) | Expert System (Heuristics) | | 07 | [07-event-rating-protocol.md](07-event-rating-protocol.md) | Event Rating Protocol | | 08 | [08-p2p-sync.md](08-p2p-sync.md) | P2P & Sync | | 09 | [09-ux-guidelines.md](09-ux-guidelines.md)
-
-| UX Guidelines | | 10 | [10-cli.md](10-cli.md) | CLI Specification (truthctl) | | 11 | [11-decision-log.md](11-decision-log.md) | Decision Log (ADR) | | 12 | [12-open-questions.md](12-open-questions.md) | Open Questions & Risks | | 13 | [13-traceability.md](13-traceability.md) | Traceability Matrix | | 14 | [14-quality-gates.md](14-quality-gates.md) | Quality Gates | | 15 | [15-prompts-and-automation.md](15-prompts-and-automation.md) | Prompts & Automation | | 16 | [16-test-plan.md](16-test-plan.md) | Test Plan | | 17 | [17-offline-reliability.md](17-offline-reliability.md) | Offline Reliability & Data Integrity | | 18 | [18-cross-platform-architecture.md](18-cross-platform-architecture.md)
-
-| Cross-Platform Architecture | | 19 | [19-build-instructions.md](19-build-instructions.md) | Cross-Platform Build Instructions | | 20 | [20-cargo-configuration.md](20-cargo-configuration.md) | Cargo Configuration | | 21 | [21-roadmap.md](21-roadmap.md) | Roadmap (High-level) |
+| ID | File | Title |
+|----|------|-------|
+| 01 | [01-product-vision.md](01-product-vision.md) | Product Vision |
+| 02 | [02-requirements.md](02-requirements.md) | Requirements |
+| 03 | [03-architecture.md](03-architecture.md) | Architecture Overview |
+| 04 | [04-data-model.md](04-data-model.md) | Data Model |
+| 05 | [05-api.md](05-api.md) | HTTP API (current implementation) |
+| 06 | [06-expert-system.md](06-expert-system.md) | Expert System (Heuristics) |
+| 07 | [07-event-rating-protocol.md](07-event-rating-protocol.md) | Event Rating Protocol |
+| 08 | [08-p2p-sync.md](08-p2p-sync.md) | P2P & Sync |
+| 09 | [09-ux-guidelines.md](09-ux-guidelines.md) | UX Guidelines |
+| 10 | [10-cli.md](10-cli.md) | CLI Specification (truthctl) |
+| 11 | [11-decision-log.md](11-decision-log.md) | Decision Log (ADR) |
+| 12 | [12-open-questions.md](12-open-questions.md) | Open Questions & Risks |
+| 13 | [13-traceability.md](13-traceability.md) | Traceability Matrix |
+| 14 | [14-quality-gates.md](14-quality-gates.md) | Quality Gates |
+| 15 | [15-prompts-and-automation.md](15-prompts-and-automation.md) | Prompts & Automation |
+| 16 | [16-test-plan.md](16-test-plan.md) | Test Plan |
+| 17 | [17-offline-reliability.md](17-offline-reliability.md) | Offline Reliability & Data Integrity |
+| 18 | [18-cross-platform-architecture.md](18-cross-platform-architecture.md) | Cross-Platform Architecture |
+| 19 | [19-build-instructions.md](19-build-instructions.md) | Cross-Platform Build Instructions |
+| 20 | [20-cargo-configuration.md](20-cargo-configuration.md) | Cargo Configuration |
+| 21 | [21-roadmap.md](21-roadmap.md) | Roadmap (High-level) |
+| 22 | [22-function_core.md](22-function_core.md) | Functional Specification: Rust Core Modules |
+| 23 | [23-function_desktop.md](23-function_desktop.md) | Functional Specification: Desktop UI (TypeScript/React + Tauri) |
+| 24 | [24-function_mobile_android.md](24-function_mobile_android.md) | Functional Specification: Android Mobile Client (Kotlin) |
 
 ## Integration Guides
 
@@ -434,17 +455,22 @@ This ensures configuration, keys, and offline data persist identically across lo
 
 Artifacts are created and uploaded by distinct GitHub workflows (see [CI_Workflows_Artifacts.md](../docs/CI_Workflows_Artifacts.md) for detail):
 
-| Workflow | App/OS | Artifact Type | Main Outputs | |----------|--------|---------------|--------------| | `desktop.yml` | Linux | UI app, server binary | `.deb`, `.AppImage`, `truth_core_server-linux-bin` | | `desktop.yml` | Windows | UI app, server binary | `.exe` (NSIS), `.msi`, `truth_core_server-windows-bin` | | `desktop.yml` | macOS | UI app, server binary | `.app`, `.dmg`, `truth_core_server-macos-bin` | | `server-package.yml` | Linux | Service installer | `truth-core-server-linux` (`.deb`/`.rpm`) | | `server-package.yml` | Windows | Service installer | `truth-core-server-windows.exe` (NSIS) | | `server-package.yml` |
-
-macOS | Service installer | `truth-core-server-macos.pkg` |
+| Workflow | App/OS | Artifact Type | Main Outputs |
+|----------|--------|---------------|--------------|
+| `desktop.yml` | Linux | UI app, server binary | `.deb`, `.AppImage`, `truth_core_server-linux-bin` |
+| `desktop.yml` | Windows | UI app, server binary | `.exe` (NSIS), `.msi`, `truth_core_server-windows-bin` |
+| `desktop.yml` | macOS | UI app, server binary | `.app`, `.dmg`, `truth_core_server-macos-bin` |
+| `server-package.yml` | Linux | Service installer | `truth-core-server-linux` (`.deb`/`.rpm`) |
+| `server-package.yml` | Windows | Service installer | `truth-core-server-windows.exe` (NSIS) |
+| `server-package.yml` | macOS | Service installer | `truth-core-server-macos.pkg` |
 
 ## Platform Data Directories (Summary)
 
-| Platform      | Config Location                              | DB Location                                                        |
-|--------------|----------------------------------------------|--------------------------------------------------------------------|
-| Linux        | `~/.truth-training/config.json`               | `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite` |
-| macOS        | `~/.truth-training/config.json`               | `~/Library/Application Support/TruthTraining/truth_training.sqlite` |
-| Windows      | `%USERPROFILE%\.truth-training\config.json`  | `%APPDATA%\TruthTraining\truth_training.sqlite`                   |
+| Platform | Config Location | DB Location |
+|----------|----------------|-------------|
+| Linux | `~/.truth-training/config.json` | `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite` |
+| macOS | `~/.truth-training/config.json` | `~/Library/Application Support/TruthTraining/truth_training.sqlite` |
+| Windows | `%USERPROFILE%\.truth-training\config.json` | `%APPDATA%\TruthTraining\truth_training.sqlite` |
 
 > For more details, see [Install_Paths_By_OS.md](../docs/Install_Paths_By_OS.md) and [CI_Workflows_Artifacts.md](../docs/CI_Workflows_Artifacts.md).
 
