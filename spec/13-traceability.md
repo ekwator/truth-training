@@ -67,7 +67,7 @@ Spec ID: 13
 - [docs/CLI_Usage.md](../docs/CLI_Usage.md) → [spec/10-cli.md](10-cli.md)\(CLI specification)
 - [docs/Concept_Collective_Intelligence.md](../docs/Concept_Collective_Intelligence.md) → Collective Intelligence Layer
 - [docs/api_reference/API_REFERENCE.md](../docs/api_reference/API_REFERENCE.md) → API documentation
-- [integration/android/README_INTEGRATION.md](../integration/android/README_INTEGRATION.md) → Android integration guide
+- [docs/integration/android/README_INTEGRATION.md](../docs/integration/android/README_INTEGRATION.md) → Android integration guide
 
 ### Feature Implementation Status
 

@@ -180,13 +180,17 @@ pub extern "C" fn truth_core_process_json(
 
 ## Directory Structure
 
-``` truth-training/ ├── src/ # Main library source │ ├── lib.rs # Main library entry point with feature gates │ ├── api.rs # HTTP REST API (desktop only) │ ├── expert.rs # Expert system implementation │ ├── net.rs # Network utilities (desktop only) │ ├── server_diagnostics.rs # Server health checks (desktop only) │ ├── sync.rs # Synchronization logic (desktop only) │ ├── p2p/ # P2P networking (desktop only) │ │ ├── mod.rs # P2P module exports │ │ ├── encryption.rs
+``` 
+
+truth-training/ ├── src/ # Main library source │ ├── lib.rs # Main library entry point with feature gates │ ├── api.rs # HTTP REST API (desktop only) │ ├── expert.rs # Expert system implementation │ ├── net.rs # Network utilities (desktop only) │ ├── server_diagnostics.rs # Server health checks (desktop only) │ ├── sync.rs # Synchronization logic (desktop only) │ ├── p2p/ # P2P networking (desktop only) │ │ ├── mod.rs # P2P module exports │ │ ├── encryption.rs
 
 # Ed25519 crypto operations │ │ ├── node.rs # P2P node implementation │ │ └── sync.rs # P2P synchronization protocol │ └── android/ # Android-specific modules (mobile only) │ ├── mod.rs # Android JNI bindings │ └── verify_json.rs # JSON signature verification ├── core/ # Core library (shared) │ ├── src/ │ │ ├── lib.rs # Core library exports │ │ ├── auth.rs # Authentication logic │ │ ├── expert_simple.rs # Truth assessment algorithms │ │ ├── knowledge.rs # Knowledge
 
 management │ │ ├── models.rs # Data models │ │ ├── storage.rs # Database operations │ │ ├── sync.rs # Core synchronization │ │ └── trust_propagation.rs # Trust propagation logic │ └── Cargo.toml # Core dependencies ├── app/ # Desktop application │ ├── src/ │ │ ├── main.rs # Desktop app entry point │ │ ├── cli.rs # CLI command handling │ │ ├── config_utils.rs # Configuration utilities │ │ ├── diagnostics.rs # Diagnostic tools │ │ └── status_utils.rs #
 
-Status utilities │ └── Cargo.toml # Desktop app dependencies ├── integration/ # Platform integration guides │ ├── android/ # Android integration │ ├── ios/ # iOS integration │ └── desktop/ # Desktop integration ├── tests/ # Integration tests │ ├── android_verify.rs # Android signature verification tests │ ├── api_push.rs # API push tests │ └── cli_sync.rs # CLI synchronization tests ├── Cargo.toml # Root workspace configuration └── [README.md](README.md) # Project documentation ```
+Status utilities │ └── Cargo.toml # Desktop app dependencies ├── docs/integration/ # Platform integration guides │ ├── android/ # Android integration │ ├── ios/ # iOS integration │ └── desktop/ # Desktop integration ├── tests/ # Integration tests │ ├── android_verify.rs # Android signature verification tests │ ├── api_push.rs # API push tests │ └── cli_sync.rs # CLI synchronization tests ├── Cargo.toml # Root workspace configuration └── [README.md](README.md) # Project documentation 
+
+```
 
 ## Cross-Platform Async Guidance
 
@@ -300,9 +304,9 @@ cargo test --target aarch64-apple-ios --features mobile
 
 ## Integration Guides
 
-- **Android Integration**: [integration/android/README_INTEGRATION.md](../integration/android/README_INTEGRATION.md) — JNI setup and JSON verification
-- **iOS Integration**: [integration/ios/README_INTEGRATION.md](../integration/ios/README_INTEGRATION.md) — Swift bindings and FFI setup
-- **Desktop Integration**: [integration/desktop/README_INTEGRATION.md](../integration/desktop/README_INTEGRATION.md) — HTTP API and CLI usage
+- **Android Integration**: [docs/integration/android/README_INTEGRATION.md](../docs/integration/android/README_INTEGRATION.md) — JNI setup and JSON verification
+- **iOS Integration**: [docs/integration/ios/README_INTEGRATION.md](../docs/integration/ios/README_INTEGRATION.md) — Swift bindings and FFI setup
+- **Desktop Integration**: [docs/integration/desktop/README_INTEGRATION.md](../docs/integration/desktop/README_INTEGRATION.md) — HTTP API and CLI usage
 - **Desktop UI Integration**: [ui/desktop](../ui/desktop) — Tauri-based React/TypeScript desktop application
 
 ## Desktop UI Implementation
