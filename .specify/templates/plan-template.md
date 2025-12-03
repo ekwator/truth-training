@@ -1,11 +1,9 @@
-<!-- Archived from .[specify/templates/plan-template.md](specify/templates/plan-template.md) -->
-
 # Implementation Plan: [FEATURE]
 
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/specs/[###-feature-name][/spec.md](/spec.md)`
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `[.specify/templates/commands/plan.md](.specify/templates/commands/plan.md)` for the execution workflow.
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
@@ -41,12 +39,12 @@
 
 ```text
 specs/[###-feature]/
-├── [plan.md](plan.md)              # This file (/speckit.plan command output)
-├── [research.md](research.md)          # Phase 0 output (/speckit.plan command)
-├── [data-model.md](data-model.md)        # Phase 1 output (/speckit.plan command)
-├── [quickstart.md](quickstart.md)        # Phase 1 output (/speckit.plan command)
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
 ├── contracts/           # Phase 1 output (/speckit.plan command)
-└── [tasks.md](tasks.md)             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
@@ -104,6 +102,3 @@ directories captured above]
 |-----------|------------|-------------------------------------|
 | [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
 | [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
-
-_Version: v1.0.0_
-
