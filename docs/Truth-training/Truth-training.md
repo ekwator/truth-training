@@ -464,8 +464,8 @@ ui/desktop/
 ### Android
 - [truth-android-client/README.md](../../truth-android-client/README.md)
 - [truth-android-client/README_ANDROID.md](../../truth-android-client/README_ANDROID.md)
-- [integration/android/README_INTEGRATION.md](../../integration/android/README_INTEGRATION.md)
-- [integration/android/README_BUILD_ANDROID.md](../../integration/android/README_BUILD_ANDROID.md)
+- [docs/integration/android/README_INTEGRATION.md](../../docs/integration/android/README_INTEGRATION.md)
+- [docs/integration/android/README_BUILD_ANDROID.md](../../docs/integration/android/README_BUILD_ANDROID.md)
 - [docs/ANDROID_MIGRATION.md](../ANDROID_MIGRATION.md)
 - [docs/ANDROID_TEST_FIX_SUGGESTIONS.md](../ANDROID_TEST_FIX_SUGGESTIONS.md)
 - [docs/TEST_REPORT_ANDROID_v1.0.0.md](../TEST_REPORT_ANDROID_v1.0.0.md)

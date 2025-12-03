@@ -43,9 +43,9 @@
 
 ### Android Integration
 - **JSON Signature Verification**: Ed25519 signature verification for mobile clients
-- **JNI Bridge**: `integration/android/mod.rs` for native function calls
+- **JNI Bridge**: `src/android/mod.rs` for native function calls
 - **Cross-compilation**: Cargo cross-targets for Android/iOS via `--features mobile`
-- **Documentation**: [integration/android/README_INTEGRATION.md](../integration/android/README_INTEGRATION.md)
+- **Documentation**: [docs/integration/android/README_INTEGRATION.md](../docs/integration/android/README_INTEGRATION.md)
 
 ### Web Integration
 - **REST API**: Full HTTP API with JWT authentication

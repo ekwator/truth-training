@@ -172,6 +172,6 @@ interface TruthCoreApi {
 
 ### Samples
 
-- See `integration/android/sample_responses/` for example payloads.
+- See `docs/integration/android/sample_responses/` for example payloads.
 
 _Version: v1.0.0_

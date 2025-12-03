@@ -205,8 +205,8 @@ or
 
 ### ✅ Testing & Tooling
 
-- Contract tests validate every endpoint using the OpenAPI spec.  
-- Postman collection: `integration/tests/postman/TruthTraining_v1_0_0.json` (auto-generated from OpenAPI).  
+- Contract tests validate every endpoint using the OpenAPI spec.
+- Postman collection: `integration/tests/postman/TruthTraining_v1_0_0.json` (auto-generated from OpenAPI).
 - CI ensures any change to `openapi.yaml` triggers schema validation and regenerates client bindings.
 
 ---
