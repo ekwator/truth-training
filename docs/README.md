@@ -19,6 +19,7 @@ Use this index to reach every human-facing reference.
 - [Install Paths By Os](Install_Paths_By_OS.md)
 - [Build Instructions](build_instructions.md)
 - [Ui Guidelines](ui_guidelines.md)
+- [Logging](logging.md) - Log file locations, reading, and clearing logs
 
 ## Troubleshooting & Quality
 
