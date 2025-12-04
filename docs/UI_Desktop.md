@@ -55,6 +55,7 @@ The Context Editor screen allows users to create and manage context templates:
 
 The Context Picker is a searchable combobox component used for selecting context IDs (category, forma, cause, develop, effect) on the NewEvent page:
 
+**Desktop Implementation:**
 - **Searchable Dropdown**: Type to filter contexts by name or ID
 - **Manual Entry**: Enter context ID directly; validation ensures ID exists in dataset
 - **Validation**: Invalid IDs are blocked with inline error message "Unknown context ID"
@@ -63,6 +64,15 @@ The Context Picker is a searchable combobox component used for selecting context
 - **Error Handling**: Retry button on fetch failure; falls back to cached data when available
 - **Telemetry**: Emits `context_picker.load.success|failure` and `context_picker.validation.failure` events for observability
 - **Accessibility**: ARIA attributes, keyboard navigation (arrow keys, Enter, ESC)
+
+**Android Implementation (Parity):**
+- **Dropdown UI**: Uses `ExposedDropdownMenuBox` with human-readable labels from embedded Room database
+- **Manual Entry**: Enter context ID directly; validation ensures ID exists in lookup tables
+- **Validation**: Invalid IDs are blocked with inline error states, submission prevented
+- **Data Source**: Contexts loaded from embedded Room database via `ContextTemplateRepository.getAllTemplatesFlow()`
+- **Error Handling**: Shows error state card when context data is unavailable, allows retry
+- **Logging**: Logcat logging for context loading errors and validation failures (telemetry optional)
+- **Accessibility**: Material3 accessibility attributes, keyboard navigation support
 
 ### Template Selection Workflow
 
@@ -89,6 +99,12 @@ The Context Picker is a searchable combobox component used for selecting context
   - UI updates instantly without reload on locale change
   - Missing translations fallback to English with console warning
   - Telemetry: `locale.change` events logged with `{from, to, success}`
+
+### Android Localization Status
+- **Current Status**: **English-only (EN)**
+- **Language Switching**: Not implemented in Android client
+- **Parity Note**: Desktop UI supports RU/EN switching; Android localization parity is planned for a future release
+- **String Consistency**: Android English strings should match Desktop English strings for consistency
 - **Validation Rules**: IP format validation (`^\d{1,3}(\.\d{1,3}){3}$`), port range (1-65535)
 - **Test Connection**: Test Core or HTTP connections with real-time feedback
 - **Persistence**: Configuration saved to `~/.truth-training/config.json`
