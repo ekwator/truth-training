@@ -2,13 +2,7 @@ name: Build Debian Truth Core Service
 
 on:
   push:
-  #   paths:
-  #     - 'packaging/debian/**'
-  #     - '.github/workflows/server-debian.yml'
-  #     - 'src/**'
-  #     - 'Cargo.toml'
-  #     - 'Cargo.lock'
-  #   branches: [ main ]
+    branches: ['**']
     tags:
       - '**'
   pull_request:
