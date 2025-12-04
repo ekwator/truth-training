@@ -48,7 +48,7 @@ impl DiscoveryManager {
             // Give the abort signal time to propagate (non-blocking)
             // The actual cleanup happens asynchronously
         }
-        
+
         // Check if background discovery is enabled
         let enable_background = {
             let settings_guard = self.settings.read().await;
@@ -57,7 +57,7 @@ impl DiscoveryManager {
         if !enable_background {
             return;
         }
-        
+
         // Clone settings and connection for the new worker
         let settings = {
             let settings_guard = self.settings.read().await;
@@ -67,18 +67,18 @@ impl DiscoveryManager {
             let conn_guard = self.conn.read().await;
             conn_guard.clone()
         };
-        
+
         // Spawn new worker task
         let handle = tauri::async_runtime::spawn(async move {
             let mut cleanup_tick =
                 tokio::time::interval(Duration::from_secs(settings.cleanup_interval_secs.max(5)));
             let mut global_tick =
                 tokio::time::interval(Duration::from_secs(settings.global_interval_secs.max(10)));
-            
+
             // Reset intervals to start immediately on first tick
             cleanup_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             global_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-            
+
             loop {
                 tokio::select! {
                     _ = cleanup_tick.tick() => {
@@ -108,7 +108,7 @@ impl DiscoveryManager {
         });
         *self.handle.lock() = Some(handle);
     }
-    
+
     /// Stop the background worker cleanly.
     /// This is called automatically on Drop, but can be called manually if needed.
     #[allow(dead_code)] // Public API method - may be called by external code
@@ -125,7 +125,7 @@ impl DiscoveryManager {
                 if settings_guard.db_path != settings.db_path {
                     let conn = Arc::new(TokioMutex::new(
                         open_nodes_connection(&settings.db_path)
-                            .map_err(|e| format!("Failed to open new DB connection: {e}"))?
+                            .map_err(|e| format!("Failed to open new DB connection: {e}"))?,
                     ));
                     let mut conn_guard = self.conn.write().await;
                     *conn_guard = conn;
@@ -282,12 +282,12 @@ impl DiscoveryManager {
 /// 3. Falls back to a temporary path if the original path is inaccessible
 fn open_nodes_connection(path: &str) -> Result<Connection, String> {
     let db_path = std::path::Path::new(path);
-    
+
     // Ensure parent directory exists with proper permissions
     if let Some(parent) = db_path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to prepare discovery db directory: {e}"))?;
-        
+
         // Verify write permissions on the directory
         let test_file = parent.join(".truth_training_write_test");
         if let Err(e) = std::fs::write(&test_file, b"test") {
@@ -299,7 +299,7 @@ fn open_nodes_connection(path: &str) -> Result<Connection, String> {
         // Clean up test file
         let _ = std::fs::remove_file(&test_file);
     }
-    
+
     // Attempt to open the database
     match storage::open_db(path) {
         Ok(conn) => Ok(conn),

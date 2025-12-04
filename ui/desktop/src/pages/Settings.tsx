@@ -3,6 +3,8 @@ import { useSyncStore } from '@/stores/sync';
 import { ApiService } from '@/services/api';
 import { AppConfig, ConnectionTestResult, DiscoverySettings } from '@/types/api';
 import { useToast } from '@/components/system/Toaster';
+import { LocaleToggle } from '@/components/layout/LocaleToggle';
+import { t, getCurrentLocale } from '@/i18n';
 
 export const Settings: React.FC = () => {
   const { isOnline, pendingOperations } = useSyncStore();
@@ -594,6 +596,21 @@ export const Settings: React.FC = () => {
                   <span className="text-sm text-gray-900">{lastTestTime}</span>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Language Settings */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">{t('settings.language')}</h2>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('settings.languageDescription')}
+                </label>
+                <LocaleToggle variant="dropdown" />
+              </div>
             </div>
           </div>
 

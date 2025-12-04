@@ -42,6 +42,6 @@ export interface CreateContextFromEventRequest {
 
 export interface ContextListResponse {
   data: ContextTemplate[];
-  total: number;
+  fetched_at: string;
 }
 

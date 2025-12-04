@@ -1,4 +1,7 @@
+use core_lib::storage as truth_storage;
 use dirs;
+use log::info;
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -13,6 +16,8 @@ pub struct AppConfig {
     pub nearby_sync: bool,
     #[serde(default = "default_nearby_interval_ms")]
     pub nearby_interval_ms: u64,
+    #[serde(default = "default_locale")]
+    pub locale: String,
 }
 
 impl Default for AppConfig {
@@ -23,6 +28,7 @@ impl Default for AppConfig {
             server_port: 8080,
             nearby_sync: false,
             nearby_interval_ms: default_nearby_interval_ms(),
+            locale: default_locale(),
         }
     }
 }
@@ -135,83 +141,15 @@ pub async fn test_http_connection(ip: String, port: u16) -> Result<CoreStatus, S
 #[command]
 pub async fn init_app(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, String> {
     // 1) Reset config to defaults (overwrite)
-    let default_cfg = AppConfig::default();
-    let cfg_path = get_config_path()?;
-    if let Some(parent) = cfg_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create config directory: {}", e))?;
-    }
-    let content = serde_json::to_string_pretty(&default_cfg)
-        .map_err(|e| format!("Failed to serialize default config: {}", e))?;
-    fs::write(&cfg_path, content).map_err(|e| format!("Failed to write default config: {}", e))?;
+    write_default_config(&AppConfig::default())?;
 
     // 2) Reset database using the current connection
-    let conn = db.0.lock();
-    // Remove data from known tables and vacuum. This avoids file handle issues across platforms.
-    let sql_cleanup = r#"
-        PRAGMA foreign_keys = OFF;
-        DELETE FROM judgments;
-        DELETE FROM impacts;
-        DELETE FROM summaries;
-        DELETE FROM logs;
-        DELETE FROM events;
-        PRAGMA wal_checkpoint(TRUNCATE);
-        VACUUM;
-        PRAGMA foreign_keys = ON;
-    "#;
-    conn.execute_batch(sql_cleanup)
-        .map_err(|e| format!("Failed to reset database: {}", e))?;
+    {
+        let mut conn = db.0.lock();
+        reset_database(&mut conn)?;
+    }
 
-    // 3) Recreate schema to ensure integrity (idempotent)
-    // storage::Db::initialize uses the same schema; here we run its batch again.
-    let sql_schema = r#"
-            PRAGMA journal_mode=WAL;
-            CREATE TABLE IF NOT EXISTS events (
-              id TEXT PRIMARY KEY,
-              title TEXT NOT NULL,
-              description TEXT,
-              context_id TEXT NOT NULL,
-              start_date TEXT,
-              end_date TEXT,
-              created_at TEXT NOT NULL,
-              updated_at TEXT,
-              status TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS impacts (
-              id TEXT PRIMARY KEY,
-              event_id TEXT NOT NULL,
-              impact_level INTEGER NOT NULL CHECK(impact_level >= 1 AND impact_level <= 5),
-              notes TEXT,
-              created_at TEXT NOT NULL,
-              FOREIGN KEY(event_id) REFERENCES events(id)
-            );
-            CREATE TABLE IF NOT EXISTS summaries (
-              id TEXT PRIMARY KEY,
-              event_id TEXT NOT NULL UNIQUE,
-              summary_text TEXT,
-              recommendations TEXT,
-              updated_at TEXT NOT NULL,
-              FOREIGN KEY(event_id) REFERENCES events(id)
-            );
-            CREATE TABLE IF NOT EXISTS judgments (
-              id TEXT PRIMARY KEY,
-              event_id TEXT NOT NULL,
-              assessment TEXT NOT NULL,
-              confidence_level REAL NOT NULL,
-              reasoning TEXT,
-              submitted_at TEXT NOT NULL,
-              FOREIGN KEY(event_id) REFERENCES events(id)
-            );
-            CREATE TABLE IF NOT EXISTS logs (
-              id TEXT PRIMARY KEY,
-              timestamp TEXT NOT NULL,
-              source TEXT NOT NULL,
-              level TEXT NOT NULL,
-              message TEXT NOT NULL
-            );
-        "#;
-    conn.execute_batch(sql_schema)
-        .map_err(|e| format!("Failed to recreate schema: {}", e))?;
+    info!("init_app completed successfully: dropped legacy tables, recreated Truth schema, and seeded knowledge base");
 
     Ok(CoreStatus {
         ok: true,
@@ -243,4 +181,98 @@ fn is_valid_ip(ip: &str) -> bool {
 
 fn default_nearby_interval_ms() -> u64 {
     3_000
+}
+
+fn default_locale() -> String {
+    "en".to_string()
+}
+
+fn write_default_config(config: &AppConfig) -> Result<(), String> {
+    let cfg_path = get_config_path()?;
+    if let Some(parent) = cfg_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create config directory: {}", e))?;
+    }
+    let content = serde_json::to_string_pretty(config)
+        .map_err(|e| format!("Failed to serialize default config: {}", e))?;
+    fs::write(&cfg_path, content).map_err(|e| format!("Failed to write default config: {}", e))?;
+    Ok(())
+}
+
+const LEGACY_TABLES: &[&str] = &["events", "impacts", "summaries", "judgments", "logs"];
+
+fn reset_database(conn: &mut Connection) -> Result<(), String> {
+    conn.execute_batch("PRAGMA foreign_keys = OFF;")
+        .map_err(|e| format!("Failed to disable foreign keys: {}", e))?;
+
+    for table in LEGACY_TABLES {
+        conn.execute(&format!("DROP TABLE IF EXISTS {}", table), [])
+            .map_err(|e| format!("Failed to drop legacy table '{}': {}", table, e))?;
+    }
+
+    conn.execute_batch(
+        r#"
+        PRAGMA wal_checkpoint(TRUNCATE);
+        VACUUM;
+        PRAGMA foreign_keys = ON;
+        PRAGMA journal_mode=WAL;
+    "#,
+    )
+    .map_err(|e| format!("Failed to clean up WAL/VACUUM: {}", e))?;
+
+    truth_storage::init_db(conn)
+        .map_err(|e| format!("Failed to initialize Truth schema: {}", e))?;
+    truth_storage::seed_knowledge_base(conn, "en")
+        .map_err(|e| format!("Failed to seed knowledge base: {}", e))?;
+    truth_storage::assert_no_legacy_tables(conn)
+        .map_err(|e| format!("Legacy tables still present: {}", e))?;
+
+    Ok(())
+}
+
+/// Reusable helper for integration tests to exercise the reset logic.
+pub fn reset_database_for_tests(conn: &mut Connection) -> Result<(), String> {
+    reset_database(conn)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commands::test_support as support;
+
+    #[test]
+    fn reset_database_removes_legacy_tables_and_recreates_truth_schema() {
+        let mut conn = support::memory_conn_with_legacy();
+        reset_database_for_tests(&mut conn).expect("reset database");
+
+        assert!(support::legacy_tables_absent(&conn));
+        for table in [
+            "truth_events",
+            "statements",
+            "impact",
+            "progress_metrics",
+            "context",
+            "category",
+            "cause",
+            "develop",
+            "effect",
+            "forma",
+            "impact_type",
+            "schema_version",
+        ] {
+            assert!(
+                support::table_exists(&conn, table),
+                "table '{}' should exist after reset",
+                table
+            );
+        }
+    }
+
+    #[test]
+    fn reset_database_is_idempotent() {
+        let mut conn = support::memory_conn_with_legacy();
+        reset_database_for_tests(&mut conn).expect("first reset");
+        reset_database_for_tests(&mut conn).expect("second reset");
+        assert!(support::legacy_tables_absent(&conn));
+    }
 }

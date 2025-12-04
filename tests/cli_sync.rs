@@ -5,8 +5,9 @@ mod cli_tests {
     use tempfile::TempDir;
 
     fn get_bin_path() -> String {
-        std::env::var("CARGO_BIN_EXE_truthctl")
-            .expect("CARGO_BIN_EXE_truthctl must be set. Run: cargo test --package app --bin truthctl")
+        std::env::var("CARGO_BIN_EXE_truthctl").expect(
+            "CARGO_BIN_EXE_truthctl must be set. Run: cargo test --package app --bin truthctl",
+        )
     }
 
     fn temp_home() -> TempDir {
@@ -56,18 +57,36 @@ mod cli_tests {
         // Add multiple nodes with different types
         Command::new(&bin)
             .args([
-                "nodes", "add", "--db", &db_str,
-                "--address", "http://127.0.0.1:8080",
-                "--type", "lan", "--ttl", "120", "--reachable", "true",
+                "nodes",
+                "add",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8080",
+                "--type",
+                "lan",
+                "--ttl",
+                "120",
+                "--reachable",
+                "true",
             ])
             .status()
             .expect("add lan node");
 
         Command::new(&bin)
             .args([
-                "nodes", "add", "--db", &db_str,
-                "--address", "http://127.0.0.1:8081",
-                "--type", "global", "--ttl", "3600", "--reachable", "false",
+                "nodes",
+                "add",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8081",
+                "--type",
+                "global",
+                "--ttl",
+                "3600",
+                "--reachable",
+                "false",
             ])
             .status()
             .expect("add global node");
@@ -85,8 +104,7 @@ mod cli_tests {
         // Filter by type
         let output = Command::new(&bin)
             .args([
-                "nodes", "list", "--db", &db_str,
-                "--type", "lan", "--format", "json",
+                "nodes", "list", "--db", &db_str, "--type", "lan", "--format", "json",
             ])
             .output()
             .expect("list lan");
@@ -99,8 +117,14 @@ mod cli_tests {
         // Filter by reachable
         let output = Command::new(&bin)
             .args([
-                "nodes", "list", "--db", &db_str,
-                "--reachable", "true", "--format", "json",
+                "nodes",
+                "list",
+                "--db",
+                &db_str,
+                "--reachable",
+                "true",
+                "--format",
+                "json",
             ])
             .output()
             .expect("list reachable");
@@ -113,8 +137,7 @@ mod cli_tests {
         // Test limit
         let output = Command::new(&bin)
             .args([
-                "nodes", "list", "--db", &db_str,
-                "--limit", "1", "--format", "json",
+                "nodes", "list", "--db", &db_str, "--limit", "1", "--format", "json",
             ])
             .output()
             .expect("list with limit");
@@ -133,9 +156,16 @@ mod cli_tests {
 
         Command::new(&bin)
             .args([
-                "nodes", "add", "--db", &db_str,
-                "--address", "http://127.0.0.1:8080",
-                "--type", "lan", "--ttl", "120",
+                "nodes",
+                "add",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8080",
+                "--type",
+                "lan",
+                "--ttl",
+                "120",
             ])
             .status()
             .expect("add node");
@@ -160,27 +190,24 @@ mod cli_tests {
 
         // Discover with no registries configured (should complete without error)
         let output = Command::new(&bin)
-            .args([
-                "nodes", "discover", "--db", &db_str,
-                "--types", "global",
-            ])
+            .args(["nodes", "discover", "--db", &db_str, "--types", "global"])
             .output()
             .expect("discover");
         // Should succeed even with no registries (just skips global discovery)
         assert!(output.status.success() || output.status.code() == Some(0));
-        
+
         // Verify warning message is shown
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let output_text = format!("{}{}", stderr, stdout);
         assert!(
-            output_text.contains("No registry URLs") || 
-            output_text.contains("skipping global discovery") ||
-            output.status.success(),
+            output_text.contains("No registry URLs")
+                || output_text.contains("skipping global discovery")
+                || output.status.success(),
             "Should show warning or succeed when no registries configured"
         );
     }
-    
+
     #[tokio::test]
     async fn nodes_discover_empty_registry_url() {
         let tmp = temp_home();
@@ -191,16 +218,21 @@ mod cli_tests {
         // Discover with empty registry URL (should handle gracefully)
         let output = Command::new(&bin)
             .args([
-                "nodes", "discover", "--db", &db_str,
-                "--types", "global",
-                "--registry", "",
+                "nodes",
+                "discover",
+                "--db",
+                &db_str,
+                "--types",
+                "global",
+                "--registry",
+                "",
             ])
             .output()
             .expect("discover");
         // Should succeed (empty URL treated as no registry)
         assert!(output.status.success() || output.status.code() == Some(0));
     }
-    
+
     #[tokio::test]
     async fn nodes_discover_malformed_registry_url() {
         let tmp = temp_home();
@@ -211,24 +243,29 @@ mod cli_tests {
         // Discover with malformed registry URL (should handle gracefully)
         let output = Command::new(&bin)
             .args([
-                "nodes", "discover", "--db", &db_str,
-                "--types", "global",
-                "--registry", "not-a-valid-url",
+                "nodes",
+                "discover",
+                "--db",
+                &db_str,
+                "--types",
+                "global",
+                "--registry",
+                "not-a-valid-url",
             ])
             .output()
             .expect("discover");
         // Should complete (may show error but shouldn't crash)
         assert!(output.status.code().is_some());
-        
+
         // Verify error is logged but doesn't crash
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
         // Should either show error or complete gracefully
         assert!(
-            stderr.contains("error") || 
-            stderr.contains("failed") || 
-            stdout.contains("Discovery completed") ||
-            output.status.success(),
+            stderr.contains("error")
+                || stderr.contains("failed")
+                || stdout.contains("Discovery completed")
+                || output.status.success(),
             "Should handle malformed URL gracefully"
         );
     }
@@ -243,8 +280,7 @@ mod cli_tests {
         // Discover local types (LAN/WIFI) - may not find anything but should run
         let output = Command::new(&bin)
             .args([
-                "nodes", "discover", "--db", &db_str,
-                "--types", "lan", "wifi",
+                "nodes", "discover", "--db", &db_str, "--types", "lan", "wifi",
             ])
             .output()
             .expect("discover local");
@@ -262,9 +298,16 @@ mod cli_tests {
         // Add a node to local DB
         Command::new(&bin)
             .args([
-                "nodes", "add", "--db", &db_str,
-                "--address", "http://127.0.0.1:8080",
-                "--type", "lan", "--ttl", "120",
+                "nodes",
+                "add",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8080",
+                "--type",
+                "lan",
+                "--ttl",
+                "120",
             ])
             .status()
             .expect("add node");
@@ -272,8 +315,12 @@ mod cli_tests {
         // Try sync with invalid server (should fail gracefully)
         let output = Command::new(&bin)
             .args([
-                "nodes", "sync", "--db", &db_str,
-                "--server", "http://127.0.0.1:99999",
+                "nodes",
+                "sync",
+                "--db",
+                &db_str,
+                "--server",
+                "http://127.0.0.1:99999",
             ])
             .output()
             .expect("sync invalid server");
@@ -292,10 +339,18 @@ mod cli_tests {
         let past_timestamp = chrono::Utc::now().timestamp() - 200;
         Command::new(&bin)
             .args([
-                "nodes", "add", "--db", &db_str,
-                "--address", "http://127.0.0.1:8080",
-                "--type", "lan", "--ttl", "100",
-                "--last-seen", &past_timestamp.to_string(),
+                "nodes",
+                "add",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8080",
+                "--type",
+                "lan",
+                "--ttl",
+                "100",
+                "--last-seen",
+                &past_timestamp.to_string(),
             ])
             .status()
             .expect("add expired node");
@@ -334,9 +389,16 @@ mod cli_tests {
         // Add node with long TTL (not expired)
         Command::new(&bin)
             .args([
-                "nodes", "add", "--db", &db_str,
-                "--address", "http://127.0.0.1:8080",
-                "--type", "lan", "--ttl", "3600",
+                "nodes",
+                "add",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8080",
+                "--type",
+                "lan",
+                "--ttl",
+                "3600",
             ])
             .status()
             .expect("add valid node");
@@ -377,9 +439,16 @@ mod cli_tests {
         // Add a node and validate again
         Command::new(&bin)
             .args([
-                "nodes", "add", "--db", &db_str,
-                "--address", "http://127.0.0.1:8080",
-                "--type", "lan", "--ttl", "120",
+                "nodes",
+                "add",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8080",
+                "--type",
+                "lan",
+                "--ttl",
+                "120",
             ])
             .status()
             .expect("add node");
@@ -420,9 +489,16 @@ mod cli_tests {
         // Add a node
         Command::new(&bin)
             .args([
-                "nodes", "add", "--db", &db_str,
-                "--address", "http://127.0.0.1:8080",
-                "--type", "lan", "--ttl", "120",
+                "nodes",
+                "add",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8080",
+                "--type",
+                "lan",
+                "--ttl",
+                "120",
             ])
             .status()
             .expect("add node");
@@ -446,20 +522,36 @@ mod cli_tests {
         // 1. Add nodes
         Command::new(&bin)
             .args([
-                "nodes", "add", "--db", &db_str,
-                "--address", "http://127.0.0.1:8080",
-                "--type", "lan", "--ttl", "120",
-                "--node-id", "node-1",
+                "nodes",
+                "add",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8080",
+                "--type",
+                "lan",
+                "--ttl",
+                "120",
+                "--node-id",
+                "node-1",
             ])
             .status()
             .expect("add node 1");
 
         Command::new(&bin)
             .args([
-                "nodes", "add", "--db", &db_str,
-                "--address", "http://127.0.0.1:8081",
-                "--type", "global", "--ttl", "3600",
-                "--node-id", "node-2",
+                "nodes",
+                "add",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8081",
+                "--type",
+                "global",
+                "--ttl",
+                "3600",
+                "--node-id",
+                "node-2",
             ])
             .status()
             .expect("add node 2");
@@ -483,8 +575,12 @@ mod cli_tests {
         // 4. Remove one node
         Command::new(&bin)
             .args([
-                "nodes", "remove", "--db", &db_str,
-                "--address", "http://127.0.0.1:8080",
+                "nodes",
+                "remove",
+                "--db",
+                &db_str,
+                "--address",
+                "http://127.0.0.1:8080",
             ])
             .status()
             .expect("remove node");

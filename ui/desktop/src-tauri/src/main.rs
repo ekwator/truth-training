@@ -12,6 +12,7 @@ pub const LOGS_PAGE_SIZE: usize = 35;
 use commands::config::{
     core_status, get_app_config, init_app, save_app_config, test_http_connection,
 };
+use commands::contexts::list_contexts;
 use commands::events::{create_event_fast, get_event_fast, health_check_core, list_events_fast};
 use commands::impacts::add_impact;
 use commands::judgments::{get_judgment_stats, judgments_list_fast, submit_judgment_fast};
@@ -22,7 +23,6 @@ use discovery::{
     cleanup_nodes, get_discovery_settings, list_nodes, manual_discover, run_nodes_health_check,
     save_discovery_settings_cmd, DiscoveryManager,
 };
-
 fn main() {
     if std::env::args().any(|a| a == "--version") {
         println!("Truth UI Desktop v{}", env!("CARGO_PKG_VERSION"));
@@ -49,6 +49,7 @@ fn main() {
             judgments_list_fast,
             get_judgment_stats,
             knowledge_base_list,
+            list_contexts,
             list_logs,
             clear_logs,
             get_overall_metrics,
