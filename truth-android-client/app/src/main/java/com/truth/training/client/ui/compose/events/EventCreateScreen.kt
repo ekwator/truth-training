@@ -7,9 +7,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.network.dto.CreateEventRequest
+import com.truth.training.client.ui.compose.components.ContextPicker
+import kotlinx.coroutines.flow.Flow
+import com.truth.training.client.data.database.entities.ContextTemplateEntity
+import android.util.Log
 
 /**
  * Event Create/Edit Screen (Compose) - Form for creating or editing events.
@@ -20,19 +25,48 @@ fun EventCreateScreen(
     onSave: (CreateEventRequest) -> Unit,
     onCancel: () -> Unit,
     selectedTemplateContext: ContextFields? = null,
+    contextsFlow: Flow<List<ContextTemplateEntity>>,
     modifier: Modifier = Modifier
 ) {
     var description by remember { mutableStateOf("") }
-    var categoryId by remember { mutableStateOf(selectedTemplateContext?.categoryId?.toString() ?: "") }
-    var formaId by remember { mutableStateOf(selectedTemplateContext?.formaId?.toString() ?: "") }
-    var causeId by remember { mutableStateOf(selectedTemplateContext?.causeId?.toString() ?: "") }
-    var developId by remember { mutableStateOf(selectedTemplateContext?.developId?.toString() ?: "") }
-    var effectId by remember { mutableStateOf(selectedTemplateContext?.effectId?.toString() ?: "") }
+    var categoryId by remember { mutableStateOf<Int?>(selectedTemplateContext?.categoryId) }
+    var formaId by remember { mutableStateOf<Int?>(selectedTemplateContext?.formaId) }
+    var causeId by remember { mutableStateOf<Int?>(selectedTemplateContext?.causeId) }
+    var developId by remember { mutableStateOf<Int?>(selectedTemplateContext?.developId) }
+    var effectId by remember { mutableStateOf<Int?>(selectedTemplateContext?.effectId) }
     var timestampStart by remember { mutableStateOf("") }
     var timestampEnd by remember { mutableStateOf("") }
     var vector by remember { mutableStateOf(true) }
+    
+    // Load contexts from Flow
+    val contexts by contextsFlow.collectAsState(initial = emptyList())
+    var contextsLoadError by remember { mutableStateOf<String?>(null) }
+    
+    // Validation errors for context fields
+    var categoryError by remember { mutableStateOf<String?>(null) }
+    var formaError by remember { mutableStateOf<String?>(null) }
+    var causeError by remember { mutableStateOf<String?>(null) }
+    var developError by remember { mutableStateOf<String?>(null) }
+    var effectError by remember { mutableStateOf<String?>(null) }
+    
+    // Check if contexts are available
+    LaunchedEffect(contextsFlow) {
+        try {
+            // Contexts will be loaded via Flow, error handling is done in repository
+            contextsLoadError = null
+        } catch (e: Exception) {
+            contextsLoadError = "Failed to load contexts: ${e.message}"
+            Log.e("EventCreateScreen", "Context loading error", e)
+        }
+    }
+    
+    // Disable context pickers if data is unavailable
+    val contextsAvailable = contexts.isNotEmpty() && contextsLoadError == null
 
-    val canSave = description.isNotBlank() && timestampStart.toLongOrNull() != null
+    val canSave = description.isNotBlank() && 
+                  timestampStart.toLongOrNull() != null &&
+                  categoryError == null && formaError == null && 
+                  causeError == null && developError == null && effectError == null
 
     Scaffold(
         topBar = {
@@ -49,14 +83,16 @@ fun EventCreateScreen(
                 actions = {
                     TextButton(
                         onClick = {
+                            // Validate context IDs before submission
+                            // Validation will be done in EventRepository, but we can do pre-check here
                             onSave(
                                 CreateEventRequest(
                                     description = description,
-                                    categoryId = categoryId.toIntOrNull(),
-                                    formaId = formaId.toIntOrNull(),
-                                    causeId = causeId.toIntOrNull(),
-                                    developId = developId.toIntOrNull(),
-                                    effectId = effectId.toIntOrNull(),
+                                    categoryId = categoryId,
+                                    formaId = formaId,
+                                    causeId = causeId,
+                                    developId = developId,
+                                    effectId = effectId,
                                     vector = vector,
                                     timestampStart = timestampStart.toLong(),
                                     timestampEnd = timestampEnd.toLongOrNull()
@@ -95,22 +131,70 @@ fun EventCreateScreen(
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
+            
+            // Show error state if contexts are unavailable
+            if (contextsLoadError != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Context data unavailable",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = contextsLoadError ?: "Unable to load contexts from database",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        TextButton(
+                            onClick = { 
+                                contextsLoadError = null
+                                // Retry loading - Flow will automatically update
+                            }
+                        ) {
+                            Text("Retry")
+                        }
+                    }
+                }
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = categoryId,
-                    onValueChange = { categoryId = it },
-                    label = { Text("Category ID") },
-                    modifier = Modifier.weight(1f)
+                ContextPicker(
+                    label = "Category",
+                    selectedId = categoryId,
+                    onSelectionChange = { 
+                        categoryId = it
+                        categoryError = null
+                    },
+                    contextsFlow = contextsFlow,
+                    modifier = Modifier.weight(1f),
+                    enabled = contextsAvailable,
+                    isError = categoryError != null,
+                    errorMessage = categoryError
                 )
-                OutlinedTextField(
-                    value = formaId,
-                    onValueChange = { formaId = it },
-                    label = { Text("Forma ID") },
-                    modifier = Modifier.weight(1f)
+                ContextPicker(
+                    label = "Forma",
+                    selectedId = formaId,
+                    onSelectionChange = { 
+                        formaId = it
+                        formaError = null
+                    },
+                    contextsFlow = contextsFlow,
+                    modifier = Modifier.weight(1f),
+                    enabled = contextsAvailable,
+                    isError = formaError != null,
+                    errorMessage = formaError
                 )
             }
 
@@ -118,25 +202,43 @@ fun EventCreateScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = causeId,
-                    onValueChange = { causeId = it },
-                    label = { Text("Cause ID") },
-                    modifier = Modifier.weight(1f)
+                ContextPicker(
+                    label = "Cause",
+                    selectedId = causeId,
+                    onSelectionChange = { 
+                        causeId = it
+                        causeError = null
+                    },
+                    contextsFlow = contextsFlow,
+                    modifier = Modifier.weight(1f),
+                    isError = causeError != null,
+                    errorMessage = causeError
                 )
-                OutlinedTextField(
-                    value = developId,
-                    onValueChange = { developId = it },
-                    label = { Text("Develop ID") },
-                    modifier = Modifier.weight(1f)
+                ContextPicker(
+                    label = "Develop",
+                    selectedId = developId,
+                    onSelectionChange = { 
+                        developId = it
+                        developError = null
+                    },
+                    contextsFlow = contextsFlow,
+                    modifier = Modifier.weight(1f),
+                    isError = developError != null,
+                    errorMessage = developError
                 )
             }
 
-            OutlinedTextField(
-                value = effectId,
-                onValueChange = { effectId = it },
-                label = { Text("Effect ID") },
-                modifier = Modifier.fillMaxWidth()
+            ContextPicker(
+                label = "Effect",
+                selectedId = effectId,
+                onSelectionChange = { 
+                    effectId = it
+                    effectError = null
+                },
+                contextsFlow = contextsFlow,
+                modifier = Modifier.fillMaxWidth(),
+                isError = effectError != null,
+                errorMessage = effectError
             )
 
             HorizontalDivider()

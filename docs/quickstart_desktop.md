@@ -112,12 +112,18 @@ pnpm tauri invoke init_app
 
 The command now performs the following actions:
 
-- Drops all legacy `events`/`impacts`/`summaries`/`judgments`/`logs` tables that belonged to the pre-Truth schema.
+- Drops all legacy `events`/`impacts`/`summaries`/`logs` tables that belonged to the pre-Truth schema.
 - Reapplies the canonical Truth schema from `core/src/storage.rs`, runs migrations, and seeds the knowledge base.
 - Forces a WAL checkpoint, VACUUM, and rewrites `~/.truth-training/config.json` with defaults (including the RU/EN locale setting).
 - Emits `db.init.*` telemetry/log entries so you can confirm the cleanup in logs.
 
 You can invoke it multiple times—it is idempotent. After running, inspect the SQLite file (see the developer quickstart) to verify that tables such as `truth_events`, `statements`, `impact`, `progress_metrics`, and `schema_version` exist, while legacy tables are absent.
+
+**Android Parity**: Android database initialization follows the same workflow:
+- Uses shared SQL asset (`app/src/main/assets/schema.sql`) derived from `core/src/storage.rs`
+- Drops legacy tables via `MIGRATION_3_4` without data migration
+- Validates schema on database open to ensure legacy tables are absent
+- Ensures schema parity with Desktop
 
 ## Basic Usage
 

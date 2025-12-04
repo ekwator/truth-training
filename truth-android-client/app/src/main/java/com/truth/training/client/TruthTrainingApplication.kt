@@ -22,17 +22,13 @@ class TruthTrainingApplication : Application(), Configuration.Provider {
 
     // Room database instance (singleton)
     val database: TruthDatabase by lazy {
-        Room.databaseBuilder(
-            applicationContext,
-            TruthDatabase::class.java,
-            TruthDatabase.DATABASE_NAME
-        )
-            .addMigrations(
-                TruthDatabaseMigrations.MIGRATION_1_2,
-                TruthDatabaseMigrations.MIGRATION_2_3
-            )
-            .fallbackToDestructiveMigration() // Fallback for development/testing - will be removed in production
-            .build()
+        try {
+            TruthDatabase.getInstance(this)
+        } catch (e: Exception) {
+            android.util.Log.e("TruthTrainingApplication", "Failed to initialize database", e)
+            // Re-throw to prevent app from continuing with invalid database
+            throw IllegalStateException("Database initialization failed. App cannot continue.", e)
+        }
     }
 
     override fun onCreate() {
