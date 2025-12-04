@@ -239,9 +239,11 @@ export const setLocale = async (locale: string, persistToBackend: boolean = true
         const isTauri = (window as any).__TAURI__ !== undefined;
         if (isTauri) {
           const { invoke } = await import('@tauri-apps/api/core');
-          const config = await invoke('get_app_config');
-          const updatedConfig = { ...config, locale };
-          await invoke('save_app_config', { config: updatedConfig });
+          const config = await invoke('get_app_config') as Record<string, any>;
+          if (config && typeof config === 'object') {
+            const updatedConfig = { ...config, locale };
+            await invoke('save_app_config', { config: updatedConfig });
+          }
         }
       } catch (error) {
         console.error('Failed to persist locale to backend:', error);

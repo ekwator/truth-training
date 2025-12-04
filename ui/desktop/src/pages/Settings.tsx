@@ -4,7 +4,7 @@ import { ApiService } from '@/services/api';
 import { AppConfig, ConnectionTestResult, DiscoverySettings } from '@/types/api';
 import { useToast } from '@/components/system/Toaster';
 import { LocaleToggle } from '@/components/layout/LocaleToggle';
-import { t, getCurrentLocale } from '@/i18n';
+import { t } from '@/i18n';
 
 export const Settings: React.FC = () => {
   const { isOnline, pendingOperations } = useSyncStore();
