@@ -21,7 +21,7 @@ async fn test_poll_global_registries_empty_list() -> Result<()> {
         timing: core_lib::DEFAULT_DISCOVERY_TIMING,
         global_registry_urls: vec![],
     };
-    
+
     let count = poll_global_registries(&config, conn.clone()).await?;
     assert_eq!(count, 0, "Empty registry list should return 0");
     Ok(())
@@ -37,9 +37,11 @@ async fn test_poll_global_registries_invalid_url() -> Result<()> {
         public_host: None,
         public_port: None,
         timing: core_lib::DEFAULT_DISCOVERY_TIMING,
-        global_registry_urls: vec!["http://invalid-registry-that-does-not-exist.example.com/nodes".to_string()],
+        global_registry_urls: vec![
+            "http://invalid-registry-that-does-not-exist.example.com/nodes".to_string(),
+        ],
     };
-    
+
     // Should not panic, but may return 0 or log warnings
     let count = poll_global_registries(&config, conn.clone()).await?;
     // Count may be 0 if registry is unreachable, which is acceptable
@@ -51,7 +53,7 @@ async fn test_poll_global_registries_invalid_url() -> Result<()> {
 async fn test_poll_global_registries_db_integration() -> Result<()> {
     // Test that polled nodes are stored in database
     let conn = Arc::new(Mutex::new(storage::open_db(":memory:")?));
-    
+
     // Use a mock registry URL (in real test, would use wiremock or similar)
     // For now, test with empty list and verify DB structure
     let config = NodeConfig {
@@ -62,9 +64,9 @@ async fn test_poll_global_registries_db_integration() -> Result<()> {
         timing: core_lib::DEFAULT_DISCOVERY_TIMING,
         global_registry_urls: vec![],
     };
-    
+
     let _count = poll_global_registries(&config, conn.clone()).await?;
-    
+
     // Verify nodes table exists and is accessible
     {
         let guard = conn.lock().await;
@@ -73,7 +75,6 @@ async fn test_poll_global_registries_db_integration() -> Result<()> {
         // With empty registry, should have 0 nodes
         assert_eq!(nodes.len(), 0);
     }
-    
+
     Ok(())
 }
-

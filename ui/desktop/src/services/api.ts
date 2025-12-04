@@ -618,15 +618,55 @@ export class ApiService {
     }
   }
 
-  // Context template endpoints
-  static async getContexts(): Promise<import('@/types/contexts').ContextListResponse> {
+  // Context template endpoints with caching
+  static async getContexts(useCache: boolean = true): Promise<import('@/types/contexts').ContextListResponse> {
+    const CACHE_KEY = 'truth_contexts_cache';
+    const CACHE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+    // Try to load from cache first if enabled
+    if (useCache && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const cachedAt = new Date(parsed.fetched_at).getTime();
+          const now = Date.now();
+          
+          // Use cache if less than 24h old
+          if (now - cachedAt < CACHE_TIMEOUT_MS) {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        // Cache read failed, continue to fetch
+        console.warn('Failed to read contexts cache:', e);
+      }
+    }
+
+    // Fetch fresh data
+    let response: import('@/types/contexts').ContextListResponse;
     if (isTauri()) {
       const { invoke } = await import('@tauri-apps/api/core');
-      return await invoke('list_contexts');
+      response = await invoke('list_contexts');
     } else {
-      const response = await apiClient.get('/contexts');
-      return response.data;
+      const apiResponse = await apiClient.get('/contexts');
+      // Ensure fetched_at is present for web mode
+      response = {
+        ...apiResponse.data,
+        fetched_at: apiResponse.data.fetched_at || new Date().toISOString(),
+      };
     }
+
+    // Cache the response
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(response));
+      } catch (e) {
+        console.warn('Failed to cache contexts:', e);
+      }
+    }
+
+    return response;
   }
 
   static async getContextByName(name: string): Promise<import('@/types/contexts').ContextTemplate> {

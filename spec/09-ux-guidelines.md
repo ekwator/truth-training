@@ -96,3 +96,24 @@ CLI UX (truthctl)
 - See [docs/README.md](../docs/README.md) for detailed explanations.
 
 - See [spec/README.md](README.md) for detailed explanations.
+
+## Localization Status
+
+### Desktop UI
+- **RU/EN Language Switching**: Supported via `LocaleToggle` component in header and Settings → General
+- **Supported Locales**: English (en), Russian (ru)
+- **Locale Persistence**: Stored in `AppConfig.locale` and `localStorage` key `truth-locale`
+- **Translation Files**: `ui/desktop/src/i18n/ru.ts` contains Russian translations
+- **Fallback**: Missing translations fallback to English with console warning
+
+### Android Client
+- **Current Status**: **English-only (EN)**
+- **Language Switching**: Not implemented
+- **Translation Files**: Only `app/src/main/res/values/strings.xml` exists (no `values-ru/`)
+- **Future Work**: RU/EN language switching parity with Desktop is planned for a future release
+- **String Consistency**: Android strings should be consistent with Desktop English strings for key screens (navigation, event creation, error messages)
+
+### Cross-Platform Parity
+- **Current Gap**: Desktop supports RU/EN switching, Android is EN-only
+- **Documentation**: All quickstarts and UI guidelines document the current localization status
+- **Consistency**: Where both platforms use English, strings should match for consistency

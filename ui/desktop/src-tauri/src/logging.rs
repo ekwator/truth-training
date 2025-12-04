@@ -1,10 +1,10 @@
 //! Discovery event logging and metrics.
-//! 
+//!
 //! Provides structured logging for node discovery events including:
 //! - Discovery counters (nodes discovered, updated, pruned)
 //! - TTL cleanup statistics
 //! - Reachability check results
-//! 
+//!
 //! Implements T048: Shared logging/metrics for discovery events.
 
 use log::{info, warn};
@@ -97,7 +97,12 @@ pub fn log_reachability_batch(total: u64, successful: u64, failed: u64, duration
 
 /// Log global registry polling results.
 #[allow(dead_code)] // Intentionally unused - provided for future structured logging
-pub fn log_global_registry_poll(registry_url: &str, nodes_found: usize, nodes_added: usize, duration_ms: u64) {
+pub fn log_global_registry_poll(
+    registry_url: &str,
+    nodes_found: usize,
+    nodes_added: usize,
+    duration_ms: u64,
+) {
     info!(
         "discovery.registry.poll url={} found={} added={} duration_ms={}",
         registry_url, nodes_found, nodes_added, duration_ms
@@ -153,6 +158,8 @@ pub fn log_worker_stopped(worker_type: &str) {
 /// Log discovery worker error.
 #[allow(dead_code)] // Intentionally unused - provided for future structured logging
 pub fn log_worker_error(worker_type: &str, error: &str) {
-    warn!("discovery.worker.error type={} error={}", worker_type, error);
+    warn!(
+        "discovery.worker.error type={} error={}",
+        worker_type, error
+    );
 }
-

@@ -32,6 +32,12 @@ Base configuration:
 - **Jetpack Compose UI** — modern Material 3 interface
 - **Background Sync** — automated sync via WorkManager
 
+### Localization Status
+- **Current Status**: **English-only (EN)**
+- **Language Switching**: Not implemented
+- **Parity Note**: Desktop UI supports RU/EN language switching; Android localization parity is planned for a future release
+- **Translation Files**: Only `app/src/main/res/values/strings.xml` exists (no `values-ru/`)
+
 ### Architecture highlights
 - **Offline-first:** all mutations are stored locally and synced in the background
 - **Room Database:** SQLite via Room with Flow-powered reactive UI

@@ -377,6 +377,43 @@ object TruthDatabaseMigrations {
             database.execSQL("CREATE INDEX IF NOT EXISTS `idx_nodes_reachable` ON `nodes`(`reachable`)")
         }
     }
+
+    /**
+     * Migration 3 → 4: Drop legacy tables immediately without data migration.
+     * 
+     * This migration removes legacy tables (events, impacts, summaries, logs) that are
+     * replaced by canonical Truth schema tables. No data migration is performed,
+     * matching Desktop behavior where legacy tables are dropped immediately.
+     * 
+     * This migration is idempotent - safe to run multiple times.
+     */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // Drop legacy tables immediately (no data migration)
+            // Matching Desktop behavior from core/src/storage.rs
+            database.execSQL("DROP TABLE IF EXISTS `events`")
+            database.execSQL("DROP TABLE IF EXISTS `impacts`")
+            database.execSQL("DROP TABLE IF EXISTS `summaries`")
+            database.execSQL("DROP TABLE IF EXISTS `logs`")
+            
+            // Validate that legacy tables are absent
+            val legacyTables = listOf("events", "impacts", "summaries", "logs")
+            val existingTables = mutableListOf<String>()
+            
+            database.query("SELECT name FROM sqlite_master WHERE type='table' AND name IN (?, ?, ?, ?)", 
+                arrayOf("events", "impacts", "summaries", "logs")).use { cursor ->
+                while (cursor.moveToNext()) {
+                    existingTables.add(cursor.getString(0))
+                }
+            }
+            
+            if (existingTables.isNotEmpty()) {
+                throw IllegalStateException(
+                    "Legacy tables still exist after migration: ${existingTables.joinToString(", ")}"
+                )
+            }
+        }
+    }
 }
 
 private fun tableExists(database: SupportSQLiteDatabase, tableName: String): Boolean {

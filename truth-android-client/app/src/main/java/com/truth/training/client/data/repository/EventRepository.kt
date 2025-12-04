@@ -2,6 +2,7 @@ package com.truth.training.client.data.repository
 
 import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.daos.EventDao
+import com.truth.training.client.data.database.daos.ContextTemplateDao
 import com.truth.training.client.data.database.entities.EventEntity
 import com.truth.training.client.data.network.TruthApi
 import com.truth.training.client.data.network.dto.CreateEventRequest
@@ -14,6 +15,7 @@ class EventRepository(
     private val api: TruthApi?
 ) {
     private val eventDao: EventDao = database.eventDao()
+    private val contextTemplateDao: ContextTemplateDao = database.contextTemplateDao()
 
     fun getAllEventsFlow(): Flow<List<EventEntity>> = eventDao.getAllEventsFlow()
 
@@ -26,6 +28,19 @@ class EventRepository(
 
     suspend fun createEvent(request: CreateEventRequest): Result<EventEntity> {
         return try {
+            // Validate context IDs against lookup tables
+            val validationError = validateContextIds(
+                categoryId = request.categoryId,
+                formaId = request.formaId,
+                causeId = request.causeId,
+                developId = request.developId,
+                effectId = request.effectId
+            )
+            
+            if (validationError != null) {
+                return Result.failure(IllegalArgumentException(validationError))
+            }
+            
             val entity = EventEntity(
                 description = request.description,
                 categoryId = request.categoryId,
@@ -48,6 +63,46 @@ class EventRepository(
             Result.success(created)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+    
+    /**
+     * Validates context IDs against lookup tables.
+     * Returns error message if any ID is invalid, null if all are valid.
+     */
+    private suspend fun validateContextIds(
+        categoryId: Int?,
+        formaId: Int?,
+        causeId: Int?,
+        developId: Int?,
+        effectId: Int?
+    ): String? {
+        val allContexts = contextTemplateDao.listTemplates()
+        val allContextIds = allContexts.map { it.id }.toSet()
+        
+        val invalidFields = mutableListOf<String>()
+        
+        if (categoryId != null && categoryId !in allContextIds) {
+            invalidFields.add("Category ID ($categoryId)")
+        }
+        if (formaId != null && formaId !in allContextIds) {
+            invalidFields.add("Forma ID ($formaId)")
+        }
+        if (causeId != null && causeId !in allContextIds) {
+            invalidFields.add("Cause ID ($causeId)")
+        }
+        if (developId != null && developId !in allContextIds) {
+            invalidFields.add("Develop ID ($developId)")
+        }
+        if (effectId != null && effectId !in allContextIds) {
+            invalidFields.add("Effect ID ($effectId)")
+        }
+        
+        return if (invalidFields.isNotEmpty()) {
+            "Invalid context IDs: ${invalidFields.joinToString(", ")}. " +
+            "These IDs are not present in the context lookup tables."
+        } else {
+            null
         }
     }
 

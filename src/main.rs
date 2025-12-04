@@ -189,7 +189,8 @@ async fn main() -> std::io::Result<()> {
                         log::info!("TTL cleanup removed {count} expired nodes");
                         log::info!(
                             "discovery.cleanup.completed pruned={} expired={} unreachable=0",
-                            count, count
+                            count,
+                            count
                         );
                     }
                     Ok(_) => {

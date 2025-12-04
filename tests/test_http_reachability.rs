@@ -13,13 +13,9 @@ use truth_core::p2p::node::run_http_reachability_checks;
 async fn test_http_reachability_empty_nodes() -> Result<()> {
     // Test with empty node list
     let conn = Arc::new(Mutex::new(storage::open_db(":memory:")?));
-    
-    let processed = run_http_reachability_checks(
-        conn.clone(),
-        Duration::from_secs(5),
-        3,
-    ).await?;
-    
+
+    let processed = run_http_reachability_checks(conn.clone(), Duration::from_secs(5), 3).await?;
+
     assert_eq!(processed, 0, "Empty node list should process 0 nodes");
     Ok(())
 }
@@ -28,7 +24,7 @@ async fn test_http_reachability_empty_nodes() -> Result<()> {
 async fn test_http_reachability_updates_db() -> Result<()> {
     // Test that reachability checks update node status in database
     let conn = Arc::new(Mutex::new(storage::open_db(":memory:")?));
-    
+
     // Insert a test node
     let now = chrono::Utc::now().timestamp();
     let test_node = Node {
@@ -43,21 +39,22 @@ async fn test_http_reachability_updates_db() -> Result<()> {
         created_at: now,
         updated_at: now,
     };
-    
+
     {
         let guard = conn.lock().await;
         storage::upsert_node_by_address(&guard, &test_node)?;
     }
-    
+
     // Run reachability check with short timeout
     let processed = run_http_reachability_checks(
         conn.clone(),
         Duration::from_millis(100), // Very short timeout
-        1, // Single retry
-    ).await?;
-    
+        1,                          // Single retry
+    )
+    .await?;
+
     assert_eq!(processed, 1, "Should process one node");
-    
+
     // Verify node status was updated (likely marked as unreachable)
     {
         let guard = conn.lock().await;
@@ -70,7 +67,7 @@ async fn test_http_reachability_updates_db() -> Result<()> {
         // Node may be marked as unreachable due to timeout
         // This is expected behavior
     }
-    
+
     Ok(())
 }
 
@@ -78,7 +75,7 @@ async fn test_http_reachability_updates_db() -> Result<()> {
 async fn test_http_reachability_timeout_handling() -> Result<()> {
     // Test that timeouts are handled gracefully
     let conn = Arc::new(Mutex::new(storage::open_db(":memory:")?));
-    
+
     // Insert multiple nodes with different addresses
     let now = chrono::Utc::now().timestamp();
     let nodes = vec![
@@ -107,31 +104,35 @@ async fn test_http_reachability_timeout_handling() -> Result<()> {
             updated_at: now,
         },
     ];
-    
+
     {
         let guard = conn.lock().await;
         for node in &nodes {
             storage::upsert_node_by_address(&guard, node)?;
         }
     }
-    
+
     // Run reachability check with very short timeout
     let processed = run_http_reachability_checks(
         conn.clone(),
         Duration::from_millis(50), // Very short timeout
-        0, // No retries
-    ).await?;
-    
+        0,                         // No retries
+    )
+    .await?;
+
     assert_eq!(processed, nodes.len() as usize, "Should process all nodes");
-    
+
     // Verify all nodes were checked (status may be updated)
     {
         let guard = conn.lock().await;
         let filter = core_lib::models::NodeFilter::default();
         let stored_nodes = storage::list_nodes(&guard, &filter)?;
-        assert_eq!(stored_nodes.len(), nodes.len(), "All nodes should still exist");
+        assert_eq!(
+            stored_nodes.len(),
+            nodes.len(),
+            "All nodes should still exist"
+        );
     }
-    
+
     Ok(())
 }
-

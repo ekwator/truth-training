@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/components/system/Toaster';
 import { ContextTemplate } from '@/types/contexts';
+import { ContextPicker } from '@/components/context/ContextPicker';
 
 export const NewEvent: React.FC = () => {
   const { addToast } = useToast();
@@ -95,7 +96,8 @@ export const NewEvent: React.FC = () => {
 
     const description = formData.description.trim() || eventName;
 
-    // Context fields are optional - no validation required
+    // Context fields are validated by ContextPicker components
+    // Invalid IDs are already blocked by the picker's validation
 
     if (formData.start_date && formData.end_date && formData.start_date > formData.end_date) {
       addToast({
@@ -180,8 +182,9 @@ export const NewEvent: React.FC = () => {
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-2">Event Name *</label>
+            <label htmlFor="event-name" className="block text-sm font-medium mb-2">Event Name *</label>
             <input
+              id="event-name"
               type="text"
               value={formData.event_name}
               onChange={(e) => handleChange('event_name', e.target.value)}
@@ -249,56 +252,36 @@ export const NewEvent: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Category ID (Optional)</label>
-              <input
-                type="number"
-                value={formData.category_id || ''}
-                onChange={(e) => handleChange('category_id', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                className="w-full px-3 py-2 border rounded"
-                placeholder="Enter category ID"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Forma ID (Optional)</label>
-              <input
-                type="number"
-                value={formData.forma_id || ''}
-                onChange={(e) => handleChange('forma_id', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                className="w-full px-3 py-2 border rounded"
-                placeholder="Enter forma ID"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Cause ID (Optional)</label>
-              <input
-                type="number"
-                value={formData.cause_id || ''}
-                onChange={(e) => handleChange('cause_id', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                className="w-full px-3 py-2 border rounded"
-                placeholder="Enter cause ID"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Develop ID (Optional)</label>
-              <input
-                type="number"
-                value={formData.develop_id || ''}
-                onChange={(e) => handleChange('develop_id', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                className="w-full px-3 py-2 border rounded"
-                placeholder="Enter develop ID"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Effect ID (Optional)</label>
-              <input
-                type="number"
-                value={formData.effect_id || ''}
-                onChange={(e) => handleChange('effect_id', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                className="w-full px-3 py-2 border rounded"
-                placeholder="Enter effect ID"
-              />
-            </div>
+            <ContextPicker
+              label="Category"
+              value={formData.category_id}
+              onChange={(value) => handleChange('category_id', value)}
+              placeholder="Select or enter category ID"
+            />
+            <ContextPicker
+              label="Forma"
+              value={formData.forma_id}
+              onChange={(value) => handleChange('forma_id', value)}
+              placeholder="Select or enter forma ID"
+            />
+            <ContextPicker
+              label="Cause"
+              value={formData.cause_id}
+              onChange={(value) => handleChange('cause_id', value)}
+              placeholder="Select or enter cause ID"
+            />
+            <ContextPicker
+              label="Develop"
+              value={formData.develop_id}
+              onChange={(value) => handleChange('develop_id', value)}
+              placeholder="Select or enter develop ID"
+            />
+            <ContextPicker
+              label="Effect"
+              value={formData.effect_id}
+              onChange={(value) => handleChange('effect_id', value)}
+              placeholder="Select or enter effect ID"
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
