@@ -18,10 +18,13 @@ INVENTORY_FILENAME = "inventory.json"
 
 
 def generate_inventory(root: Path | str = ".", save_report: bool = True) -> List[DocumentationFile]:
-    """Walk the repository and create DocumentationFile records."""
+    """Walk the repository and create DocumentationFile records.
+    
+    Starts with README.md, then processes only docs/ and spec/ directories.
+    """
 
     root_path = Path(root).resolve()
-    markdown_files = sorted(_discover_markdown_files(root_path), key=lambda p: str(p))
+    markdown_files = _discover_markdown_files(root_path)
     records: List[DocumentationFile] = []
 
     for path in markdown_files:
@@ -51,15 +54,50 @@ def generate_inventory(root: Path | str = ".", save_report: bool = True) -> List
 
 
 def _discover_markdown_files(root: Path) -> Iterable[Path]:
-    return root.rglob("*.md")
+    """Discover markdown files starting with README.md, then docs/ and spec/ only."""
+    files: List[Path] = []
+    
+    # Start with README.md at root
+    readme_path = root / "README.md"
+    if readme_path.exists():
+        files.append(readme_path)
+    
+    # Process docs/ directory
+    docs_dir = root / "docs"
+    if docs_dir.exists():
+        files.extend(sorted(docs_dir.rglob("*.md")))
+    
+    # Process spec/ directory
+    spec_dir = root / "spec"
+    if spec_dir.exists():
+        files.extend(sorted(spec_dir.rglob("*.md")))
+    
+    return files
 
 
 def _should_exclude(root: Path, path: Path) -> bool:
-    if path.name in EXCLUDED_NAMES and path.parent == root:
-        return True
+    """Exclude files that are not in docs/, spec/, or root README.md."""
     relative = path.relative_to(root)
+    
+    # Always exclude if in excluded directories
     if any(part in EXCLUDED_DIRS for part in relative.parts):
         return True
+    
+    # Exclude root-level files except README.md
+    if len(relative.parts) == 1:
+        if path.name != "README.md":
+            return True
+    
+    # Only allow files in docs/, spec/, or root README.md
+    if len(relative.parts) > 0:
+        first_part = relative.parts[0].lower()
+        if first_part not in ("docs", "spec"):
+            return True
+    
+    # Exclude specific root-level files
+    if path.name in EXCLUDED_NAMES and path.parent == root:
+        return True
+    
     return False
 
 
