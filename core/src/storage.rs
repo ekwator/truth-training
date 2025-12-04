@@ -70,6 +70,8 @@ pub fn create_db_connection(db_path: &str) -> Result<Connection, CoreError> {
 }
 
 /// SQL-схема (knowledge_base + base)
+const SIMPLE_LEGACY_TABLES: &[&str] = &["events", "impacts", "summaries", "logs"];
+
 const SCHEMA_SQL: &str = r#"
 PRAGMA foreign_keys = ON;
 
@@ -306,6 +308,20 @@ CREATE TABLE IF NOT EXISTS reputation_history (
 );
 "#;
 
+/// Public alias for the canonical Truth schema SQL.
+pub const TRUTH_SCHEMA_SQL: &str = SCHEMA_SQL;
+
+/// Returns the canonical Truth schema SQL so other crates can reuse it verbatim.
+pub fn export_schema_sql() -> &'static str {
+    TRUTH_SCHEMA_SQL
+}
+
+/// Executes the canonical Truth schema SQL against the provided connection.
+pub fn init_truth_schema(conn: &Connection) -> Result<(), CoreError> {
+    conn.execute_batch(TRUTH_SCHEMA_SQL)?;
+    Ok(())
+}
+
 /// Открыть/инициализировать БД по пути
 pub fn open_db(path: &str) -> Result<Connection, CoreError> {
     let conn = Connection::open(path)?;
@@ -326,7 +342,7 @@ pub fn init_db(conn: &Connection) -> Result<(), CoreError> {
         "#,
     )?;
 
-    conn.execute_batch(SCHEMA_SQL)?;
+    init_truth_schema(conn)?;
     run_migrations(conn)?;
     validate_schema(conn)?;
     Ok(())
@@ -363,25 +379,63 @@ fn validate_schema(conn: &Connection) -> Result<(), CoreError> {
     }
 
     // Check for legacy tables and warn
-    let legacy_tables = vec!["events", "impacts", "summaries", "judgments", "logs"];
-    for table in legacy_tables {
-        let exists: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
-                [table],
-                |row| row.get(0),
-            )
-            .unwrap_or(0);
-
-        if exists > 0 {
+    for table in SIMPLE_LEGACY_TABLES {
+        if table_exists(conn, table)? {
             log::warn!(
                 "Legacy table '{}' detected. Consider migrating data to v1.0.0 schema.",
                 table
             );
         }
     }
+    if legacy_judgments_exists(conn)? {
+        log::warn!("Legacy judgments table detected. Consider migrating to CI schema.");
+    }
 
     Ok(())
+}
+
+/// Returns Err if any pre-v1 legacy tables remain in the SQLite schema.
+pub fn assert_no_legacy_tables(conn: &Connection) -> Result<(), CoreError> {
+    for table in SIMPLE_LEGACY_TABLES {
+        if table_exists(conn, table)? {
+            return Err(CoreError::InvalidArg(format!(
+                "Legacy table '{}' detected after init",
+                table
+            )));
+        }
+    }
+    if legacy_judgments_exists(conn)? {
+        return Err(CoreError::InvalidArg(
+            "Legacy judgments table detected after init".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn table_exists(conn: &Connection, name: &str) -> Result<bool, CoreError> {
+    let exists: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+        [name],
+        |row| row.get(0),
+    )?;
+    Ok(exists > 0)
+}
+
+fn legacy_judgments_exists(conn: &Connection) -> Result<bool, CoreError> {
+    if !table_exists(conn, "judgments")? {
+        return Ok(false);
+    }
+
+    let mut stmt = conn.prepare("PRAGMA table_info('judgments')")?;
+    let mut rows = stmt.query([])?;
+    while let Some(row) = rows.next()? {
+        let column_name: String = row.get(1)?;
+        if column_name == "participant_id" {
+            // New CI schema contains this column; legacy schema does not.
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 /// Выполнить миграции: добавить недостающие колонки и служебные таблицы

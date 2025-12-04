@@ -102,6 +102,23 @@ Test-Path "C:\Program Files\Truth Training\truth-training-desktop.exe"
 3. Click "Create Event"
 4. Event appears on Dashboard
 
+### Resetting the Desktop Database (`init_app`)
+If you need to reset the embedded SQLite database to the canonical Truth schema (for example, after installing a new build or testing migrations), run:
+
+```bash
+cd ui/desktop
+pnpm tauri invoke init_app
+```
+
+The command now performs the following actions:
+
+- Drops all legacy `events`/`impacts`/`summaries`/`judgments`/`logs` tables that belonged to the pre-Truth schema.
+- Reapplies the canonical Truth schema from `core/src/storage.rs`, runs migrations, and seeds the knowledge base.
+- Forces a WAL checkpoint, VACUUM, and rewrites `~/.truth-training/config.json` with defaults (including the RU/EN locale setting).
+- Emits `db.init.*` telemetry/log entries so you can confirm the cleanup in logs.
+
+You can invoke it multiple times—it is idempotent. After running, inspect the SQLite file (see the developer quickstart) to verify that tables such as `truth_events`, `statements`, `impact`, `progress_metrics`, and `schema_version` exist, while legacy tables are absent.
+
 ## Basic Usage
 
 ### Navigation
@@ -124,9 +141,21 @@ Test-Path "C:\Program Files\Truth Training\truth-training-desktop.exe"
 1. Click "New Event" or press `Alt+2`
 2. Enter event title (required)
 3. Optionally select context template to prefill fields
-4. Modify context fields if needed
+4. Modify context fields if needed using ContextPicker components:
+   - Type to search contexts by name or ID
+   - Select from dropdown or enter ID manually
+   - Invalid IDs are blocked with error message
+   - Data is cached for offline use (24h TTL)
 5. Set start/end dates
 6. Click "Create Event"
+
+### Changing Language
+
+1. **Quick Toggle**: Click language selector in top-right navigation bar
+2. **Settings**: Navigate to Settings (`Alt+8`) → Language section
+3. **Select Language**: Choose English or Russian from dropdown
+4. **Persistence**: Language preference is saved and persists across app restarts
+5. **Coverage**: Navigation, Settings, NewEvent, ContextPicker, and toast messages are translated
 
 ### Managing Context Templates
 
