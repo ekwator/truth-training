@@ -29,6 +29,7 @@ export interface AppConfig {
   server_port: number;
   nearby_sync?: boolean;
   nearby_interval_ms?: number;
+  locale?: string;
 }
 
 export interface NodeRecord {
