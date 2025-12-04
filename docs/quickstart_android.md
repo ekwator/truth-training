@@ -8,6 +8,12 @@ This document provides step-by-step instructions for installing, using, and unin
 - Network access for synchronization (optional, works offline)
 - Google Play Store access (for Play Store distribution) OR ability to install APK files
 
+## Localization Status
+
+**Android app is currently English-only (EN).** The app does not support language switching at this time. All UI strings are in English.
+
+**Note**: Desktop UI supports RU/EN language switching. Android localization parity is planned for a future release. For current localization status across platforms, see `spec/09-ux-guidelines.md` and `docs/UI_Desktop.md`.
+
 ## Installation
 
 ### From Google Play Store

@@ -12,7 +12,7 @@
 //! performance targets under realistic load conditions.
 
 use anyhow::Result;
-use core_lib::config::{LAN_TTL_SECS, WIFI_TTL_SECS, GLOBAL_TTL_SECS};
+use core_lib::config::{GLOBAL_TTL_SECS, LAN_TTL_SECS, WIFI_TTL_SECS};
 use core_lib::models::{Node, NodeSource, NodeType};
 use core_lib::storage;
 use core_lib::sync::merge_node_lists;
@@ -20,7 +20,12 @@ use std::time::{Duration, Instant};
 
 /// Generate a large set of test nodes for performance testing.
 /// `address_offset` ensures unique addresses across different calls.
-fn generate_test_nodes(count: usize, node_type: NodeType, base_timestamp: i64, address_offset: usize) -> Vec<Node> {
+fn generate_test_nodes(
+    count: usize,
+    node_type: NodeType,
+    base_timestamp: i64,
+    address_offset: usize,
+) -> Vec<Node> {
     let mut nodes = Vec::with_capacity(count);
     let ttl = match node_type {
         NodeType::Lan => LAN_TTL_SECS,
@@ -70,16 +75,16 @@ fn simulate_discovery_scan(conn: &rusqlite::Connection, node_count: usize) -> Re
     let mut stmt = conn.prepare("SELECT * FROM nodes ORDER BY last_seen DESC LIMIT ?")?;
     let rows = stmt.query_map([node_count], |row| {
         Ok((
-            row.get::<_, i64>(0)?,  // id
-            row.get::<_, String>(1)?,  // address
-            row.get::<_, String>(2)?,  // type
-            row.get::<_, i64>(3)?,  // reachable
-            row.get::<_, i64>(4)?,  // last_seen
-            row.get::<_, i64>(5)?,  // ttl
-            row.get::<_, Option<String>>(6)?,  // source
-            row.get::<_, Option<String>>(7)?,  // node_id
-            row.get::<_, i64>(8)?,  // created_at
-            row.get::<_, i64>(9)?,  // updated_at
+            row.get::<_, i64>(0)?,            // id
+            row.get::<_, String>(1)?,         // address
+            row.get::<_, String>(2)?,         // type
+            row.get::<_, i64>(3)?,            // reachable
+            row.get::<_, i64>(4)?,            // last_seen
+            row.get::<_, i64>(5)?,            // ttl
+            row.get::<_, Option<String>>(6)?, // source
+            row.get::<_, Option<String>>(7)?, // node_id
+            row.get::<_, i64>(8)?,            // created_at
+            row.get::<_, i64>(9)?,            // updated_at
         ))
     })?;
 
@@ -110,7 +115,11 @@ fn test_merge_performance_1k_nodes() {
     let elapsed = start.elapsed();
 
     // Verify merge results
-    assert_eq!(merged.len(), 1500, "Should have 1000 local + 500 new global nodes");
+    assert_eq!(
+        merged.len(),
+        1500,
+        "Should have 1000 local + 500 new global nodes"
+    );
     assert!(added >= 500, "Should add at least 500 new nodes");
 
     // Performance assertion: merge should complete in <100ms
@@ -202,8 +211,7 @@ fn test_discovery_scan_performance() -> Result<()> {
 
     println!(
         "✅ Discovery scan performance: {} nodes scanned in {:?} (target: <5s)",
-        1000,
-        scan_duration
+        1000, scan_duration
     );
 
     Ok(())
@@ -257,7 +265,7 @@ fn test_cleanup_performance() -> Result<()> {
 
     // Perform cleanup (simulate TTL-based cleanup)
     let start = Instant::now();
-    
+
     // Use storage::prune_stale_nodes which implements the correct cleanup logic
     let pruned = storage::prune_stale_nodes(&conn, now)?;
     let elapsed = start.elapsed();
@@ -279,8 +287,7 @@ fn test_cleanup_performance() -> Result<()> {
 
     println!(
         "✅ Cleanup performance: {} nodes cleaned in {:?} (target: <50ms)",
-        1000,
-        elapsed
+        1000, elapsed
     );
 
     Ok(())
@@ -321,12 +328,22 @@ fn test_merge_priority_performance() {
 
     // Verify priority rules: all nodes should remain LAN (not updated to Global)
     assert_eq!(merged.len(), 1000, "Should have 1000 nodes");
-    assert_eq!(added, 0, "Should not add any new nodes (all addresses exist)");
-    assert_eq!(updated, 0, "Should not update any nodes (LAN priority > Global)");
+    assert_eq!(
+        added, 0,
+        "Should not add any new nodes (all addresses exist)"
+    );
+    assert_eq!(
+        updated, 0,
+        "Should not update any nodes (LAN priority > Global)"
+    );
 
     // Verify all nodes are still LAN type
     for node in &merged {
-        assert_eq!(node.node_type, NodeType::Lan, "LAN nodes should not be replaced by Global");
+        assert_eq!(
+            node.node_type,
+            NodeType::Lan,
+            "LAN nodes should not be replaced by Global"
+        );
     }
 
     // Performance assertion: merge with priority should still be <100ms
@@ -392,10 +409,8 @@ fn test_discovery_scan_mixed_types() -> Result<()> {
 
     println!(
         "✅ Discovery scan performance (mixed types): {} nodes scanned in {:?} (target: <5s)",
-        total_nodes,
-        scan_duration
+        total_nodes, scan_duration
     );
 
     Ok(())
 }
-

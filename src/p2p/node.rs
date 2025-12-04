@@ -540,10 +540,7 @@ pub async fn poll_global_registries(
             }
             Err(e) => {
                 warn!("Registry poll for {url} failed: {e}");
-                warn!(
-                    "discovery.registry.error url={} error={}",
-                    url, e
-                );
+                warn!("discovery.registry.error url={} error={}", url, e);
             }
         }
     }
@@ -577,26 +574,26 @@ pub async fn run_http_reachability_checks(
     let mut processed = 0usize;
     let mut successful = 0usize;
     let mut failed = 0usize;
-    
+
     for node in nodes {
         let url = build_health_url(&node.address);
         let check_start = std::time::Instant::now();
         let reachable = http_ping_with_retries(&client, &url, retries).await;
         let duration_ms = check_start.elapsed().as_millis() as u64;
-        
+
         if reachable {
             successful += 1;
         } else {
             failed += 1;
         }
-        
+
         info!(
             "discovery.reachability.check address={} status={} duration_ms={}",
             node.address,
             if reachable { "success" } else { "failure" },
             duration_ms
         );
-        
+
         let mut patch = NodePatch::default();
         patch.reachable = Some(reachable);
         if reachable {
@@ -611,7 +608,7 @@ pub async fn run_http_reachability_checks(
         }
         processed += 1;
     }
-    
+
     let duration_ms = start.elapsed().as_millis() as u64;
     info!(
         "discovery.reachability.batch total={} successful={} failed={} duration_ms={}",

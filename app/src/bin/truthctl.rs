@@ -1277,15 +1277,15 @@ async fn run_nodes(cmd: NodesCmd) -> anyhow::Result<()> {
                 "{}",
                 format!(
                     "Discovery completed in {} ms (new {}, updated {})",
-                    duration_ms,
-                    discovered,
-                    updated
+                    duration_ms, discovered, updated
                 )
                 .green()
             );
             log::info!(
                 "discovery.command.discover.completed discovered={} updated={} duration_ms={}",
-                discovered, updated, duration_ms
+                discovered,
+                updated,
+                duration_ms
             );
         }
         NodesCmd::Sync { db, server } => {
@@ -1334,7 +1334,8 @@ async fn run_nodes(cmd: NodesCmd) -> anyhow::Result<()> {
             println!("{}", format!("Removed {removed} stale nodes").green());
             log::info!(
                 "discovery.command.cleanup.completed pruned={} expired={} unreachable=0",
-                removed, removed
+                removed,
+                removed
             );
         }
         NodesCmd::HealthCheck { db } => {

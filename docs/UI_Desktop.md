@@ -51,12 +51,37 @@ The Context Editor screen allows users to create and manage context templates:
 - **Create from Event**: Events without matching templates show a "[Create Template]" button that opens ContextEditor with fields prefilled from the event's embedded context
 - **Template Matching**: Event list displays template name when event's embedded fields match a template (non-NULL field comparison)
 
+### Context Picker Component (v1.0.0+)
+
+The Context Picker is a searchable combobox component used for selecting context IDs (category, forma, cause, develop, effect) on the NewEvent page:
+
+**Desktop Implementation:**
+- **Searchable Dropdown**: Type to filter contexts by name or ID
+- **Manual Entry**: Enter context ID directly; validation ensures ID exists in dataset
+- **Validation**: Invalid IDs are blocked with inline error message "Unknown context ID"
+- **Caching**: Context data is cached in localStorage for offline use (24h TTL)
+- **Stale Data Warning**: Shows warning banner when cached data is >24h old
+- **Error Handling**: Retry button on fetch failure; falls back to cached data when available
+- **Telemetry**: Emits `context_picker.load.success|failure` and `context_picker.validation.failure` events for observability
+- **Accessibility**: ARIA attributes, keyboard navigation (arrow keys, Enter, ESC)
+
+**Android Implementation (Parity):**
+- **Dropdown UI**: Uses `ExposedDropdownMenuBox` with human-readable labels from embedded Room database
+- **Manual Entry**: Enter context ID directly; validation ensures ID exists in lookup tables
+- **Validation**: Invalid IDs are blocked with inline error states, submission prevented
+- **Data Source**: Contexts loaded from embedded Room database via `ContextTemplateRepository.getAllTemplatesFlow()`
+- **Error Handling**: Shows error state card when context data is unavailable, allows retry
+- **Logging**: Logcat logging for context loading errors and validation failures (telemetry optional)
+- **Accessibility**: Material3 accessibility attributes, keyboard navigation support
+
 ### Template Selection Workflow
 
 1. **On NewEvent Page**:
-   - User can select a context template from dropdown
+   - User can select a context template from dropdown (legacy template selection)
    - Template selection prefills five context fields (category, forma, cause, develop, effect)
+   - Each context field uses a ContextPicker component for validation and search
    - User can modify prefilled fields before saving
+   - Invalid context IDs are blocked with inline error states
    - Form submission sends embedded fields instead of `context_id`
 
 2. **On Events List Page**:
@@ -68,6 +93,18 @@ The Context Editor screen allows users to create and manage context templates:
 ### App Settings
 - **Connection Mode Toggle**: Choose between Core (Local) and HTTP API modes
 - **Server Configuration**: IP address and port settings for HTTP mode
+- **Language Selection (v1.0.0+)**: RU/EN toggle in top-right navigation and Settings → General
+  - Supported locales: English (en), Russian (ru)
+  - Locale persists in `AppConfig.locale` and `localStorage` key `truth-locale`
+  - UI updates instantly without reload on locale change
+  - Missing translations fallback to English with console warning
+  - Telemetry: `locale.change` events logged with `{from, to, success}`
+
+### Android Localization Status
+- **Current Status**: **English-only (EN)**
+- **Language Switching**: Not implemented in Android client
+- **Parity Note**: Desktop UI supports RU/EN switching; Android localization parity is planned for a future release
+- **String Consistency**: Android English strings should match Desktop English strings for consistency
 - **Validation Rules**: IP format validation (`^\d{1,3}(\.\d{1,3}){3}$`), port range (1-65535)
 - **Test Connection**: Test Core or HTTP connections with real-time feedback
 - **Persistence**: Configuration saved to `~/.truth-training/config.json`
@@ -76,7 +113,8 @@ The Context Editor screen allows users to create and manage context templates:
   {
     "mode": "core" | "http",
     "server_ip": "127.0.0.1",
-    "server_port": 8080
+    "server_port": 8080,
+    "locale": "en" | "ru"
   }
   ```
 
@@ -89,7 +127,7 @@ The Context Editor screen allows users to create and manage context templates:
 ### Validation Rules
 - **Impact Level**: Must be integer between 1-5
 - **Date Order**: Start date must be before or equal to end date
-- **Context Fields (v1.0.0)**: All context fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`) are optional. When provided, must reference existing records in their respective tables. Invalid FK references are rejected with 400 Bad Request error.
+- **Context Fields (v1.0.0+)**: All context fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`) are optional. When provided, must reference existing records in their respective tables. Invalid FK references are blocked by ContextPicker validation with inline error states. Invalid IDs emit `context_picker.validation.failure` telemetry events.
 - **Template Duplicate Detection**: Context templates with identical non-NULL fields cannot be created (409 Conflict). NULL values are ignored in comparison.
 - **Confidence Level**: Must be between 0.0-1.0
 - **Assessment**: Must be 'true', 'false', or 'uncertain'

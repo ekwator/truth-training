@@ -118,7 +118,10 @@ User Input → Keyboard Event → setCurrentScreen → renderScreen() → Compon
   - Description (optional)
   - Start Date (optional)
   - End Date (optional, must be >= start date)
-  - Context Fields (prefilled from template, all optional). **Important:** each field is currently a numeric text input that accepts raw IDs (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`). There is no lookup dialog or dropdown; users must know the numeric IDs from the underlying tables or a previously selected template.
+  - Context Fields (prefilled from template, all optional)
+    - **Desktop**: Uses `ContextPicker` component (searchable combobox) with validation, human-readable labels, manual entry support
+    - **Android**: Uses `ContextPicker` component (ExposedDropdownMenuBox) with validation, human-readable labels, manual entry support, matches Desktop UX
+    - Both platforms validate context IDs against lookup tables before submission
 - **Submit Button:** Creates event with embedded context fields
 - **Cancel Button:** Clears form and stays on screen (navigation back to Dashboard must be done manually)
 
@@ -137,9 +140,9 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 - On success: Event is created and form resets (navigation to Dashboard is manual)
 - On error: Display error message, remain on form
 
-**Known Limitations:**
-- Context attribute inputs are numeric fields rather than record pickers; users cannot browse the underlying tables from this screen yet.
-- There is no inline validation or auto-complete for context IDs.
+**Known Limitations (Legacy - Now Resolved):**
+- ~~Context attribute inputs are numeric fields rather than record pickers~~ **RESOLVED**: Desktop and Android now use `ContextPicker` components with dropdowns and validation
+- ~~There is no inline validation or auto-complete for context IDs~~ **RESOLVED**: Both platforms validate context IDs and show inline error states
 
 **Responsibilities:**
 - Event creation with embedded context
@@ -298,6 +301,8 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 - **Discovery Worker Settings:** Background discovery enable switch plus numeric inputs for LAN/Wi-Fi/Global intervals and TTLs
 - **Test Connection Button:** Tests Core or HTTP connection depending on selected mode
 - **Init (Initialize App) Button:** Calls the Tauri `init_app` command to reset configuration and rebuild the local SQLite schema
+  - **Desktop**: Uses canonical Truth schema from `core/src/storage.rs`, drops legacy tables (`events`, `impacts`, `summaries`, `logs`), ensures schema parity
+  - **Android**: Database initialization uses shared SQL asset (`app/src/main/assets/schema.sql`) derived from `core/src/storage.rs`, drops legacy tables via `MIGRATION_3_4`, validates schema on open
 - **Save Buttons:** Separate actions for connection settings and discovery worker settings
 - **Connection Status Panel:** Displays latest test result, timestamp, online/offline information, and pending operations
 
@@ -318,7 +323,8 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 - Validate IP, port, nearby interval, and discovery cadence inputs before saving
 - Test connection with real-time feedback (Core mode uses direct invocation, HTTP mode hits `/status`)
 - Save configuration to `~/.truth-training/config.json` and update discovery worker runtime state
-- `Init` button resets `~/.truth-training/config.json`, truncates the local SQLite database, and recreates tables using the legacy `events` schema (not the new `truth_events` embedding). This mismatch currently recreates the deprecated `events` table on Linux and must be addressed by aligning `init_app` with the v1.0.0 schema.
+- **Desktop**: `Init` button resets `~/.truth-training/config.json`, drops legacy tables, and recreates tables using the canonical Truth schema from `core/src/storage.rs`. Legacy `events` table is removed, only `truth_events` and related Truth tables are created.
+- **Android**: Database initialization uses shared SQL asset matching Desktop schema. Legacy tables are dropped via `MIGRATION_3_4` without data migration. Schema validation ensures legacy tables are absent.
 - Display connection status, pending operations, and discovery errors inline
 
 **Responsibilities:**

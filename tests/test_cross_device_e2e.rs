@@ -26,9 +26,9 @@ fn is_android_device_connected() -> bool {
         .map(|output| {
             let stdout = String::from_utf8_lossy(&output.stdout);
             // Check if there's a device (not just "List of devices attached")
-            stdout.lines().any(|line| {
-                line.contains("device") && !line.contains("List of devices")
-            })
+            stdout
+                .lines()
+                .any(|line| line.contains("device") && !line.contains("List of devices"))
         })
         .unwrap_or(false)
 }
@@ -69,11 +69,14 @@ async fn test_cli_reads_android_database() -> Result<()> {
 
     // Step 2: Verify CLI can read the database
     let conn = storage::open_db(local_db_path)?;
-    
+
     // Step 3: List nodes via CLI (simulated)
     let nodes = storage::list_nodes(&conn, &core_lib::models::NodeFilter::default())?;
-    
-    println!("✅ CLI successfully read {} nodes from Android database", nodes.len());
+
+    println!(
+        "✅ CLI successfully read {} nodes from Android database",
+        nodes.len()
+    );
 
     // Cleanup
     let _ = std::fs::remove_file(local_db_path);
@@ -98,7 +101,7 @@ async fn test_android_reads_cli_database() -> Result<()> {
     // Step 1: Create database with CLI
     let test_db = "test_cli_for_android.db";
     let _ = std::fs::remove_file(test_db); // Cleanup if exists
-    
+
     let conn = storage::open_db(test_db)?;
 
     // Step 2: Add node via CLI (simulated)
@@ -118,7 +121,7 @@ async fn test_android_reads_cli_database() -> Result<()> {
 
     // Step 3: Push database to Android device
     let android_db_path = "/data/data/com.truth.training.client/databases/truth_database";
-    
+
     let push_output = Command::new("adb")
         .args(&["push", test_db, android_db_path])
         .output()?;
@@ -155,7 +158,7 @@ async fn test_desktop_android_lan_discovery() -> Result<()> {
     // 1. Desktop server running and broadcasting
     // 2. Android device on same network
     // 3. Android app listening for UDP multicast
-    
+
     // For now, we verify the components exist
     println!("✅ LAN discovery components verified:");
     println!("   - Desktop: UDP multicast broadcaster in src/p2p/node.rs");
@@ -189,7 +192,7 @@ async fn test_cli_desktop_sync() -> Result<()> {
     // Step 1: Create CLI database with test nodes
     let cli_db = "test_cli_sync.db";
     let _ = std::fs::remove_file(cli_db);
-    
+
     let conn = storage::open_db(cli_db)?;
 
     // Add test node
@@ -209,10 +212,10 @@ async fn test_cli_desktop_sync() -> Result<()> {
 
     // Step 2: Sync with server via API
     let client = reqwest::Client::new();
-    
+
     // Get local nodes
     let local_nodes = storage::list_nodes(&conn, &core_lib::models::NodeFilter::default())?;
-    
+
     // Prepare sync payload
     let sync_payload = serde_json::json!({
         "nodes": local_nodes.iter().map(|n| serde_json::json!({
@@ -233,7 +236,10 @@ async fn test_cli_desktop_sync() -> Result<()> {
         .send()
         .await?;
 
-    assert!(response.status().is_success(), "Sync request should succeed");
+    assert!(
+        response.status().is_success(),
+        "Sync request should succeed"
+    );
 
     let sync_result: serde_json::Value = response.json().await?;
     println!("✅ Sync response received: {:?}", sync_result);
@@ -246,7 +252,7 @@ async fn test_cli_desktop_sync() -> Result<()> {
 
     assert!(server_nodes_response.status().is_success());
     let server_nodes: Vec<serde_json::Value> = server_nodes_response.json().await?;
-    
+
     println!("✅ Server has {} nodes after sync", server_nodes.len());
 
     // Cleanup
@@ -304,7 +310,7 @@ fn test_cross_platform_schema_compatibility() -> Result<()> {
     // Create fresh database
     let test_db = "test_schema_compat.db";
     let _ = std::fs::remove_file(test_db);
-    
+
     let conn = storage::open_db(test_db)?;
 
     // Verify schema matches expected structure
@@ -316,8 +322,16 @@ fn test_cross_platform_schema_compatibility() -> Result<()> {
 
     // Verify all required columns exist
     let required_columns = [
-        "id", "address", "type", "reachable", "last_seen", 
-        "ttl", "source", "node_id", "created_at", "updated_at"
+        "id",
+        "address",
+        "type",
+        "reachable",
+        "last_seen",
+        "ttl",
+        "source",
+        "node_id",
+        "created_at",
+        "updated_at",
     ];
 
     for col in &required_columns {
@@ -399,14 +413,16 @@ fn test_cross_platform_merge_priority() -> Result<()> {
     };
 
     // Merge
-    let (merged, _added, updated) = merge_node_lists(
-        &[local_node.clone()],
-        &[incoming_node.clone()],
-    );
+    let (merged, _added, updated) =
+        merge_node_lists(&[local_node.clone()], &[incoming_node.clone()]);
 
     // Verify LAN node wins (priority rule)
     assert_eq!(merged.len(), 1);
-    assert_eq!(merged[0].node_type, NodeType::Lan, "LAN should win over Global");
+    assert_eq!(
+        merged[0].node_type,
+        NodeType::Lan,
+        "LAN should win over Global"
+    );
     assert_eq!(updated, 0, "Should not update (LAN priority > Global)");
 
     println!("✅ Merge priority rules verified:");
@@ -415,4 +431,3 @@ fn test_cross_platform_merge_priority() -> Result<()> {
 
     Ok(())
 }
-

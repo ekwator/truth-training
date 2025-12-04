@@ -19,6 +19,13 @@ export const supportedLocales: Locale[] = [
     direction: 'ltr'
   },
   {
+    code: 'ru',
+    name: 'Russian',
+    nativeName: 'Русский',
+    direction: 'ltr'
+  },
+  // ES/FR/DE/AR remain in code but are not selectable until strings exist
+  {
     code: 'es',
     name: 'Spanish',
     nativeName: 'Español',
@@ -147,8 +154,24 @@ export const defaultTranslations: Translation = {
   }
 };
 
-// Translation function
-export const t = (key: string, translations: Translation = defaultTranslations): string => {
+// Get translations for current locale
+export const getTranslations = (locale: string = getCurrentLocale()): Translation => {
+  if (locale === 'ru') {
+    // Dynamic import to avoid circular dependencies
+    try {
+      const { ruTranslations } = require('./ru');
+      return ruTranslations as Translation;
+    } catch (e) {
+      console.warn('translation.missing', { locale, key: 'ru' });
+      return defaultTranslations;
+    }
+  }
+  return defaultTranslations;
+};
+
+// Translation function with locale support
+export const t = (key: string, locale?: string): string => {
+  const translations = getTranslations(locale);
   const keys = key.split('.');
   let value: any = translations;
   
@@ -156,7 +179,21 @@ export const t = (key: string, translations: Translation = defaultTranslations):
     if (value && typeof value === 'object' && k in value) {
       value = value[k];
     } else {
-      return key; // Return key if translation not found
+      // Missing translation - log warning and fallback to English
+      if (locale && locale !== 'en') {
+        console.warn('translation.missing', { locale, key });
+      }
+      // Fallback to English
+      const enValue = getTranslations('en');
+      let enResult: any = enValue;
+      for (const enK of keys) {
+        if (enResult && typeof enResult === 'object' && enK in enResult) {
+          enResult = enResult[enK];
+        } else {
+          return key; // Return key if not found in English either
+        }
+      }
+      return typeof enResult === 'string' ? enResult : key;
     }
   }
   
@@ -182,8 +219,10 @@ export const detectLocale = (): string => {
   return 'en';
 };
 
-// Set locale
-export const setLocale = (locale: string): void => {
+// Set locale with telemetry
+export const setLocale = async (locale: string, persistToBackend: boolean = true): Promise<void> => {
+  const previousLocale = getCurrentLocale();
+  
   if (supportedLocales.some(l => l.code === locale)) {
     localStorage.setItem('truth-locale', locale);
     document.documentElement.lang = locale;
@@ -193,6 +232,29 @@ export const setLocale = (locale: string): void => {
     if (localeInfo) {
       document.documentElement.dir = localeInfo.direction;
     }
+
+    // Persist to backend if in Tauri
+    if (persistToBackend && typeof window !== 'undefined') {
+      try {
+        const isTauri = (window as any).__TAURI__ !== undefined;
+        if (isTauri) {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const config = await invoke('get_app_config') as Record<string, any>;
+          if (config && typeof config === 'object') {
+            const updatedConfig = { ...config, locale };
+            await invoke('save_app_config', { config: updatedConfig });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to persist locale to backend:', error);
+        // Log telemetry: locale.change failure
+        console.warn('locale.change', { from: previousLocale, to: locale, success: false, error });
+        throw error;
+      }
+    }
+
+    // Log telemetry: locale.change success
+    console.log('locale.change', { from: previousLocale, to: locale, success: true });
   }
 };
 

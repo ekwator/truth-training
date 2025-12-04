@@ -1,4 +1,6 @@
 import React from 'react';
+import { LocaleToggle } from './LocaleToggle';
+import { t } from '@/i18n';
 
 export type Screen = 'home' | 'new-event' | 'context-editor' | 'event-summary' | 'overall-summary' | 'training-results' | 'logs' | 'settings';
 
@@ -19,7 +21,7 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigat
                 currentScreen === 'home' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
               }`}
             >
-              Home
+              {t('navigation.dashboard')}
             </button>
             <button
               onClick={() => onNavigate('new-event')}
@@ -27,7 +29,7 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigat
                 currentScreen === 'new-event' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
               }`}
             >
-              New Event
+              {t('events.createEvent')}
             </button>
             <button
               onClick={() => onNavigate('context-editor')}
@@ -75,8 +77,11 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigat
                 currentScreen === 'settings' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
               }`}
             >
-              Settings
+              {t('navigation.settings')}
             </button>
+          </div>
+          <div className="flex items-center">
+            <LocaleToggle variant="button" />
           </div>
         </div>
       </div>
