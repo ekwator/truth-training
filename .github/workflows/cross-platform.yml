@@ -16,6 +16,7 @@ jobs:
   android:
     name: Android (ARM64 + x86_64)
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
     outputs:
       artifact-name: libtruth_core-android
     steps:
@@ -50,6 +51,7 @@ jobs:
   ios:
     name: iOS (ARM64 + Simulator)
     runs-on: macos-latest
+    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
     outputs:
       artifact-name: libtruth_core-ios
     steps:
@@ -75,6 +77,7 @@ jobs:
   desktop:
     name: Desktop (Linux/Windows/macOS)
     runs-on: ${{ matrix.os }}
+    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
     strategy:
       fail-fast: false
       matrix:
@@ -114,7 +117,7 @@ jobs:
   publish-release:
     needs: [android, ios, desktop]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: ${{ startsWith(github.ref, 'refs/tags/') && (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
     steps:
       - uses: actions/checkout@v4
       - name: Download all artifacts
