@@ -135,11 +135,10 @@ You can invoke it multiple times—it is idempotent. After running, inspect the 
 - `Alt+4` - Event Summary
 - `Alt+5` - Overall Summary
 - `Alt+6` - Training Results
-- `Alt+7` - Logs
 - `Alt+8` - Settings
 
 **Menu Bar:**
-- [Home] | [New Event] | [Context Editor] | [Event Summary] | [Overall Summary] | [Training Results] | [Logs] | [Settings]
+- [Home] | [New Event] | [Context Editor] | [Event Summary] | [Overall Summary] | [Training Results] | [Settings]
 
 ### Creating Events
 
@@ -206,10 +205,12 @@ You can invoke it multiple times—it is idempotent. After running, inspect the 
 
 ### Viewing Logs
 
-1. Navigate to Logs (`Alt+7`)
-2. View paginated log entries (35 per page)
-3. Use Previous/Next to navigate
-4. Click "Clear Logs" to remove all entries
+Desktop UI follows the confidentiality principle: no user actions are logged or stored. To view system-level logs:
+
+1. **Frontend logs**: Open browser DevTools (F12) → Console tab
+2. **Backend logs**: Check the terminal/console where the application was launched
+
+See [Logging Guide](logging.md) for details.
 
 ### Exporting Data
 
@@ -380,7 +381,7 @@ lsof ~/.local/share/TruthTraining/truth_training.sqlite
 1. Check sync status on Dashboard
 2. Verify network connectivity
 3. Check server logs (if using HTTP mode)
-4. Review application logs (Logs screen)
+4. Review browser console logs (F12 → Console tab)
 
 ## Related Documentation
 

@@ -16,6 +16,8 @@ pub struct AppConfig {
     pub nearby_sync: bool,
     #[serde(default = "default_nearby_interval_ms")]
     pub nearby_interval_ms: u64,
+    // Locale is always serialized and deserialized explicitly
+    // If missing in JSON, default to "en" during deserialization
     #[serde(default = "default_locale")]
     pub locale: String,
 }
@@ -51,8 +53,18 @@ pub async fn get_app_config() -> Result<AppConfig, String> {
     let content = fs::read_to_string(&config_path)
         .map_err(|e| format!("Failed to read config file: {}", e))?;
 
-    let config: AppConfig = serde_json::from_str(&content)
+    // Parse config, ensuring locale is present (defaults to "en" if missing)
+    let mut config: AppConfig = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse config file: {}", e))?;
+
+    // Ensure locale is always set (fallback to "en" if missing or invalid)
+    if config.locale.is_empty() || !["en", "ru"].contains(&config.locale.as_str()) {
+        info!(
+            "Config has invalid or missing locale '{}', defaulting to 'en'",
+            config.locale
+        );
+        config.locale = "en".to_string();
+    }
 
     Ok(config)
 }
@@ -76,6 +88,14 @@ pub async fn save_app_config(config: AppConfig) -> Result<(), String> {
         return Err("nearby_interval_ms must be between 500 and 60000".to_string());
     }
 
+    // Validate locale
+    if !["en", "ru"].contains(&config.locale.as_str()) {
+        return Err(format!(
+            "Invalid locale: {}. Must be 'en' or 'ru'",
+            config.locale
+        ));
+    }
+
     let config_path = get_config_path()?;
 
     // Ensure directory exists
@@ -84,11 +104,57 @@ pub async fn save_app_config(config: AppConfig) -> Result<(), String> {
             .map_err(|e| format!("Failed to create config directory: {}", e))?;
     }
 
+    info!("Saving config with locale: {}", config.locale);
+
+    // Serialize config to JSON - locale should always be included
     let content = serde_json::to_string_pretty(&config)
         .map_err(|e| format!("Failed to serialize config: {}", e))?;
 
+    // Debug: log the JSON content being written (first 200 chars)
+    let preview = if content.len() > 200 {
+        format!("{}...", &content[..200])
+    } else {
+        content.clone()
+    };
+    info!("Writing config JSON (preview): {}", preview);
+
+    // Verify locale is in the JSON string
+    if !content.contains(&format!("\"locale\": \"{}\"", config.locale)) {
+        return Err(format!(
+            "Locale '{}' not found in serialized JSON. JSON content: {}",
+            config.locale, content
+        ));
+    }
+
     fs::write(&config_path, content).map_err(|e| format!("Failed to write config file: {}", e))?;
 
+    // Verify the file was written correctly by reading it back
+    let saved_content = fs::read_to_string(&config_path)
+        .map_err(|e| format!("Failed to verify saved config: {}", e))?;
+
+    info!(
+        "Read back config JSON (preview): {}",
+        if saved_content.len() > 200 {
+            format!("{}...", &saved_content[..200])
+        } else {
+            saved_content.clone()
+        }
+    );
+
+    let saved_config: AppConfig = serde_json::from_str(&saved_content)
+        .map_err(|e| format!("Failed to parse saved config: {}", e))?;
+
+    if saved_config.locale != config.locale {
+        return Err(format!(
+            "Locale mismatch after save: expected '{}', got '{}'. Full JSON: {}",
+            config.locale, saved_config.locale, saved_content
+        ));
+    }
+
+    info!(
+        "Config saved successfully with locale: {}",
+        saved_config.locale
+    );
     Ok(())
 }
 
@@ -141,17 +207,35 @@ pub async fn test_http_connection(ip: String, port: u16) -> Result<CoreStatus, S
 #[command]
 pub async fn init_app(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, String> {
     // 1) Read current config to preserve locale setting
-    let current_config = get_app_config().await.unwrap_or_else(|_| AppConfig::default());
+    let current_config = get_app_config().await.unwrap_or_else(|_| {
+        info!("No config file found, using default locale 'en'");
+        AppConfig::default()
+    });
     let locale = current_config.locale.clone();
-    
+
+    info!(
+        "init_app: preserving locale '{}' from current config",
+        locale
+    );
+
+    // Ensure locale is valid
+    let locale = if !["en", "ru"].contains(&locale.as_str()) {
+        info!("Invalid locale '{}' in config, defaulting to 'en'", locale);
+        "en".to_string()
+    } else {
+        locale
+    };
+
     // 2) Reset config to defaults but preserve locale
     let mut default_config = AppConfig::default();
     default_config.locale = locale.clone();
+    info!("init_app: writing default config with locale '{}'", locale);
     write_default_config(&default_config)?;
 
     // 3) Reset database using the current connection with preserved locale
     {
         let mut conn = db.0.lock();
+        info!("init_app: resetting database with locale '{}'", locale);
         reset_database(&mut conn, &locale)?;
     }
 
@@ -164,15 +248,19 @@ pub async fn init_app(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, S
 }
 
 #[command]
-pub async fn reseed_knowledge_base(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, String> {
+pub async fn reseed_knowledge_base(
+    db: State<'_, crate::storage::Db>,
+) -> Result<CoreStatus, String> {
     // Get current locale from config
-    let config = get_app_config().await.unwrap_or_else(|_| AppConfig::default());
+    let config = get_app_config()
+        .await
+        .unwrap_or_else(|_| AppConfig::default());
     let locale = config.locale.clone();
-    
+
     // Clear existing knowledge base data and reseed with current locale
     {
         let mut conn = db.0.lock();
-        
+
         // Clear existing data
         conn.execute("DELETE FROM category", [])
             .map_err(|e| format!("Failed to clear categories: {}", e))?;
@@ -186,14 +274,14 @@ pub async fn reseed_knowledge_base(db: State<'_, crate::storage::Db>) -> Result<
             .map_err(|e| format!("Failed to clear formas: {}", e))?;
         conn.execute("DELETE FROM impact_type", [])
             .map_err(|e| format!("Failed to clear impact_types: {}", e))?;
-        
+
         // Reseed with current locale
         truth_storage::seed_knowledge_base(&mut conn, &locale)
             .map_err(|e| format!("Failed to reseed knowledge base: {}", e))?;
     }
-    
+
     info!("Knowledge base reseeded with locale: {}", locale);
-    
+
     Ok(CoreStatus {
         ok: true,
         message: format!("Knowledge base reseeded with locale: {}", locale),
@@ -236,8 +324,18 @@ fn write_default_config(config: &AppConfig) -> Result<(), String> {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create config directory: {}", e))?;
     }
+
+    info!("Writing default config with locale: {}", config.locale);
     let content = serde_json::to_string_pretty(config)
         .map_err(|e| format!("Failed to serialize default config: {}", e))?;
+
+    // Verify locale is in the JSON
+    if !content.contains(&format!("\"locale\": \"{}\"", config.locale)) {
+        return Err(format!(
+            "Locale '{}' not found in serialized default config JSON. JSON: {}",
+            config.locale, content
+        ));
+    }
     fs::write(&cfg_path, content).map_err(|e| format!("Failed to write default config: {}", e))?;
     Ok(())
 }

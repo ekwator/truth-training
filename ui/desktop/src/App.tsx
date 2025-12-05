@@ -9,7 +9,6 @@ import { ContextEditor } from '@/pages/ContextEditor';
 import { EventSummary } from '@/pages/EventSummary';
 import { OverallSummary } from '@/pages/OverallSummary';
 import { TrainingResults } from '@/pages/TrainingResults';
-import { Logs } from '@/pages/Logs';
 import { Settings } from '@/pages/Settings';
 import { initializeLocale } from '@/i18n';
 
@@ -51,10 +50,6 @@ export const App: React.FC = () => {
             event.preventDefault();
             setCurrentScreen('training-results');
             break;
-          case '7':
-            event.preventDefault();
-            setCurrentScreen('logs');
-            break;
           case '8':
             event.preventDefault();
             setCurrentScreen('settings');
@@ -81,8 +76,6 @@ export const App: React.FC = () => {
         return <OverallSummary />;
       case 'training-results':
         return <TrainingResults />;
-      case 'logs':
-        return <Logs />;
       case 'settings':
         return <Settings />;
       default:

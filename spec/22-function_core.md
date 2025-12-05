@@ -718,10 +718,6 @@ This document provides a comprehensive functional specification for all Rust mod
 - `core_status()` - Get core status
 - `test_http_connection()` - Test HTTP connection
 
-#### Submodule: `logs.rs`
-- `list_logs(limit, offset)` - List logs with pagination (35 lines/page)
-- `clear_logs()` - Clear all logs
-
 #### Submodule: `commands.rs`
 - Command registration and routing
 
@@ -733,16 +729,52 @@ This document provides a comprehensive functional specification for all Rust mod
 
 ### Module: `src-tauri/src/storage.rs`
 
-**Purpose:** Tauri-specific storage operations.
+**Purpose:** Tauri-specific storage operations and database initialization.
 
 **Key Functions:**
-- Database connection management
-- Transaction handling
-- Data persistence
+
+#### Database Initialization
+- `initialize() -> Result<Db, String>` - Initializes database connection and schema
+  - Creates database at `~/.local/share/TruthTraining/truth_training.sqlite` (Linux) or OS-specific data directory
+  - Uses canonical Truth schema from `core/src/storage.rs` via `truth_storage::export_schema_sql()`
+  - Reads locale from `~/.truth-training/config.json` and seeds knowledge base with locale-specific data
+  - Falls back to "en" if config file doesn't exist or locale is invalid
+  - Runs migrations for existing databases
+
+#### Locale Management
+- `get_locale_from_config() -> Result<String, String>` - Reads locale from config file
+  - Validates locale is "en" or "ru"
+  - Returns "en" as default if config missing or invalid
+  - Logs locale value for debugging
+
+#### Knowledge Base Seeding
+- `seed_knowledge_base(conn: &mut Connection, locale: &str) -> Result<(), String>` - Seeds knowledge base with locale-specific data
+  - Delegates to `truth_storage::seed_knowledge_base()` from core library
+  - Supports "en" (English) and "ru" (Russian) locales
+  - Called during database initialization and when locale changes
+
+#### Event Operations
+- `insert_truth_event(...)` - Creates truth event with embedded context fields (v1.0.0 schema)
+- `get_truth_event_with_names(id)` - Retrieves event with joined knowledge base names
+- `list_truth_events_with_names(page, per_page)` - Lists events with pagination and joined names
+
+#### Impact Operations
+- `insert_impact(...)` - Creates impact record
+
+#### Judgment Operations
+- `insert_judgment(...)` - Creates judgment record
+- `list_judgments_for_event(event_id, limit, offset)` - Lists judgments for event
+- `get_judgment_stats(event_id)` - Gets judgment statistics
+
+#### Summary Operations
+- `get_overall_metrics()` - Gets overall statistics
+- `list_event_summaries()` - Lists event summaries
 
 **Shared Responsibilities:**
 - Storage abstraction
 - Database access
+- Locale-aware knowledge base initialization
+- Transaction handling
 
 ### Module: `src-tauri/src/discovery.rs`
 

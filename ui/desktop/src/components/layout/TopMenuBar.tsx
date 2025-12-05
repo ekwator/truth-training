@@ -2,7 +2,7 @@ import React from 'react';
 import { LocaleToggle } from './LocaleToggle';
 import { t } from '@/i18n';
 
-export type Screen = 'home' | 'new-event' | 'context-editor' | 'event-summary' | 'overall-summary' | 'training-results' | 'logs' | 'settings';
+export type Screen = 'home' | 'new-event' | 'context-editor' | 'event-summary' | 'overall-summary' | 'training-results' | 'settings';
 
 interface TopMenuBarProps {
   currentScreen: Screen;
@@ -62,14 +62,6 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigat
               }`}
             >
               Training Results
-            </button>
-            <button
-              onClick={() => onNavigate('logs')}
-              className={`px-3 py-2 text-sm font-medium ${
-                currentScreen === 'logs' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
-              }`}
-            >
-              Logs
             </button>
             <button
               onClick={() => onNavigate('settings')}

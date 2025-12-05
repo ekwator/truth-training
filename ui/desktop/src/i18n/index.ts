@@ -257,30 +257,42 @@ export const setLocale = async (locale: string, persistToBackend: boolean = true
         const isTauri = (window as any).__TAURI__ !== undefined;
         if (isTauri) {
           const { invoke } = await import('@tauri-apps/api/core');
-          const config = await invoke('get_app_config') as Record<string, any>;
-          if (config && typeof config === 'object') {
-            // Ensure all required fields are present
-            const updatedConfig = {
-              mode: config.mode || 'core',
-              server_ip: config.server_ip || '127.0.0.1',
-              server_port: config.server_port || 8080,
-              nearby_sync: config.nearby_sync || false,
-              nearby_interval_ms: config.nearby_interval_ms || 3000,
-              locale: locale, // Always set locale
-            };
-            await invoke('save_app_config', { config: updatedConfig });
-            
-            // Reseed knowledge base with new locale if locale changed
-            if (previousLocale !== locale) {
-              try {
-                // Wait a bit to ensure config is written to disk
-                await new Promise(resolve => setTimeout(resolve, 100));
-                await invoke('reseed_knowledge_base');
-                console.log('Knowledge base reseeded with locale:', locale);
-              } catch (seedError) {
-                console.warn('Failed to reseed knowledge base:', seedError);
-                // Don't throw - locale change succeeded, reseed is optional
-              }
+          // Get current config to preserve all fields
+          const currentConfig = await invoke('get_app_config') as Record<string, any>;
+          console.log('Current config before update:', currentConfig);
+          
+          // Create updated config with locale explicitly set
+          const updatedConfig = {
+            mode: currentConfig?.mode || 'core',
+            server_ip: currentConfig?.server_ip || '127.0.0.1',
+            server_port: currentConfig?.server_port || 8080,
+            nearby_sync: currentConfig?.nearby_sync ?? false,
+            nearby_interval_ms: currentConfig?.nearby_interval_ms || 3000,
+            locale: locale, // Always set locale explicitly
+          };
+          
+          console.log('Saving config with locale:', updatedConfig);
+          await invoke('save_app_config', { config: updatedConfig });
+          
+          // Verify config was saved correctly
+          const savedConfig = await invoke('get_app_config') as Record<string, any>;
+          console.log('Config after save:', savedConfig);
+          
+          if (savedConfig?.locale !== locale) {
+            console.error('Locale mismatch! Expected:', locale, 'Got:', savedConfig?.locale);
+            throw new Error(`Failed to save locale: expected ${locale}, got ${savedConfig?.locale}`);
+          }
+          
+          // Reseed knowledge base with new locale if locale changed
+          if (previousLocale !== locale) {
+            try {
+              // Wait a bit to ensure config is written to disk
+              await new Promise(resolve => setTimeout(resolve, 200));
+              await invoke('reseed_knowledge_base');
+              console.log('Knowledge base reseeded with locale:', locale);
+            } catch (seedError) {
+              console.warn('Failed to reseed knowledge base:', seedError);
+              // Don't throw - locale change succeeded, reseed is optional
             }
           }
         }

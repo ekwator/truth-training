@@ -1561,17 +1561,21 @@ async fn update_node_http(
 ) -> impl Responder {
     let id = path.into_inner();
     let body = payload.into_inner();
-    let mut patch = NodePatch::default();
-    patch.reachable = body.reachable;
-    patch.ttl = body.ttl;
-    patch.last_seen = body.last_seen;
-    patch.node_id = body.node_id;
-    if let Some(label) = body.source {
+    let source = if let Some(label) = body.source {
         match NodeSource::from_str(&label) {
-            Ok(src) => patch.source = Some(src),
+            Ok(src) => Some(src),
             Err(e) => return HttpResponse::BadRequest().body(e.to_string()),
         }
-    }
+    } else {
+        None
+    };
+    let patch = NodePatch {
+        reachable: body.reachable,
+        ttl: body.ttl,
+        last_seen: body.last_seen,
+        node_id: body.node_id,
+        source,
+    };
 
     let pool_clone = pool.clone();
     let result = web::block(move || {

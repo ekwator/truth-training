@@ -1,5 +1,17 @@
 # Constitution Compliance (v2.1.0)
 
+## 🔐 Privacy and Confidentiality
+
+**Truth Training is built on the fundamental principle of confidentiality**: **No user actions are logged or persistently stored**. This principle is enforced across all platforms and is a core architectural requirement. The application does not track, record, or save any user interactions, navigation patterns, clicks, or behavioral data.
+
+**Privacy Guarantees:**
+- ✅ **No User Action Logging**: No clicks, navigation, or interaction history is stored
+- ✅ **No Persistent User Tracking**: No identifiers, session data, or behavioral analytics
+- ✅ **No Telemetry Collection**: No user activity is transmitted or stored
+- ✅ **Ephemeral Logs Only**: Only system-level logs (errors, sync operations) are temporarily stored for debugging purposes
+
+---
+
 ## Principles Coverage
 - Truth as Anonymous Confession: `/events` accepts content without author metadata; CLI `confess` warns plaintext-at-rest.
 - Truth Without Author: Events store no author metadata beyond legacy fields; validation relies on transport envelopes.
