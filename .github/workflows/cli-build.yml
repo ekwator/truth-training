@@ -1,0 +1,121 @@
+name: CLI Build
+
+on:
+  push:
+    branches: ['**']
+    tags:
+      - '**'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build CLI (Linux)
+        run: cargo build --release --bin truthctl --features p2p-client-sync
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: truthctl-linux-x86_64
+          path: target/release/truthctl
+          if-no-files-found: error
+          retention-days: 7
+
+  build-windows:
+    runs-on: windows-latest
+    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build CLI (Windows)
+        run: cargo build --release --bin truthctl --features p2p-client-sync
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: truthctl-windows-x86_64
+          path: target/release/truthctl.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  build-macos:
+    runs-on: macos-latest
+    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build CLI (macOS)
+        run: cargo build --release --bin truthctl --features p2p-client-sync
+      - name: Upload macOS binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: truthctl-macos-x86_64
+          path: target/release/truthctl
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') && (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'truthctl-*'
+          merge-multiple: false
+          path: artifacts
+      - name: Prepare release files
+        run: |
+          mkdir -p release-assets
+          
+          # Copy binaries with platform-specific names
+          if [ -f "artifacts/truthctl-linux-x86_64/truthctl" ]; then
+            cp artifacts/truthctl-linux-x86_64/truthctl release-assets/truthctl-linux-x86_64
+            chmod +x release-assets/truthctl-linux-x86_64
+          fi
+          
+          if [ -f "artifacts/truthctl-windows-x86_64/truthctl.exe" ]; then
+            cp artifacts/truthctl-windows-x86_64/truthctl.exe release-assets/truthctl-windows-x86_64.exe
+          fi
+          
+          if [ -f "artifacts/truthctl-macos-x86_64/truthctl" ]; then
+            cp artifacts/truthctl-macos-x86_64/truthctl release-assets/truthctl-macos-x86_64
+            chmod +x release-assets/truthctl-macos-x86_64
+          fi
+          
+          echo "📋 Files prepared for upload:"
+          ls -lh release-assets/
+      
+      - name: Check release exists
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          if ! gh release view "$TAG_NAME" &>/dev/null; then
+            echo "❌ Release '$TAG_NAME' does not exist!"
+            echo "   Please create the release first using create-release.sh script"
+            exit 1
+          fi
+          echo "✓ Release '$TAG_NAME' exists"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Publish Release (attach artifacts only)
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          generate_release_notes: false
+          fail_on_unmatched_files: false
+          tag_name: ${{ github.ref_name }}
+          files: |
+            release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

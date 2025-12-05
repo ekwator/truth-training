@@ -327,6 +327,7 @@ let conn = open_db(db_path)?;
 - [Data Schema](Data_Schema.md) - Database schema documentation
 - [Architecture Overview](../spec/03-architecture.md) - Architecture details
 - [Cross-Platform Architecture](../spec/18-cross-platform-architecture.md) - Platform-specific features
+- [Logging](logging.md) - Log file locations, reading, and clearing logs
 
 _Version: v1.0.0_
 

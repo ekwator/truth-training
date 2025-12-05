@@ -266,6 +266,7 @@ adb pull /sdcard/truth_training_backup.db .
 - [Android Migration Guide](ANDROID_MIGRATION.md) - Migration instructions
 - [Android Discovery Architecture](android_discovery_architecture.md) - Discovery implementation
 - [Android Functional Specification](../spec/24-function_mobile_android.md) - Complete functional spec
+- [Logging](logging.md) - Log file locations, reading, and clearing logs
 
 _Version: v1.0.0_
 

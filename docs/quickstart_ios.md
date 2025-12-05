@@ -260,6 +260,7 @@ idevicebackup2 backup ~/backup_directory
 - [iOS Integration Guide](integration/ios/README_INTEGRATION.md) - Technical integration details
 - [Cross-Platform Architecture](../spec/18-cross-platform-architecture.md) - Platform architecture
 - [Core Functional Specification](../spec/22-function_core.md) - Core library reference
+- [Logging](logging.md) - Log file locations, reading, and clearing logs
 
 _Version: v1.0.0_
 

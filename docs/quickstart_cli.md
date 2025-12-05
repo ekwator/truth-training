@@ -306,11 +306,81 @@ truthctl logs show --db truth.db
 truthctl diagnose --db truth.db
 ```
 
+## Working with Events and Context Templates
+
+### Creating Events
+
+You can create events using the HTTP API or by directly interacting with the server:
+
+```bash
+# Start server first (if not running)
+truth_core_server
+
+# Create event via API
+curl -X POST http://localhost:8080/api/v1/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Example event",
+    "category_id": 1,
+    "forma_id": 2,
+    "cause_id": 5,
+    "develop_id": 3,
+    "effect_id": 2,
+    "vector": true
+  }'
+```
+
+### Creating Context Templates
+
+```bash
+# Create context template via API
+curl -X POST http://localhost:8080/api/v1/contexts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Interpersonal Openness",
+    "category_id": 1,
+    "forma_id": 2,
+    "cause_id": 5,
+    "develop_id": 3,
+    "effect_id": 2,
+    "description": "Honest dialogue template"
+  }'
+```
+
+### Listing Events and Contexts
+
+```bash
+# List events
+curl http://localhost:8080/api/v1/events
+
+# List context templates
+curl http://localhost:8080/api/v1/contexts
+
+# Get specific event
+curl http://localhost:8080/api/v1/events/1
+```
+
+### Matching Events to Templates
+
+```bash
+# Match event to context template
+curl -X POST http://localhost:8080/api/v1/contexts/match \
+  -H "Content-Type: application/json" \
+  -d '{
+    "category_id": 1,
+    "forma_id": 2,
+    "cause_id": 5
+  }'
+```
+
+**Note:** Direct CLI commands for events and contexts are planned for future releases. Currently, use the HTTP API endpoints or the Desktop UI for full event and context template management.
+
 ## Related Documentation
 
 - [CLI Usage](CLI_Usage.md) - Complete CLI reference
 - [P2P & Sync](../spec/08-p2p-sync.md) - Synchronization protocol
 - [Node Discovery](../spec/18-cross-platform-architecture.md) - Discovery mechanisms
+- [Logging](logging.md) - Log file locations, reading, and clearing logs
 
 _Version: v1.0.0_
 

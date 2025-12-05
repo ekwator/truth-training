@@ -458,6 +458,7 @@ After installation, configuration is stored at:
 - [CLI Usage](CLI_Usage.md) - Command-line interface reference
 - [API Reference](api_reference/API_REFERENCE.md) - HTTP API documentation
 - [Install Paths by OS](Install_Paths_By_OS.md) - Platform-specific paths
+- [Logging](logging.md) - Log file locations, reading, and clearing logs
 
 _Version: v1.0.0_
 
