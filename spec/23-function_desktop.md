@@ -334,9 +334,15 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 - Database initialization (currently legacy schema)
 - Validation and persistence
 
-**Known Limitations:**
-- The `Init` workflow rebuilds the legacy `events` table. Until `init_app` is updated to mirror the embedded `truth_events` schema, running this action on Linux/macOS will recreate constitutionally deprecated tables and should be avoided in production data directories.
-- There is no localization selector even though the core supports Russian/English seeding; the UI always operates in English, and language preference is not surfaced.
+**Localization:**
+- **Language Selection:** Desktop UI supports Russian (RU) and English (EN) language switching
+- **Locale Toggle:** Available in header via `LocaleToggle` component and in Settings screen
+- **Translation System:** Uses `src/i18n/index.ts` with translation files (`ru.ts` for Russian, default English)
+- **Translation Coverage:** All UI strings are translated (navigation, dashboard, events, settings, errors, etc.)
+- **Locale Persistence:** Selected locale is saved to `~/.truth-training/config.json` and persisted across app restarts
+- **Knowledge Base Seeding:** When locale changes, knowledge base is automatically reseeded with locale-specific data via `reseed_knowledge_base` Tauri command
+- **Database Initialization:** `init_app` preserves current locale setting and seeds knowledge base with appropriate language data
+- **Fallback Behavior:** Missing translations fall back to English with console warning (`translation.missing` telemetry event)
 
 ## Components
 

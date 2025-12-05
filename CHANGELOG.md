@@ -1,5 +1,119 @@
 # Changelog
 
+## [1.0.0-Develop] — Development Release for Learning and Practice
+
+**Release Date**: 2025-01-XX  
+**Status**: Development Release
+
+This development release builds upon v1.0.0-Release with enhanced localization support, improved documentation, and refined CI/CD workflows. This version is specifically designed for developers learning to use Cursor AI IDE and modern cross-platform development practices.
+
+For a narrative overview of this release, see [`release-info-v1_0_0-Develop.txt`](release-info-v1_0_0-Develop.txt).
+
+### 🌐 Desktop UI Localization
+
+#### Full Russian/English Language Support
+- **Dynamic Language Switching**: Complete Russian (RU) and English (EN) language support with instant UI updates
+- **Locale Toggle Component**: `LocaleToggle` component available in header and Settings screen
+- **Translation System**: Comprehensive translation files (`ru.ts` for Russian, default English) with full UI coverage
+- **Translation Coverage**: All UI strings translated including navigation, dashboard, events, settings, errors, and locale selection
+- **Locale Persistence**: Selected locale saved to `~/.truth-training/config.json` and persisted across app restarts
+
+#### Locale-Aware Knowledge Base Seeding
+- **Core Support**: `seed_knowledge_base` function supports locale parameter (`"ru"` or `"en"`)
+- **Automatic Reseeding**: `reseed_knowledge_base` Tauri command automatically reseeds knowledge base when locale changes
+- **Database Initialization**: `init_app` preserves current locale setting and seeds knowledge base with appropriate language data
+- **Fallback Behavior**: Missing translations fall back to English with console warning and `translation.missing` telemetry event
+
+### 📚 Documentation Enhancements
+
+#### Comprehensive Logging Documentation
+- **New Documentation**: `docs/logging.md` covering logging mechanisms across all platforms
+- **Platform Coverage**: Desktop UI, Android, Server, and CLI logging details
+- **Log Locations**: File paths, reading methods, and clearing procedures for each platform
+- **Troubleshooting**: Common logging issues and solutions
+
+#### Updated Functional Specifications
+- **Core Specification**: Updated `spec/22-function_core.md` with locale-aware knowledge base seeding details
+- **Desktop Specification**: Updated `spec/23-function_desktop.md` with complete localization implementation details
+- **Android Specification**: Updated `spec/24-function_mobile_android.md` with localization status and recommendations
+
+#### CLI Tool Documentation
+- **Build Workflow**: New `cli-build.yml` workflow for `truthctl` binary builds (Linux, Windows, macOS)
+- **Artifact Documentation**: Expanded artifact descriptions in `docs/Truth-training/Truth-training.md`
+- **CLI Description**: Complete CLI tool description with capabilities and limitations
+
+### 🔧 CI/CD Improvements
+
+#### Tauri CLI Build Fixes
+- **Installation Method**: Fixed Tauri CLI installation from `cargo install` to `npm install -g @tauri-apps/cli@2.9.0` to resolve flate2 compilation errors
+- **Build Commands**: Updated all `cargo tauri build` commands to `tauri build` after npm installation
+- **Cross-Platform**: Verified builds on Linux, Windows, and macOS
+
+#### CLI Build Workflow
+- **Package Targeting**: Corrected CLI build workflow to target `app` package for `truthctl` binary (`-p app --bin truthctl`)
+- **Feature Flags**: Enabled `p2p-client-sync` features for CLI builds
+- **Artifact Publishing**: Automated artifact upload and release publishing
+
+#### Workflow Optimizations
+- **Branch Filtering**: Workflows no longer run on `push` events to `main` branch (still run for other branches and PRs)
+- **Conditional Execution**: Added `if` conditions to prevent unnecessary workflow runs
+- **Cross-Platform Artifacts**: Improved artifact generation and publishing across all platforms
+
+### ⚠️ Known Limitations & Future Work
+
+#### Android Client
+- **Localization**: English-only (EN) - Russian localization not implemented
+  - Missing: `values-ru/strings.xml` translation file
+  - Missing: Language selector UI component
+  - Missing: Locale-aware knowledge base seeding integration
+- **Screen Coverage**: Not all activities/screens are fully implemented compared to Desktop UI
+  - Current: 6 basic screens (MainActivity, MainDashboardActivity, DashboardActivity, LoginActivity, P2PActivity, JsonTestActivity, PushTestActivity)
+  - Missing: Full implementation of all 8 screens matching Desktop UI
+- **Recommendation**: Implement full screen coverage matching Desktop UI's 8 screens, add Russian translations, and integrate locale-aware knowledge base seeding
+
+#### iOS Client
+- **Status**: Basic project structure exists, but full implementation is required
+- **Missing**: Complete UI implementation, feature parity with Desktop/Android
+- **Missing**: Localization support
+- **Recommendation**: Full iOS client development needed to match Desktop UI functionality
+
+#### CLI Tool (`truthctl`)
+- **Status**: Core functionality implemented (node management, sync, discovery)
+- **Limitation**: Direct CLI commands for events and context templates are planned for future releases
+- **Current Workaround**: Use HTTP API endpoints (`/api/v1/events`, `/api/v1/contexts`) or Desktop UI
+
+### 📊 Platform Comparison
+
+- **Desktop UI**: Most complete implementation with full localization (RU/EN), all 8 screens, comprehensive testing, and production-ready features
+- **Android Client**: Partial implementation with EN-only localization, basic screens, and core API coverage
+- **iOS Client**: Project structure only, requires full implementation
+- **Core Library**: Full feature support with locale-aware knowledge base seeding
+- **CLI Tool**: Functional for node management and sync, with planned enhancements for event/context management
+
+### 🧪 Quality & Validation
+
+- **Specification Updates**: Functional specifications reflect current localization implementation
+- **Documentation Integrity**: Comprehensive logging guides and updated specifications
+- **CI/CD Validation**: All workflows validated and optimized
+- **Cross-Platform Compatibility**: Verified across Desktop, Android, Core, and CLI
+
+### 🎓 For Beginner Developers
+
+This release is created for beginner developers to practice using Cursor AI IDE. When studying this project with Cursor AI IDE, you can receive hints and guidance on both implementing this project and independently developing additional features. You can learn the technologies and programming languages used in the project, and Cursor AI IDE can autonomously make changes to the project.
+
+**Technologies Used:**
+- **Backend Core**: Rust, Actix-web, Tokio, rusqlite, ed25519-dalek, serde, clap
+- **Desktop UI**: TypeScript, JavaScript, React 18, Vite, Zustand, Axios, Tailwind CSS, Headless UI, Tauri 2.9.0
+- **Android Client**: Kotlin 2.0.20, Android SDK, Jetpack Compose, Room, Retrofit, OkHttp, WorkManager, Kotlin Coroutines, BouncyCastle, Gradle
+- **iOS Client**: Swift, SwiftUI (planned), Rust FFI bindings
+- **Testing**: Jest, React Testing Library, Playwright, JUnit, Android Instrumentation Tests
+- **Build Tools**: Cargo, npm/pnpm, Gradle, Xcode
+- **CI/CD**: GitHub Actions, Python 3.11
+- **Database**: SQLite 3.x
+- **Cryptography**: Ed25519 signatures, ChaCha20-Poly1305 encryption
+
+---
+
 ## [1.0.0] — Unified Discovery & Sync Release — Network of Anonymous Trust, fully realized
 
 This tag represents the **first and only GA release** of Truth Training where the entire anonymous-trust stack lands together: Rust core, truthctl CLI, desktop UI, Android client, automation, and specs, all aligned on `v1.0.0`.  
