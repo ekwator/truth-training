@@ -13,13 +13,10 @@ permissions:
   actions: read
   contents: write
 
-env:
-  BRANCH_IGNORE: 'refs/heads/mai'
-
 jobs:
   build:
     runs-on: macos-latest
-    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && (github.event_name != 'push' || github.ref != env.BRANCH_IGNORE) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
     
     steps:
       - name: Checkout repository
@@ -125,7 +122,7 @@ jobs:
   publish-release:
     needs: [build]
     runs-on: ubuntu-latest
-    if: ${{ startsWith(github.ref, 'refs/tags/') && (github.event_name != 'push' || github.ref != env.BRANCH_IGNORE) }}
+    if: ${{ startsWith(github.ref, 'refs/tags/') && (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
     steps:
       - uses: actions/checkout@v4
       - name: Check release exists
