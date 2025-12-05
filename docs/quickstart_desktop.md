@@ -10,16 +10,18 @@ This document provides step-by-step instructions for installing, using, and unin
 
 ## Installation
 
+**Note:** In GitHub releases, file names use dots (`.`) instead of spaces. For example, `Truth.Training_1.0.0_amd64.deb` instead of `Truth Training_1.0.0_amd64.deb`. All commands below use the correct file names as they appear in releases.
+
 ### Linux
 
 #### Step 1: Install Package
 ```bash
 # DEB package
-sudo dpkg -i "Truth Training_1.0.0_amd64.deb"
+sudo dpkg -i "Truth.Training_1.0.0_amd64.deb"
 
 # Or AppImage (no installation required)
-chmod +x "Truth Training_1.0.0_amd64.AppImage"
-./"Truth Training_1.0.0_amd64.AppImage"
+chmod +x "Truth.Training_1.0.0_amd64.AppImage"
+./"Truth.Training_1.0.0_amd64.AppImage"
 ```
 
 #### Step 2: Verify Installation
@@ -36,7 +38,7 @@ which truth-training-desktop
 #### Step 1: Install Package
 ```bash
 # DMG package
-# Double-click "Truth Training_1.0.0_x64.dmg"
+# Double-click "Truth.Training_1.0.0_x64.dmg"
 # Drag application to Applications folder
 ```
 
@@ -54,11 +56,11 @@ open /Applications/Truth\ Training.app
 #### Step 1: Install Package
 ```powershell
 # EXE installer (NSIS)
-.\"Truth Training_1.0.0_x64-setup.exe"
+.\"Truth.Training_1.0.0_x64-setup.exe"
 # Follow installer wizard
 
 # Or MSI package
-msiexec /i "Truth Training_1.0.0_x64_en-US.msi"
+msiexec /i "Truth.Training_1.0.0_x64_en-US.msi"
 ```
 
 #### Step 2: Verify Installation
@@ -249,7 +251,7 @@ ls ~/.truth-training/
 #### Step 1: Remove Application
 ```bash
 # Simply delete the AppImage file
-rm "Truth Training_1.0.0_amd64.AppImage"
+rm "Truth.Training_1.0.0_amd64.AppImage"
 ```
 
 #### Step 2: Remove Configuration and Data
