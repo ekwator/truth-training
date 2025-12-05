@@ -125,12 +125,24 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/') && (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check release exists
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          if ! gh release view "$TAG_NAME" &>/dev/null; then
+            echo "❌ Release '$TAG_NAME' does not exist!"
+            echo "   Please create the release first using create-release.sh script"
+            exit 1
+          fi
+          echo "✓ Release '$TAG_NAME' exists"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: '*'
           merge-multiple: false
           path: artifacts
+        continue-on-error: true
       - name: Publish Release (attach artifacts only)
         uses: softprops/action-gh-release@v1
         with:
