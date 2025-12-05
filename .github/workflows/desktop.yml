@@ -94,10 +94,10 @@ jobs:
         run: cargo build --release --bin truth_core_server --features desktop --target x86_64-unknown-linux-gnu
       - name: Build Tauri (Linux)
         working-directory: ./ui/desktop
-        run: cargo tauri build --target x86_64-unknown-linux-gnu
+        run: tauri build --target x86_64-unknown-linux-gnu
       - name: Build Tauri (Windows)
         working-directory: ./ui/desktop
-        run: cargo tauri build --target x86_64-pc-windows-gnu
+        run: tauri build --target x86_64-pc-windows-gnu
       - name: Build Server (Windows cross)
         run: cargo build --release --bin truth_core_server --features desktop --target x86_64-pc-windows-gnu
       - name: Upload Server binary (Linux)
@@ -229,7 +229,7 @@ jobs:
           echo "✅ Desktop feature tests completed"
       - name: Build Tauri (macOS)
         working-directory: ./ui/desktop
-        run: cargo tauri build --target x86_64-apple-darwin
+        run: tauri build --target x86_64-apple-darwin
       - name: Build Server (macOS host)
         run: cargo build --release --bin truth_core_server --features desktop --target x86_64-apple-darwin
       - name: Upload Server binary (macOS)
@@ -349,7 +349,7 @@ jobs:
           echo "✅ Desktop feature tests completed"
       - name: Build Tauri (Windows native)
         working-directory: ./ui/desktop
-        run: cargo tauri build
+        run: tauri build
       - name: Build Server (Windows host)
         run: cargo build --release --bin truth_core_server --features desktop
       - name: Upload Server binary (Windows native)
