@@ -345,11 +345,72 @@ ui/desktop/
 - ✅ Automatic releases on tags
 
 **Artifacts:**
-- `Truth Training_1.0.0_amd64.deb`
-- `Truth Training_1.0.0_amd64.AppImage`
-- `Truth Training_1.0.0_x64-setup.exe`
-- `Truth Training_1.0.0_x64.dmg`
-- `Truth Training_1.0.0_x64_en-US.msi`
+- `Truth Training_1.0.0_amd64.deb` (Linux DEB package)
+- `Truth Training_1.0.0_amd64.AppImage` (Linux AppImage)
+- `Truth Training_1.0.0_x64-setup.exe` (Windows NSIS installer)
+- `Truth Training_1.0.0_x64.dmg` (macOS disk image)
+- `Truth Training_1.0.0_x64_en-US.msi` (Windows MSI installer)
+- `truth_core_server-linux-bin` (Linux server binary)
+- `truth_core_server-windows-bin` (Windows server binary)
+- `truth_core_server-macos-bin` (macOS server binary)
+
+### Android Client
+
+**CI workflow:** `.github/workflows/android-build.yml`
+- ✅ Automated build and test
+- ✅ Debug APK and Release AAB generation
+- ✅ Multi-architecture support (arm64-v8a, x86_64)
+- ✅ Artifact upload and release publishing
+
+**Artifacts:**
+- `app-debug.apk` (Debug APK for testing)
+- `app-release.aab` (Release Android App Bundle for Google Play)
+- `libtruth_core.so` (Native libraries from Cross-Platform workflow)
+
+### Server (Standalone Service)
+
+**CI workflow:** `.github/workflows/server-package.yml`
+- ✅ Automated service package generation
+- ✅ Linux (DEB, RPM), Windows (EXE), macOS (PKG)
+- ✅ Systemd user service (Linux)
+- ✅ LaunchAgent (macOS)
+- ✅ WinSW service (Windows)
+
+**Artifacts:**
+- `truth-core-server_1.0.0_amd64.deb` (Linux DEB package with systemd service)
+- `truth-core-server-1.0.0.x86_64.rpm` (Linux RPM package)
+- `truth-core-server-windows.exe` (Windows NSIS installer with WinSW)
+- `truth-core-server-macos.pkg` (macOS PKG installer with LaunchAgent)
+
+### CLI Tool (truthctl)
+
+**CI workflow:** `.github/workflows/cli-build.yml`
+- ✅ Automated CLI binary builds
+- ✅ Linux, Windows, macOS binaries
+- ✅ P2P client sync features enabled
+- ✅ Artifact upload and release publishing
+
+**Artifacts:**
+- `truthctl-linux-x86_64` (Linux binary)
+- `truthctl-windows-x86_64.exe` (Windows binary)
+- `truthctl-macos-x86_64` (macOS binary)
+
+**CLI Tool Description:**
+
+The `truthctl` command-line utility provides comprehensive node management, synchronization, and maintenance capabilities for Truth Training nodes. It supports:
+
+- **Node Management**: Initialize nodes, configure settings, manage identities
+- **Peer Management**: Add, list, and synchronize with peer nodes
+- **Node Discovery**: Discover nodes via LAN, Wi-Fi, and global registries
+- **Synchronization**: Full and incremental sync with peer nodes
+- **Trust Management**: View trust ratings, delegate trust, manage RBAC
+- **Diagnostics**: Health checks, diagnostics, and troubleshooting
+- **Logging**: View and clear sync logs
+- **Graph Visualization**: Display trust graph in ASCII or JSON format
+
+**Note:** Direct CLI commands for events and context templates are planned for future releases. Currently, use the HTTP API endpoints (`/api/v1/events`, `/api/v1/contexts`) or the Desktop UI for full event and context template management.
+
+For complete CLI documentation, see [CLI Usage](../CLI_Usage.md) and [CLI Quickstart](../quickstart_cli.md).
 
 ---
 

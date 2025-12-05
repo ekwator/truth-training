@@ -388,6 +388,7 @@ lsof ~/.local/share/TruthTraining/truth_training.sqlite
 - [Desktop UI Guide](UI_Desktop.md) - Complete UI reference
 - [Desktop Functional Specification](../spec/23-function_desktop.md) - Detailed functional spec
 - [Deployment Guide](Deployment.md) - Server deployment instructions
+- [Logging](logging.md) - Log file locations, reading, and clearing logs
 
 _Version: v1.0.0_
 
