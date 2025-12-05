@@ -76,7 +76,33 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Install NSIS
-        run: choco install nsis -y
+        run: |
+          # Check if NSIS is already installed
+          if (Get-Command makensis.exe -ErrorAction SilentlyContinue) {
+            echo "✅ NSIS is already installed"
+            exit 0
+          }
+          # Retry logic for Chocolatey registry issues
+          $maxAttempts = 5
+          $attempt = 1
+          while ($attempt -le $maxAttempts) {
+            try {
+              choco install nsis -y --no-progress
+              if ($LASTEXITCODE -eq 0) {
+                echo "✅ NSIS installed successfully"
+                exit 0
+              }
+            } catch {
+              Write-Host "⚠️ Attempt $attempt failed: $_"
+            }
+            if ($attempt -lt $maxAttempts) {
+              Write-Host "Retrying in 10 seconds..."
+              Start-Sleep -Seconds 10
+            }
+            $attempt++
+          }
+          echo "❌ Failed to install NSIS after $maxAttempts attempts"
+          exit 1
       - name: Build server (release)
         run: cargo build --release --bin truth_core_server --features desktop
       - name: Download WinSW

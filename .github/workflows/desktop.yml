@@ -58,7 +58,19 @@ jobs:
           sudo apt-get install -y gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64 mingw-w64 mingw-w64-tools
           sudo apt-get install -y nsis
       - name: Install Tauri CLI via npm
-        run: npm install -g @tauri-apps/cli@2.9.0
+        run: |
+          # Retry logic for npm registry issues
+          for i in {1..5}; do
+            if npm install -g @tauri-apps/cli@2.9.0; then
+              echo "✅ Tauri CLI installed successfully"
+              exit 0
+            else
+              echo "⚠️ Attempt $i failed, retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+          echo "❌ Failed to install Tauri CLI after 5 attempts"
+          exit 1
       - name: Set up MinGW and NSIS environment
         run: |
           echo "CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc" >> $GITHUB_ENV
@@ -201,7 +213,19 @@ jobs:
       - name: Add Rust target for macOS
         run: rustup target add x86_64-apple-darwin
       - name: Install Tauri CLI via npm
-        run: npm install -g @tauri-apps/cli@2.9.0
+        run: |
+          # Retry logic for npm registry issues
+          for i in {1..5}; do
+            if npm install -g @tauri-apps/cli@2.9.0; then
+              echo "✅ Tauri CLI installed successfully"
+              exit 0
+            else
+              echo "⚠️ Attempt $i failed, retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+          echo "❌ Failed to install Tauri CLI after 5 attempts"
+          exit 1
       - name: Install deps
         working-directory: ./ui/desktop
         run: npm ci
@@ -316,13 +340,74 @@ jobs:
           node-version: '18'
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Tauri CLI via npm
-        run: npm install -g @tauri-apps/cli@2.9.0
+        run: |
+          # Retry logic for npm registry issues
+          for i in {1..5}; do
+            if npm install -g @tauri-apps/cli@2.9.0; then
+              echo "✅ Tauri CLI installed successfully"
+              exit 0
+            else
+              echo "⚠️ Attempt $i failed, retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+          echo "❌ Failed to install Tauri CLI after 5 attempts"
+          exit 1
       - name: Install ImageMagick (for ICO conversion)
         run: choco install imagemagick -y
       - name: Install NSIS and WiX
         run: |
-          choco install nsis -y
-          choco install wixtoolset -y
+          # Check if NSIS is already installed
+          if (Get-Command makensis.exe -ErrorAction SilentlyContinue) {
+            echo "✅ NSIS is already installed"
+          } else {
+            # Retry logic for Chocolatey registry issues
+            $maxAttempts = 5
+            $attempt = 1
+            while ($attempt -le $maxAttempts) {
+              try {
+                choco install nsis -y --no-progress
+                if ($LASTEXITCODE -eq 0) {
+                  echo "✅ NSIS installed successfully"
+                  break
+                }
+              } catch {
+                Write-Host "⚠️ Attempt $attempt failed: $_"
+              }
+              if ($attempt -lt $maxAttempts) {
+                Write-Host "Retrying in 10 seconds..."
+                Start-Sleep -Seconds 10
+              }
+              $attempt++
+            }
+            if ($attempt -gt $maxAttempts) {
+              echo "❌ Failed to install NSIS after $maxAttempts attempts"
+              exit 1
+            }
+          }
+          # Install WiX
+          $maxAttempts = 5
+          $attempt = 1
+          while ($attempt -le $maxAttempts) {
+            try {
+              choco install wixtoolset -y --no-progress
+              if ($LASTEXITCODE -eq 0) {
+                echo "✅ WiX installed successfully"
+                break
+              }
+            } catch {
+              Write-Host "⚠️ Attempt $attempt failed: $_"
+            }
+            if ($attempt -lt $maxAttempts) {
+              Write-Host "Retrying in 10 seconds..."
+              Start-Sleep -Seconds 10
+            }
+            $attempt++
+          }
+          if ($attempt -gt $maxAttempts) {
+            echo "❌ Failed to install WiX after $maxAttempts attempts"
+            exit 1
+          }
       - name: Create Windows ICO icon
         working-directory: ./ui/desktop/src-tauri
         run: |
