@@ -37,8 +37,11 @@ This document provides step-by-step instructions for installing, using, and unin
 
 #### Step 2: Download APK
 ```bash
-# Download APK file
-wget https://github.com/ekwator/truth-training/releases/download/v1.0.0/truth-training-android.apk
+# Download APK file (Debug build for testing)
+wget https://github.com/ekwator/truth-training/releases/download/v1.0.0/app-debug.apk
+
+# Or download AAB file (Release build for Google Play)
+wget https://github.com/ekwator/truth-training/releases/download/v1.0.0/app-release.aab
 ```
 
 #### Step 3: Install APK
