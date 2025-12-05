@@ -13,13 +13,11 @@ permissions:
   actions: read
   contents: write
 
-env:
-  BRANCH_IGNORE: 'refs/heads/mai'
 
 jobs:
   test:
     runs-on: macos-15-intel
-    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && !startsWith(github.ref, 'refs/tags/') && (github.event_name != 'push' || github.ref != env.BRANCH_IGNORE) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && !startsWith(github.ref, 'refs/tags/') && (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
     env:
       ART_DIR: ${{ github.workspace }}/android-test-artifacts
       DISABLE_LOCAL_TESTS: 'false'
@@ -267,7 +265,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && (github.event_name != 'push' || github.ref != env.BRANCH_IGNORE) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')) && (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
     strategy:
       matrix:
         buildType: [debug, release]
@@ -390,7 +388,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')) && (github.event_name != 'push' || github.ref != env.BRANCH_IGNORE) }}
+    if: ${{ (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')) && (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
     
     steps:
       - name: Checkout code
