@@ -11,40 +11,16 @@ import { OverallSummary } from '@/pages/OverallSummary';
 import { TrainingResults } from '@/pages/TrainingResults';
 import { Logs } from '@/pages/Logs';
 import { Settings } from '@/pages/Settings';
-import { detectLocale, setLocale } from '@/i18n';
-import { ApiService } from '@/services/api';
+import { initializeLocale } from '@/i18n';
 
 export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
 
   // Initialize locale on app start
   useEffect(() => {
-    const initializeLocale = async () => {
-      try {
-        // Try to get locale from backend config
-        if (typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined) {
-          const config = await ApiService.getAppConfig();
-          if (config.locale) {
-            await setLocale(config.locale, false); // Don't persist, just set
-          } else {
-            // Fallback to detected locale
-            const detected = detectLocale();
-            await setLocale(detected, false);
-          }
-        } else {
-          // Web mode: use detected locale
-          const detected = detectLocale();
-          setLocale(detected, false);
-        }
-      } catch (error) {
-        console.error('Failed to initialize locale:', error);
-        // Fallback to detected locale
-        const detected = detectLocale();
-        setLocale(detected, false);
-      }
-    };
-
-    initializeLocale();
+    initializeLocale().catch((error) => {
+      console.error('Failed to initialize locale:', error);
+    });
   }, []);
 
   useEffect(() => {
