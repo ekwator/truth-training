@@ -71,7 +71,11 @@ This document provides a comprehensive functional specification for all Rust mod
 - `get_latest_progress_metrics(conn: &Connection) -> Result<Option<ProgressMetrics>, CoreError>` - Retrieves latest metrics
 
 #### Knowledge Base
-- `seed_knowledge_base(conn: &mut Connection, locale: &str) -> Result<(), CoreError>` - Seeds reference knowledge base (categories, formas, causes, develops, effects)
+- `seed_knowledge_base(conn: &mut Connection, locale: &str) -> Result<(), CoreError>` - Seeds reference knowledge base (categories, formas, causes, develops, effects) with locale-specific data
+  - **Supported locales:** `"ru"` (Russian) and `"en"` (English)
+  - **Locale-aware seeding:** Populates knowledge base tables (category, forma, cause, develop, effect, impact_type) with translated strings based on locale parameter
+  - **Default behavior:** If unsupported locale is provided, returns `CoreError::InvalidArg`
+  - **Usage:** Called during database initialization (`init_app`) and when locale changes to ensure knowledge base matches current UI language
 - `get_category(conn: &Connection, id: i64) -> Result<Option<Category>, CoreError>` - Retrieves category by ID
 - `list_categories(conn: &Connection) -> Result<Vec<Category>, CoreError>` - Lists all categories
 

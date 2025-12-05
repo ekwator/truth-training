@@ -37,6 +37,18 @@ This document provides a comprehensive functional specification for the Android 
 - **Performance:** Efficient database queries, lazy loading
 - **Battery Efficiency:** Optimized background sync intervals (15 minutes)
 
+### Localization Status
+- **Current Status:** **English-only (EN)**
+- **Language Switching:** Not implemented
+- **Translation Files:** Only `app/src/main/res/values/strings.xml` exists (no `values-ru/` directory)
+- **Parity Note:** Desktop UI supports RU/EN language switching with automatic knowledge base reseeding; Android localization parity is planned for a future release
+- **Recommendation:** Implement localization to match Desktop UI functionality:
+  - Add `values-ru/strings.xml` with Russian translations
+  - Add language selector in Settings screen
+  - Integrate locale-aware knowledge base seeding (Core supports `seed_knowledge_base` with locale parameter)
+  - Persist locale preference in SharedPreferences
+  - Trigger knowledge base reseed when locale changes
+
 ## Application Structure
 
 ### Application Class: `TruthTrainingApplication`
