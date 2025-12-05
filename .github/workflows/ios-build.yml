@@ -143,16 +143,28 @@ jobs:
           merge-multiple: false
           path: artifacts
         continue-on-error: true
-      - name: Check if artifacts exist
+      - name: Check and prepare artifacts
         run: |
-          if [ ! -d "artifacts" ] || [ -z "$(ls -A artifacts/truth_training.ipa 2>/dev/null)" ]; then
+          if [ ! -d "artifacts" ] || [ ! -d "artifacts/truth_training.ipa" ]; then
             echo "⚠️ No artifacts found to upload. Skipping release asset upload."
             echo "   This is expected if build job did not produce artifacts."
             exit 0
           fi
-          echo "✅ Artifacts found, proceeding with upload"
+          echo "📁 Artifact structure:"
+          find artifacts/truth_training.ipa -type f 2>/dev/null | head -20 || echo "No files found"
+          echo ""
+          # Create flat structure for release upload
+          mkdir -p release-assets
+          find artifacts/truth_training.ipa -type f -exec cp {} release-assets/ \; 2>/dev/null || true
+          echo "📦 Files prepared for upload:"
+          ls -lh release-assets/ 2>/dev/null || echo "No files in release-assets"
+          if [ -z "$(ls -A release-assets 2>/dev/null)" ]; then
+            echo "⚠️ No files to upload. Skipping release asset upload."
+            exit 0
+          fi
+          echo "✅ Artifacts prepared, proceeding with upload"
       - name: Publish Release (attach artifacts only)
-        if: success() || failure()
+        if: success()
         uses: softprops/action-gh-release@v1
         with:
           draft: false
@@ -160,6 +172,6 @@ jobs:
           fail_on_unmatched_files: false
           tag_name: ${{ github.ref_name }}
           files: |
-            artifacts/truth_training.ipa/**/*
+            release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
