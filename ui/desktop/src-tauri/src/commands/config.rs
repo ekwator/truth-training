@@ -144,8 +144,10 @@ pub async fn init_app(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, S
     let current_config = get_app_config().await.unwrap_or_else(|_| AppConfig::default());
     let locale = current_config.locale.clone();
     
-    // 2) Reset config to defaults (overwrite)
-    write_default_config(&AppConfig::default())?;
+    // 2) Reset config to defaults but preserve locale
+    let mut default_config = AppConfig::default();
+    default_config.locale = locale.clone();
+    write_default_config(&default_config)?;
 
     // 3) Reset database using the current connection with preserved locale
     {

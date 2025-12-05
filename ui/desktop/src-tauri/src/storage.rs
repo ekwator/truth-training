@@ -14,7 +14,7 @@ impl Db {
         std::fs::create_dir_all(&db_path).map_err(|e| e.to_string())?;
         db_path.push("truth_training.sqlite");
 
-        let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+        let mut conn = Connection::open(db_path).map_err(|e| e.to_string())?;
         conn.execute_batch(truth_storage::export_schema_sql())
             .map_err(|e| e.to_string())?;
         conn.execute_batch("PRAGMA journal_mode=WAL;")
@@ -23,8 +23,9 @@ impl Db {
         // Run migrations
         Self::run_migrations(&conn)?;
 
-        // Seed knowledge base if empty
-        Self::seed_knowledge_base(&conn)?;
+        // Seed knowledge base if empty (use default locale "en" on initialization)
+        // Locale-aware seeding will be done via reseed_knowledge_base command when locale changes
+        Self::seed_knowledge_base(&mut conn, "en")?;
 
         Ok(Db(Mutex::new(conn)))
     }
@@ -42,7 +43,15 @@ impl Db {
         Ok(())
     }
 
-    fn seed_knowledge_base(conn: &Connection) -> Result<(), String> {
+    fn seed_knowledge_base(conn: &mut Connection, locale: &str) -> Result<(), String> {
+        // Use locale-aware seeding from core library
+        truth_storage::seed_knowledge_base(conn, locale)
+            .map_err(|e| format!("Failed to seed knowledge base: {}", e))?;
+        Ok(())
+    }
+
+    #[allow(dead_code)] // Legacy method - kept for reference
+    fn seed_knowledge_base_legacy(conn: &Connection) -> Result<(), String> {
         // Seed categories
         let categories: &[(i64, &str, &str)] = &[
             (1, "Social", "Communication, reputation, trust"),

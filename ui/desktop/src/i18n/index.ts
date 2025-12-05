@@ -204,11 +204,26 @@ export const t = (key: string, locale?: string): string => {
 };
 
 // Locale detection
-export const detectLocale = (): string => {
+export const detectLocale = async (): Promise<string> => {
   // Check localStorage first
   const stored = localStorage.getItem('truth-locale');
   if (stored && supportedLocales.some(l => l.code === stored)) {
     return stored;
+  }
+  
+  // Check config from backend (if in Tauri)
+  if (typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const config = await invoke('get_app_config') as Record<string, any>;
+      if (config && config.locale && supportedLocales.some(l => l.code === config.locale)) {
+        // Sync localStorage with config
+        localStorage.setItem('truth-locale', config.locale);
+        return config.locale;
+      }
+    } catch (error) {
+      console.warn('Failed to read locale from config:', error);
+    }
   }
   
   // Check browser language
@@ -244,12 +259,22 @@ export const setLocale = async (locale: string, persistToBackend: boolean = true
           const { invoke } = await import('@tauri-apps/api/core');
           const config = await invoke('get_app_config') as Record<string, any>;
           if (config && typeof config === 'object') {
-            const updatedConfig = { ...config, locale };
+            // Ensure all required fields are present
+            const updatedConfig = {
+              mode: config.mode || 'core',
+              server_ip: config.server_ip || '127.0.0.1',
+              server_port: config.server_port || 8080,
+              nearby_sync: config.nearby_sync || false,
+              nearby_interval_ms: config.nearby_interval_ms || 3000,
+              locale: locale, // Always set locale
+            };
             await invoke('save_app_config', { config: updatedConfig });
             
             // Reseed knowledge base with new locale if locale changed
             if (previousLocale !== locale) {
               try {
+                // Wait a bit to ensure config is written to disk
+                await new Promise(resolve => setTimeout(resolve, 100));
                 await invoke('reseed_knowledge_base');
                 console.log('Knowledge base reseeded with locale:', locale);
               } catch (seedError) {
@@ -272,9 +297,44 @@ export const setLocale = async (locale: string, persistToBackend: boolean = true
   }
 };
 
-// Get current locale
+// Get current locale (synchronous version for immediate use)
 export const getCurrentLocale = (): string => {
-  return detectLocale();
+  // Check localStorage first (synchronous)
+  const stored = localStorage.getItem('truth-locale');
+  if (stored && supportedLocales.some(l => l.code === stored)) {
+    return stored;
+  }
+  
+  // Check browser language
+  const browserLang = navigator.language.split('-')[0];
+  const supported = supportedLocales.find(l => l.code === browserLang);
+  if (supported) {
+    return supported.code;
+  }
+  
+  // Default to English
+  return 'en';
+};
+
+// Initialize locale from config on app startup
+export const initializeLocale = async (): Promise<void> => {
+  if (typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const config = await invoke('get_app_config') as Record<string, any>;
+      if (config && config.locale && supportedLocales.some(l => l.code === config.locale)) {
+        const locale = config.locale;
+        localStorage.setItem('truth-locale', locale);
+        document.documentElement.lang = locale;
+        const localeInfo = supportedLocales.find(l => l.code === locale);
+        if (localeInfo) {
+          document.documentElement.dir = localeInfo.direction;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to initialize locale from config:', error);
+    }
+  }
 };
 
 // Format numbers based on locale
