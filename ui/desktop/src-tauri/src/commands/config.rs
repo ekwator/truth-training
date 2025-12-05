@@ -272,6 +272,7 @@ fn reset_database(conn: &mut Connection, locale: &str) -> Result<(), String> {
 }
 
 /// Reusable helper for integration tests to exercise the reset logic.
+#[cfg(test)]
 pub fn reset_database_for_tests(conn: &mut Connection) -> Result<(), String> {
     reset_database(conn, "en")
 }

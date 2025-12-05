@@ -340,6 +340,7 @@ jobs:
           node-version: '18'
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Tauri CLI via npm
+        shell: bash
         run: |
           # Retry logic for npm registry issues
           for i in {1..5}; do

@@ -11,6 +11,8 @@ use log::{info, warn};
 use serde::{Deserialize, Serialize};
 
 /// Discovery event metrics for observability.
+/// Reserved for future structured logging implementation.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveryMetrics {
     /// Total nodes discovered via LAN/Wi-Fi multicast

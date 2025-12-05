@@ -13,6 +13,8 @@ Unlike LoRa-based mesh systems such as **Meshtastic**, Truth Training builds a *
 
 Originally conceived to combat fraud, Truth Training evolves into a **self-learning immunity against falsehood** — distinguishing truth from deception through context, correlation, and collective resonance.
 
+And beyond communication, Truth Training enables **teamwork without a team lead** — a coordination model where decisions arise from **collective consensus**, not hierarchy, creating a self-organizing environment for groups and projects.
+
 ---
 
 ## Release Surfaces
