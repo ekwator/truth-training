@@ -77,11 +77,14 @@ export const defaultTranslations: Translation = {
     subtitle: 'Collective Intelligence Dashboard',
     totalEvents: 'Total Events',
     activeEvents: 'Active Events',
+    detectedEvents: 'Detected Events',
     withConsensus: 'With Consensus',
     participants: 'Participants',
     recentEvents: 'Recent Events',
     noEvents: 'No events yet',
-    noEventsDescription: 'Get started by creating your first event.'
+    noEventsDescription: 'Get started by creating your first event.',
+    noData: 'No data',
+    errorLoading: 'Error Loading Dashboard'
   },
   events: {
     title: 'Events',
@@ -243,6 +246,17 @@ export const setLocale = async (locale: string, persistToBackend: boolean = true
           if (config && typeof config === 'object') {
             const updatedConfig = { ...config, locale };
             await invoke('save_app_config', { config: updatedConfig });
+            
+            // Reseed knowledge base with new locale if locale changed
+            if (previousLocale !== locale) {
+              try {
+                await invoke('reseed_knowledge_base');
+                console.log('Knowledge base reseeded with locale:', locale);
+              } catch (seedError) {
+                console.warn('Failed to reseed knowledge base:', seedError);
+                // Don't throw - locale change succeeded, reseed is optional
+              }
+            }
           }
         }
       } catch (error) {

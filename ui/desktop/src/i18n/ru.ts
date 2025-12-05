@@ -25,11 +25,14 @@ export const ruTranslations: Translation = {
     subtitle: 'Панель коллективного интеллекта',
     totalEvents: 'Всего событий',
     activeEvents: 'Активных событий',
+    detectedEvents: 'Обнаруженных событий',
     withConsensus: 'С консенсусом',
     participants: 'Участники',
     recentEvents: 'Недавние события',
     noEvents: 'Событий пока нет',
-    noEventsDescription: 'Начните с создания первого события.'
+    noEventsDescription: 'Начните с создания первого события.',
+    noData: 'Нет данных',
+    errorLoading: 'Ошибка загрузки панели управления'
   },
   events: {
     title: 'События',

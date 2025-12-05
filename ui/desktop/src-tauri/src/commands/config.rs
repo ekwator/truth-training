@@ -140,20 +140,61 @@ pub async fn test_http_connection(ip: String, port: u16) -> Result<CoreStatus, S
 
 #[command]
 pub async fn init_app(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, String> {
-    // 1) Reset config to defaults (overwrite)
+    // 1) Read current config to preserve locale setting
+    let current_config = get_app_config().await.unwrap_or_else(|_| AppConfig::default());
+    let locale = current_config.locale.clone();
+    
+    // 2) Reset config to defaults (overwrite)
     write_default_config(&AppConfig::default())?;
 
-    // 2) Reset database using the current connection
+    // 3) Reset database using the current connection with preserved locale
     {
         let mut conn = db.0.lock();
-        reset_database(&mut conn)?;
+        reset_database(&mut conn, &locale)?;
     }
 
-    info!("init_app completed successfully: dropped legacy tables, recreated Truth schema, and seeded knowledge base");
+    info!("init_app completed successfully: dropped legacy tables, recreated Truth schema, and seeded knowledge base with locale: {}", locale);
 
     Ok(CoreStatus {
         ok: true,
-        message: "Initialized config and database".to_string(),
+        message: format!("Initialized config and database (locale: {})", locale),
+    })
+}
+
+#[command]
+pub async fn reseed_knowledge_base(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, String> {
+    // Get current locale from config
+    let config = get_app_config().await.unwrap_or_else(|_| AppConfig::default());
+    let locale = config.locale.clone();
+    
+    // Clear existing knowledge base data and reseed with current locale
+    {
+        let mut conn = db.0.lock();
+        
+        // Clear existing data
+        conn.execute("DELETE FROM category", [])
+            .map_err(|e| format!("Failed to clear categories: {}", e))?;
+        conn.execute("DELETE FROM cause", [])
+            .map_err(|e| format!("Failed to clear causes: {}", e))?;
+        conn.execute("DELETE FROM develop", [])
+            .map_err(|e| format!("Failed to clear develops: {}", e))?;
+        conn.execute("DELETE FROM effect", [])
+            .map_err(|e| format!("Failed to clear effects: {}", e))?;
+        conn.execute("DELETE FROM forma", [])
+            .map_err(|e| format!("Failed to clear formas: {}", e))?;
+        conn.execute("DELETE FROM impact_type", [])
+            .map_err(|e| format!("Failed to clear impact_types: {}", e))?;
+        
+        // Reseed with current locale
+        truth_storage::seed_knowledge_base(&mut conn, &locale)
+            .map_err(|e| format!("Failed to reseed knowledge base: {}", e))?;
+    }
+    
+    info!("Knowledge base reseeded with locale: {}", locale);
+    
+    Ok(CoreStatus {
+        ok: true,
+        message: format!("Knowledge base reseeded with locale: {}", locale),
     })
 }
 
@@ -201,7 +242,7 @@ fn write_default_config(config: &AppConfig) -> Result<(), String> {
 
 const LEGACY_TABLES: &[&str] = &["events", "impacts", "summaries", "judgments", "logs"];
 
-fn reset_database(conn: &mut Connection) -> Result<(), String> {
+fn reset_database(conn: &mut Connection, locale: &str) -> Result<(), String> {
     conn.execute_batch("PRAGMA foreign_keys = OFF;")
         .map_err(|e| format!("Failed to disable foreign keys: {}", e))?;
 
@@ -222,7 +263,7 @@ fn reset_database(conn: &mut Connection) -> Result<(), String> {
 
     truth_storage::init_db(conn)
         .map_err(|e| format!("Failed to initialize Truth schema: {}", e))?;
-    truth_storage::seed_knowledge_base(conn, "en")
+    truth_storage::seed_knowledge_base(conn, locale)
         .map_err(|e| format!("Failed to seed knowledge base: {}", e))?;
     truth_storage::assert_no_legacy_tables(conn)
         .map_err(|e| format!("Legacy tables still present: {}", e))?;
@@ -232,7 +273,7 @@ fn reset_database(conn: &mut Connection) -> Result<(), String> {
 
 /// Reusable helper for integration tests to exercise the reset logic.
 pub fn reset_database_for_tests(conn: &mut Connection) -> Result<(), String> {
-    reset_database(conn)
+    reset_database(conn, "en")
 }
 
 #[cfg(test)]

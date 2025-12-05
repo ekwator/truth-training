@@ -10,7 +10,7 @@ mod storage;
 pub const LOGS_PAGE_SIZE: usize = 35;
 
 use commands::config::{
-    core_status, get_app_config, init_app, save_app_config, test_http_connection,
+    core_status, get_app_config, init_app, reseed_knowledge_base, save_app_config, test_http_connection,
 };
 use commands::contexts::list_contexts;
 use commands::events::{create_event_fast, get_event_fast, health_check_core, list_events_fast};
@@ -40,6 +40,7 @@ fn main() {
             core_status,
             test_http_connection,
             init_app,
+            reseed_knowledge_base,
             create_event_fast,
             get_event_fast,
             health_check_core,
