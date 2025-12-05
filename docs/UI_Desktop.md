@@ -23,7 +23,6 @@ This document summarizes the Desktop UI (Tauri) implementation with text-only in
 - **Impacts**: `id`, `event_id`, `impact_level` (1-5), `notes`, `created_at`
 - **Summaries**: `id`, `event_id`, `summary_text`, `recommendations`, `updated_at` (1:1 with events)
 - **Judgments**: `id`, `event_id`, `assessment` ('true'|'false'|'uncertain'), `confidence_level` (0-1), `reasoning`, `submitted_at`
-- **Logs**: `id`, `timestamp`, `source`, `level`, `message` (paginated at 35 lines/page)
 
 ### Tauri Commands
 - **Events**: `create_event_fast`, `get_event_fast`, `list_events_fast` (with pagination)
@@ -31,13 +30,12 @@ This document summarizes the Desktop UI (Tauri) implementation with text-only in
 - **Judgments**: `submit_judgment_fast`, `judgments_list_fast`, `get_judgment_stats`
 - **Knowledge Base**: `knowledge_base_list` (parses [Data_Schema.md](Data_Schema.md))
 - **Context Templates (v1.0.0)**: `list_contexts`, `get_context_by_name`, `create_context`, `match_context`, `create_context_from_event`
-- **Logs**: `list_logs`, `clear_logs` (35 lines/page pagination)
 - **Summary**: `get_overall_metrics`, `list_event_rows`, `export_overall_summary_txt`
 - **Configuration**: `get_app_config`, `save_app_config`, `core_status`, `test_http_connection`
 
 ### Navigation & Shortcuts
-- **Top Menu Bar**: [Home] | [New Event] | [Context Editor] | [Event Summary] | [Overall Summary] | [Training Results] | [Logs] | [Settings]
-- **Keyboard Shortcuts**: Alt+1 (Home), Alt+2 (New Event), Alt+3 (Context Editor), Alt+4 (Event Summary), Alt+5 (Overall Summary), Alt+6 (Training Results), Alt+7 (Logs), Alt+8 (Settings)
+- **Top Menu Bar**: [Home] | [New Event] | [Context Editor] | [Event Summary] | [Overall Summary] | [Training Results] | [Settings]
+- **Keyboard Shortcuts**: Alt+1 (Home), Alt+2 (New Event), Alt+3 (Context Editor), Alt+4 (Event Summary), Alt+5 (Overall Summary), Alt+6 (Training Results), Alt+8 (Settings)
 - **Text-Only Design**: No icons, emojis, or graphical assets - pure text and structured layout
 
 ### Context Editor Screen (v1.0.0)

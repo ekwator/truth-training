@@ -145,6 +145,8 @@ Android implementation of the cross-platform node discovery system, fully compat
 
 ## Cross-Platform Compatibility
 
+**Reference**: For detailed schema documentation, see [Discovery Nodes Database Schema](Discovery_Nodes_Schema.md) and [Data Schema](Data_Schema.md).
+
 ### ✅ Schema Parity
 - Identical SQLite DDL across Desktop/CLI/Android
 - Same indices and constraints
@@ -281,6 +283,8 @@ For cross-device discovery tests:
 
 ## References
 
+- **Discovery Nodes Database Schema**: [docs/Discovery_Nodes_Schema.md](Discovery_Nodes_Schema.md) - Detailed schema for `discovery_nodes.sqlite` database
+- **Data Schema**: [docs/Data_Schema.md](Data_Schema.md) - Main application database schema
 - **Cross-Platform Compatibility**: [docs/cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md)
 - **Post-Integration Hardening**: [docs/post_integration_hardening.md](post_integration_hardening.md)
 - **Rust Implementation**: `src/p2p/node.rs`

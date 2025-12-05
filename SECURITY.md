@@ -1,5 +1,28 @@
 # 🔐 Security Policy
 
+## 🔒 Privacy and Confidentiality
+
+**Truth Training is built on the fundamental principle of confidentiality**: **No user actions are logged or persistently stored**. This is a core architectural requirement enforced across all platforms.
+
+### Privacy Guarantees
+
+- ✅ **No User Action Logging**: The application does not track, record, or save any user interactions, navigation patterns, clicks, or behavioral data
+- ✅ **No Persistent User Tracking**: No identifiers, session data, or behavioral analytics are stored
+- ✅ **No Telemetry Collection**: No user activity is transmitted or stored
+- ✅ **Ephemeral Logs Only**: Only system-level logs (errors, sync operations) are temporarily stored for debugging purposes and are not linked to user actions
+- ✅ **No User-Identifiable Data**: All stored data (events, judgments, contexts) is anonymous and cannot be traced back to individual users
+
+### Enforcement
+
+This confidentiality principle is:
+- **Architecturally enforced**: Database schemas do not include tables for user action logging
+- **Code-reviewed**: All contributions must maintain this principle
+- **Platform-wide**: Applied consistently across Desktop UI, Android, Server, and CLI
+
+**Violations of this principle will result in PR rejection.**
+
+---
+
 ## 🧩 Supported Versions
 
 Truth Training is currently under **active development** and published as an open-source experimental project.  

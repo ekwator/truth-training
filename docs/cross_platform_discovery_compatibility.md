@@ -98,6 +98,8 @@ Both formats are supported. Missing fields use defaults:
 **Platforms**: Desktop (rusqlite), CLI (rusqlite), Android (Room)  
 **Table**: `nodes`
 
+**Note**: For detailed schema documentation of the `discovery_nodes.sqlite` database (used by Desktop UI discovery worker), see [Discovery Nodes Database Schema](Discovery_Nodes_Schema.md). The main application database schema is documented in [Data Schema](Data_Schema.md).
+
 ```sql
 CREATE TABLE IF NOT EXISTS nodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -427,6 +429,8 @@ All Android integration tasks have been fully implemented:
 
 ## References
 
+- [Discovery Nodes Database Schema](Discovery_Nodes_Schema.md) - Detailed schema for `discovery_nodes.sqlite` database
+- [Data Schema](Data_Schema.md) - Main application database schema
 - [specs/008-specify-md/data-model.md](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/data-model.md) - Canonical schema
 - [specs/008-specify-md/contracts/nodes-api.yaml](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/contracts/nodes-api.yaml) - API specification
 - `src/p2p/node.rs` - Rust discovery implementation

@@ -14,26 +14,6 @@ pub fn blend_trust(local_score: f32, remote_score: f32) -> f32 {
     blended.clamp(-1.0, 1.0)
 }
 
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn propagation_priority_blend_from_trust_and_activity() {
-        // Прокси-расчёт: trust 0.5 (нормализованный 0.75), activity 0.0 → priority = 0.75*0.8 + 0.0*0.2 = 0.6
-        // Эта проверка валидирует веса смешивания (0.8/0.2) на уровне формулы.
-        let trust = 0.5f32;
-        let trust_norm = ((trust + 1.0) / 2.0).clamp(0.0, 1.0);
-        let recent_activity = 0.0f32;
-        let priority = trust_norm * 0.8 + recent_activity * 0.2;
-        assert!((priority - 0.6).abs() < 1e-6);
-
-        // При высокой активности priority растёт на 20% вклада
-        let recent_activity = 1.0f32;
-        let priority2 = trust_norm * 0.8 + recent_activity * 0.2;
-        assert!(priority2 > priority);
-    }
-}
-
 /// Смешивание качества между локальным и удалённым значениями (0..1)
 pub fn blend_quality(local_quality: f32, remote_quality: f32) -> f32 {
     let blended = local_quality * BLEND_LOCAL_WEIGHT + remote_quality * BLEND_REMOTE_WEIGHT;
@@ -177,4 +157,24 @@ pub fn propagate_from_remote(
     }
 
     Ok(diffs)
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn propagation_priority_blend_from_trust_and_activity() {
+        // Прокси-расчёт: trust 0.5 (нормализованный 0.75), activity 0.0 → priority = 0.75*0.8 + 0.0*0.2 = 0.6
+        // Эта проверка валидирует веса смешивания (0.8/0.2) на уровне формулы.
+        let trust = 0.5f32;
+        let trust_norm = ((trust + 1.0) / 2.0).clamp(0.0, 1.0);
+        let recent_activity = 0.0f32;
+        let priority = trust_norm * 0.8 + recent_activity * 0.2;
+        assert!((priority - 0.6).abs() < 1e-6);
+
+        // При высокой активности priority растёт на 20% вклада
+        let recent_activity = 1.0f32;
+        let priority2 = trust_norm * 0.8 + recent_activity * 0.2;
+        assert!(priority2 > priority);
+    }
 }

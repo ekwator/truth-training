@@ -14,20 +14,75 @@ impl Db {
         std::fs::create_dir_all(&db_path).map_err(|e| e.to_string())?;
         db_path.push("truth_training.sqlite");
 
-        let mut conn = Connection::open(db_path).map_err(|e| e.to_string())?;
-        conn.execute_batch(truth_storage::export_schema_sql())
-            .map_err(|e| e.to_string())?;
-        conn.execute_batch("PRAGMA journal_mode=WAL;")
-            .map_err(|e| e.to_string())?;
+        // Check if database already exists
+        let db_exists = db_path.exists();
 
-        // Run migrations
-        Self::run_migrations(&conn)?;
+        let mut conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
 
-        // Seed knowledge base if empty (use default locale "en" on initialization)
-        // Locale-aware seeding will be done via reseed_knowledge_base command when locale changes
-        Self::seed_knowledge_base(&mut conn, "en")?;
+        if !db_exists {
+            // New database: initialize schema
+            conn.execute_batch(truth_storage::export_schema_sql())
+                .map_err(|e| e.to_string())?;
+            conn.execute_batch("PRAGMA journal_mode=WAL;")
+                .map_err(|e| e.to_string())?;
+
+            // Run migrations
+            Self::run_migrations(&conn)?;
+
+            // Try to get locale from config, fallback to "en"
+            let locale = Self::get_locale_from_config().unwrap_or_else(|_| {
+                log::warn!("Failed to read locale from config during DB init, using default 'en'");
+                "en".to_string()
+            });
+
+            log::info!("Initializing new database with locale: {}", locale);
+
+            // Seed knowledge base with locale from config
+            Self::seed_knowledge_base(&mut conn, &locale)?;
+        } else {
+            // Existing database: ensure schema is up to date
+            conn.execute_batch("PRAGMA journal_mode=WAL;")
+                .map_err(|e| e.to_string())?;
+            Self::run_migrations(&conn)?;
+        }
 
         Ok(Db(Mutex::new(conn)))
+    }
+
+    fn get_locale_from_config() -> Result<String, String> {
+        // Read config file directly (sync approach)
+        use dirs;
+        use serde_json;
+        use std::fs;
+
+        let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
+        let config_path = home_dir.join(".truth-training").join("config.json");
+
+        if !config_path.exists() {
+            log::info!("Config file does not exist, using default locale 'en'");
+            return Ok("en".to_string());
+        }
+
+        let content = fs::read_to_string(&config_path)
+            .map_err(|e| format!("Failed to read config: {}", e))?;
+
+        let config: serde_json::Value =
+            serde_json::from_str(&content).map_err(|e| format!("Failed to parse config: {}", e))?;
+
+        let locale = config
+            .get("locale")
+            .and_then(|v| v.as_str())
+            .unwrap_or("en")
+            .to_string();
+
+        // Validate locale
+        if !["en", "ru"].contains(&locale.as_str()) {
+            log::warn!("Invalid locale '{}' in config, using default 'en'", locale);
+            return Ok("en".to_string());
+        }
+
+        log::info!("Read locale '{}' from config file", locale);
+        Ok(locale)
     }
 
     fn run_migrations(conn: &Connection) -> Result<(), String> {
@@ -50,231 +105,6 @@ impl Db {
         Ok(())
     }
 
-    #[allow(dead_code)] // Legacy method - kept for reference
-    fn seed_knowledge_base_legacy(conn: &Connection) -> Result<(), String> {
-        // Seed categories
-        let categories: &[(i64, &str, &str)] = &[
-            (1, "Social", "Communication, reputation, trust"),
-            (2, "Financial", "Money, property, contracts"),
-            (3, "Political", "State, treaties, international relations"),
-            (4, "Legal", "Law, compliance, courts"),
-            (5, "Personal", "Self-assessment, inner decisions"),
-            (6, "Organizational", "Teams, companies, processes"),
-            (7, "Media", "Information, press, platforms"),
-            (8, "Technological", "IT systems, data, security"),
-        ];
-        for (id, name, desc) in categories {
-            conn.execute(
-                "INSERT OR IGNORE INTO category (id, name, description) VALUES (?1, ?2, ?3)",
-                params![id, name, desc],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-
-        // Seed causes
-        let causes: &[(i64, &str, i64, &str)] = &[
-            (1, "Fear", 0, "Avoidance of punishment or blame"),
-            (2, "Benefit", 0, "Material/personal interest"),
-            (3, "Mercy", 1, "Compassion, care for others"),
-            (4, "Ignorance", 0, "Lack of knowledge, mistakes"),
-            (5, "Duty", 1, "Obligation, responsibility"),
-            (6, "Curiosity", 1, "Search for truth, inquiry"),
-            (7, "Pressure", 0, "Coercion, conformism"),
-            (8, "Care", 1, "Protecting another's good"),
-        ];
-        for (id, name, q, desc) in causes {
-            conn.execute(
-                "INSERT OR IGNORE INTO cause (id, name, quality, description) VALUES (?1, ?2, ?3, ?4)",
-                params![id, name, q, desc],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-
-        // Seed develops
-        let develops: &[(i64, &str, i64, &str)] = &[
-            (1, "Concealment", 0, "Intentional omission/withholding"),
-            (2, "Manipulation", 0, "Distortion, pressure, context switch"),
-            (3, "Transparency", 1, "Openness, factual availability"),
-            (4, "Verification", 1, "Cross-checking sources"),
-            (5, "Exaggeration", 0, "Overstatement, false salience"),
-            (6, "Confession", 1, "Owning mistakes, remediation"),
-        ];
-        for (id, name, q, desc) in develops {
-            conn.execute(
-                "INSERT OR IGNORE INTO develop (id, name, quality, description) VALUES (?1, ?2, ?3, ?4)",
-                params![id, name, q, desc],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-
-        // Seed effects
-        let effects: &[(i64, &str, i64, &str)] = &[
-            (1, "Distrust", 0, "Erodes trust and ties"),
-            (2, "Trust", 1, "Strengthens cooperation"),
-            (3, "Conflict", 0, "Escalation, confrontation"),
-            (4, "Reconciliation", 1, "Reduced tension, alignment"),
-            (5, "Sanctions", 0, "Legal/reputational penalties"),
-            (6, "Learning", 1, "Competence growth, insights"),
-            (7, "Reputation Loss", 0, "Status decrease"),
-            (8, "Reputation Gain", 1, "Status increase"),
-        ];
-        for (id, name, q, desc) in effects {
-            conn.execute(
-                "INSERT OR IGNORE INTO effect (id, name, quality, description) VALUES (?1, ?2, ?3, ?4)",
-                params![id, name, q, desc],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-
-        // Seed formas
-        let formas: &[(i64, &str, i64, &str)] = &[
-            (1, "Deception", 0, "Conscious distortion of reality"),
-            (2, "Truth", 1, "Conformance to facts and checks"),
-            (3, "Self-deception", 0, "Distortion to reassure oneself"),
-            (4, "Half-truth", 0, "Partial truth with distortions"),
-            (5, "Silence", 0, "Withholding significant info"),
-            (6, "Openness", 1, "Proactive disclosure of facts"),
-        ];
-        for (id, name, q, desc) in formas {
-            conn.execute(
-                "INSERT OR IGNORE INTO forma (id, name, quality, description) VALUES (?1, ?2, ?3, ?4)",
-                params![id, name, q, desc],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-
-        // Seed impact_types
-        let impact_types: &[(i64, &str, &str)] = &[
-            (1, "Reputation", "Social capital, trust"),
-            (2, "Finance", "Money, assets, liabilities"),
-            (3, "Emotions", "Stress, confidence, motivation"),
-            (4, "Law", "Legal risks, sanctions"),
-            (5, "Health", "Physical/mental condition"),
-            (6, "Time", "Time losses/gains"),
-        ];
-        for (id, name, desc) in impact_types {
-            conn.execute(
-                "INSERT OR IGNORE INTO impact_type (id, name, description) VALUES (?1, ?2, ?3)",
-                params![id, name, desc],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-
-        // Seed context templates
-        let contexts: &[(i64, &str, i64, i64, i64, i64, i64, &str)] = &[
-            (
-                1,
-                "Interpersonal: openness",
-                1,
-                2,
-                5,
-                3,
-                2,
-                "Honest dialogue, strengthening trust",
-            ),
-            (
-                2,
-                "Interpersonal: concealment",
-                1,
-                1,
-                1,
-                1,
-                1,
-                "Withholding a significant fact, trust erosion",
-            ),
-            (
-                3,
-                "Finance: fraud",
-                2,
-                1,
-                2,
-                2,
-                5,
-                "Deception for profit, legal consequences",
-            ),
-            (
-                4,
-                "Finance: transparent reporting",
-                2,
-                2,
-                5,
-                4,
-                8,
-                "Verifiable facts, reputation growth",
-            ),
-            (
-                5,
-                "Politics: treaty breach",
-                3,
-                1,
-                2,
-                1,
-                1,
-                "Hidden violations, loss of trust",
-            ),
-            (
-                6,
-                "Politics: treaty compliance",
-                3,
-                2,
-                5,
-                4,
-                2,
-                "Confirmed execution of obligations",
-            ),
-            (
-                7,
-                "Organization: admitting a mistake",
-                6,
-                2,
-                5,
-                6,
-                6,
-                "Admission and correction improve learning",
-            ),
-            (
-                8,
-                "Media: disinformation",
-                7,
-                1,
-                7,
-                2,
-                3,
-                "Manipulations leading to conflict",
-            ),
-        ];
-        for (id, name, cat, forma, cause, develop, effect, desc) in contexts {
-            conn.execute(
-                "INSERT OR IGNORE INTO context (id, name, category_id, forma_id, cause_id, develop_id, effect_id, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-                params![id, name, cat, forma, cause, develop, effect, desc],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-
-        Ok(())
-    }
-
-    #[allow(dead_code)] // Public API method - may be called by external code
-    pub fn insert_event(
-        &self,
-        id: &str,
-        title: &str,
-        description: Option<&str>,
-        context_id: &str,
-        start_date: Option<&str>,
-        end_date: Option<&str>,
-        created_at: &str,
-        status: &str,
-    ) -> Result<(), String> {
-        let conn = self.0.lock();
-        conn.execute(
-            "INSERT INTO events (id, title, description, context_id, start_date, end_date, created_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            params![id, title, description, context_id, start_date, end_date, created_at, status],
-        )
-        .map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
     pub fn insert_impact(
         &self,
         id: &str,
@@ -287,24 +117,6 @@ impl Db {
         conn.execute(
             "INSERT INTO impacts (id, event_id, impact_level, notes, created_at) VALUES (?, ?, ?, ?, ?)",
             params![id, event_id, impact_level, notes, created_at],
-        )
-        .map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    #[allow(dead_code)]
-    pub fn insert_or_update_summary(
-        &self,
-        id: &str,
-        event_id: &str,
-        summary_text: Option<&str>,
-        recommendations: Option<&str>,
-        updated_at: &str,
-    ) -> Result<(), String> {
-        let conn = self.0.lock();
-        conn.execute(
-            "INSERT OR REPLACE INTO summaries (id, event_id, summary_text, recommendations, updated_at) VALUES (?, ?, ?, ?, ?)",
-            params![id, event_id, summary_text, recommendations, updated_at],
         )
         .map_err(|e| e.to_string())?;
         Ok(())
@@ -409,41 +221,6 @@ impl Db {
         Ok((t_true, t_false, t_uncertain, avg_conf, last_submitted))
     }
 
-    pub fn list_logs(
-        &self,
-        page: i64,
-        page_size: i64,
-    ) -> Result<(Vec<(String, String, String, String, String)>, i64), String> {
-        let conn = self.0.lock();
-        let total: i64 = conn
-            .query_row("SELECT COUNT(1) FROM logs", [], |row| row.get(0))
-            .map_err(|e| e.to_string())?;
-        let offset = (page.max(1) - 1) * page_size.max(1);
-        let mut stmt = conn
-            .prepare("SELECT id, timestamp, source, level, message FROM logs ORDER BY datetime(timestamp) DESC LIMIT ?1 OFFSET ?2")
-            .map_err(|e| e.to_string())?;
-        let mut rows = stmt
-            .query(params![page_size, offset])
-            .map_err(|e| e.to_string())?;
-        let mut items = Vec::new();
-        while let Some(row) = rows.next().map_err(|e| e.to_string())? {
-            items.push((
-                row.get(0).map_err(|e| e.to_string())?,
-                row.get(1).map_err(|e| e.to_string())?,
-                row.get(2).map_err(|e| e.to_string())?,
-                row.get(3).map_err(|e| e.to_string())?,
-                row.get(4).map_err(|e| e.to_string())?,
-            ));
-        }
-        Ok((items, total))
-    }
-
-    pub fn clear_logs(&self) -> Result<(), String> {
-        let conn = self.0.lock();
-        conn.execute("DELETE FROM logs", [])
-            .map_err(|e| e.to_string())?;
-        Ok(())
-    }
 
     pub fn get_overall_metrics(&self) -> Result<(i64, f64, Option<String>), String> {
         let conn = self.0.lock();

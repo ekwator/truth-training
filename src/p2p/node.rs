@@ -594,11 +594,18 @@ pub async fn run_http_reachability_checks(
             duration_ms
         );
 
-        let mut patch = NodePatch::default();
-        patch.reachable = Some(reachable);
-        if reachable {
-            patch.last_seen = Some(Utc::now().timestamp());
-        }
+        let patch = if reachable {
+            NodePatch {
+                reachable: Some(reachable),
+                last_seen: Some(Utc::now().timestamp()),
+                ..Default::default()
+            }
+        } else {
+            NodePatch {
+                reachable: Some(reachable),
+                ..Default::default()
+            }
+        };
         let conn = conn_data.lock().await;
         if let Err(e) = core_lib::storage::update_node(&conn, node.id, &patch) {
             warn!(

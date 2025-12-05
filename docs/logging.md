@@ -6,101 +6,54 @@ This document describes how logging works in Truth Training, where log files are
 
 Truth Training uses different logging mechanisms depending on the platform:
 
-- **Desktop UI**: Logs stored in SQLite database (`logs` table)
+- **Desktop UI**: Console logging (browser dev tools), Rust backend logging (env_logger), no persistent log storage in database
 - **Android**: System Logcat
 - **Server**: Structured logging via `env_logger` (Rust) with `RUST_LOG` environment variable
-- **CLI**: Logs stored in SQLite database, accessible via `truthctl logs` commands
+- **CLI**: Logs stored in SQLite database (`sync_logs` table), accessible via `truthctl logs` commands
 
 ## Desktop UI Logging
 
 ### Location
 
-Desktop UI stores logs in the SQLite database alongside application data:
+Desktop UI does not store logs in the database. Logging is handled via:
 
-- **Linux**: `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite` (table: `logs`)
-- **macOS**: `~/Library/Application Support/TruthTraining/truth_training.sqlite` (table: `logs`)
-- **Windows**: `%APPDATA%\TruthTraining\truth_training.sqlite` (table: `logs`)
+- **Browser Console**: Frontend logs (React/TypeScript) visible in browser DevTools
+- **Rust Backend**: Backend logs via `env_logger` (Rust), visible in terminal/console where the app is launched
+- **No Persistent Storage**: Desktop UI does not maintain a `logs` table in the database
+
+**Note**: Desktop UI does not maintain a Logs screen or persistent log storage. The application follows the confidentiality principle: no user actions are logged or stored.
 
 ### Reading Logs
 
-#### Via UI
+#### Via Browser DevTools (Frontend)
 
 1. Open the Desktop application
-2. Navigate to **Logs** page in the navigation menu
-3. Logs are displayed in a paginated table (35 entries per page by default)
-4. Each log entry shows:
-   - **ID**: Unique identifier
-   - **Timestamp**: When the log was created
-   - **Source**: Component that generated the log
-   - **Level**: Log level (INFO, WARN, ERROR, DEBUG)
-   - **Message**: Log message content
+2. Open browser DevTools (F12 or right-click → Inspect)
+3. Navigate to **Console** tab
+4. View frontend logs (React components, API calls, errors)
 
-#### Via Tauri Command (Developer)
+#### Via Terminal/Console (Backend)
 
-```bash
-# Using Tauri CLI (if available)
-tauri invoke list_logs --page 1
-```
+**Note**: When launching the application from the console, no log messages appear in it. Rust backend logs may not be displayed in the console when running through Tauri. To view logs, use browser DevTools (see "Via Browser DevTools" section above).
 
-#### Via SQLite (Direct Access)
+When running the Desktop UI from terminal, Rust backend logs may not be displayed directly. To view logs:
 
 ```bash
-# Linux/macOS
-sqlite3 ~/.local/share/TruthTraining/truth_training.sqlite \
-  "SELECT id, timestamp, source, level, message FROM logs ORDER BY datetime(timestamp) DESC LIMIT 50;"
-
-# macOS
-sqlite3 ~/Library/Application\ Support/TruthTraining/truth_training.sqlite \
-  "SELECT id, timestamp, source, level, message FROM logs ORDER BY datetime(timestamp) DESC LIMIT 50;"
-
-# Windows (PowerShell)
-sqlite3 "$env:APPDATA\TruthTraining\truth_training.sqlite" \
-  "SELECT id, timestamp, source, level, message FROM logs ORDER BY datetime(timestamp) DESC LIMIT 50;"
+# Use RUST_LOG environment variable to control log levels (may not display in console):
+RUST_LOG=info ./target/release/truth-ui-desktop
+# or
+RUST_LOG=debug ./target/release/truth-ui-desktop
 ```
+
+**Alternative**: Open browser DevTools (F12) to view frontend logs and any backend logs forwarded to the console.
 
 ### Clearing Logs
 
-#### Via UI
-
-1. Open the Desktop application
-2. Navigate to **Logs** page
-3. Click the **Clear** button
-4. Confirm the action
-
-#### Via Tauri Command (Developer)
-
-```bash
-tauri invoke clear_logs
-```
-
-#### Via SQLite (Direct Access)
-
-```bash
-# Linux/macOS
-sqlite3 ~/.local/share/TruthTraining/truth_training.sqlite "DELETE FROM logs;"
-
-# macOS
-sqlite3 ~/Library/Application\ Support/TruthTraining/truth_training.sqlite "DELETE FROM logs;"
-
-# Windows (PowerShell)
-sqlite3 "$env:APPDATA\TruthTraining\truth_training.sqlite" "DELETE FROM logs;"
-```
-
-### Log Structure
-
-The `logs` table schema:
-
-```sql
-CREATE TABLE logs (
-    id TEXT PRIMARY KEY,
-    timestamp TEXT NOT NULL,
-    source TEXT NOT NULL,
-    level TEXT NOT NULL,
-    message TEXT NOT NULL
-);
-```
+**Note**: Since logs are not stored in the database, there is no persistent log data to clear. Console logs are ephemeral and cleared when the application is restarted. Desktop UI follows the confidentiality principle: no user actions are logged or stored.
 
 ## Android Logging
+
+**Note**: This logging should work based on Android system capabilities. The described methods are based on standard Android Logcat features and should work on physical devices and emulators.
 
 ### Location
 
@@ -169,6 +122,8 @@ Note: This only clears the buffer, not persistent logs. Android system logs are 
 
 ## Server Logging
 
+**Note**: This is not configured, the Server application has not been tested yet. The described methods are based on the planned service configuration and may require additional setup during deployment.
+
 ### Location
 
 Server logs are output to stdout/stderr by default. When running as a service, logs may be redirected to system log files:
@@ -180,6 +135,8 @@ Server logs are output to stdout/stderr by default. When running as a service, l
 ### Reading Logs
 
 #### Linux (systemd)
+
+**Note**: The author is not certain about this section, verification is needed. The described commands are based on standard systemd configuration and should work with proper service setup.
 
 ```bash
 # View recent logs
@@ -197,6 +154,8 @@ journalctl -u truth-core-server --since "2024-01-01 00:00:00" --until "2024-01-0
 
 #### macOS (LaunchAgent)
 
+**Note**: The author cannot verify this section, there is no ability to install this operating system. The described methods are based on standard macOS LaunchAgent configuration and may require additional setup.
+
 ```bash
 # View logs if configured to file
 tail -f ~/Library/Logs/truth-core-server.log
@@ -207,6 +166,8 @@ open -a Console
 ```
 
 #### Windows (WinSW)
+
+**Note**: The author cannot verify this section, there is no ability to install this operating system. The described methods are based on standard WinSW configuration and may require additional setup.
 
 ```powershell
 # View log files
@@ -281,6 +242,8 @@ Edit `truth_core_server.xml`:
 
 #### Linux (systemd)
 
+**Note**: The author is not certain about this section, verification is needed. The described commands are based on standard systemd journalctl capabilities.
+
 ```bash
 # Clear journal logs (requires root)
 journalctl --vacuum-time=1d  # Keep last 1 day
@@ -288,6 +251,8 @@ journalctl --vacuum-size=100M  # Keep last 100MB
 ```
 
 #### macOS/Windows
+
+**Note**: The author cannot verify this section, there is no ability to install these operating systems. The described methods are based on standard capabilities of the respective systems.
 
 Delete log files manually or configure log rotation in service configuration.
 
@@ -411,7 +376,7 @@ Logcat buffer is managed by Android OS. No manual rotation needed.
 ### Desktop UI: Logs Not Appearing
 
 1. Check database file exists and is accessible
-2. Verify `logs` table exists: `sqlite3 <db_path> ".tables" | grep logs`
+2. Verify database exists: `sqlite3 <db_path> ".tables"`
 3. Check application permissions to write to database location
 
 ### Android: Logs Not Visible
@@ -431,7 +396,7 @@ Logcat buffer is managed by Android OS. No manual rotation needed.
 ### CLI: Logs Command Fails
 
 1. Verify database file exists and is accessible
-2. Check database contains `logs` table: `sqlite3 <db_path> ".tables" | grep logs`
+2. Check database exists and contains expected tables: `sqlite3 <db_path> ".tables"`
 3. Ensure database is not locked by another process
 
 ## Best Practices
@@ -447,5 +412,5 @@ Logcat buffer is managed by Android OS. No manual rotation needed.
 - [Install Paths By OS](Install_Paths_By_OS.md) - File locations by platform
 - [CLI Usage](CLI_Usage.md) - CLI commands including `logs` subcommands
 - [Troubleshooting](troubleshooting.md) - General troubleshooting guide
-- [UI Desktop](UI_Desktop.md) - Desktop UI features including Logs page
+- [UI Desktop](UI_Desktop.md) - Desktop UI features and navigation
 

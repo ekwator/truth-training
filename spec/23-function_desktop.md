@@ -64,7 +64,6 @@ This document provides a comprehensive functional specification for the Desktop 
 - `Alt+4` - Event Summary
 - `Alt+5` - Overall Summary
 - `Alt+6` - Training Results
-- `Alt+7` - Logs
 - `Alt+8` - Settings
 
 **State Flow:**
@@ -259,34 +258,6 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 - Training progress tracking
 - Results visualization
 - Progress metrics display
-
-### Logs Screen (`src/pages/Logs.tsx`)
-
-**Purpose:** Display application logs with pagination.
-
-**Visual Components:**
-- **Log List:** Paginated log entries (35 lines per page)
-- **Pagination Controls:** Previous/Next page buttons
-- **Clear Logs Button:** Clears all logs
-- **Log Entry Display:**
-  - Timestamp
-  - Source
-  - Level (info, warn, error)
-  - Message
-
-**State Management:**
-- Uses Tauri commands for log operations
-
-**Expected Behavior:**
-- Load logs on mount (first page)
-- Pagination: 35 lines per page
-- Clear logs confirmation (if implemented)
-- Auto-refresh (optional)
-
-**Responsibilities:**
-- Log display and management
-- Pagination handling
-- Log clearing
 
 ### Settings Screen (`src/pages/Settings.tsx`)
 
@@ -750,9 +721,34 @@ All Tauri commands are implemented in `src-tauri/src/commands/` and documented i
 - Judgments: `submit_judgment_fast`, `judgments_list_fast`, `get_judgment_stats`
 - Knowledge Base: `knowledge_base_list`
 - Context Templates: `list_contexts`, `get_context_by_name`, `create_context`, `match_context`, `create_context_from_event`
-- Logs: `list_logs`, `clear_logs`
 - Summary: `get_overall_metrics`, `list_event_rows`, `export_overall_summary_txt`
-- Configuration: `get_app_config`, `save_app_config`, `core_status`, `test_http_connection`
+- Configuration: `get_app_config`, `save_app_config`, `init_app`, `reseed_knowledge_base`, `core_status`, `test_http_connection`
+
+### Tauri Storage Module (`src-tauri/src/storage.rs`)
+
+**Purpose:** Database initialization and storage operations for Desktop UI.
+
+**Key Features:**
+- **Locale-Aware Initialization:** Reads locale from `~/.truth-training/config.json` during database initialization
+- **Knowledge Base Seeding:** Uses `core/src/storage.rs::seed_knowledge_base()` with locale parameter ("en" or "ru")
+- **Schema Management:** Uses canonical Truth schema from core library, drops legacy tables
+- **Database Location:** `~/.local/share/TruthTraining/truth_training.sqlite` (Linux) or OS-specific data directory
+
+**Key Functions:**
+- `initialize()` - Initializes database with locale-aware knowledge base seeding
+- `get_locale_from_config()` - Reads and validates locale from config file
+- `seed_knowledge_base(conn, locale)` - Delegates to core library for locale-specific seeding
+- `insert_truth_event(...)` - Creates events with embedded context fields (v1.0.0 schema)
+- `get_truth_event_with_names(id)` - Retrieves event with joined knowledge base names
+- `list_truth_events_with_names(page, per_page)` - Lists events with pagination
+
+**Locale Handling:**
+- Locale is read from config file during database initialization
+- If config file doesn't exist or locale is invalid, defaults to "en"
+- Knowledge base is seeded with locale-specific data (English or Russian)
+- When locale changes via `reseed_knowledge_base` command, knowledge base is cleared and reseeded
+
+**Note:** Legacy functions (`seed_knowledge_base_legacy`, `insert_event` with `context_id`, `insert_or_update_summary`) have been removed as they used outdated schemas incompatible with v1.0.0.
 
 ## Data Flow
 

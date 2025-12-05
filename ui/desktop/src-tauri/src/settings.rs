@@ -71,8 +71,9 @@ pub fn settings_path() -> Result<PathBuf, String> {
 
 fn default_db_path() -> String {
     let base = home_dir().unwrap_or_else(|| Path::new(".").to_path_buf());
+    // Use a different filename for discovery DB to avoid conflicts with main app DB
     base.join(".truth-training")
-        .join("truth_training.sqlite")
+        .join("discovery_nodes.sqlite")
         .display()
         .to_string()
 }

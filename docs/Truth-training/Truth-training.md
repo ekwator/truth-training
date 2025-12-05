@@ -183,9 +183,6 @@ ui/desktop/
    - Training results
    - Statistics
 
-7. **Logs** — Alt+7
-   - Log viewer (35 lines/page)
-   - Clear logs
 
 8. **Settings** — Alt+8
    - Connection mode (Core/HTTP)

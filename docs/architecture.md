@@ -2,6 +2,20 @@
 Version: v1.0.0
 Updated: 2025-01-XX
 
+## 🔐 Privacy and Confidentiality
+
+**Truth Training is built on the fundamental principle of confidentiality**: **No user actions are logged or persistently stored**. The application does not track, record, or save any user interactions, navigation patterns, clicks, or behavioral data. This ensures complete privacy and anonymity — users can interact with the system without leaving any trace of their actions.
+
+**Architectural Privacy Guarantees:**
+- ✅ **No User Action Logging**: Database schemas do not include tables for tracking user interactions
+- ✅ **No Persistent User Tracking**: No identifiers, session data, or behavioral analytics are stored
+- ✅ **No Telemetry Collection**: No user activity is transmitted or stored
+- ✅ **Ephemeral Logs Only**: Only system-level logs (errors, sync operations) are temporarily stored for debugging purposes
+
+This confidentiality principle is enforced across all platforms and is a core architectural requirement.
+
+---
+
 > **For comprehensive functional specifications, see:**
 > - [spec/22-function_core.md](../spec/22-function_core.md) - Rust Core Modules
 > - [spec/23-function_desktop.md](../spec/23-function_desktop.md) - Desktop UI

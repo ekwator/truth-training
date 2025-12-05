@@ -1,4 +1,14 @@
-# Final Data Schema for the “Truth Training” Platform
+# Final Data Schema for the "Truth Training" Platform
+
+## 🔐 Privacy and Confidentiality
+
+**Important**: This database schema is designed to uphold the fundamental principle of confidentiality: **No user actions are logged or persistently stored**. The schema does not include tables for tracking user interactions, navigation patterns, clicks, or behavioral data. All stored data (events, judgments, contexts) is anonymous and cannot be traced back to individual users.
+
+**Privacy Guarantees:**
+- ✅ No user action logging tables
+- ✅ No user tracking or session data
+- ✅ No behavioral analytics storage
+- ✅ Only anonymous event and judgment data
 
 ---
 
@@ -144,6 +154,8 @@ The `context` table stores reusable context templates that can be matched to eve
 ---
 
 ## 4. Node Discovery (v1.0.0-Release)
+
+For the schema of the discovery-specific database (`discovery_nodes.sqlite`), please refer to [Discovery Nodes Database Schema](Discovery_Nodes_Schema.md).
 
 ### Table: nodes
 

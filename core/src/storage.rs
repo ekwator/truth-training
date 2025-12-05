@@ -2814,7 +2814,6 @@ pub fn clear_sync_logs(conn: &Connection) -> Result<(), CoreError> {
 /// --------------------------
 /// Node repository (nodes table)
 /// --------------------------
-
 pub fn insert_node(conn: &Connection, node: NewNode) -> Result<Node, CoreError> {
     node.validate()?;
     conn.execute(
@@ -3045,6 +3044,75 @@ pub fn prune_stale_nodes(conn: &Connection, now: i64) -> Result<usize, CoreError
         params![now],
     )?;
     Ok(expired + unreachable)
+}
+
+/// Load peer history list ordered by last_sync desc
+pub fn load_peer_history(
+    conn: &Connection,
+    limit: Option<usize>,
+) -> Result<Vec<crate::models::PeerHistoryEntry>, CoreError> {
+    let sql = r#"SELECT id, peer_url, last_sync, success_count, fail_count, last_quality_index, last_trust_score
+                 FROM peer_history
+                 ORDER BY COALESCE(last_sync, 0) DESC
+                 LIMIT ?1"#;
+    let lim = limit.unwrap_or(100) as i64;
+    let mut stmt = conn.prepare(sql)?;
+    let rows = stmt.query_map(params![lim], |r| {
+        Ok(crate::models::PeerHistoryEntry {
+            id: r.get(0)?,
+            peer_url: r.get(1)?,
+            last_sync: r.get(2)?,
+            success_count: r.get(3)?,
+            fail_count: r.get(4)?,
+            last_quality_index: r.get::<_, f64>(5)? as f32,
+            last_trust_score: r.get::<_, f64>(6)? as f32,
+        })
+    })?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r?);
+    }
+    Ok(out)
+}
+
+/// Compute peer summary statistics across history table
+pub fn get_peer_summary(conn: &Connection) -> Result<crate::models::PeerSummary, CoreError> {
+    // Load minimal fields to compute averages in Rust for portability
+    let mut stmt =
+        conn.prepare("SELECT success_count, fail_count, last_quality_index FROM peer_history")?;
+    let mut rows = stmt.query([])?;
+    let mut total_peers: usize = 0;
+    let mut sum_success_rate: f64 = 0.0;
+    let mut sum_quality: f64 = 0.0;
+    while let Some(row) = rows.next()? {
+        let succ: i64 = row.get(0)?;
+        let fail: i64 = row.get(1)?;
+        let q: f64 = row.get(2)?;
+        let total = (succ + fail) as f64;
+        let rate = if total <= 0.0 {
+            0.0
+        } else {
+            (succ as f64) / total
+        };
+        total_peers += 1;
+        sum_success_rate += rate;
+        sum_quality += q;
+    }
+    let avg_success_rate = if total_peers == 0 {
+        0.0
+    } else {
+        (sum_success_rate / (total_peers as f64)) as f32
+    };
+    let avg_quality_index = if total_peers == 0 {
+        0.0
+    } else {
+        (sum_quality / (total_peers as f64)) as f32
+    };
+    Ok(crate::models::PeerSummary {
+        total_peers,
+        avg_success_rate,
+        avg_quality_index,
+    })
 }
 
 #[cfg(test)]
@@ -3595,73 +3663,4 @@ pub fn log_peer_sync(
         }
     }
     Ok(())
-}
-
-/// Load peer history list ordered by last_sync desc
-pub fn load_peer_history(
-    conn: &Connection,
-    limit: Option<usize>,
-) -> Result<Vec<crate::models::PeerHistoryEntry>, CoreError> {
-    let sql = r#"SELECT id, peer_url, last_sync, success_count, fail_count, last_quality_index, last_trust_score
-                 FROM peer_history
-                 ORDER BY COALESCE(last_sync, 0) DESC
-                 LIMIT ?1"#;
-    let lim = limit.unwrap_or(100) as i64;
-    let mut stmt = conn.prepare(sql)?;
-    let rows = stmt.query_map(params![lim], |r| {
-        Ok(crate::models::PeerHistoryEntry {
-            id: r.get(0)?,
-            peer_url: r.get(1)?,
-            last_sync: r.get(2)?,
-            success_count: r.get(3)?,
-            fail_count: r.get(4)?,
-            last_quality_index: r.get::<_, f64>(5)? as f32,
-            last_trust_score: r.get::<_, f64>(6)? as f32,
-        })
-    })?;
-    let mut out = Vec::new();
-    for r in rows {
-        out.push(r?);
-    }
-    Ok(out)
-}
-
-/// Compute peer summary statistics across history table
-pub fn get_peer_summary(conn: &Connection) -> Result<crate::models::PeerSummary, CoreError> {
-    // Load minimal fields to compute averages in Rust for portability
-    let mut stmt =
-        conn.prepare("SELECT success_count, fail_count, last_quality_index FROM peer_history")?;
-    let mut rows = stmt.query([])?;
-    let mut total_peers: usize = 0;
-    let mut sum_success_rate: f64 = 0.0;
-    let mut sum_quality: f64 = 0.0;
-    while let Some(row) = rows.next()? {
-        let succ: i64 = row.get(0)?;
-        let fail: i64 = row.get(1)?;
-        let q: f64 = row.get(2)?;
-        let total = (succ + fail) as f64;
-        let rate = if total <= 0.0 {
-            0.0
-        } else {
-            (succ as f64) / total
-        };
-        total_peers += 1;
-        sum_success_rate += rate;
-        sum_quality += q;
-    }
-    let avg_success_rate = if total_peers == 0 {
-        0.0
-    } else {
-        (sum_success_rate / (total_peers as f64)) as f32
-    };
-    let avg_quality_index = if total_peers == 0 {
-        0.0
-    } else {
-        (sum_quality / (total_peers as f64)) as f32
-    };
-    Ok(crate::models::PeerSummary {
-        total_peers,
-        avg_success_rate,
-        avg_quality_index,
-    })
 }

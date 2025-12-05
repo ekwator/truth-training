@@ -1,5 +1,22 @@
 # Truth Training – Cross-Platform Spec Kit v1.0.0
 
+## 🔐 Privacy and Confidentiality
+
+**Truth Training is built on the fundamental principle of confidentiality**: **No user actions are logged or persistently stored**. This is a core architectural requirement enforced across all platforms (Desktop UI, Android, Server, CLI).
+
+**Privacy Guarantees:**
+- ✅ **No User Action Logging**: No clicks, navigation, or interaction history is stored
+- ✅ **No Persistent User Tracking**: No identifiers, session data, or behavioral analytics
+- ✅ **No Telemetry Collection**: No user activity is transmitted or stored
+- ✅ **Ephemeral Logs Only**: Only system-level logs (errors, sync operations) are temporarily stored for debugging purposes
+
+**Enforcement:**
+- Database schemas do not include tables for user action logging
+- All contributions must maintain this principle
+- Violations will result in PR rejection
+
+---
+
 Use /spec as the primary decision source before reading /docs.
 
 | Component       | Current Version |

@@ -1,5 +1,19 @@
 # Truth Training Documentation Hub (v1.0.0)
 
+## 🔐 Privacy and Confidentiality
+
+**Truth Training is built on the fundamental principle of confidentiality**: **No user actions are logged or persistently stored**. The application does not track, record, or save any user interactions, navigation patterns, clicks, or behavioral data. This ensures complete privacy and anonymity — users can interact with the system without leaving any trace of their actions.
+
+**Key Privacy Guarantees:**
+- ✅ **No User Action Logging**: No clicks, navigation, or interaction history is stored
+- ✅ **No Persistent User Tracking**: No identifiers, session data, or behavioral analytics
+- ✅ **No Telemetry Collection**: No user activity is transmitted or stored
+- ✅ **Ephemeral Logs Only**: Only system-level logs (errors, sync operations) are temporarily stored for debugging purposes
+
+This confidentiality principle is enforced across all platforms (Desktop UI, Android, Server, CLI) and is a core architectural requirement.
+
+---
+
 Use this index to reach every human-facing reference.
 
 ## Release Notes & Plans

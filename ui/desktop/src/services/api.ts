@@ -110,14 +110,6 @@ export interface Summary {
   updated_at: string;
 }
 
-// Logs API
-export interface LogItem {
-  id: string;
-  timestamp: string;
-  source: string;
-  level: string;
-  message: string;
-}
 
 interface NodeFilterOptions {
   nodeType?: string;
@@ -334,36 +326,6 @@ export class ApiService {
     }
   }
 
-  // Logs endpoints
-  static async getLogs(page: number = 1): Promise<{ items: LogItem[]; page: number; total: number }> {
-    if (isTauri()) {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const result = await invoke('list_logs', { page });
-        return result as { items: LogItem[]; page: number; total: number };
-      } catch (error) {
-        console.error('Tauri getLogs error:', error);
-        throw new Error('Failed to fetch logs from desktop backend');
-      }
-    } else {
-      const response = await apiClient.get(`/logs?page=${page}`);
-      return response.data;
-    }
-  }
-
-  static async clearLogs(): Promise<void> {
-    if (isTauri()) {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('clear_logs');
-      } catch (error) {
-        console.error('Tauri clearLogs error:', error);
-        throw new Error('Failed to clear logs in desktop backend');
-      }
-    } else {
-      await apiClient.delete('/logs');
-    }
-  }
 
   // Summary endpoints
   static async getOverallMetrics(): Promise<{ total_events: number; average_impact_level: number; last_updated?: string }> {

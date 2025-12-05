@@ -24,7 +24,7 @@ pub fn calculate_consensus(input: ConsensusCalcInput) -> Result<Consensus, CoreE
             "false" => 0.0,
             _ => 0.5,
         };
-        score_sum += v * j.confidence_level.max(0.0).min(1.0);
+        score_sum += v * j.confidence_level.clamp(0.0, 1.0);
     }
     let avg = score_sum / (participant_count as f32).max(1.0);
     let (consensus_value, confidence_score) = if avg >= 0.66 {
