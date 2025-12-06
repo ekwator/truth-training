@@ -1,8 +1,8 @@
 # Roadmap (High-level)
 
 Use /spec as the primary decision source before reading /docs.
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-01-XX
 Spec ID: 21
 
 ## Roadmap (High-level)

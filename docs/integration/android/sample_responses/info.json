@@ -1,9 +1,9 @@
 {
   "name": "truth-core",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "uptime_sec": 12345,
   "started_at": 1710000000,
-  "features": ["p2p-client-sync", "jwt"],
+  "features": ["p2p-client-sync", "mobile", "jwt"],
   "peer_count": 3
 }
 

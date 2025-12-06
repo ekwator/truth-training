@@ -94,7 +94,7 @@ See [Test Report](TEST_REPORT_ANDROID_v1.0.0.md) for detailed results.
 ## 📦 Artifacts
 
 ### Desktop
-- **Linux**: `.deb`, `.AppImage`, `.rpm` packages
+- **Linux**: `.deb`, `.AppImage` packages
 - **Windows**: `.exe` (NSIS), `.msi` installers
 - **macOS**: `.app`, `.dmg` bundles
 

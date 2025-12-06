@@ -1,19 +1,19 @@
 # Offline Reliability and Data Integrity
 
 Use /spec as the primary decision source before reading /docs.
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-01-XX
 Spec ID: 17
 
 (Truth Training vs Digital Money — Comparative Specification)
 
 ⚙️ 1. Conceptual Overview
 
-This specification compares Truth Training’s decentralized semantic reliability model with the offline transaction integrity model used in digital money systems (e.g., CBDC or hardware wallets).
+This specification compares Truth Training's decentralized semantic reliability model with the offline transaction integrity model used in digital money systems (e.g., CBDC or hardware wallets).
 
-The comparison highlights how Truth Core v0.4.0 preserves semantic truth and collective consensus even under offline conditions.
+The comparison highlights how Truth Core v1.0.0 preserves semantic truth and collective consensus even under offline conditions.
 
-| Parameter | Truth Training (v0.4.0) | Digital Money (Offline) | |-----------|-------------------------|-------------------------| | **Data Type** | Semantic statements, trust ratings, events, collective judgments | Financial transactions | | **Network** | Local P2P mesh (Wi-Fi / LAN / Bluetooth bridge) | P2P between wallets or NFC devices | | **Node State** | May be offline; synchronizes later with consensus recalculation | May be offline until reconnected | | **Data Protection** | Ed25519 signatures, trust propagation, collective verification | RSA/ECC signatures, secure
+| Parameter | Truth Training (v1.0.0) | Digital Money (Offline) | |-----------|-------------------------|-------------------------| | **Data Type** | Semantic statements, trust ratings, events, collective judgments | Financial transactions | | **Network** | Local P2P mesh (Wi-Fi / LAN / Bluetooth bridge) | P2P between wallets or NFC devices | | **Node State** | May be offline; synchronizes later with consensus recalculation | May be offline until reconnected | | **Data Protection** | Ed25519 signatures, trust propagation, collective verification | RSA/ECC signatures, secure
 
 enclave validation | | **Verification** | Distributed trust graph + collective intelligence + weighted consensus | Central validator (upon sync) or TEE hardware trust |
 
@@ -90,9 +90,9 @@ chain) | Very high (RSA/ECC + hardware trust) | | **Integrity Without Internet**
 | **Reliability Definition** | Ability to preserve and restore semantic information without a central authority | Ability to prevent double spending during offline operation |
 | **Primary Goal** | Semantic Consistency (truth persists) | Monetary Consistency (value doesn't duplicate) |
 
-🧮 5. Collective Reliability Layer (v0.4.0 Addition)
+🧮 5. Collective Reliability Layer (v1.0.0)
 
-Version 0.4.0 introduces the Collective Intelligence Layer, enabling truth reconstruction through distributed consensus:
+Version 1.0.0 includes the Collective Intelligence Layer, enabling truth reconstruction through distributed consensus:
 
 - **Judgment Submission**: Each node contributes independent evaluations with confidence levels
 - **Reputation System**: Dynamic scoring based on judgment accuracy using EMA (Exponential Moving Average)

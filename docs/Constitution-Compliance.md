@@ -1,4 +1,7 @@
-# Constitution Compliance (v2.1.0)
+# Constitution Compliance (Truth Training v1.0.0)
+
+**Constitution Version**: v2.2.0 (last amended: 2025-12-01)  
+**Project Version**: v1.0.0
 
 ## 🔐 Privacy and Confidentiality
 
@@ -12,19 +15,26 @@
 
 ---
 
-## Principles Coverage
-- Truth as Anonymous Confession: `/events` accepts content without author metadata; CLI `confess` warns plaintext-at-rest.
-- Truth Without Author: Events store no author metadata beyond legacy fields; validation relies on transport envelopes.
-- Anti-Fraud: Independent confirmations modeled via unique sender nodes; weights/decay utilities in `core::weights`.
-- Digital Conscience: Reflection via corrections and non-punitive flows; CLI `judge` supports abstain.
-- Decentralized Civic Dialogue: Ternary judgments (confirm/reject/abstain) supported.
-- Local Mesh of Truth Exchange: Wi‑Fi Direct nearby sync scaffold added (`p2p::wifi_direct`).
+## Principles Coverage (v1.0.0)
 
-## How to Validate
-1. Run `cargo test --all-features`.
-2. Follow [specs/005-constitution-compliance-truth/quickstart.md](../specs/005-constitution-compliance-truth/quickstart.md) steps.
-3. Use CLI: `truthctl confess` and `truthctl judge`.
-4. Execute the documentation refactor workflow (`make doc-refactor-run`) and confirm `reports/doc_refactor/link_report.json` contains zero `status: "missing"` edges. Reference [docs/Documentation_Refactor_Overview.md](Documentation_Refactor_Overview.md) for remediation.
+- **Truth as Anonymous Confession**: `/api/v1/events` accepts content without author metadata; events use embedded context fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`) instead of `context_id`.
+- **Truth Without Author**: Events store no author metadata; validation relies on transport envelope signatures (`X-Public-Key`, `X-Signature`, `X-Timestamp` headers).
+- **Anti-Fraud**: Independent confirmations modeled via unique sender nodes; collective intelligence consensus calculation with weighted judgments.
+- **Digital Conscience**: Reflection via corrections and non-punitive flows; judgment system supports ternary assessments ('true' | 'false' | 'uncertain').
+- **Decentralized Civic Dialogue**: Ternary judgments (confirm/reject/abstain) supported via `/api/v1/judgments` endpoint with confidence levels (0.0-1.0).
+- **Local Mesh of Truth Exchange**: Cross-platform node discovery via UDP multicast (239.255.0.1:52525), global registry polling, and P2P sync implemented across Desktop, CLI, Server, and Android platforms.
+
+## How to Validate (v1.0.0)
+
+1. **Run tests**: `cargo test --all-features` (Core, Server, CLI)
+2. **Test Desktop UI**: `cd ui/desktop && npm test` (unit, integration, E2E)
+3. **Test Android**: `cd truth-android-client && ./gradlew test` (unit, instrumentation)
+4. **Verify API compliance**: Test `/api/v1/events` endpoint accepts embedded context fields (no `context_id`)
+5. **Verify judgments**: Test `/api/v1/judgments` endpoint with ternary assessments ('true' | 'false' | 'uncertain')
+6. **Verify node discovery**: Test cross-platform discovery via UDP multicast (239.255.0.1:52525)
+7. **Documentation validation**: Execute `make doc-refactor-run` and confirm `reports/doc_refactor/link_report.json` contains zero `status: "missing"` edges
+
+**Reference**: [specs/005-constitution-compliance-truth/quickstart.md](../specs/005-constitution-compliance-truth/quickstart.md) for detailed validation steps.
 
 ## Security Note
 - Anonymous confessions are stored plaintext-at-rest by design; ensure environment trust and backups policies.

@@ -84,120 +84,69 @@ Application Start → Database Init → Network Module → Truth Core Init → R
 
 ## Screens
 
+**⚠️ Implementation Status (v1.0.0):**
+
+Most screens described below are **partially implemented** or **not yet integrated into navigation**. As of v1.0.0:
+- ✅ **NodesScreen**: Fully implemented and integrated
+- ⚠️ **Other screens**: Files exist but are not connected to MainNavigation (placeholders in navigation graph)
+- 📝 **See**: [release-info-v1_0_0-Develop.txt](../../release-info-v1_0_0-Develop.txt) for current implementation status
+
+**Screen Parity with Desktop UI:**
+
+Android client should match Desktop UI's **7 screens** (v1.0.0):
+1. **Dashboard** - Main dashboard with events list and statistics
+2. **New Event** - Create new event (equivalent to EventCreateScreen)
+3. **Context Editor** - Manage context templates (combines ContextTemplateList + Editor)
+4. **Event Summary** - Event details with judgments and impacts (combines EventDetail + JudgmentList)
+5. **Overall Summary** - Aggregated statistics
+6. **Training Results** - Training progress and results
+7. **Settings** - Application configuration
+
+**Note:** This specification describes the **target architecture** aligned with Desktop UI. Some screens in the codebase (EventListScreen, EventEditScreen, ContextTemplateSelectionScreen, JudgmentSubmissionScreen) may be consolidated or removed to match Desktop UI's simpler navigation model.
+
 ### Dashboard Screen (`ui/compose/DashboardScreen.kt`)
 
-**Purpose:** Main dashboard with sync status and quick access.
+**Purpose:** Main dashboard with events list and statistics (matches Desktop UI "Dashboard" screen).
 
 **Visual Components:**
-- **Top App Bar:** "Dashboard" title
+- **Top App Bar:** "Dashboard" title, sync status indicator
+- **Stats Overview:**
+  - Total Events count
+  - Detected Events count
+  - Events with Consensus count
+  - Participants count
 - **Sync Status Card:**
   - Online/Offline indicator
   - Last sync time
   - Sync button
   - Pending operations count
-- **Quick Stats Section:**
-  - Events count card
-  - Other statistics (if implemented)
-- **Quick Actions Section:**
-  - "View Events" button
-  - "Manage Context Templates" button
-  - Other action buttons
+- **Events List:** Paginated list of event cards (matches Desktop UI pattern)
+- **Nodes Panel:** Network nodes display (if implemented)
+- **Create Event Button:** Navigation to New Event screen
 
 **State Management:**
+- Uses `EventRepository` for events data
 - Uses `SyncStatus` flow
 - Observes event count
 - Handles sync trigger
 
 **Expected Behavior:**
-- Displays current sync status
-- Shows event count
-- Provides quick navigation to main features
-- Triggers manual sync on button press
+- Loads events and sync status on mount
+- Displays loading spinner during data fetch
+- Shows error message with retry button on failure
 - Updates sync status in real-time
+- Navigates to New Event screen on button click
+- Navigates to Event Summary on event item click
 
 **Responsibilities:**
-- Dashboard overview
-- Sync status display
-- Quick navigation
-- Statistics display
+- Display aggregated statistics
+- Show recent events list
+- Provide quick access to common actions
+- Display network status
 
-### Event List Screen (`ui/compose/events/EventListScreen.kt`)
+### New Event Screen (`ui/compose/events/EventCreateScreen.kt`)
 
-**Purpose:** Display paginated list of events.
-
-**Visual Components:**
-- **Top App Bar:** "Events" title, "Add" FAB
-- **Event List:** LazyColumn with event items
-- **Event Item:**
-  - Event title/description
-  - Date information
-  - Status indicator
-  - Context template name (if matched)
-- **Pagination:** Load more on scroll
-- **Empty State:** Message when no events
-- **Loading State:** Progress indicator
-
-**State Management:**
-- Uses `EventRepository` for data
-- Observes `getAllEventsFlow()`
-- Handles pagination
-
-**Expected Behavior:**
-- Loads events on mount
-- Displays events in list
-- Shows loading during fetch
-- Handles empty state
-- Supports pull-to-refresh (if implemented)
-- Navigates to event detail on item click
-- Navigates to create event on FAB click
-
-**Responsibilities:**
-- Event list display
-- Pagination handling
-- Navigation to detail/create
-
-### Event Detail Screen (`ui/compose/events/EventDetailScreen.kt`)
-
-**Purpose:** Display detailed event information.
-
-**Visual Components:**
-- **Top App Bar:** Event title, back button, edit button
-- **Event Information:**
-  - Full description
-  - Dates (start/end)
-  - Context fields (category, forma, cause, develop, effect)
-  - Status (detected, corrected)
-  - Collective score (if available)
-- **Related Data Sections:**
-  - Statements list
-  - Impacts list
-  - Judgments list
-- **Action Buttons:**
-  - Edit event
-  - Add impact
-  - Submit judgment
-  - Delete event (if implemented)
-
-**State Management:**
-- Uses `EventRepository.getEventByIdFlow()`
-- Observes related data (statements, impacts, judgments)
-
-**Expected Behavior:**
-- Loads event details on mount
-- Displays all event information
-- Shows related data
-- Handles missing event (404)
-- Updates when data changes
-- Navigates to edit screen on edit button
-
-**Responsibilities:**
-- Event detail display
-- Related data aggregation
-- Action buttons
-
-### Event Create Screen (`ui/compose/events/EventCreateScreen.kt`)
-
-**Purpose:** Create new truth event.
+**Purpose:** Create new truth event (matches Desktop UI "New Event" screen).
 
 **Visual Components:**
 - **Top App Bar:** "New Event" title, back button
@@ -214,7 +163,7 @@ Application Start → Database Init → Network Module → Truth Core Init → R
   - End date picker
   - Vector toggle (outgoing/incoming)
 - **Submit Button:** Creates event
-- **Cancel Button:** Returns to list
+- **Cancel Button:** Returns to dashboard
 
 **State Management:**
 - Uses form state (remember)
@@ -227,7 +176,7 @@ Application Start → Database Init → Network Module → Truth Core Init → R
   - Description required
   - End date >= start date
   - Context field FKs must reference existing records
-- On success: Navigate to event detail, show success message
+- On success: Navigate to dashboard, show success message
 - On error: Display error message, remain on form
 
 **Responsibilities:**
@@ -236,36 +185,11 @@ Application Start → Database Init → Network Module → Truth Core Init → R
 - Form validation
 - Error handling
 
-### Event Edit Screen (`ui/compose/events/EventEditScreen.kt`)
+**Note:** Event editing is handled inline in Event Summary screen (matches Desktop UI pattern).
 
-**Purpose:** Edit existing event.
+### Context Editor Screen (`ui/compose/contexts/ContextTemplateEditorScreen.kt`)
 
-**Visual Components:**
-- **Top App Bar:** "Edit Event" title, back button, save button
-- **Event Form:** Same as create screen, pre-filled with existing data
-- **Save Button:** Updates event
-- **Cancel Button:** Discards changes
-
-**State Management:**
-- Uses form state with initial values
-- Uses `EventRepository.updateEvent()`
-
-**Expected Behavior:**
-- Loads event data on mount
-- Pre-fills form with existing data
-- Validates on save
-- On success: Navigate to detail, show success message
-- On error: Display error message
-
-**Responsibilities:**
-- Event editing
-- Form pre-filling
-- Validation
-- Update handling
-
-### Context Template List Screen (`ui/compose/contexts/ContextTemplateListScreen.kt`)
-
-**Purpose:** Display and manage context templates.
+**Purpose:** Create and manage context templates (matches Desktop UI "Context Editor" screen - combines list + editor).
 
 **Visual Components:**
 - **Top App Bar:** "Context Templates" title, "Add" FAB
@@ -274,32 +198,7 @@ Application Start → Database Init → Network Module → Truth Core Init → R
   - Template name
   - Context fields summary
   - Edit/Delete actions
-- **Empty State:** Message when no templates
-- **Loading State:** Progress indicator
-
-**State Management:**
-- Uses `ContextTemplateRepository`
-- Observes template list flow
-
-**Expected Behavior:**
-- Loads templates on mount
-- Displays templates in list
-- Navigates to editor on item click
-- Navigates to create on FAB click
-- Supports delete (with confirmation)
-
-**Responsibilities:**
-- Template list display
-- Template management
-- Navigation
-
-### Context Template Editor Screen (`ui/compose/contexts/ContextTemplateEditorScreen.kt`)
-
-**Purpose:** Create or edit context template.
-
-**Visual Components:**
-- **Top App Bar:** "Edit Template" or "New Template" title, back button, save button
-- **Template Form:**
+- **Template Form (inline or modal):**
   - Name input (required)
   - Description input (optional)
   - Context field selectors (all optional):
@@ -310,106 +209,172 @@ Application Start → Database Init → Network Module → Truth Core Init → R
     - Effect selector
 - **Save Button:** Creates or updates template
 - **Duplicate Detection:** Shows error if duplicate exists
+- **Empty State:** Message when no templates
+- **Loading State:** Progress indicator
 
 **State Management:**
-- Uses form state
 - Uses `ContextTemplateRepository`
+- Observes template list flow
+- Manages form state for create/edit
 
 **Expected Behavior:**
+- Loads templates on mount
+- Displays templates in list
+- Shows form for create/edit (inline or modal)
 - Pre-fills form if editing
 - Validates name required
 - Detects duplicates (non-NULL fields)
 - On duplicate: Show error message
-- On success: Navigate to list, show success message
+- On success: Update list, show success message
+- Supports delete (with confirmation)
 
 **Responsibilities:**
+- Template list display
 - Template creation/editing
 - Duplicate detection
 - Validation
 
-### Context Template Selection Screen (`ui/compose/contexts/ContextTemplateSelectionScreen.kt`)
+**Note:** Template selection for event creation is handled via dropdown in New Event screen (matches Desktop UI pattern). Separate selection screen is not needed.
 
-**Purpose:** Select context template for event creation.
+### Event Summary Screen (`ui/compose/events/EventDetailScreen.kt`)
 
-**Visual Components:**
-- **Top App Bar:** "Select Template" title, back button
-- **Template List:** LazyColumn with selectable templates
-- **Template Item:** Template name, fields summary, select button
-- **Empty State:** Message when no templates
-
-**State Management:**
-- Uses `ContextTemplateRepository`
-- Returns selected template to caller
-
-**Expected Behavior:**
-- Loads templates on mount
-- Displays selectable templates
-- Returns selected template on selection
-- Navigates back on cancel
-
-**Responsibilities:**
-- Template selection
-- Template display
-- Selection callback
-
-### Judgment List Screen (`ui/compose/judgments/JudgmentListScreen.kt`)
-
-**Purpose:** Display judgments for an event.
+**Purpose:** Display detailed event information with judgments and impacts (matches Desktop UI "Event Summary" screen - combines event detail + judgments + impacts).
 
 **Visual Components:**
-- **Top App Bar:** "Judgments" title, back button
-- **Judgment List:** LazyColumn with judgment items
-- **Judgment Item:**
-  - Assessment ('true' | 'false' | 'uncertain')
-  - Confidence level (0.0-1.0)
-  - Reasoning text
-  - Submitted timestamp
-- **Empty State:** Message when no judgments
-- **FAB:** "Submit Judgment" button
+- **Top App Bar:** Event title, back button, edit button
+- **Event Information:**
+  - Full description
+  - Dates (start/end)
+  - Context fields (category, forma, cause, develop, effect)
+  - Status (detected, corrected)
+  - Collective score (if available)
+- **Related Data Sections:**
+  - Impacts list
+  - Judgments list
+- **Action Buttons:**
+  - Edit event (inline form or navigation)
+  - Add impact
+  - Submit judgment (inline form or modal)
+- **Empty States:** Messages when no impacts/judgments
 
 **State Management:**
+- Uses `EventRepository.getEventByIdFlow()`
 - Uses `JudgmentRepository`
-- Observes judgments flow for event
+- Observes related data (impacts, judgments)
 
 **Expected Behavior:**
-- Loads judgments on mount
-- Displays judgments in list
-- Navigates to submission screen on FAB click
-- Updates when new judgments added
+- Loads event details on mount
+- Displays all event information
+- Shows impacts and judgments lists
+- Handles missing event (404)
+- Updates when data changes
+- Supports inline editing (matches Desktop UI pattern)
+- Shows judgment submission form inline or in modal
 
 **Responsibilities:**
-- Judgment list display
-- Navigation to submission
+- Event detail display
+- Related data aggregation (impacts, judgments)
+- Action buttons (edit, add impact, submit judgment)
 
-### Judgment Submission Screen (`ui/compose/judgments/JudgmentSubmissionScreen.kt`)
+**Note:** Judgment submission is handled inline in this screen (matches Desktop UI pattern). Separate judgment screens are not needed.
 
-**Purpose:** Submit judgment for an event.
+### Overall Summary Screen (`ui/compose/summary/OverallSummaryScreen.kt`)
+
+**Purpose:** Display aggregated statistics across all events (matches Desktop UI "Overall Summary" screen).
 
 **Visual Components:**
-- **Top App Bar:** "Submit Judgment" title, back button
-- **Judgment Form:**
-  - Assessment selector ('true' | 'false' | 'uncertain')
-  - Confidence level slider (0.0-1.0)
-  - Reasoning text input
-- **Submit Button:** Submits judgment
-- **Cancel Button:** Returns to list
+- **Top App Bar:** "Overall Summary" title, refresh button, export button
+- **Metrics Display:**
+  - Total events count
+  - Detected events count
+  - Average trust scores
+  - Collective intelligence metrics
+  - Last updated timestamp
+- **Event Rows Table:** Summary rows for all events
+- **Export Button:** Export summary as text file (if implemented)
 
 **State Management:**
-- Uses form state
-- Uses `JudgmentRepository.submitJudgment()`
+- Uses `EventRepository` for summary data
+- Uses Tauri commands or API for aggregated metrics
 
 **Expected Behavior:**
-- Validates form:
-  - Assessment required
-  - Confidence between 0.0-1.0
-  - Reasoning optional
-- On success: Navigate to list, show success message
-- On error: Display error message
+- Load overall metrics on mount
+- Display aggregated statistics
+- Provide export functionality (if implemented)
+- Update periodically or on refresh
+- Shows loading state during fetch
 
 **Responsibilities:**
-- Judgment submission
-- Form validation
-- Error handling
+- Aggregated statistics display
+- Data export
+- Summary generation
+
+### Training Results Screen (`ui/compose/training/TrainingResultsScreen.kt`)
+
+**Purpose:** Display training progress and results (matches Desktop UI "Training Results" screen).
+
+**Visual Components:**
+- **Top App Bar:** "Training Results" title, refresh button
+- **Progress Metrics:**
+  - Training progress indicators
+  - Impact progress percentage
+  - Average score
+- **Results Table:** Training results data
+- **Filters (if implemented):**
+  - Date range picker
+  - Context filter
+- **Charts/Graphs:** Visual representation (if implemented)
+
+**State Management:**
+- Uses `EventRepository` and `JudgmentRepository` for training data
+- Manages filter state
+
+**Expected Behavior:**
+- Load training data on mount
+- Display progress metrics
+- Show historical results
+- Apply filters (if implemented)
+- Update on refresh
+
+**Responsibilities:**
+- Training progress tracking
+- Results visualization
+- Progress metrics display
+
+### Settings Screen (`ui/compose/settings/SettingsScreen.kt`)
+
+**Purpose:** Application configuration and connection settings (matches Desktop UI "Settings" screen).
+
+**Visual Components:**
+- **Top App Bar:** "Settings" title
+- **Connection Mode Toggle:** Core (Local) vs HTTP API
+- **Server Configuration:**
+  - IP Address input (validation: `^\d{1,3}(\.\d{1,3}){3}$`)
+  - Port input (validation: 1-65535)
+- **Nearby Sync Toggle + Interval Input:** Enables UDP broadcast discovery and sets interval (500–60000 ms)
+- **Discovery Worker Settings:** Background discovery enable switch plus numeric inputs for LAN/Wi-Fi/Global intervals and TTLs
+- **Test Connection Button:** Tests Core or HTTP connection depending on selected mode
+- **Init (Initialize App) Button:** Resets configuration and rebuilds local SQLite schema
+- **Save Buttons:** Separate actions for connection settings and discovery worker settings
+- **Connection Status Panel:** Displays latest test result, timestamp, online/offline information, and pending operations
+
+**State Management:**
+- Uses `AppConfig` for configuration
+- Manages connection test state
+
+**Expected Behavior:**
+- Loads current configuration on mount
+- Validates input fields
+- Tests connection on button press
+- Saves configuration on save button
+- Initializes app on init button (with confirmation)
+- Displays connection status
+
+**Responsibilities:**
+- Configuration management
+- Connection testing
+- App initialization
+- Discovery settings
 
 ### Nodes Screen (`ui/compose/nodes/NodesScreen.kt`)
 
@@ -957,7 +922,15 @@ Event Load → Extract Context Fields → ContextTemplateRepository.matchTemplat
 
 ## Version Information
 
-This specification reflects **Truth Training v1.0.0** Android mobile client functionality. All screens, components, and features described are implemented and tested as of this version.
+This specification reflects the **target architecture** for **Truth Training v1.0.0** Android mobile client. 
+
+**Implementation Status:**
+- **Fully Implemented**: NodesScreen
+- **Partially Implemented**: Screen files exist but require navigation integration (EventListScreen, EventDetailScreen, EventCreateScreen, EventEditScreen, ContextTemplateListScreen, ContextTemplateEditorScreen, ContextTemplateSelectionScreen, JudgmentListScreen, JudgmentSubmissionScreen, DashboardScreen)
+- **Navigation**: MainNavigation.kt contains placeholders for most screens ("Placeholder for now", "TODO")
+- **Current State**: See [release-info-v1_0_0-Develop.txt](../../release-info-v1_0_0-Develop.txt) for detailed implementation status
+
+**Note:** This specification describes the intended functionality. Actual implementation may vary. Screen components exist in the codebase but need to be wired into the navigation graph and connected to ViewModels/Repositories.
 
 ---
 

@@ -1,8 +1,8 @@
 # Architecture Overview
 
 Use /spec as the primary decision source before reading /docs.
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-01-XX
 Spec ID: 03
 
 This document reflects the current `truth-core` implementation and the CLI utilities, inspired by FidoNet principles for decentralized peer-to-peer communication.
@@ -100,10 +100,10 @@ This separation ensures modular testing, clean builds, and independent versionin
 - **p2p/encryption**: `CryptoIdentity` (Ed25519) with hex helpers and Result-based verify; header message patterns.
 - **net**: UDP beacon sender/listener in `src/net.rs` for LAN peer discovery.
 - **app/truthctl**: peer registry (`peers.json`), `peers add/list`, and `sync` orchestration (push or pull-only).
-- **sync logs**: persistent high-level sync logs in `core/src/storage.rs` (table `sync_logs`), exposed via CLI `truthctl logs show|clear`.
+- **sync logs**: persistent high-level sync logs in `core/src/storage.rs` (table `sync_logs`), exposed via CLI `truthctl logs show|clear`. Note: Desktop UI does not have a Logs screen; logs are CLI-only for confidentiality compliance.
 - **peer history**: `peer_history` table and helpers in `core-lib/src/storage.rs` track per-peer sync attempts, with API `/api/v1/network/local` and CLI `truthctl peers stats|history`.
 - **node configuration**: user-editable `~/.truthctl/config.json` managed via `truthctl config` (show/set/reset).
-- **status summary**: `truthctl status` aggregates configuration, peers, and recent `sync_logs` to report node health. For runtime checks, `truthctl diagnose --server` probes `/health`, opens SQLite, and inspects P2P listener status.
+- **status summary**: `truthctl status` aggregates configuration, peers, and recent `sync_logs` to report node health. For runtime checks, `truthctl diagnose --server` probes `/health`, opens SQLite, and inspects P2P listener status. Note: Desktop UI does not display sync logs; this is CLI-only functionality.
 - **self-healing init**: `truthctl reset-data [--reinit]` clears local state and can reinitialize node automatically, including key generation/replacement and `init-node` invocation.
 
 ### Non-goals (MVP)

@@ -3,7 +3,6 @@
 
 mod commands;
 mod discovery;
-mod logging;
 mod settings;
 mod storage;
 

@@ -1,5 +1,3 @@
-⚙️ Version Reference: See [spec/README.md](../spec/README.md) or [docs/VERSION_REGISTRY.md](VERSION_REGISTRY.md) for current version map.
-
 ## Installation Layout and Runtime Data Paths by OS
 
 This document summarizes where the various Truth Training executables (Desktop UI, Server, CLI) are built, and where they look for configuration files and databases on each supported operating system. It includes build artifact names for each GitHub Actions workflow.
@@ -44,6 +42,10 @@ Regardless of how the app is installed (from package, workflow artifact, or manu
 **Desktop UI and Server (Tauri, truth_core_server):**
 - Configuration file:  `~/.truth-training/config.json` (Linux/macOS), `%USERPROFILE%\.truth-training\config.json` (Windows)
 - SQLite database:     `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite` (Linux), `~/Library/Application Support/TruthTraining/truth_training.sqlite` (macOS), `%APPDATA%\TruthTraining\truth_training.sqlite` (Windows)
+  - SQLite WAL files (created automatically): `truth_training.sqlite-shm`, `truth_training.sqlite-wal` (same directory as main database)
+- Discovery settings:  `~/.truth-training/discovery_settings.json` (Linux/macOS), `%USERPROFILE%\.truth-training\discovery_settings.json` (Windows)
+- Discovery nodes database: `~/.truth-training/discovery_nodes.sqlite` (Linux/macOS), `%USERPROFILE%\.truth-training\discovery_nodes.sqlite` (Windows)
+  - Reference schema: [Discovery_Nodes_Schema.md](Discovery_Nodes_Schema.md)
 - Knowledge base override (optional):
   - Reference schema: [Data_Schema.md](Data_Schema.md)
   - Windows path reminder: `%USERPROFILE%\.truth-training\` (see [Data_Schema.md](Data_Schema.md) for table definitions)
@@ -57,6 +59,9 @@ Regardless of how the app is installed (from package, workflow artifact, or manu
 
 ### Local/Manual Builds
 - All executables and artifacts will appear in the `target/release/` subdirectory of your workspace.
+- Desktop UI binary: `target/release/truth-ui-desktop` (Linux/macOS), `target/release/truth-ui-desktop.exe` (Windows)
+- Server binary: `target/release/truth_core_server` (Linux/macOS), `target/release/truth_core_server.exe` (Windows)
+- CLI binary: `target/release/truthctl` (Linux/macOS), `target/release/truthctl.exe` (Windows)
 - You can run UI, server, and CLI binaries directly; they will use the above config/database locations, based on the current user's home.
 - Running with different users or arguments allows running isolated environments on the same system.
 
@@ -64,11 +69,11 @@ Regardless of how the app is installed (from package, workflow artifact, or manu
 
 ### Platform Table: Where artifacts go and where data is stored
 
-| Platform      | UI Installer              | Server Artifact/Installer              | CLI Binary           | Config File Location                        | DB File Location                                                          |
-|--------------|---------------------------|----------------------------------------|----------------------|---------------------------------------------|---------------------------------------------------------------------------|
-| Linux        | `.deb`, `.AppImage`       | `.deb`, `.rpm`, or plain binary        | `truthctl`           | `~/.truth-training/config.json`, `~/.truthctl/config.json` | `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite`     |
-| macOS        | `.app`, `.dmg`            | `.pkg` or plain binary                 | `truthctl`           | `~/.truth-training/config.json`, `~/.truthctl/config.json` | `~/Library/Application Support/TruthTraining/truth_training.sqlite`         |
-| Windows      | `.exe` (NSIS), `.msi`     | `.exe` (NSIS+WinSW) or plain binary    | `truthctl.exe`       | `%USERPROFILE%\.truth-training\config.json`, `%USERPROFILE%\.truthctl\config.json` | `%APPDATA%\TruthTraining\truth_training.sqlite`                |
+| Platform      | UI Installer              | Server Artifact/Installer              | CLI Binary           | Config File Location                        | DB File Location                                                          | Discovery Files                                                                                                                              |
+|--------------|---------------------------|----------------------------------------|----------------------|---------------------------------------------|---------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| Linux        | `.deb`, `.AppImage`       | `.deb`, `.rpm`, or plain binary        | `truthctl`           | `~/.truth-training/config.json`, `~/.truthctl/config.json` | `${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite` (+ `.sqlite-shm`, `.sqlite-wal`)     | `~/.truth-training/discovery_settings.json`, `~/.truth-training/discovery_nodes.sqlite` |
+| macOS        | `.app`, `.dmg`            | `.pkg` or plain binary                 | `truthctl`           | `~/.truth-training/config.json`, `~/.truthctl/config.json` | `~/Library/Application Support/TruthTraining/truth_training.sqlite` (+ `.sqlite-shm`, `.sqlite-wal`)         | `~/.truth-training/discovery_settings.json`, `~/.truth-training/discovery_nodes.sqlite` |
+| Windows      | `.exe` (NSIS), `.msi`     | `.exe` (NSIS+WinSW) or plain binary    | `truthctl.exe`       | `%USERPROFILE%\.truth-training\config.json`, `%USERPROFILE%\.truthctl\config.json` | `%APPDATA%\TruthTraining\truth_training.sqlite` (+ `.sqlite-shm`, `.sqlite-wal`)                | `%USERPROFILE%\.truth-training\discovery_settings.json`, `%USERPROFILE%\.truth-training\discovery_nodes.sqlite` |
 
 ---
 
