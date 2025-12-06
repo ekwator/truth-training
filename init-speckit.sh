@@ -7,7 +7,11 @@ if ! command -v specify >/dev/null 2>&1; then
     echo ""
     echo "uv tool install specify-cli --from git+https://github.com/github/spec-kit.git"
     echo ""
-    exit 1
+    read -p "или установить автоматически из git репозитория? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
 fi
 
 echo "=== Speckit Setup Script ==="
