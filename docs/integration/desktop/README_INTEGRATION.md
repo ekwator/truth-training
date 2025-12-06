@@ -1,8 +1,11 @@
-# Desktop Integration Guide (Truth Core v0.4.0)
+# Desktop Integration Guide (Truth Core v1.0.0)
+
+**Version:** v1.0.0  
+**Status:** Desktop UI v1.0.0 (stable, full feature parity)
 
 ## Overview
 
-This guide provides comprehensive instructions for integrating Truth Core with desktop applications (Linux, Windows, macOS) using the full feature set including HTTP server, CLI tools, and complete P2P networking.
+This guide provides comprehensive instructions for integrating Truth Core with desktop applications (Linux, Windows, macOS) using the full feature set including HTTP server, CLI tools, and complete P2P networking. Desktop UI v1.0.0 provides full feature parity with all v1.0.0 API endpoints.
 
 ## Prerequisites
 
@@ -49,7 +52,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### 2. API Endpoints
+### 2. v1.0.0 API Endpoints
+
+**Events:**
+- `POST /api/v1/events` - Create event (with embedded context fields: `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`)
+- `GET /api/v1/events` - List events (with pagination)
+- `GET /api/v1/events/{id}` - Get event by ID
+- `PUT /api/v1/events/{id}` - Update event
+- `DELETE /api/v1/events/{id}` - Delete event
+
+**Context Templates:**
+- `GET /api/v1/contexts` - List all context templates
+- `POST /api/v1/contexts` - Create context template (with duplicate detection)
+- `GET /api/v1/contexts/{id}` - Get template by ID
+- `GET /api/v1/contexts/by-name/{name}` - Get template by name
+- `POST /api/v1/contexts/match` - Match context by embedded fields
+- `POST /api/v1/contexts/from-event` - Create template from event
+- `PUT /api/v1/contexts/{id}` - Update template
+- `DELETE /api/v1/contexts/{id}` - Delete template
+
+**Judgments:**
+- `POST /api/v1/judgments` - Submit judgment (assessment: 'true' | 'false' | 'uncertain', confidence_level: 0.0-1.0)
+- `GET /api/v1/judgments` - List judgments (optionally filtered by event_id)
+
+**Impacts:**
+- `POST /api/v1/impacts` - Add impact (type_id, value: boolean, notes)
+- `GET /api/v1/impacts` - List impacts (optionally filtered by event_id)
+
+**Node Discovery:**
+- `GET /api/v1/nodes` - List discovered nodes
+- `POST /api/v1/nodes` - Add/update node
+- `GET /api/v1/nodes/{id}` - Get node by ID
+- `POST /api/v1/nodes/sync` - Incremental sync with peer
+
+**Note:** v1.0.0 uses **embedded context fields** instead of `context_id`. Events store `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id` directly (all nullable FK references).
+
+For complete API reference, see [docs/api_reference/API_REFERENCE.md](../../api_reference/API_REFERENCE.md).
 
 **Node Information:**
 ```bash
@@ -59,14 +97,15 @@ curl http://localhost:8080/api/v1/info
 Response:
 ```json
 {
-    "name": "truth-core",
-    "version": "0.4.0",
-    "uptime_sec": 12345,
-    "started_at": 1640995200,
-    "features": ["p2p-client-sync", "jwt"],
+    "node_name": "node-abc12345",
+    "version": "1.0.0",
+    "p2p_enabled": true,
+    "db_path": "/path/to/truth_training.sqlite",
     "peer_count": 3
 }
 ```
+
+**Note:** The actual response format uses `node_name`, `p2p_enabled`, and `db_path` fields. See [API Reference](../../api_reference/API_REFERENCE.md) for complete schema.
 
 **Database Statistics:**
 ```bash
@@ -84,9 +123,12 @@ Response:
     "avg_trust_score": 0.62,
     "avg_propagation_priority": 0.71,
     "avg_relay_success_rate": 0.84,
+    "avg_quality_index": 0.68,
     "active_nodes": 7
 }
 ```
+
+**Note:** v1.0.0 adds `avg_quality_index` field to stats response.
 
 **Network Graph:**
 ```bash
@@ -251,36 +293,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### 1. Direct Database Access
 ```rust
-use truth_core::core::storage;
-use truth_core::core::models::TruthEvent;
+use core_lib::storage;
+use core_lib::models::{NewTruthEvent, TruthEvent};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Open database
-    let db = storage::open_database("truth.db")?;
+    let conn = storage::open_db("truth_training.sqlite")?;
     
-    // Add event
-    let event = TruthEvent {
-        id: None,
+    // Add event with embedded context fields (v1.0.0)
+    let new_event = NewTruthEvent {
         description: "Test event".to_string(),
-        context_id: 1,
+        category_id: Some(1),  // Embedded context field
+        forma_id: Some(2),     // Embedded context field
+        cause_id: Some(3),     // Embedded context field
+        develop_id: None,      // Optional
+        effect_id: None,       // Optional
         vector: true,
-        timestamp_start: chrono::Utc::now(),
+        timestamp_start: chrono::Utc::now().timestamp(),
         timestamp_end: None,
-        code: 0,
-        detected: false,
-        corrected: false,
-        collective_score: None,
+        code: 1,
     };
     
-    storage::add_truth_event(&db, &event)?;
+    let event_id = storage::add_truth_event(&conn, new_event)?;
+    println!("Created event with ID: {}", event_id);
     
-    // Get events
-    let events = storage::get_truth_events(&db)?;
-    println!("Events: {:?}", events);
+    // Get event
+    if let Some(event) = storage::get_truth_event(&conn, event_id)? {
+        println!("Event: {:?}", event);
+    }
+    
+    // List events
+    let events = storage::list_truth_events(&conn, Some(10), Some(0))?;
+    println!("Events: {} found", events.len());
     
     Ok(())
 }
 ```
+
+**Note:** v1.0.0 uses `NewTruthEvent` with embedded context fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`) instead of `context_id`. All context fields are optional (nullable).
 
 ### 2. Expert System Integration
 ```rust
@@ -511,12 +561,50 @@ rm truth.db-wal truth.db-shm
 
 **P2P Discovery Issues:**
 ```bash
-# Check UDP port 37020
-netstat -an | grep 37020
+# Check UDP multicast port 52525 (v1.0.0 standard)
+netstat -an | grep 52525
 
 # Test UDP connectivity
-nc -u 192.168.1.100 37020
+nc -u 239.255.0.1 52525
 ```
+
+## Desktop Client Architecture (v1.0.0)
+
+**Primary Communication:**
+- **Tauri Commands**: Direct Rust FFI calls for local database operations
+- **HTTP REST API**: Axios for REST endpoints when using remote server mode
+- **Local Storage**: SQLite via Tauri backend at `~/.local/share/TruthTraining/truth_training.sqlite`
+
+**Key Features:**
+- Full CRUD operations for Events, Context Templates, Judgments, Impacts
+- Embedded context fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`)
+- Context Template system with duplicate detection and matching
+- Offline-first with local queue and background sync
+- P2P discovery via UDP multicast (239.255.0.1:52525) and global registry polling
+- Locale-aware knowledge base seeding (Russian/English)
+
+**UI Framework:**
+- **React 18 + TypeScript**: Modern functional components
+- **Zustand**: State management
+- **Tailwind CSS**: Styling
+- **Tauri 2.9.0**: Desktop backend
+
+## Migration Notes (v0.4.0 → v1.0.0)
+
+**Breaking Changes:**
+- `context_id` removed from events; use embedded fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`)
+- API endpoints updated for context templates
+- New endpoints for judgments and impacts
+- UDP multicast address changed to standard `239.255.0.1:52525`
+
+**See:** [Desktop UI Guide](../../UI_Desktop.md) for complete v1.0.0 feature documentation.
+
+## See Also
+
+- [Desktop UI Guide](../../UI_Desktop.md) - Complete Desktop UI documentation
+- [Desktop Quickstart](../../quickstart_desktop.md) - Installation and usage instructions
+- [API Reference](../../api_reference/API_REFERENCE.md) - Complete HTTP API documentation
+- [CLI Usage](../../CLI_Usage.md) - truthctl command reference
 
 This integration guide provides comprehensive desktop development with Truth Core's full feature set while maintaining optimal performance and reliability.
 

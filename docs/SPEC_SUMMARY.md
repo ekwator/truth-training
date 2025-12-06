@@ -44,6 +44,16 @@
 
 ## Cross-Platform Integration
 
+### Node Discovery System (v1.0.0)
+- **Unified Discovery Protocol**: Identical UDP multicast (239.255.0.1:52525) and global registry polling across Desktop, CLI, Server, and Android
+- **Cross-Platform Schema**: Unified SQLite schema for `discovery_nodes.sqlite` database
+- **Discovery Channels**: LAN/Wi-Fi UDP multicast, global registry HTTPS polling, manual node entry
+- **TTL-Based Cleanup**: Automatic pruning of stale nodes with platform-specific TTL values
+- **Documentation**: 
+  - [docs/Discovery_Nodes_Schema.md](Discovery_Nodes_Schema.md) - Database schema for discovery nodes
+  - [docs/cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md) - Discovery protocol details
+  - [spec/11-decision-log.md](../spec/11-decision-log.md) - ADR-0009: Cross-Platform Discovery Protocol
+
 ### Android Integration
 - **JSON Signature Verification**: Ed25519 signature verification for mobile clients
 - **JNI Bridge**: `src/android/mod.rs` for native function calls
@@ -64,6 +74,7 @@
 ## Version History
 
 ### v1.0.0 (Current)
+- **Cross-Platform Node Discovery**: Unified discovery protocol with identical UDP multicast, global registry polling, and SQLite schemas across Desktop, CLI, Server, and Android
 - **Functional Specifications**: Comprehensive cross-platform functional specs for Core, Desktop UI, and Android Mobile
 - **Context Template System**: Embedded context fields in events with template matching
 - **Cross-Platform Functional Documentation**: Unified functional specifications for all platforms
@@ -90,6 +101,7 @@
 ## Implementation Status
 
 ### ✅ Completed Features
+- Cross-platform node discovery system (UDP multicast, global registry, TTL cleanup)
 - Collective Intelligence Layer with consensus recalculation
 - Trust propagation with adaptive quality index
 - Offline reliability model without time-based decay

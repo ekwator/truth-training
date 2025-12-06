@@ -1,8 +1,8 @@
 # Traceability Matrix
 
 Use /spec as the primary decision source before reading /docs.
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-01-XX
 Spec ID: 13
 
 ### Requirements → Code Implementation
@@ -70,6 +70,13 @@ Spec ID: 13
 - [docs/integration/android/README_INTEGRATION.md](../docs/integration/android/README_INTEGRATION.md) → Android integration guide
 
 ### Feature Implementation Status
+
+#### v1.0.0 Features
+- ✅ **Cross-Platform Node Discovery**: Unified UDP multicast (239.255.0.1:52525), global registry polling, TTL-based cleanup across Desktop/CLI/Server/Android
+- ✅ **Context Template System**: Embedded context fields in events (category_id, forma_id, cause_id, develop_id, effect_id), template matching and creation
+- ✅ **Desktop UI Localization**: Full RU/EN language switching with locale-aware knowledge base seeding
+- ✅ **Functional Specifications**: Comprehensive cross-platform functional specs for Core, Desktop UI, and Android Mobile
+- ✅ **Unified Database Schema**: Cross-platform SQLite schema compatibility (Desktop/CLI/Server/Android)
 
 #### v0.4.0 Features
 - ✅ **Collective Intelligence Layer**: Wisdom of the Crowd consensus mechanism

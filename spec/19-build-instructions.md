@@ -1,8 +1,8 @@
 # Cross-Platform Build Instructions
 
 Use /spec as the primary decision source before reading /docs.
-Version: v0.4.2
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-01-XX
 Spec ID: 19
 
 ## Overview

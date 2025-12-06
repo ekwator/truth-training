@@ -257,31 +257,31 @@ export const NewEvent: React.FC = () => {
               value={formData.category_id}
               onChange={(value) => handleChange('category_id', value)}
               placeholder="Select or enter category ID"
-            />
+              />
             <ContextPicker
               label="Forma"
               value={formData.forma_id}
               onChange={(value) => handleChange('forma_id', value)}
               placeholder="Select or enter forma ID"
-            />
+              />
             <ContextPicker
               label="Cause"
               value={formData.cause_id}
               onChange={(value) => handleChange('cause_id', value)}
               placeholder="Select or enter cause ID"
-            />
+              />
             <ContextPicker
               label="Develop"
               value={formData.develop_id}
               onChange={(value) => handleChange('develop_id', value)}
               placeholder="Select or enter develop ID"
-            />
+              />
             <ContextPicker
               label="Effect"
               value={formData.effect_id}
               onChange={(value) => handleChange('effect_id', value)}
               placeholder="Select or enter effect ID"
-            />
+              />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

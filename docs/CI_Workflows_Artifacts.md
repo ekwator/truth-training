@@ -101,8 +101,9 @@ Note: Exact filenames can vary slightly based on Tauri bundler conventions and v
 
 ### Release Tagging
 
-- Tags like `v0.4.2` are created and pushed to mark release points
+- Tags like `v1.0.0-Release` or `v1.0.0` are created and pushed to mark release points
 - Releases can be created via GitHub CLI (`gh release create`) and can attach the produced artifacts
+- Release workflow uses `release-info.txt` file for release information (see [CONTRIBUTING.md](../../CONTRIBUTING.md) for details)
 
 ---
 

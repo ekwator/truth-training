@@ -1,8 +1,8 @@
 # HTTP API (current implementation)
 
 Use /spec as the primary decision source before reading /docs.
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-01-XX
 Spec ID: 05
 
 ## HTTP API (current implementation)
@@ -12,9 +12,9 @@ Base URL: http://<host>:<port>/
 - POST /init → initialize DB
 - POST /seed { locale?: "ru"|"en" }
 - GET /events (signed) → list of events; headers: X-Public-Key, X-Signature
-- POST /events { description, context_id, vector }
+- POST /events { description, category_id?, forma_id?, cause_id?, develop_id?, effect_id?, vector } (v1.0.0: context_id removed, embedded fields required)
 - POST /impacts Impact
-  - Impact: { id: string, event_id: string, type_id: number, value: boolean, notes?: string, created_at: number }
+  - Impact: { id: integer, event_id: integer, type_id: number, value: boolean, notes?: string, created_at: number }
 - GET /statements → list
 - POST /statements { event_id, text, context?, truth_score? }
 - POST /detect { event_id, detected, corrected? }
@@ -22,6 +22,10 @@ Base URL: http://<host>:<port>/
 - POST /api/v1/recalc_collective → { status: "ok" }
 - GET /progress → list of progress_metrics rows
 - GET /get_data → { events, impacts, metrics }
+- GET /api/v1/info → { node_name, version, p2p_enabled, db_path, peer_count }
+- GET /api/v1/stats → { events, statements, impacts, node_ratings, group_ratings, avg_trust_score, avg_quality_index, active_nodes }
+- GET /api/v1/network/local → peer history and local network summary
+- GET /graph/json → network graph visualization data
 - POST /sync (signed) → SyncResult
   - Headers: X-Public-Key, X-Signature, X-Timestamp
   - Message signed: `sync_push:{ts}`
@@ -93,18 +97,34 @@ JWT Claims include role and trust_score:
 }
 ```
 
+### Context Template API (v1.0.0)
+
+- `GET /contexts` → list all context templates
+- `POST /contexts` → create context template (with duplicate detection, returns 409 Conflict if duplicate)
+  - Body: `{ name, category_id?, forma_id?, cause_id?, develop_id?, effect_id?, description? }`
+- `GET /contexts/by-name/{name}` → get template by name
+- `POST /contexts/match` → match event fields to template
+  - Body: `{ category_id?, forma_id?, cause_id?, develop_id?, effect_id? }`
+  - Returns: `{ matched: boolean, template: ContextTemplate | null }`
+- `POST /contexts/from-event` → create template from event
+  - Body: `{ name, event_id, description? }`
+
 Future alignment
 - Consider consolidating GET /events and GET /get_data, and adding pagination.
-- Add OpenAPI in a follow-up.
+- OpenAPI documentation available at `/api/docs` (Swagger UI) and `/api/docs/openapi.json` (JSON spec).
 
 ### JSON Schemas (informal)
 
-TruthEvent
+TruthEvent (v1.0.0: embedded context fields)
 ```json
 {
   "id": 1,
   "description": "string",
-  "context_id": 1,
+  "category_id": 1,
+  "forma_id": 2,
+  "cause_id": 3,
+  "develop_id": 4,
+  "effect_id": 5,
   "vector": true,
   "detected": null,
   "corrected": false,
@@ -116,6 +136,7 @@ TruthEvent
   "collective_score": 0.75
 }
 ```
+Note: All context fields (category_id, forma_id, cause_id, develop_id, effect_id) are nullable. The `context_id` field has been removed in v1.0.0.
 
 Statement
 ```json
@@ -135,8 +156,8 @@ Statement
 Impact
 ```json
 {
-  "id": "uuid",
-  "event_id": "1",
+  "id": 1,
+  "event_id": 1,
   "type_id": 1,
   "value": true,
   "notes": "string|null",
@@ -145,6 +166,7 @@ Impact
   "public_key": "hex|null"
 }
 ```
+Note: `id` is INTEGER (PK, AUTOINCREMENT), not UUID.
 
 ProgressMetrics
 ```json

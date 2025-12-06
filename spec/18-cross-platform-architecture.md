@@ -1,8 +1,8 @@
 # Cross-Platform Architecture Specification
 
 Use /spec as the primary decision source before reading /docs.
-Version: v0.4.0
-Updated: 2025-01-18
+Version: v1.0.0
+Updated: 2025-01-XX
 Spec ID: 18
 
 ## Overview
@@ -304,7 +304,7 @@ pub fn mobile_async_task() -> Result<(), Box<dyn std::error::Error>> {
 ```toml
 [package]
 name = "truth_core"
-version = "0.4.0"
+version = "1.0.0"
 edition = "2021"
 
 [lib]
@@ -345,7 +345,7 @@ chrono = { version = "0.4", features = ["serde"] }
 rand = "0.8"
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 hex = "0.4"
-log = "0.4"
+log = "0.4"  # System logging only (errors, sync operations) - NOT user action logging
 base64 = "0.22"
 thiserror = "1.0"
 ```

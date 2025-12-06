@@ -1,14 +1,20 @@
-# iOS Integration Guide (Truth Core v0.4.0)
+# iOS Integration Guide (Truth Core v1.0.0)
+
+**Version:** v1.0.0  
+**Status:** iOS client is in early development (project structure exists, full implementation planned)
 
 ## Overview
 
-This guide provides step-by-step instructions for integrating Truth Core with iOS applications using Swift FFI bindings and the minimal mobile feature set.
+This guide provides step-by-step instructions for integrating Truth Core with iOS applications using Swift FFI bindings and the minimal mobile feature set. The iOS client v1.0.0 is planned to achieve feature parity with Android v1.0.0 and Desktop UI v1.0.0.
 
 ## Prerequisites
 
 - Xcode 14.0+
 - Rust toolchain (≥ 1.75)
 - iOS deployment target: iOS 13.0+
+- Swift 5.0+
+
+**Note:** iOS client v1.0.0 is in early development. This guide provides the foundation for integration. Full feature parity with Android v1.0.0 and Desktop UI v1.0.0 is planned for future releases.
 
 ## Setup
 
@@ -28,11 +34,15 @@ cargo install cbindgen
 ### 1. Build iOS Library
 ```bash
 # Build for device
-cargo build --release --target aarch64-apple-ios --features mobile
+cargo build --release --target aarch64-apple-ios --features mobile --lib -p truth_core
 
 # Build for simulator
-cargo build --release --target aarch64-apple-ios-sim --features mobile
+cargo build --release --target aarch64-apple-ios-sim --features mobile --lib -p truth_core
 ```
+
+**Outputs:**
+- `target/aarch64-apple-ios/release/libtruth_core.a`
+- `target/aarch64-apple-ios-sim/release/libtruth_core.a`
 
 ### 2. Generate Swift Bindings
 ```bash
@@ -201,6 +211,40 @@ pub extern "C" fn truth_core_free_string(s: *mut c_char) {
 }
 ```
 
+## v1.0.0 API Endpoints (Planned)
+
+**Note:** iOS client v1.0.0 will primarily use HTTP REST API endpoints (similar to Android client) for most operations. The FFI bridge will be used for core initialization and low-level operations.
+
+**Events:**
+- `POST /api/v1/events` - Create event (with embedded context fields: `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`)
+- `GET /api/v1/events` - List events (with pagination)
+- `GET /api/v1/events/{id}` - Get event by ID
+- `PUT /api/v1/events/{id}` - Update event
+- `DELETE /api/v1/events/{id}` - Delete event
+
+**Context Templates:**
+- `GET /api/v1/contexts` - List all context templates
+- `POST /api/v1/contexts` - Create context template (with duplicate detection)
+- `GET /api/v1/contexts/{id}` - Get template by ID
+- `POST /api/v1/contexts/match` - Match context by embedded fields
+
+**Judgments:**
+- `POST /api/v1/judgments` - Submit judgment (assessment: 'true' | 'false' | 'uncertain', confidence_level: 0.0-1.0)
+- `GET /api/v1/judgments` - List judgments (optionally filtered by event_id)
+
+**Impacts:**
+- `POST /api/v1/impacts` - Add impact (impact_level: 1-5)
+- `GET /api/v1/impacts` - List impacts (optionally filtered by event_id)
+
+**Node Discovery:**
+- `GET /api/v1/nodes` - List discovered nodes
+- `POST /api/v1/nodes` - Add/update node
+- `GET /api/v1/nodes/{id}` - Get node by ID
+
+**Note:** v1.0.0 uses **embedded context fields** instead of `context_id`. Events store `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id` directly (all nullable FK references).
+
+For complete API reference, see [docs/api_reference/API_REFERENCE.md](../../api_reference/API_REFERENCE.md).
+
 ## Usage Examples
 
 ### Basic JSON Processing
@@ -209,13 +253,20 @@ let truthCore = TruthCore()
 
 let jsonRequest = """
 {
-    "action": "ping",
-    "timestamp": 1640995200
+    "action": "get_info"
 }
 """
 
 if let response = truthCore.processJson(jsonRequest) {
     print("Response: \(response)")
+    // Expected response format (v1.0.0):
+    // {
+    //   "status": "ok",
+    //   "name": "truth-core",
+    //   "version": "1.0.0",
+    //   "features": ["p2p-client-sync", "mobile", "jwt"],
+    //   "peer_count": 0
+    // }
 }
 ```
 
@@ -360,6 +411,43 @@ debug = true
 overflow-checks = true
 ```
 
-This integration guide ensures smooth iOS development with Truth Core's minimal mobile feature set while maintaining optimal performance and battery efficiency.
+## iOS Client Architecture (v1.0.0 - Planned)
+
+**Primary Communication:**
+- **HTTP REST API**: Most operations will use URLSession with REST endpoints (`/api/v1/events`, `/api/v1/contexts`, `/api/v1/judgments`, etc.)
+- **FFI Bridge**: Used for core initialization (`truth_core_init()`) and low-level operations
+
+**Storage (Planned):**
+- **Core Data / SQLite**: Offline-first persistence with reactive Combine publishers
+- **Sync Queue**: Pending operations queued for background sync
+
+**Key Features (Planned):**
+- Full CRUD operations for Events, Context Templates, Judgments, Impacts
+- Embedded context fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`)
+- P2P discovery via UDP multicast and global registry polling
+- Background sync via BackgroundTasks framework
+
+**UI Framework (Planned):**
+- **SwiftUI**: Modern declarative UI framework
+- **MVVM Architecture**: ViewModel + Combine for reactive UI
+- **Navigation**: SwiftUI NavigationStack
+
+## Migration Notes (v0.4.0 → v1.0.0)
+
+**Breaking Changes:**
+- `context_id` removed from events; use embedded fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`)
+- API endpoints updated for context templates
+- New endpoints for judgments and impacts
+
+**See:** [Android Migration Guide](../../ANDROID_MIGRATION.md) for reference (iOS migration will follow similar patterns).
+
+## See Also
+
+- [iOS Quickstart Guide](../../quickstart_ios.md) - Installation and usage instructions
+- [Android Integration Guide](../android/README_INTEGRATION.md) - Reference implementation for mobile integration
+- [API Reference](../../api_reference/API_REFERENCE.md) - Complete HTTP API documentation
+- [Android Sample Responses](../android/sample_responses/) - Example JSON payloads (iOS will use similar formats)
+
+This integration guide provides the foundation for iOS development with Truth Core's minimal mobile feature set while maintaining optimal performance and battery efficiency. Full v1.0.0 feature parity with Android and Desktop is planned for future releases.
 
 _Version: v1.0.0_

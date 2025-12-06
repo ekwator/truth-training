@@ -272,8 +272,8 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 - **Discovery Worker Settings:** Background discovery enable switch plus numeric inputs for LAN/Wi-Fi/Global intervals and TTLs
 - **Test Connection Button:** Tests Core or HTTP connection depending on selected mode
 - **Init (Initialize App) Button:** Calls the Tauri `init_app` command to reset configuration and rebuild the local SQLite schema
-  - **Desktop**: Uses canonical Truth schema from `core/src/storage.rs`, drops legacy tables (`events`, `impacts`, `summaries`, `logs`), ensures schema parity
-  - **Android**: Database initialization uses shared SQL asset (`app/src/main/assets/schema.sql`) derived from `core/src/storage.rs`, drops legacy tables via `MIGRATION_3_4`, validates schema on open
+  - **Desktop**: Uses canonical Truth schema from `core/src/storage.rs`, initializes fresh database with v1.0.0 schema, seeds knowledge base with current locale
+  - **Android**: Database initialization uses shared SQL asset (`app/src/main/assets/schema.sql`) derived from `core/src/storage.rs`, validates schema on open
 - **Save Buttons:** Separate actions for connection settings and discovery worker settings
 - **Connection Status Panel:** Displays latest test result, timestamp, online/offline information, and pending operations
 
@@ -637,8 +637,6 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 - `createContext(data)` - Create context template
 - `matchContext(fields)` - Match context by fields
 - `getOverallMetrics()` - Get overall statistics
-- `listLogs(limit, offset)` - List logs
-- `clearLogs()` - Clear logs
 - `getAppConfig()` - Get configuration
 - `saveAppConfig(config)` - Save configuration
 - `testConnection()` - Test connection

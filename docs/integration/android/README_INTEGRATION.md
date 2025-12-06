@@ -1,4 +1,4 @@
-## Android Integration Guide (Truth Core v0.4.0)
+## Android Integration Guide (Truth Core v1.0.0)
 
 ### Android JSON signature verification (Ed25519)
 
@@ -52,11 +52,46 @@ Copy the resulting libraries into your Android client's `app/src/main/jniLibs/<a
 
 ### Overview
 
-- Base URL: your node (e.g., `http://10.0.2.2:8080` for Android emulator)
+- Base URL: your node (e.g., `http://10.0.2.2:8080` for Android emulator, `https://truth-core.example.com` for production)
 - Content-Type: `application/json; charset=utf-8`
 - Authentication: JWT (`Authorization: Bearer <jwt>`) for protected endpoints
-- Full API reference: see [docs/api_reference/API_REFERENCE.md](../../docs/api_reference/API_REFERENCE.md)
+- Full API reference: see [docs/api_reference/API_REFERENCE.md](../../api_reference/API_REFERENCE.md)
 - Collective Intelligence API: `POST /api/v1/recalc_collective` for consensus recalculation
+
+### v1.0.0 API Endpoints
+
+**Events:**
+- `POST /api/v1/events` - Create event (with embedded context fields: `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`)
+- `GET /api/v1/events` - List events (with pagination)
+- `GET /api/v1/events/{id}` - Get event by ID
+- `PUT /api/v1/events/{id}` - Update event
+- `DELETE /api/v1/events/{id}` - Delete event
+
+**Context Templates:**
+- `GET /api/v1/contexts` - List all context templates
+- `POST /api/v1/contexts` - Create context template (with duplicate detection)
+- `GET /api/v1/contexts/{id}` - Get template by ID
+- `GET /api/v1/contexts/by-name/{name}` - Get template by name
+- `POST /api/v1/contexts/match` - Match context by embedded fields
+- `POST /api/v1/contexts/from-event` - Create template from event
+- `PUT /api/v1/contexts/{id}` - Update template
+- `DELETE /api/v1/contexts/{id}` - Delete template
+
+**Judgments:**
+- `POST /api/v1/judgments` - Submit judgment (assessment: 'true' | 'false' | 'uncertain', confidence_level: 0.0-1.0)
+- `GET /api/v1/judgments` - List judgments (optionally filtered by event_id)
+
+**Impacts:**
+- `POST /api/v1/impacts` - Add impact (impact_level: 1-5)
+- `GET /api/v1/impacts` - List impacts (optionally filtered by event_id)
+
+**Node Discovery:**
+- `GET /api/v1/nodes` - List discovered nodes
+- `POST /api/v1/nodes` - Add/update node
+- `GET /api/v1/nodes/{id}` - Get node by ID
+- `POST /api/v1/nodes/sync` - Incremental sync with peer
+
+**Note:** v1.0.0 uses **embedded context fields** instead of `context_id`. Events store `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id` directly (all nullable FK references).
 
 ### Retrofit Setup (Kotlin)
 
@@ -94,8 +129,9 @@ val retrofit = Retrofit.Builder()
     .build()
 ```
 
-### API Models (samples)
+### API Models (v1.0.0 samples)
 ```kotlin
+// Info & Stats
 data class InfoResponse(
     val name: String,
     val version: String,
@@ -117,6 +153,56 @@ data class StatsResponse(
     val active_nodes: Int
 )
 
+// Events (v1.0.0: embedded context fields)
+data class Event(
+    val id: Long? = null,
+    val description: String,
+    val category_id: Long? = null,  // Embedded context field
+    val forma_id: Long? = null,       // Embedded context field
+    val cause_id: Long? = null,      // Embedded context field
+    val develop_id: Long? = null,    // Embedded context field
+    val effect_id: Long? = null,     // Embedded context field
+    val vector: Boolean = false,
+    val detected: Boolean? = null,
+    val corrected: Boolean = false,
+    val timestamp_start: Long,
+    val timestamp_end: Long? = null,
+    val code: Int = 1,
+    val collective_score: Double? = null
+)
+
+// Context Templates (v1.0.0)
+data class ContextTemplate(
+    val id: Long? = null,
+    val name: String,
+    val description: String? = null,
+    val category_id: Long? = null,
+    val forma_id: Long? = null,
+    val cause_id: Long? = null,
+    val develop_id: Long? = null,
+    val effect_id: Long? = null
+)
+
+// Judgments
+data class Judgment(
+    val id: Long? = null,
+    val event_id: Long,
+    val assessment: String,  // 'true' | 'false' | 'uncertain'
+    val confidence_level: Double,  // 0.0-1.0
+    val reasoning: String? = null,
+    val submitted_at: Long
+)
+
+// Impacts
+data class Impact(
+    val id: Long? = null,
+    val event_id: Long,
+    val type_id: Long,
+    val value: Boolean,  // true = positive, false = negative
+    val notes: String? = null
+)
+
+// Graph
 data class GraphNode(
     val id: String,
     val score: Double,
@@ -138,20 +224,90 @@ data class GraphResponse(
 )
 ```
 
-### Retrofit Service
+### Retrofit Service (v1.0.0)
 ```kotlin
 interface TruthCoreApi {
+    // Info & Stats
     @GET("/api/v1/info")
     suspend fun info(): InfoResponse
 
     @GET("/api/v1/stats")
     suspend fun stats(): StatsResponse
 
+    // Events (v1.0.0: embedded context fields)
+    @GET("/api/v1/events")
+    suspend fun listEvents(
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int? = null
+    ): List<Event>
+
+    @GET("/api/v1/events/{id}")
+    suspend fun getEvent(@Path("id") id: Long): Event
+
+    @POST("/api/v1/events")
+    suspend fun createEvent(@Body event: Event): Event
+
+    @PUT("/api/v1/events/{id}")
+    suspend fun updateEvent(@Path("id") id: Long, @Body event: Event): Event
+
+    @DELETE("/api/v1/events/{id}")
+    suspend fun deleteEvent(@Path("id") id: Long)
+
+    // Context Templates (v1.0.0)
+    @GET("/api/v1/contexts")
+    suspend fun listContexts(): List<ContextTemplate>
+
+    @GET("/api/v1/contexts/{id}")
+    suspend fun getContext(@Path("id") id: Long): ContextTemplate
+
+    @GET("/api/v1/contexts/by-name/{name}")
+    suspend fun getContextByName(@Path("name") name: String): ContextTemplate
+
+    @POST("/api/v1/contexts")
+    suspend fun createContext(@Body template: ContextTemplate): ContextTemplate
+
+    @POST("/api/v1/contexts/match")
+    suspend fun matchContext(
+        @Query("category_id") categoryId: Long? = null,
+        @Query("forma_id") formaId: Long? = null,
+        @Query("cause_id") causeId: Long? = null,
+        @Query("develop_id") developId: Long? = null,
+        @Query("effect_id") effectId: Long? = null
+    ): ContextTemplate?
+
+    @POST("/api/v1/contexts/from-event")
+    suspend fun createContextFromEvent(@Body event: Event): ContextTemplate
+
+    @PUT("/api/v1/contexts/{id}")
+    suspend fun updateContext(@Path("id") id: Long, @Body template: ContextTemplate): ContextTemplate
+
+    @DELETE("/api/v1/contexts/{id}")
+    suspend fun deleteContext(@Path("id") id: Long)
+
+    // Judgments
+    @POST("/api/v1/judgments")
+    suspend fun submitJudgment(@Body judgment: Judgment): Judgment
+
+    @GET("/api/v1/judgments")
+    suspend fun listJudgments(@Query("event_id") eventId: Long? = null): List<Judgment>
+
+    // Impacts
+    @POST("/api/v1/impacts")
+    suspend fun addImpact(@Body impact: Impact): Impact
+
+    @GET("/api/v1/impacts")
+    suspend fun listImpacts(@Query("event_id") eventId: Long? = null): List<Impact>
+
+    // Graph
     @GET("/graph/json")
     suspend fun graph(
         @Query("min_priority") minPriority: Double? = null,
         @Query("limit") limit: Int? = null
     ): GraphResponse
+
+    // Collective Intelligence
+    @POST("/api/v1/recalc_collective")
+    suspend fun recalcCollective()
 }
 ```
 
@@ -168,10 +324,54 @@ interface TruthCoreApi {
 
 ### Version
 
-- This document targets truth_core v0.4.0.
+- This document targets Truth Training v1.0.0 (Core, Server, Desktop, Android).
+- Android Client: v1.0.0 (stable, full feature parity with Desktop UI)
+- Core Library: v1.0.0
+- API Compatibility: v1.0.0 (embedded context fields, context templates, judgments, consensus)
+
+### Android Client Architecture (v1.0.0)
+
+**Offline-First Design:**
+- **Room Database**: Local SQLite persistence with reactive Flow-based queries
+- **Sync Queue**: Pending operations queued for background sync
+- **WorkManager**: Periodic background sync every 15 minutes
+- **Local-Wins Conflict Resolution**: Local changes take precedence over remote
+
+**Key Components:**
+- `TruthDatabase.kt` - Room database with schema migrations
+- `EventRepository`, `ContextTemplateRepository`, `JudgmentRepository` - Data access layer
+- `SyncWorker` (WorkManager) - Background synchronization
+- `P2PSyncManager` - Peer-to-peer event propagation
+- `DiscoveryRepository` - Node discovery (UDP multicast, global registry)
+
+**UI Framework:**
+- **Jetpack Compose**: Modern Material 3 design
+- **MVVM Architecture**: ViewModel + StateFlow for reactive UI
+- **Navigation**: Jetpack Navigation Compose
+
+**P2P Discovery:**
+- **UDP Multicast**: Standard address `239.255.0.1:52525` for LAN discovery
+- **Global Registry**: HTTPS polling for internet-accessible nodes
+- **NSD Discovery**: Android Network Service Discovery for local peers
+
+### Migration Notes (v0.3.0 → v1.0.0)
+
+**Breaking Changes:**
+- `context_id` removed from events; use embedded fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`)
+- Database schema migration required (Room migrations V1→V2)
+- API endpoints updated for context templates
+
+**See:** [Android Migration Guide](../../ANDROID_MIGRATION.md) for detailed migration instructions.
 
 ### Samples
 
-- See `docs/integration/android/sample_responses/` for example payloads.
+Example JSON response payloads:
+- [info.json](sample_responses/info.json) - `/api/v1/info` response format
+- [stats.json](sample_responses/stats.json) - `/api/v1/stats` response format
+- [graph.json](sample_responses/graph.json) - `/graph/json` response format
+
+See also:
+- [Android Quickstart Guide](../../quickstart_android.md) for complete setup instructions
+- [Android Architecture Documentation](../../android_discovery_architecture.md) for discovery and sync details
 
 _Version: v1.0.0_

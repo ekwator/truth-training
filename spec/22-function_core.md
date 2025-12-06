@@ -740,6 +740,10 @@ This document provides a comprehensive functional specification for all Rust mod
   - Reads locale from `~/.truth-training/config.json` and seeds knowledge base with locale-specific data
   - Falls back to "en" if config file doesn't exist or locale is invalid
   - Runs migrations for existing databases
+  - **Node Discovery Files (v1.0.0):**
+    - Creates `discovery_nodes.sqlite` at `~/.truth-training/discovery_nodes.sqlite` (or OS-specific data directory) for storing discovered peer nodes
+    - Creates `discovery_settings.json` at `~/.truth-training/discovery_settings.json` for discovery configuration (intervals, TTL, registry URLs)
+    - Both files are initialized during Desktop UI startup via `DiscoveryManager::init_from_disk()`
 
 #### Locale Management
 - `get_locale_from_config() -> Result<String, String>` - Reads locale from config file
@@ -801,19 +805,6 @@ This document provides a comprehensive functional specification for all Rust mod
 **Shared Responsibilities:**
 - Settings management
 - Configuration
-
-### Module: `src-tauri/src/logging.rs`
-
-**Purpose:** Logging utilities for Tauri.
-
-**Key Functions:**
-- Log initialization
-- Log level configuration
-- Log file management
-
-**Shared Responsibilities:**
-- Logging infrastructure
-- Log management
 
 ## Cross-Platform Considerations
 
