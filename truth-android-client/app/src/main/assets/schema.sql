@@ -1,6 +1,8 @@
 PRAGMA foreign_keys = ON;
 
 -- knowledge_base
+-- Note: Knowledge base tables use INTEGER PRIMARY KEY (without AUTOINCREMENT)
+-- because IDs are fixed values (1, 2, 3, etc.) and should not auto-increment
 CREATE TABLE IF NOT EXISTS category (
     id          INTEGER PRIMARY KEY,
     name        TEXT NOT NULL,
@@ -36,7 +38,7 @@ CREATE TABLE IF NOT EXISTS forma (
 );
 
 CREATE TABLE IF NOT EXISTS context (
-    id          INTEGER PRIMARY KEY,
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL,
 category_id INTEGER,
     forma_id    INTEGER,

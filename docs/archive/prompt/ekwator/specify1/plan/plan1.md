@@ -1,17 +1,13 @@
-<!-- Archived from [docs/prompt/ekwator/specify1/plan/plan1.md](docs/prompt/ekwator/specify1/plan/plan1.md) -->
-
-/speckit.plan
 Create a complete modification plan for implementing the changes defined in the previous /speckit.specify request:
 
 Goal:
-Fix the issue in the truth-android-client where the application launches and immediately disappears from the screen, while still running in the background. The solution must properly register the UI entry point and screen structure in AndroidManifest.xml and ensure that the application opens normally and remains visible.
+The solution must properly register the UI entry point and screen structure in AndroidManifest.xml and ensure that the application opens normally and remains visible.
 
 Plan Requirements:
 1. Manifest Corrections
-   - Identify the current incorrect launcher Activity declaration.
    - Add or correct the <activity> entry that should serve as the primary launcher.
    - Add the proper intent-filter with MAIN and LAUNCHER categories.
-   - Ensure the activity is exported when required by Android 11+ rules.
+   - Ensure the activity is exported when required rules.
 
 2. Entry Activity Initialization
    - Confirm that the launcher Activity initializes the NavigationHost properly.
@@ -32,14 +28,15 @@ Plan Requirements:
 
 6. Testing Plan
    - Add unit tests or instrumentation tests to verify:
-     - The application no longer closes after launch.
      - The manifest declares the correct launcher Activity.
      - The navigation graph loads the initial screen successfully.
+     - Conduct final testing on a real physical device by first checking its connection with the adb devices command; if not connected, warn the user and receive confirmation of the connection from them.
 
 7. Deliverables
    - A complete set of manifest patches.
    - Kotlin file modifications for Activity, Navigation, and ViewModels.
    - Instructions for applying the patch via PR generated from the final plan.
+   - Update the documentation by adding the relevant documents to the spec/ and docs/ directories with clickable links in markdown format in all cross-documents
 
 Important Rule:
 - The CLI part of the application must remain untouched because it is used only for verifying Core, Server, and CLI layers by the Cursor AI agent.
@@ -48,8 +45,6 @@ Generate:
 - A clear, step-by-step plan.
 - Explicit file paths and modifications.
 - Dependencies between steps.
-- A ready-to-execute plan suitable for subsequent tasks and /implementation.
+- A ready-to-execute plan suitable for subsequent tasks and /implementation in automatic mode
 
 _Version: v1.0.0_
-
-

@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +34,9 @@ fun DashboardScreen(
     onNavigateToContexts: () -> Unit = {},
     onNavigateToJudgments: () -> Unit = {},
     onSyncNow: () -> Unit = {},
+    onNavigateToSummary: () -> Unit = {},
+    onNavigateToTraining: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -79,9 +84,9 @@ fun DashboardScreen(
 
             HorizontalDivider()
 
-            // Quick Actions
+            // Actions
             Text(
-                text = "Quick Actions",
+                text = "Actions",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -102,6 +107,24 @@ fun DashboardScreen(
                 text = "View Judgments",
                 icon = Icons.Filled.CheckCircle,
                 onClick = onNavigateToJudgments
+            )
+            
+            QuickActionButton(
+                text = "Overall Summary",
+                icon = Icons.Filled.BarChart,
+                onClick = onNavigateToSummary
+            )
+            
+            QuickActionButton(
+                text = "Training Results",
+                icon = Icons.Filled.TrendingUp,
+                onClick = onNavigateToTraining
+            )
+            
+            QuickActionButton(
+                text = "Settings",
+                icon = Icons.Filled.Settings,
+                onClick = onNavigateToSettings
             )
         }
     }
