@@ -34,6 +34,22 @@ We use [GitHub Spec-Kit](https://github.com/github/spec-kit), installed in the d
 .cursor/
 ```
 
+**Installation:**
+
+For this repository, Spec-Kit must be installed system-wide using one of the following methods:
+
+- **Manual installation:**
+  ```bash
+  uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+  ```
+
+- **Automatic installation and update:**
+  Use the provided initialization script:
+  ```bash
+  ./init-speckit.sh
+  ```
+  This script will check for Spec-Kit, prompt for automatic installation if missing, and set up the project environment.
+
 Spec-Kit provides a **spec-driven development workflow**, ensuring that all work is planned, validated, and implemented consistently.
 # 📝 Spec-Driven Development Workflow
 

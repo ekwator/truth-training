@@ -69,6 +69,22 @@ To ensure consistency, safety, and traceability in development, the following to
 2. **Spec-Kit**  
    We require using [GitHub Spec-Kit](https://github.com/github/spec-kit) (installed in the `.cursor` folder of the project) to run the structured specification workflow. Spec-Kit is a toolkit for Spec-Driven Development, designed to help generate and maintain executable specifications. :contentReference[oaicite:0]{index=0}
 
+   **Installation:**
+   
+   For this repository, Spec-Kit must be installed system-wide using one of the following methods:
+   
+   - **Manual installation:**
+     ```bash
+     uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+     ```
+   
+   - **Automatic installation and update:**
+     Use the provided initialization script:
+     ```bash
+     ./init-speckit.sh
+     ```
+     This script will check for Spec-Kit, prompt for automatic installation if missing, and set up the project environment.
+
    In our project, the following Spec-Kit slash commands (available after installation) must be used:
 
    - `/speckit.specify` — creates a GitHub PR with a new branch based on the specification  
