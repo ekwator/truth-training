@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
+# Проверка наличия Spec-Kit перед инициализацией
+if ! command -v specify >/dev/null 2>&1; then
+    echo "Spec-Kit не установлен! Установите один раз и используйте везде:"
+    echo ""
+    echo "uv tool install specify-cli --from git+https://github.com/github/spec-kit.git"
+    echo ""
+    exit 1
+fi
+
 echo "=== Speckit Setup Script ==="
 
 # -----------------------------
