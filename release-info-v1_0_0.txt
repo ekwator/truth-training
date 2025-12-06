@@ -3,6 +3,13 @@ Truth Training v1.0.0 — Network of Anonymous Trust, fully realized
 
 Truth Training v1.0.0 is the first and only GA release of the project. It delivers the complete anonymous-trust stack—from the Ed25519-secured Rust core to truthctl, desktop UI, mobile clients, automation hooks, and governance specifications—aligned under one version banner. Every capability built since project inception (planning kits 001–010, cross-platform experiments, prompt frameworks, and documentation refactors) lands here in production-ready form.
 
+**Important Notes:**
+- **Privacy & Confidentiality**: No user actions are logged or persistently stored. Only system-level logs (errors, sync operations) are permitted. This is a core architectural requirement enforced across all platforms. See [SECURITY.md](SECURITY.md) for details.
+- **Localization Status**: 
+  - Desktop UI: Full RU/EN language switching implemented with locale-aware knowledge base seeding.
+  - Android Client: English-only (EN). Russian localization not implemented. Full localization parity requires Spec-Kit planning.
+- **Feature Implementation**: All future features and improvements must follow the Spec-Kit workflow (`/speckit.specify`, `/speckit.plan`, `/speckit.task`, `/speckit.implementation`) with detailed implementation plans. See [spec/15-prompts-and-automation.md](spec/15-prompts-and-automation.md) and [CONTRIBUTING.md](CONTRIBUTING.md) for requirements.
+
 Highlights
 - Cross-platform core (`truth_core` + `core_lib`):
   - Feature-gated builds for desktop (HTTP server, diagnostics, CLI integration) and mobile (FFI layer, lightweight runtime) sharing identical data models.
@@ -16,6 +23,7 @@ Highlights
 - Android client:
   - Room-backed offline mode, Jetpack Compose UI, WorkManager background sync, NSD-based P2P discovery, and secure Ed25519/RSA message signing.
   - Full API parity with desktop/CLI, including context templates, judgments, consensus, and registry-driven node management.
+  - **Localization**: English-only (EN). Russian localization not implemented. Screen coverage partially implemented (NodesScreen fully integrated; other screens require navigation integration). See [release-info-v1_0_0-Develop.txt](release-info-v1_0_0-Develop.txt) for detailed status.
 - Unified discovery + sync fabric:
   - LAN/Wi-Fi UDP multicast (239.255.0.1:52525), HTTPS registry polling, and TTL-governed reachability checks operating on a single schema.
   - Conflict-free deduplication, auto-cleanup, and shared observability metrics across server, desktop, CLI, and Android runtimes.
@@ -28,8 +36,8 @@ Highlights
 
 Quality & Validation
 - Multi-tier testing suites: Rust unit/integration tests, CLI contract tests, Android instrumentation (107 on-device cases), desktop end-to-end, and cross-device scenarios (desktop ↔ CLI ↔ Android).
-- Observability: Discovery counts, TTL pruning, reachability/latency metrics, and relay success rates surfaced across clients and workflows.
+- Observability: Discovery counts, TTL pruning, reachability/latency metrics, and relay success rates surfaced across clients and workflows. **Note**: Only system-level logs (errors, sync operations) are permitted. User action logging is explicitly prohibited for privacy compliance.
 - Documentation integrity: Complete link graph from root README through `/docs` and `/spec`, archived references preserved via GitHub URLs, and spec compression directives enforcing AI-ready briefs.
-- Security & compliance: Constitution adherence, Ed25519 signature enforcement, privacy-preserving judgment aggregation, and version registry synchronization across artifacts.
+- Security & compliance: Constitution adherence, Ed25519 signature enforcement, privacy-preserving judgment aggregation, version registry synchronization across artifacts, and strict no-user-action-logging policy enforced architecturally.
 
 Truth Training v1.0.0 represents the fully aligned "Network of Anonymous Trust": anonymous signaling, collective adjudication, platform-consistent discovery, and production-grade tooling released together for the first time.
