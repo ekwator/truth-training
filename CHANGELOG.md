@@ -5,34 +5,39 @@
 **Release Date**: 2025-01-XX  
 **Status**: Development Release
 
-This development release builds upon v1.0.0-Release with enhanced localization support, improved documentation, and refined CI/CD workflows. This version is specifically designed for developers learning to use Cursor AI IDE and modern cross-platform development practices.
+This development release is based on v1.0.0 with enhanced localization support (partial), improved documentation, and refined CI/CD workflows. This version is specifically designed for developers learning to use Cursor AI IDE and modern cross-platform development practices.
 
 For a narrative overview of this release, see [`release-info-v1_0_0-Develop.txt`](release-info-v1_0_0-Develop.txt).
 
 **Important Notes:**
 - **Privacy & Confidentiality**: No user actions are logged or persistently stored. Only system-level logs (errors, sync operations) are permitted. This is a core architectural requirement enforced across all platforms. See [SECURITY.md](SECURITY.md) for details.
+- **Localization Status**: 
+  - Desktop UI: **Localization not fully implemented** - Language toggle exists but does not persist to config.json, database is not seeded with selected language, interface remains in English. Full implementation requires Spec-Kit planning.
+  - Android Client: English-only (EN). Russian localization not implemented. Full localization parity requires Spec-Kit planning.
 - **Feature Implementation**: All future features and improvements must follow the Spec-Kit workflow (`/speckit.specify`, `/speckit.plan`, `/speckit.task`, `/speckit.implementation`) with detailed implementation plans. See [spec/15-prompts-and-automation.md](spec/15-prompts-and-automation.md) and [CONTRIBUTING.md](CONTRIBUTING.md) for requirements.
 
 ### 🌐 Localization Status
 
-#### Desktop UI: Full Russian/English Language Support ✅
-- **Dynamic Language Switching**: Complete Russian (RU) and English (EN) language support with instant UI updates
-- **Locale Toggle Component**: `LocaleToggle` component available in header and Settings screen
-- **Translation System**: Comprehensive translation files (`ru.ts` for Russian, default English) with full UI coverage
-- **Translation Coverage**: All UI strings translated including navigation, dashboard, events, settings, errors, and locale selection
-- **Locale Persistence**: Selected locale saved to `~/.truth-training/config.json` and persisted across app restarts
-- **Locale-Aware Knowledge Base Seeding**: 
-  - Core Support: `seed_knowledge_base` function supports locale parameter (`"ru"` or `"en"`)
-  - Automatic Reseeding: `reseed_knowledge_base` Tauri command automatically reseeds knowledge base when locale changes
-  - Database Initialization: `init_app` preserves current locale setting and seeds knowledge base with appropriate language data
-  - Fallback Behavior: Missing translations fall back to English with console warning
+#### Desktop UI: Localization Not Fully Implemented ⚠️
+- **Current Status**: Language toggle component exists but localization is **not functional**
+- **Issues**:
+  - Language selection is stored in application memory (localStorage) but **not persisted to config.json**
+  - Database is **not seeded** with knowledge base data according to selected language
+  - Interface **remains in English** regardless of language selection
+  - **UI Issue**: On Settings screen, there is an **extra duplicate language selection field** in the bottom section (should be removed)
+- **Translation Files**: Translation files (`ru.ts`) exist but are not applied to UI
+- **Requirement**: Full localization implementation requires Spec-Kit workflow (`/speckit.specify`, `/speckit.plan`, `/speckit.task`, `/speckit.implementation`) with detailed plan to:
+  - Fix config.json persistence
+  - Implement database seeding on locale change
+  - Apply translations to UI components
+  - Remove duplicate language selection field from Settings screen
 
 #### Android Client: English-Only (EN) ⚠️
 - **Current Status**: English-only localization
 - **Missing**: Russian translation file (`values-ru/strings.xml`)
 - **Missing**: Language selector UI component
 - **Missing**: Locale-aware knowledge base seeding integration
-- **Recommendation**: Full localization parity with Desktop UI requires Spec-Kit planning and implementation
+- **Requirement**: Full localization implementation requires Spec-Kit workflow with detailed plan
 
 ### 📚 Documentation Enhancements
 
@@ -72,6 +77,16 @@ For a narrative overview of this release, see [`release-info-v1_0_0-Develop.txt`
 
 ### ⚠️ Known Limitations & Future Work
 
+#### Desktop UI
+- **Localization**: Not fully implemented - Language toggle exists but is not functional
+  - **Issues**: 
+    - Language selection not persisted to `config.json`
+    - Database not seeded with knowledge base data according to selected language
+    - Interface remains in English regardless of language selection
+    - **UI Issue**: On Settings screen, there is an **extra duplicate language selection field** in the bottom section (should be removed)
+  - **Translation Files**: Translation files (`ru.ts`) exist but are not applied to UI
+  - **Requirement**: Full localization implementation requires Spec-Kit workflow (`/speckit.specify`, `/speckit.plan`, `/speckit.task`, `/speckit.implementation`) with detailed plan to fix config persistence, database seeding, UI translation application, and remove duplicate language field
+
 #### Android Client
 - **Localization**: English-only (EN) - Russian localization not implemented
   - Missing: `values-ru/strings.xml` translation file
@@ -99,7 +114,7 @@ For a narrative overview of this release, see [`release-info-v1_0_0-Develop.txt`
 
 ### 📊 Platform Comparison
 
-- **Desktop UI**: Most complete implementation with full localization (RU/EN), all 7 screens (Logs screen removed for privacy), comprehensive testing, and production-ready features
+- **Desktop UI**: Most complete implementation with **localization not fully functional** (language toggle exists but not working), all 7 screens (Logs screen removed for privacy), comprehensive testing, and production-ready features
 - **Android Client**: Partial implementation with EN-only localization, NodesScreen fully integrated, other screens require navigation integration. Full localization and screen completion require Spec-Kit planning
 - **iOS Client**: Project structure only, requires full implementation via Spec-Kit workflow
 - **Core Library**: Full feature support with locale-aware knowledge base seeding, no user action logging

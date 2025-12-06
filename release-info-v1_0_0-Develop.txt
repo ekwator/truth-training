@@ -1,19 +1,32 @@
 v1.0.0-Develop
 Truth Training v1.0.0-Develop — Development Release for Learning and Practice
 
-This development release builds upon v1.0.0-Release with enhanced localization support, improved documentation, and refined CI/CD workflows. This version is specifically designed for developers learning to use Cursor AI IDE and modern cross-platform development practices.
+This development release is based on v1.0.0 with enhanced localization support (partial), improved documentation, and refined CI/CD workflows. This version is specifically designed for developers learning to use Cursor AI IDE and modern cross-platform development practices.
+
+**Important Notes:**
+- **Privacy & Confidentiality**: No user actions are logged or persistently stored. Only system-level logs (errors, sync operations) are permitted. This is a core architectural requirement enforced across all platforms. See [SECURITY.md](SECURITY.md) for details.
+- **Localization Status**: 
+  - Desktop UI: **Localization not fully implemented** - Language toggle exists but does not persist to config.json, database is not seeded with selected language, interface remains in English. Full implementation requires Spec-Kit planning.
+  - Android Client: English-only (EN). Russian localization not implemented. Full localization parity requires Spec-Kit planning.
+- **Feature Implementation**: All future features and improvements must follow the Spec-Kit workflow (`/speckit.specify`, `/speckit.plan`, `/speckit.task`, `/speckit.implementation`) with detailed implementation plans. See [spec/15-prompts-and-automation.md](spec/15-prompts-and-automation.md) and [CONTRIBUTING.md](CONTRIBUTING.md) for requirements.
 
 Highlights
-- Desktop UI Localization:
-  - Full Russian (RU) and English (EN) language support with dynamic switching
-  - Locale-aware knowledge base seeding (Core supports `seed_knowledge_base` with locale parameter)
-  - Automatic knowledge base reseeding when locale changes via `reseed_knowledge_base` Tauri command
-  - Complete translation coverage for all UI strings (navigation, dashboard, events, settings, errors)
-  - Locale persistence in `~/.truth-training/config.json`
-  - Fallback to English with telemetry events for missing translations
+- Desktop UI Localization (Not Fully Implemented):
+  - **Current Status**: Language toggle component exists but localization is **not functional**
+  - **Issues**: Language selection not persisted to config.json, database not seeded, interface remains in English
+  - **UI Issue**: On Settings screen, there is an **extra duplicate language selection field** in the bottom section (should be removed)
+  - **Translation Files**: Translation files exist but are not applied to UI
+  - **Requirement**: Full localization implementation requires Spec-Kit workflow with detailed plan
+- Android Client Localization (Not Implemented):
+  - **Current Status**: English-only (EN)
+  - **Missing**: Russian translation file (`values-ru/strings.xml`)
+  - **Missing**: Language selector UI component
+  - **Missing**: Locale-aware knowledge base seeding integration
+  - **Requirement**: Full localization implementation requires Spec-Kit workflow with detailed plan
 - Documentation Enhancements:
-  - Comprehensive logging documentation (`docs/logging.md`) covering all platforms
-  - Updated functional specifications (22-function_core.md, 23-function_desktop.md, 24-function_mobile_android.md) with localization details
+  - Privacy & Confidentiality documentation: Updated [SECURITY.md](SECURITY.md) with explicit no-user-action-logging policy
+  - Updated functional specifications (22-function_core.md, 23-function_desktop.md, 24-function_mobile_android.md) with localization details and privacy requirements
+  - All spec files (01-24) updated to v1.0.0 with 2025-01-XX dates
   - CLI tool documentation and workflow (`cli-build.yml`) for `truthctl` binary builds
   - Expanded artifact documentation in `docs/Truth-training/Truth-training.md`
 - CI/CD Improvements:
@@ -23,32 +36,46 @@ Highlights
   - Cross-platform artifact generation and publishing
 
 Known Limitations & Future Work
+- Desktop UI:
+  - **Localization**: Not fully implemented - Language toggle exists but is not functional
+    - **Issues**: Language selection not persisted to config.json, database not seeded, interface remains in English
+    - **UI Issue**: On Settings screen, there is an **extra duplicate language selection field** in the bottom section (should be removed)
+    - **Requirement**: Full localization implementation requires Spec-Kit workflow with detailed plan
 - Android Client:
   - **Localization**: English-only (EN) - Russian localization not implemented
+    - **Requirement**: Full localization implementation requires Spec-Kit workflow (`/speckit.specify`, `/speckit.plan`, `/speckit.task`, `/speckit.implementation`) with detailed implementation plan
   - **Screen Coverage**: Not all activities/screens are fully implemented compared to Desktop UI
+    - **Current**: NodesScreen fully integrated; other screens (Dashboard, New Event, Context Editor, Event Summary, Overall Summary, Training Results, Settings) exist but require navigation integration
+    - **Target**: 7 screens matching Desktop UI (Logs screen removed for privacy compliance)
+    - **Requirement**: Screen integration requires Spec-Kit workflow with detailed implementation plan
   - **Missing Features**: Some advanced features from Desktop UI need Android equivalents
-  - **Recommendation**: Implement full screen coverage matching Desktop UI's 8 screens, add Russian translations (`values-ru/strings.xml`), and integrate locale-aware knowledge base seeding
+  - **Recommendation**: Use Spec-Kit for all future Android improvements to ensure consistency and proper planning
 - iOS Client:
   - **Status**: Basic project structure exists, but full implementation is required
   - **Missing**: Complete UI implementation, feature parity with Desktop/Android
-  - **Recommendation**: Full iOS client development needed to match Desktop UI functionality
+  - **Requirement**: Full iOS client development requires Spec-Kit workflow with detailed implementation plan
+  - **Recommendation**: Use Spec-Kit for all iOS development to ensure consistency with Desktop/Android
 - CLI Tool (`truthctl`):
   - **Status**: Core functionality implemented (node management, sync, discovery)
   - **Limitation**: Direct CLI commands for events and context templates are planned for future releases
   - **Current Workaround**: Use HTTP API endpoints (`/api/v1/events`, `/api/v1/contexts`) or Desktop UI
+  - **Requirement**: Future CLI enhancements require Spec-Kit workflow with detailed plan
 
 Platform Comparison
-- **Desktop UI**: Most complete implementation with full localization (RU/EN), all 8 screens, comprehensive testing, and production-ready features
-- **Android Client**: Partial implementation with EN-only localization, basic screens, and core API coverage
-- **iOS Client**: Project structure only, requires full implementation
-- **Core Library**: Full feature support with locale-aware knowledge base seeding
-- **CLI Tool**: Functional for node management and sync, with planned enhancements for event/context management
+- **Desktop UI**: Most complete implementation with **localization not fully functional** (language toggle exists but not working), all 7 screens (Logs screen removed for privacy compliance), comprehensive testing, and production-ready features
+- **Android Client**: Partial implementation with EN-only localization, NodesScreen fully integrated, other screens require navigation integration. Full localization and screen completion require Spec-Kit planning
+- **iOS Client**: Project structure only, requires full implementation via Spec-Kit workflow
+- **Core Library**: Full feature support with locale-aware knowledge base seeding, no user action logging
+- **CLI Tool**: Functional for node management and sync, with planned enhancements requiring Spec-Kit workflow
 
 Quality & Validation
-- Updated functional specifications reflect current localization implementation
-- Documentation integrity maintained with comprehensive logging guides
+- Updated functional specifications reflect current localization implementation and privacy requirements
+- Documentation integrity maintained: All documentation updated to v1.0.0, all spec files aligned
+- Privacy compliance: No user action logging enforced architecturally across all platforms
+- Code quality: Removed unused `logging.rs` module (dead code violation), fixed clippy warnings
 - CI/CD workflows validated and optimized
 - Cross-platform compatibility verified
+- Build verification: All components compile successfully after code cleanup
 
 For Beginner Developers
 
