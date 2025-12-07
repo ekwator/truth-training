@@ -1,119 +1,81 @@
-# ⚙️ Request for Full Desktop UI Reconstruction and Synchronization  
-### Based on Android Client Implementation + Localization Fix + Database Reseed
+Request for Desktop UI Synchronization Based on Android Client Implementation  
+(Visual Layer Only — Preserve Desktop-Specific Functional Logic)
 
-This request instructs Cursor AI to **automatically perform all tasks required** to synchronize the Desktop UI implementation with the fully working Android client.  
-The Desktop UI must be **rebuilt**, **refactored**, and **realigned** according to the documented Android UI patterns, algorithms, and workflows.
+The Android client user interface has been fully implemented and documented. The Desktop UI must now be synchronized with the Android UI strictly at the level of **visual structure, navigation, rendering behavior, component states, and localization logic**, while **preserving all Desktop-specific functional features**.  
+No functional refactoring unrelated to UI presentation, Desktop-only workflows, or Desktop-exclusive tooling should be modified.
 
-The Android Client implementation is complete and fully documented.
+This request instructs Cursor AI to **fully rebuild the Desktop UI layer** to match the Android implementation patterns, while maintaining Desktop-specific behavior.
 
----
+## Primary Documentation
 
-# 📄 Primary Documentation for Synchronization
+1. **Main UI Specification**  
+   Location: `docs/ANDROID_UI_SPECIFICATION.md`  
+   Contains the complete specification of all 13 Android screens, navigation flows, components, algorithms, and UI behaviors.
 
-1. **Main Android UI Specification**  
-   `docs/ANDROID_UI_SPECIFICATION.md`  
-   – Full description of all *13 screens*, navigation flows, logic, algorithms, and required UI behaviors.
-
-2. **Android Implementation Report**  
-   `docs/ANDROID_UI_IMPLEMENTATION_REPORT.md`  
-   – Summary of implementation, deviations, fixes, and synchronization points.
+2. **Implementation Report**  
+   Location: `docs/ANDROID_UI_IMPLEMENTATION_REPORT.md`  
+   Includes the synchronization guide, parity notes, and differences relevant to Desktop UI.
 
 3. **Updated Functional Specification**  
-   `spec/24-function_mobile_android.md`
+   Location: `spec/24-function_mobile_android.md`  
+   Reflects the current Android implementation across screens and validation rules.
 
 4. **Localization Documentation**  
-   `specs/014-android-localization/LOCALIZATION_IMPLEMENTATION.md`  
-   – Full localization logic and requirements.
+   Location: `specs/014-android-localization/LOCALIZATION_IMPLEMENTATION.md`  
+   Contains full details of the localization system, including dictionary structure and key mapping.
 
----
+## Key Android Implementation Details Required for Desktop Re-Synchronization
 
-# 🖥 Desktop UI Mandatory Tasks
+- **13 fully implemented screens**, including navigation and transitions.
+- **Navigation patterns**, including template selection, event editing, and flag-based routing.
+- **Algorithms**, including context field display, date normalization, and corrected flag calculation.
+- **Validation rules**, covering events, templates, and judgments.
+- **Localization system**, including RU/EN switching and database re-seeding.
 
-Cursor AI must automatically perform **all required changes**, create **PRs**, update files, and implement UI logic identical to Android UI.
+## Desktop UI Synchronization Requirements
 
-## 1. ⚡ FULL Desktop UI Reconstruction
-Re-implement the Desktop UI following Android UI patterns:
+### 1. Visual Layer Rebuild
+- Recreate the Desktop UI layout, components, and visual behaviors to match Android implementation.
+- Maintain Desktop-specific functional logic; only UI structure, rendering, and navigation behavior are modified.
+- Avoid altering any Desktop-only features or workflows.
 
-- Navigation structure  
-- Routing logic (flag-based navigation)
-- Component patterns (`ContextPicker`, `DatePickerField`, etc.)
-- UI architecture  
-- State management  
-- Validation logic  
-- Event/template/judgment algorithms
+### 2. Navigation Synchronization
+- Align navigation flow, initial screen logic, and routing structure with Android UI behaviors.
+- Preserve Desktop-only command-line, developer, or management tools.
 
-The Desktop UI must become **functionally identical** to Android.
+### 3. Component Parity
+Rebuild Desktop equivalents of:
+- ContextPicker  
+- DatePickerField  
+- Template selection and judgment views  
+- Event editing and validation UI  
+- Status indicators and navigation headers
 
----
-
-# 🌍 Localization Fix (Critical)
-
-The current Desktop localization **does not work** due to:
-
-- hard-coded UI elements  
-- missing replacement string bindings  
-- missing automatic re-query of the localized knowledge base  
-- missing reseed on language switch
+### 4. Localization System Fix + Database Backfilling
+The current Desktop localization system does not function reliably, likely due to hardcoded strings in UI components.
 
 Cursor must:
+- Replace all hardcoded textual elements with localization keys.
+- Use the documented localization structure from Android.
+- Implement **database re-seeding with temporary tables** to ensure FK → PK integrity when switching language:
+  - Create temporary mirror tables
+  - Copy data with remapped localization fields
+  - Perform atomic swap to maintain relational integrity
+  - Remove temp tables after migration
 
-1. Remove all hard-coded text from Desktop UI  
-2. Load all strings through the localization system  
-3. Implement **full two-way RU/EN support**
-4. Ensure hot-switching language instantly updates UI
+### 5. Preserve Desktop-Specific Logic
+- Do not modify Desktop-only interaction flows.
+- Use Desktop documentation/specifications to verify which parts are UI-only.
+- Apply visual and behavioral parity without altering the underlying Desktop logic layer.
 
----
+## Summary
 
-# 🗄 Database Reseed via Temporary Tables (Critical)
+All documentation files contain complete, ready-to-use specifications for aligning the Desktop UI with the Android UI.  
+This request directs Cursor AI to:
 
-When switching UI language, the knowledge base must be **rebuilt safely**, preserving:
-
-- FK → PK integrity  
-- referential consistency  
-- ongoing sessions  
-- running tasks  
-
-Cursor must implement:
-
-### ✔ Safe reseed algorithm:
-1. Create temporary tables  
-2. Fill them with translated data  
-3. Atomically swap them into main schema  
-4. Drop temp tables after swap  
-5. Trigger UI refresh  
-
-This algorithm is already defined in Android localization documentation — replicate it.
-
----
-
-# 🔄 Required Synchronization Logic
-
-Cursor must ensure Desktop UI matches Android on:
-
-- Screen parity (7 core Desktop screens)  
-- Navigation parity  
-- Template selection logic  
-- Event creation/editing logic  
-- Context field visibility rules  
-- Date normalization algorithm  
-- Judgment and template validation rules  
-- User flow behavior  
-- Localization system integration  
-- Database schema parity  
-
----
-
-# 🚀 Final Directive
-
-**Cursor AI must:**
-
-- Generate all missing code  
-- Replace outdated/non-working Desktop UI components  
-- Fix localization system  
-- Implement temp-table DB reseed  
-- Apply all changes through PRs  
-- Ensure compatibility with existing CLI testing  
-- Conform to documentation and Android behavior exactly
-
-This `/specify` request authorizes Cursor AI to **completely rebuild the Desktop UI** where required, ensuring full parity with the Android client implementation and correct cross-platform behavior.
+- Fully rebuild the Desktop visual interface  
+- Synchronize navigation and UI behavior  
+- Fix localization using temporary-table database reseeding  
+- Preserve all Desktop-specific functional features  
+- Use Android documentation as the authoritative reference for UI structure and behavior
 
