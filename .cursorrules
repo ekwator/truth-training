@@ -1,0 +1,37 @@
+# Cursor Rules for Truth Training Project
+
+## Language Rules
+
+**CRITICAL: Language Requirements for Code and Documentation**
+
+1. **Code Comments**: All comments in code files (`.kt`, `.java`, `.rs`, `.ts`, `.tsx`, `.swift`, etc.) MUST be written in English only, unless the user explicitly requests a different language.
+
+2. **Git Commit Messages**: All git commit messages and descriptions MUST be written in English only, unless the user explicitly requests a different language.
+
+3. **Markdown Documentation**: All `.md` files (documentation, README, specs, etc.) MUST be written in English only, unless the user explicitly requests a different language.
+
+4. **Exception**: If the user explicitly specifies a language in their request (e.g., "write comments in Russian"), then that language may be used for that specific request only.
+
+## Git Operations Rules
+
+**CRITICAL: Git Commit and Push Restrictions**
+
+1. **Automatic Commits**: NEVER automatically commit changes to git without explicit user permission.
+
+2. **Automatic Push**: NEVER automatically push to a git repository without explicit user permission.
+
+3. **Permission Required**: Before performing any `git commit` or `git push` operation, you MUST:
+   - Ask the user for explicit permission
+   - Wait for user confirmation
+   - Only proceed after receiving clear approval
+
+4. **User-Initiated Commits**: If the user explicitly requests "commit and push" or similar commands, you may proceed with the operation.
+
+5. **Commit Messages**: When committing, always use English for commit messages unless the user explicitly requests otherwise.
+
+## Implementation Notes
+
+- These rules apply to all code files, documentation, and git operations in this project
+- Violations of these rules should be corrected immediately when detected
+- When in doubt, always default to English and ask for user permission before git operations
+

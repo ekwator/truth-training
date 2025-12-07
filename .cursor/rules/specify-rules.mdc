@@ -39,4 +39,31 @@ Rust 1.75+ (existing project): Follow standard conventions
 - 009-fix-linux-deb: Added Rust 1.75+ (stable toolchain)
 
 <!-- MANUAL ADDITIONS START -->
+
+## Language and Git Operations Rules
+
+**CRITICAL: Language Requirements**
+
+All code comments, git commit messages, and markdown documentation MUST be in English unless explicitly requested otherwise.
+
+1. **Code Comments**: All comments in code files (`.kt`, `.java`, `.rs`, `.ts`, `.tsx`, `.swift`, `.py`, etc.) MUST be written in English only, unless the user explicitly requests a different language.
+
+2. **Git Commit Messages**: All git commit messages and descriptions MUST be written in English only, unless the user explicitly requests a different language.
+
+3. **Markdown Documentation**: All `.md` files (documentation, README, specs, etc.) MUST be written in English only, unless the user explicitly requests a different language.
+
+**CRITICAL: Git Operations Restrictions**
+
+NEVER automatically commit or push to git without explicit user permission.
+
+1. **Automatic Commits**: NEVER automatically commit changes to git without explicit user permission.
+
+2. **Automatic Push**: NEVER automatically push to a git repository without explicit user permission.
+
+3. **Permission Required**: Before performing any `git commit` or `git push` operation, you MUST ask the user for explicit permission and wait for confirmation.
+
+4. **User-Initiated Operations**: If the user explicitly requests "commit and push" or similar commands, you may proceed with the operation.
+
+5. **Commit Messages**: When committing, always use English for commit messages unless the user explicitly requests otherwise.
+
 <!-- MANUAL ADDITIONS END -->

@@ -1,0 +1,40 @@
+# Language and Git Operations Rules
+
+## CRITICAL: Language Requirements
+
+**All code comments, git commit messages, and markdown documentation MUST be in English unless explicitly requested otherwise.**
+
+### Code Comments
+- All comments in code files (`.kt`, `.java`, `.rs`, `.ts`, `.tsx`, `.swift`, `.py`, etc.) MUST be written in English only
+- Exception: Only if the user explicitly requests a different language for a specific task
+
+### Git Commit Messages
+- All git commit messages and descriptions MUST be written in English only
+- Exception: Only if the user explicitly requests a different language
+
+### Markdown Documentation
+- All `.md` files (documentation, README, specs, etc.) MUST be written in English only
+- Exception: Only if the user explicitly requests a different language
+
+## CRITICAL: Git Operations Restrictions
+
+**NEVER automatically commit or push to git without explicit user permission.**
+
+### Automatic Operations Prohibited
+- NEVER automatically commit changes to git without explicit user permission
+- NEVER automatically push to a git repository without explicit user permission
+
+### Permission Required
+Before performing any `git commit` or `git push` operation, you MUST:
+1. Ask the user for explicit permission
+2. Wait for user confirmation
+3. Only proceed after receiving clear approval
+
+### User-Initiated Operations
+- If the user explicitly requests "commit and push" or similar commands, you may proceed
+- Always use English for commit messages unless the user explicitly requests otherwise
+
+### Implementation
+- These rules apply to all code files, documentation, and git operations in this project
+- Violations of these rules should be corrected immediately when detected
+- When in doubt, always default to English and ask for user permission before git operations
