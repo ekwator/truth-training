@@ -133,8 +133,7 @@ This document summarizes the implementation, testing, and fixes applied during t
 
 ### Physical Device Testing
 
-**Device:** RMX3261 - 11 (Android 11)  
-**Device ID:** REMOVED
+**Device:** RMX3261 - 11 (Android 11)
 
 **Test Results:**
 

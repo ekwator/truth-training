@@ -4,12 +4,20 @@
 
 set -e
 
-DEVICE_ID="REMOVED"
+# Use environment variable or auto-detect first connected device
+if [ -z "$DEVICE_ID" ]; then
+    DEVICE_ID=$(adb devices | grep -E "device$" | head -1 | awk '{print $1}')
+    if [ -z "$DEVICE_ID" ]; then
+        echo "❌ ERROR: No Android device connected"
+        exit 1
+    fi
+fi
+
 PACKAGE_NAME="com.truth.training.client"
 APK_PATH="/home/ekwator/Code/truth-training/truth-android-client/app/build/outputs/apk/local/debug/app-local-debug.apk"
 
 echo "=== 30-Second Stability Test ==="
-echo "Device: $DEVICE_ID"
+echo "Device: $DEVICE_ID (auto-detected)"
 echo "Package: $PACKAGE_NAME"
 echo ""
 
