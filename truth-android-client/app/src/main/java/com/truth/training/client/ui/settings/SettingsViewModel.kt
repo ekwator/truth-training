@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 /**
  * ViewModel for SettingsScreen.
@@ -135,29 +137,44 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     
     fun testConnection() {
         viewModelScope.launch {
-            _isTestingConnection.value = true
-            _error.value = null
-            
-            val result = if (_connectionMode.value == "core") {
-                // Test local Core connection
-                repository.fetchInfo().fold(
-                    onSuccess = { "Success: Core connection working (version: ${it.version})" },
-                    onFailure = { "Failed: ${it.message}" }
-                )
-            } else {
-                // Test HTTP API connection
-                repository.fetchInfo().fold(
-                    onSuccess = { "Success: HTTP API connection working (version: ${it.version})" },
-                    onFailure = { "Failed: ${it.message}" }
-                )
+            try {
+                _isTestingConnection.value = true
+                _error.value = null
+                
+                val result = if (_connectionMode.value == "core") {
+                    // Test local Core connection
+                    repository.fetchInfo().fold(
+                        onSuccess = { "Success: Core connection working (version: ${it.version})" },
+                        onFailure = { "Failed: ${it.message}" }
+                    )
+                } else {
+                    // Test HTTP API connection
+                    repository.fetchInfo().fold(
+                        onSuccess = { "Success: HTTP API connection working (version: ${it.version})" },
+                        onFailure = { "Failed: ${it.message}" }
+                    )
+                }
+                
+                // Use NonCancellable to ensure state is updated even if coroutine is cancelled
+                withContext(NonCancellable) {
+                    _connectionTestResult.value = result
+                    _connectionTestTimestamp.value = System.currentTimeMillis()
+                    appConfig.lastConnectionTestResult = result
+                    appConfig.lastConnectionTestTimestamp = _connectionTestTimestamp.value
+                }
+            } catch (e: Exception) {
+                val errorMessage = "Failed: ${e.message ?: "Unknown error"}"
+                withContext(NonCancellable) {
+                    _connectionTestResult.value = errorMessage
+                    _connectionTestTimestamp.value = System.currentTimeMillis()
+                    appConfig.lastConnectionTestResult = errorMessage
+                    appConfig.lastConnectionTestTimestamp = _connectionTestTimestamp.value
+                }
+            } finally {
+                withContext(NonCancellable) {
+                    _isTestingConnection.value = false
+                }
             }
-            
-            _connectionTestResult.value = result
-            _connectionTestTimestamp.value = System.currentTimeMillis()
-            appConfig.lastConnectionTestResult = result
-            appConfig.lastConnectionTestTimestamp = _connectionTestTimestamp.value
-            
-            _isTestingConnection.value = false
         }
     }
     

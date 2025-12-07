@@ -11,6 +11,41 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.database.entities.EventEntity
 import com.truth.training.client.data.network.dto.UpdateEventRequest
+import com.truth.training.client.ui.compose.components.ContextPicker
+import com.truth.training.client.ui.compose.components.DatePickerField
+import kotlinx.coroutines.flow.Flow
+import com.truth.training.client.data.database.entities.*
+import java.util.Calendar
+
+/**
+ * Normalizes date to start of day (00:00:00) for correct date comparison without time
+ */
+private fun normalizeToStartOfDay(timestamp: Long): Long {
+    val calendar = Calendar.getInstance().apply {
+        timeInMillis = timestamp
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    return calendar.timeInMillis
+}
+
+/**
+ * Extract name from description (first line before "\n\n")
+ */
+private fun extractNameFromDescription(description: String): String {
+    val parts = description.split("\n\n", limit = 2)
+    return parts.firstOrNull()?.takeIf { it.isNotBlank() } ?: ""
+}
+
+/**
+ * Extract description without name (everything after "\n\n")
+ */
+private fun extractDescriptionWithoutName(description: String): String {
+    val parts = description.split("\n\n", limit = 2)
+    return if (parts.size > 1) parts[1] else description
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -18,21 +53,61 @@ fun EventEditScreen(
     event: EventEntity,
     onSave: (Long, UpdateEventRequest) -> Unit,
     onCancel: () -> Unit,
+    categoriesFlow: Flow<List<CategoryEntity>>,
+    formasFlow: Flow<List<FormaEntity>>,
+    causesFlow: Flow<List<CauseEntity>>,
+    developsFlow: Flow<List<DevelopEntity>>,
+    effectsFlow: Flow<List<EffectEntity>>,
     modifier: Modifier = Modifier
 ) {
-    var description by remember { mutableStateOf(event.description) }
-    var categoryId by remember { mutableStateOf(event.categoryId?.toString() ?: "") }
-    var formaId by remember { mutableStateOf(event.formaId?.toString() ?: "") }
-    var causeId by remember { mutableStateOf(event.causeId?.toString() ?: "") }
-    var developId by remember { mutableStateOf(event.developId?.toString() ?: "") }
-    var effectId by remember { mutableStateOf(event.effectId?.toString() ?: "") }
-    var timestampStart by remember { mutableStateOf(event.timestampStart.toString()) }
-    var timestampEnd by remember { mutableStateOf(event.timestampEnd?.toString() ?: "") }
-    var vector by remember { mutableStateOf(event.vector) }
+    // Extract name and description from event.description
+    val initialName = remember(event) { extractNameFromDescription(event.description) }
+    val initialDescription = remember(event) { extractDescriptionWithoutName(event.description) }
+    
+    // Only Flags and Timestamp fields are editable
+    // Name and Description are read-only
     var detected by remember { mutableStateOf(event.detected ?: false) }
-    var corrected by remember { mutableStateOf(event.corrected) }
-
-    val canSave = description.isNotBlank() && timestampStart.toLongOrNull() != null
+    
+    // Timestamp fields according to specification:
+    // - Start Timestamp: not available for editing
+    // - End Timestamp: always available for editing, defaults to current date (if not filled)
+    
+    // Initialize timestampStart: always use existing value (read-only)
+    val timestampStart = event.timestampStart.takeIf { it > 0L }
+    
+    // Save initial End Timestamp value for change detection
+    val initialTimestampEnd = remember(event) { event.timestampEnd }
+    
+    // End Timestamp: defaults to current date if not filled
+    var timestampEnd by remember(event) { 
+        mutableStateOf<Long?>(
+            event.timestampEnd ?: System.currentTimeMillis()
+        )
+    }
+    
+    // Validation: End Timestamp cannot be less than Start Timestamp
+    var timestampEndError by remember { mutableStateOf<String?>(null) }
+    
+    // Corrected is set automatically:
+    // - If End Timestamp was empty before editing → Corrected is not set
+    // - If End Timestamp was set and changed → Corrected is automatically set
+    val corrected = remember(timestampEnd, initialTimestampEnd) {
+        if (initialTimestampEnd == null) {
+            // If End Timestamp was initially empty, Corrected is not set
+            event.corrected
+        } else {
+            // If End Timestamp was set and changed, Corrected is automatically set
+            if (timestampEnd != null && timestampEnd != initialTimestampEnd) {
+                true
+            } else {
+                event.corrected
+            }
+        }
+    }
+    
+    val canSave = (detected != (event.detected ?: false) || 
+                   corrected != event.corrected ||
+                   (timestampEnd != null && timestampEnd != initialTimestampEnd && timestampEndError == null))
 
     Scaffold(
         topBar = {
@@ -49,17 +124,17 @@ fun EventEditScreen(
                             onSave(
                                 event.id,
                                 UpdateEventRequest(
-                                    description = description.takeIf { it != event.description },
-                                    categoryId = categoryId.toIntOrNull()?.takeIf { it != event.categoryId },
-                                    formaId = formaId.toIntOrNull()?.takeIf { it != event.formaId },
-                                    causeId = causeId.toIntOrNull()?.takeIf { it != event.causeId },
-                                    developId = developId.toIntOrNull()?.takeIf { it != event.developId },
-                                    effectId = effectId.toIntOrNull()?.takeIf { it != event.effectId },
-                                    vector = vector.takeIf { it != event.vector },
+                                    description = null, // Name and description are not editable
+                                    categoryId = null,
+                                    formaId = null,
+                                    causeId = null,
+                                    developId = null,
+                                    effectId = null,
+                                    vector = null, // Not editable
                                     detected = detected.takeIf { event.detected != it },
                                     corrected = corrected.takeIf { event.corrected != it },
-                                    timestampStart = timestampStart.toLongOrNull()?.takeIf { it != event.timestampStart },
-                                    timestampEnd = timestampEnd.toLongOrNull()?.takeIf { it != event.timestampEnd },
+                                    timestampStart = null, // Start Timestamp is not editable
+                                    timestampEnd = timestampEnd?.takeIf { it != initialTimestampEnd && timestampEndError == null },
                                     code = null,
                                     collectiveScore = null
                                 )
@@ -81,86 +156,170 @@ fun EventEditScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Name field (read-only)
             OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Description *") },
+                value = initialName,
+                onValueChange = { },
+                label = { Text("Name") },
                 modifier = Modifier.fillMaxWidth(),
+                enabled = false,
+                readOnly = true,
+                singleLine = true
+            )
+            
+            // Description field (read-only)
+            OutlinedTextField(
+                value = initialDescription,
+                onValueChange = { },
+                label = { Text("Description") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = false,
+                readOnly = true,
                 minLines = 3,
                 maxLines = 6
             )
 
             HorizontalDivider()
 
-            Text("Context Fields", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            // Context Fields (read-only, display names instead of IDs)
+            Text(
+                text = "Context Fields",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = categoryId,
-                    onValueChange = { categoryId = it },
-                    label = { Text("Category ID") },
-                    modifier = Modifier.weight(1f)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ContextPicker(
+                    label = "Category",
+                    selectedId = event.categoryId,
+                    onSelectionChange = { },
+                    entitiesFlow = categoriesFlow,
+                    modifier = Modifier.weight(1f),
+                    enabled = false
                 )
-                OutlinedTextField(
-                    value = formaId,
-                    onValueChange = { formaId = it },
-                    label = { Text("Forma ID") },
-                    modifier = Modifier.weight(1f)
+                ContextPicker(
+                    label = "Forma",
+                    selectedId = event.formaId,
+                    onSelectionChange = { },
+                    entitiesFlow = formasFlow,
+                    modifier = Modifier.weight(1f),
+                    enabled = false
                 )
             }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = causeId,
-                    onValueChange = { causeId = it },
-                    label = { Text("Cause ID") },
-                    modifier = Modifier.weight(1f)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ContextPicker(
+                    label = "Cause",
+                    selectedId = event.causeId,
+                    onSelectionChange = { },
+                    entitiesFlow = causesFlow,
+                    modifier = Modifier.weight(1f),
+                    enabled = false
                 )
-                OutlinedTextField(
-                    value = developId,
-                    onValueChange = { developId = it },
-                    label = { Text("Develop ID") },
-                    modifier = Modifier.weight(1f)
+                ContextPicker(
+                    label = "Develop",
+                    selectedId = event.developId,
+                    onSelectionChange = { },
+                    entitiesFlow = developsFlow,
+                    modifier = Modifier.weight(1f),
+                    enabled = false
                 )
             }
 
-            OutlinedTextField(
-                value = effectId,
-                onValueChange = { effectId = it },
-                label = { Text("Effect ID") },
-                modifier = Modifier.fillMaxWidth()
+            ContextPicker(
+                label = "Effect",
+                selectedId = event.effectId,
+                onSelectionChange = { },
+                entitiesFlow = effectsFlow,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = false
             )
 
             HorizontalDivider()
 
-            Text("Timestamps", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-
-            OutlinedTextField(
-                value = timestampStart,
-                onValueChange = { timestampStart = it },
-                label = { Text("Start Timestamp (epoch ms) *") },
-                modifier = Modifier.fillMaxWidth()
+            // Timestamp fields (editable only if not already filled)
+            Text(
+                text = "Timeline",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
             )
 
-            OutlinedTextField(
-                value = timestampEnd,
-                onValueChange = { timestampEnd = it },
-                label = { Text("End Timestamp (epoch ms)") },
-                modifier = Modifier.fillMaxWidth()
+            DatePickerField(
+                label = "Start Timestamp",
+                selectedDate = timestampStart,
+                onDateSelected = { },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = false // Start Timestamp is not available for editing
             )
 
-            Text("Direction", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            DatePickerField(
+                label = "End Timestamp *",
+                selectedDate = timestampEnd,
+                onDateSelected = { newDate ->
+                    // Validation: End Timestamp cannot be less than Start Timestamp, but can be equal
+                    if (timestampStart != null) {
+                        val normalizedStart = normalizeToStartOfDay(timestampStart)
+                        val normalizedEnd = normalizeToStartOfDay(newDate)
+                        if (normalizedEnd < normalizedStart) {
+                            timestampEndError = "End Timestamp cannot be less than Start Timestamp (can be equal)"
+                        } else {
+                            timestampEnd = newDate
+                            timestampEndError = null
+                        }
+                    } else {
+                        timestampEnd = newDate
+                        timestampEndError = null
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = true, // End Timestamp is always available for editing
+                isError = timestampEndError != null,
+                errorMessage = timestampEndError
+                // allowClear = false - no clear function
+            )
+
+            HorizontalDivider()
+
+            // Direction (read-only)
+            Text(
+                text = "Direction",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = vector, onClick = { vector = true }, label = { Text("Outgoing") })
-                FilterChip(selected = !vector, onClick = { vector = false }, label = { Text("Incoming") })
+                FilterChip(
+                    selected = event.vector,
+                    onClick = { },
+                    enabled = false,
+                    label = { Text(if (event.vector) "Outgoing" else "Incoming") }
+                )
             }
 
-            Text("Flags", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            // Flags
+            Text(
+                text = "Flags",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = detected, onClick = { detected = !detected }, label = { Text("Detected") })
-                FilterChip(selected = corrected, onClick = { corrected = !corrected }, label = { Text("Corrected") })
+                FilterChip(
+                    selected = detected,
+                    onClick = { detected = !detected },
+                    label = { Text("Detected") }
+                )
+                FilterChip(
+                    selected = corrected,
+                    onClick = { }, // Corrected is not available for editing
+                    enabled = false, // Corrected is set automatically
+                    label = { Text("Corrected") }
+                )
             }
         }
     }
 }
-

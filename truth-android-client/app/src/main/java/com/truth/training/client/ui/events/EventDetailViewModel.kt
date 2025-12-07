@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.truth.training.client.TruthTrainingApplication
 import com.truth.training.client.data.TruthRepository
 import com.truth.training.client.data.database.entities.EventEntity
+import com.truth.training.client.data.network.dto.UpdateEventRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,46 @@ class EventDetailViewModel(
             initialValue = null
         )
     
+    val categories: StateFlow<List<com.truth.training.client.data.database.entities.CategoryEntity>> = 
+        repository.knowledgeBaseRepository.getAllCategoriesFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    
+    val formas: StateFlow<List<com.truth.training.client.data.database.entities.FormaEntity>> = 
+        repository.knowledgeBaseRepository.getAllFormasFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    
+    val causes: StateFlow<List<com.truth.training.client.data.database.entities.CauseEntity>> = 
+        repository.knowledgeBaseRepository.getAllCausesFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    
+    val develops: StateFlow<List<com.truth.training.client.data.database.entities.DevelopEntity>> = 
+        repository.knowledgeBaseRepository.getAllDevelopsFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    
+    val effects: StateFlow<List<com.truth.training.client.data.database.entities.EffectEntity>> = 
+        repository.knowledgeBaseRepository.getAllEffectsFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     
@@ -45,6 +86,18 @@ class EventDetailViewModel(
             _isLoading.value = true
             _error.value = null
             repository.eventRepository.deleteEvent(eventId).fold(
+                onSuccess = { onSuccess() },
+                onFailure = { _error.value = it.message }
+            )
+            _isLoading.value = false
+        }
+    }
+    
+    fun updateEvent(id: Long, request: UpdateEventRequest, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            repository.eventRepository.updateEvent(id, request).fold(
                 onSuccess = { onSuccess() },
                 onFailure = { _error.value = it.message }
             )

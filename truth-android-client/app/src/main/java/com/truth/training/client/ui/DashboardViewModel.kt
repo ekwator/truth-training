@@ -11,6 +11,7 @@ import com.truth.training.client.data.network.dto.StatsResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -26,11 +27,19 @@ class DashboardViewModel(app: Application, database: TruthDatabase) : AndroidVie
 
     val lastSync = repository.lastSync
 
-    val syncStatus: StateFlow<SyncStatus> = repository.syncStatus.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = SyncStatus.Unknown
-    )
+    private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Unknown)
+    val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
+    
+    init {
+        // Update sync status on initialization
+        viewModelScope.launch {
+            updateSyncStatus()
+        }
+    }
+    
+    private suspend fun updateSyncStatus() {
+        _syncStatus.value = repository.getSyncStatus()
+    }
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
@@ -46,6 +55,8 @@ class DashboardViewModel(app: Application, database: TruthDatabase) : AndroidVie
 
     fun refresh() {
         viewModelScope.launch {
+            updateSyncStatus()
+            
             val i = repository.fetchInfo()
             i.onSuccess { _info.value = it }.onFailure { _error.value = it.message }
 

@@ -45,7 +45,7 @@ class P2PServer(private val scope: CoroutineScope) {
                     if (signature.isBlank() || pubKeyB64.isBlank()) {
                         JSONObject(mapOf("status" to "error", "reason" to "missing_signature")).toString()
                     } else {
-                        // Проверяем подпись на payload как чистом JSON
+                        // Verify signature on payload as pure JSON
                         val canonical = payload.toString()
                         val pub = Ed25519CryptoManager.decodePublicKeyFromBase64(pubKeyB64)
                         val ok = Ed25519CryptoManager.verifySignature(pub, canonical, signature)

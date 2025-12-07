@@ -1,10 +1,14 @@
 package com.truth.training.client.ui.compose
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -87,7 +91,11 @@ fun MainNavigation(
                 eventCount = eventCount,
                 onNavigateToEvents = onNavigateToEvents,
                 onNavigateToContexts = onNavigateToContexts,
-                onNavigateToJudgments = { /* TODO: Navigate to judgments list when event selection is implemented */ },
+                onNavigateToJudgments = { 
+                    // Navigate to events list first, user can select event to view judgments
+                    // Alternatively, we could create a route for all judgments, but this matches UX better
+                    onNavigateToEvents()
+                },
                 onSyncNow = { viewModel.refresh() },
                 onNavigateToSummary = onNavigateToSummary,
                 onNavigateToTraining = onNavigateToTraining,
@@ -125,16 +133,21 @@ fun MainNavigation(
             )
         }
         
-        composable("event/create") {
+        composable("event/create") { backStackEntry ->
             val context = LocalContext.current
             val application = remember(context) { 
                 context.applicationContext as android.app.Application 
             }
             val factory = remember(application) { ViewModelFactory(application) }
-            val viewModel: EventCreateViewModel = viewModel(factory = factory)
+            // Use backStackEntry as viewModelStoreOwner to ensure state is preserved
+            val viewModel: EventCreateViewModel = viewModel(
+                viewModelStoreOwner = backStackEntry,
+                factory = factory
+            )
             
-            val templates by viewModel.templates.collectAsState()
             val error by viewModel.error.collectAsState()
+            val selectedTemplateContext by viewModel.selectedTemplateContext.collectAsState()
+            val templates by viewModel.templates.collectAsState()
             val snackbarHostState = remember { SnackbarHostState() }
             val scope = rememberCoroutineScope()
             
@@ -154,8 +167,53 @@ fun MainNavigation(
                     }
                 },
                 onCancel = onNavigateBack,
-                selectedTemplateContext = null,
-                contextsFlow = viewModel.templates,
+                selectedTemplateContext = selectedTemplateContext,
+                onSelectTemplate = {
+                    navController.navigate("event/create/select-template")
+                },
+                categoriesFlow = viewModel.categories,
+                formasFlow = viewModel.formas,
+                causesFlow = viewModel.causes,
+                developsFlow = viewModel.develops,
+                effectsFlow = viewModel.effects,
+                modifier = Modifier
+            )
+        }
+        
+        composable("event/create/select-template") { backStackEntry ->
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
+            }
+            val factory = remember(application) { ViewModelFactory(application) }
+            
+            // Get parent entry to share ViewModel instance
+            // Use try-catch in case parent entry is not available
+            val parentEntry = remember(backStackEntry) {
+                try {
+                    navController.getBackStackEntry("event/create")
+                } catch (e: Exception) {
+                    // Fallback to current entry if parent is not available
+                    backStackEntry
+                }
+            }
+            
+            // Use ViewModel from parent route to share state
+            val viewModel: EventCreateViewModel = viewModel(
+                viewModelStoreOwner = parentEntry,
+                factory = factory
+            )
+            
+            val templates by viewModel.templates.collectAsState()
+            
+            ContextTemplateSelectionScreen(
+                templates = templates,
+                onTemplateSelected = { contextFields ->
+                    // Update ViewModel state before navigating back
+                    viewModel.setSelectedTemplateContext(contextFields)
+                    navController.popBackStack()
+                },
+                onCancel = { navController.popBackStack() },
                 modifier = Modifier
             )
         }
@@ -187,7 +245,9 @@ fun MainNavigation(
             
             EventDetailScreen(
                 event = event,
-                onEdit = { /* TODO: Navigate to edit screen */ },
+                onEdit = { 
+                    navController.navigate("event/$eventId/edit")
+                },
                 onDelete = {
                     viewModel.deleteEvent {
                         onNavigateBack()
@@ -196,6 +256,58 @@ fun MainNavigation(
                 onNavigateToJudgments = { onNavigateToJudgments(eventIdStr) },
                 modifier = Modifier
             )
+        }
+        
+        composable("event/{eventId}/edit") { backStackEntry ->
+            val eventIdStr = backStackEntry.arguments?.getString("eventId") ?: ""
+            val eventId = eventIdStr.toLongOrNull() ?: 0L
+            
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
+            }
+            val factory = remember(application) { ViewModelFactory(application) }
+            val viewModel = remember(eventId) { factory.createEventDetailViewModel(eventId) }
+            
+            val event by viewModel.event.collectAsState()
+            val error by viewModel.error.collectAsState()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val scope = rememberCoroutineScope()
+            
+            // Show error snackbar if error occurs
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                    }
+                }
+            }
+            
+            val currentEvent = event
+            if (currentEvent != null) {
+                EventEditScreen(
+                    event = currentEvent,
+                    onSave = { id, request ->
+                        viewModel.updateEvent(id, request) {
+                            navController.popBackStack()
+                        }
+                    },
+                    onCancel = { navController.popBackStack() },
+                    categoriesFlow = viewModel.categories,
+                    formasFlow = viewModel.formas,
+                    causesFlow = viewModel.causes,
+                    developsFlow = viewModel.develops,
+                    effectsFlow = viewModel.effects,
+                    modifier = Modifier
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
         }
         
         composable("contexts") {
@@ -237,6 +349,11 @@ fun MainNavigation(
             val viewModel = remember { factory.createContextTemplateEditorViewModel(null) }
             
             val template by viewModel.template.collectAsState()
+            val categories by viewModel.categories.collectAsState()
+            val formas by viewModel.formas.collectAsState()
+            val causes by viewModel.causes.collectAsState()
+            val develops by viewModel.develops.collectAsState()
+            val effects by viewModel.effects.collectAsState()
             val error by viewModel.error.collectAsState()
             val snackbarHostState = remember { SnackbarHostState() }
             val scope = rememberCoroutineScope()
@@ -259,6 +376,11 @@ fun MainNavigation(
                 initialDevelopId = null,
                 initialEffectId = null,
                 initialDescription = "",
+                categoriesFlow = viewModel.categories,
+                formasFlow = viewModel.formas,
+                causesFlow = viewModel.causes,
+                developsFlow = viewModel.develops,
+                effectsFlow = viewModel.effects,
                 onSave = { request ->
                     viewModel.saveTemplate(request) {
                         onNavigateBack()
@@ -280,6 +402,11 @@ fun MainNavigation(
             val viewModel = remember(templateId) { factory.createContextTemplateEditorViewModel(templateId) }
             
             val template by viewModel.template.collectAsState()
+            val categories by viewModel.categories.collectAsState()
+            val formas by viewModel.formas.collectAsState()
+            val causes by viewModel.causes.collectAsState()
+            val develops by viewModel.develops.collectAsState()
+            val effects by viewModel.effects.collectAsState()
             val error by viewModel.error.collectAsState()
             val snackbarHostState = remember { SnackbarHostState() }
             val scope = rememberCoroutineScope()
@@ -302,6 +429,11 @@ fun MainNavigation(
                 initialDevelopId = template?.developId,
                 initialEffectId = template?.effectId,
                 initialDescription = template?.description ?: "",
+                categoriesFlow = viewModel.categories,
+                formasFlow = viewModel.formas,
+                causesFlow = viewModel.causes,
+                developsFlow = viewModel.develops,
+                effectsFlow = viewModel.effects,
                 onSave = { request ->
                     viewModel.saveTemplate(request) {
                         onNavigateBack()

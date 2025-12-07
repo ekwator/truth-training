@@ -10,6 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.network.dto.CreateContextRequest
+import com.truth.training.client.ui.compose.components.ContextPicker
+import com.truth.training.client.data.database.entities.*
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Context Template Editor Screen (Compose) - Form for creating or editing templates.
@@ -25,16 +28,21 @@ fun ContextTemplateEditorScreen(
     initialDevelopId: Int? = null,
     initialEffectId: Int? = null,
     initialDescription: String = "",
+    categoriesFlow: Flow<List<CategoryEntity>>,
+    formasFlow: Flow<List<FormaEntity>>,
+    causesFlow: Flow<List<CauseEntity>>,
+    developsFlow: Flow<List<DevelopEntity>>,
+    effectsFlow: Flow<List<EffectEntity>>,
     onSave: (CreateContextRequest) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var name by remember { mutableStateOf(initialName) }
-    var categoryId by remember { mutableStateOf(initialCategoryId?.toString() ?: "") }
-    var formaId by remember { mutableStateOf(initialFormaId?.toString() ?: "") }
-    var causeId by remember { mutableStateOf(initialCauseId?.toString() ?: "") }
-    var developId by remember { mutableStateOf(initialDevelopId?.toString() ?: "") }
-    var effectId by remember { mutableStateOf(initialEffectId?.toString() ?: "") }
+    var categoryId by remember { mutableStateOf<Int?>(initialCategoryId) }
+    var formaId by remember { mutableStateOf<Int?>(initialFormaId) }
+    var causeId by remember { mutableStateOf<Int?>(initialCauseId) }
+    var developId by remember { mutableStateOf<Int?>(initialDevelopId) }
+    var effectId by remember { mutableStateOf<Int?>(initialEffectId) }
     var description by remember { mutableStateOf(initialDescription) }
     var duplicateError by remember { mutableStateOf<String?>(null) }
 
@@ -57,11 +65,11 @@ fun ContextTemplateEditorScreen(
                                 onSave(
                                     CreateContextRequest(
                                         name = name,
-                                        categoryId = categoryId.toIntOrNull(),
-                                        formaId = formaId.toIntOrNull(),
-                                        causeId = causeId.toIntOrNull(),
-                                        developId = developId.toIntOrNull(),
-                                        effectId = effectId.toIntOrNull(),
+                                        categoryId = categoryId,
+                                        formaId = formaId,
+                                        causeId = causeId,
+                                        developId = developId,
+                                        effectId = effectId,
                                         description = description.takeIf { it.isNotEmpty() }
                                     )
                                 )
@@ -136,19 +144,19 @@ fun ContextTemplateEditorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = categoryId,
-                    onValueChange = { categoryId = it },
-                    label = { Text("Category ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                ContextPicker(
+                    label = "Category",
+                    selectedId = categoryId,
+                    onSelectionChange = { categoryId = it },
+                    entitiesFlow = categoriesFlow,
+                    modifier = Modifier.weight(1f)
                 )
-                OutlinedTextField(
-                    value = formaId,
-                    onValueChange = { formaId = it },
-                    label = { Text("Forma ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                ContextPicker(
+                    label = "Forma",
+                    selectedId = formaId,
+                    onSelectionChange = { formaId = it },
+                    entitiesFlow = formasFlow,
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -156,28 +164,28 @@ fun ContextTemplateEditorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = causeId,
-                    onValueChange = { causeId = it },
-                    label = { Text("Cause ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                ContextPicker(
+                    label = "Cause",
+                    selectedId = causeId,
+                    onSelectionChange = { causeId = it },
+                    entitiesFlow = causesFlow,
+                    modifier = Modifier.weight(1f)
                 )
-                OutlinedTextField(
-                    value = developId,
-                    onValueChange = { developId = it },
-                    label = { Text("Develop ID") },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("ID") }
+                ContextPicker(
+                    label = "Develop",
+                    selectedId = developId,
+                    onSelectionChange = { developId = it },
+                    entitiesFlow = developsFlow,
+                    modifier = Modifier.weight(1f)
                 )
             }
 
-            OutlinedTextField(
-                value = effectId,
-                onValueChange = { effectId = it },
-                label = { Text("Effect ID") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("ID") }
+            ContextPicker(
+                label = "Effect",
+                selectedId = effectId,
+                onSelectionChange = { effectId = it },
+                entitiesFlow = effectsFlow,
+                modifier = Modifier.fillMaxWidth()
             )
 
             Text(

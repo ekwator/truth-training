@@ -10,6 +10,7 @@ import com.truth.training.client.data.database.daos.*
 import com.truth.training.client.data.database.entities.*
 import com.truth.training.client.data.database.TruthDatabaseMigrations
 import android.util.Log
+import kotlinx.coroutines.launch
 
 /**
  * Room database for Truth Training Android v1.0.0.
@@ -119,6 +120,21 @@ abstract class TruthDatabase : RoomDatabase() {
                     // Room's migration system and fallbackToDestructiveMigration() handle
                     // schema updates. Validation only occurs in onCreate for new databases.
                     Log.d("TruthDatabase", "Database opened successfully")
+                    
+                    // Seed knowledge base data if not already seeded
+                    // This runs asynchronously and won't block database opening
+                    // Note: We need to get the instance after it's built, so we use a small delay
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                        kotlinx.coroutines.delay(100) // Small delay to ensure INSTANCE is set
+                        val databaseInstance = INSTANCE
+                        if (databaseInstance != null && databaseInstance.isOpen) {
+                            try {
+                                KnowledgeBaseSeeder.seedKnowledgeBase(databaseInstance)
+                            } catch (e: Exception) {
+                                Log.e("TruthDatabase", "Failed to seed knowledge base", e)
+                            }
+                        }
+                    }
                 }
             })
             

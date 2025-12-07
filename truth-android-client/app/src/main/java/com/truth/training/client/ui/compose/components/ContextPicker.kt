@@ -8,8 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.truth.training.client.data.database.entities.ContextTemplateEntity
+import com.truth.training.client.data.database.entities.*
 import kotlinx.coroutines.flow.Flow
+import kotlin.jvm.JvmName
 
 /**
  * ContextPicker - Dropdown component for selecting context IDs with human-readable labels.
@@ -18,44 +19,162 @@ import kotlinx.coroutines.flow.Flow
  * - Displays human-readable labels instead of numeric IDs
  * - Validates selected IDs against lookup data
  * - Shows error state for invalid selections
- * - Supports manual entry with validation
- * 
- * @param label Label text for the picker
- * @param selectedId Currently selected context ID (nullable)
- * @param onSelectionChange Callback when selection changes
- * @param contextsFlow Flow of available contexts from repository
- * @param modifier Modifier for the component
- * @param enabled Whether the picker is enabled
- * @param isError Whether to show error state
- * @param errorMessage Error message to display
+ * - Supports knowledge base entities (category, forma, cause, develop, effect)
+ */
+
+/**
+ * ContextPicker for CategoryEntity
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@JvmName("ContextPickerCategory")
 fun ContextPicker(
     label: String,
     selectedId: Int?,
     onSelectionChange: (Int?) -> Unit,
-    contextsFlow: Flow<List<ContextTemplateEntity>>,
+    entitiesFlow: Flow<List<CategoryEntity>>,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isError: Boolean = false,
     errorMessage: String? = null
 ) {
-    val contexts by contextsFlow.collectAsState(initial = emptyList())
+    ContextPickerInternal(
+        label, selectedId, onSelectionChange, entitiesFlow, modifier, enabled, isError, errorMessage,
+        getId = { it.id },
+        getName = { it.name },
+        getDescription = { it.description }
+    )
+}
+
+/**
+ * ContextPicker for FormaEntity
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+@JvmName("ContextPickerForma")
+fun ContextPicker(
+    label: String,
+    selectedId: Int?,
+    onSelectionChange: (Int?) -> Unit,
+    entitiesFlow: Flow<List<FormaEntity>>,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    errorMessage: String? = null
+) {
+    ContextPickerInternal(
+        label, selectedId, onSelectionChange, entitiesFlow, modifier, enabled, isError, errorMessage,
+        getId = { it.id },
+        getName = { it.name },
+        getDescription = { it.description }
+    )
+}
+
+/**
+ * ContextPicker for CauseEntity
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+@JvmName("ContextPickerCause")
+fun ContextPicker(
+    label: String,
+    selectedId: Int?,
+    onSelectionChange: (Int?) -> Unit,
+    entitiesFlow: Flow<List<CauseEntity>>,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    errorMessage: String? = null
+) {
+    ContextPickerInternal(
+        label, selectedId, onSelectionChange, entitiesFlow, modifier, enabled, isError, errorMessage,
+        getId = { it.id },
+        getName = { it.name },
+        getDescription = { it.description }
+    )
+}
+
+/**
+ * ContextPicker for DevelopEntity
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+@JvmName("ContextPickerDevelop")
+fun ContextPicker(
+    label: String,
+    selectedId: Int?,
+    onSelectionChange: (Int?) -> Unit,
+    entitiesFlow: Flow<List<DevelopEntity>>,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    errorMessage: String? = null
+) {
+    ContextPickerInternal(
+        label, selectedId, onSelectionChange, entitiesFlow, modifier, enabled, isError, errorMessage,
+        getId = { it.id },
+        getName = { it.name },
+        getDescription = { it.description }
+    )
+}
+
+/**
+ * ContextPicker for EffectEntity
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+@JvmName("ContextPickerEffect")
+fun ContextPicker(
+    label: String,
+    selectedId: Int?,
+    onSelectionChange: (Int?) -> Unit,
+    entitiesFlow: Flow<List<EffectEntity>>,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    errorMessage: String? = null
+) {
+    ContextPickerInternal(
+        label, selectedId, onSelectionChange, entitiesFlow, modifier, enabled, isError, errorMessage,
+        getId = { it.id },
+        getName = { it.name },
+        getDescription = { it.description }
+    )
+}
+
+/**
+ * Internal implementation of ContextPicker
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> ContextPickerInternal(
+    label: String,
+    selectedId: Int?,
+    onSelectionChange: (Int?) -> Unit,
+    entitiesFlow: Flow<List<T>>,
+    modifier: Modifier,
+    enabled: Boolean,
+    isError: Boolean,
+    errorMessage: String?,
+    getId: (T) -> Int,
+    getName: (T) -> String,
+    getDescription: (T) -> String?
+) {
+    val entities by entitiesFlow.collectAsState(initial = emptyList())
     var expanded by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     
-    // Find selected context for display
-    val selectedContext = contexts.find { it.id == selectedId }
-    val displayText = selectedContext?.name ?: (selectedId?.toString() ?: "")
+    // Find selected entity for display
+    val selectedEntity = entities.find { getId(it) == selectedId }
+    val displayText = selectedEntity?.let { getName(it) } ?: (selectedId?.toString() ?: "")
     
-    // Filter contexts based on search text
-    val filteredContexts = if (searchText.isBlank()) {
-        contexts
+    // Filter entities based on search text
+    val filteredEntities = if (searchText.isBlank()) {
+        entities
     } else {
-        contexts.filter {
-            it.name.contains(searchText, ignoreCase = true) ||
-            it.id.toString().contains(searchText, ignoreCase = true)
+        entities.filter {
+            getName(it).contains(searchText, ignoreCase = true) ||
+            getId(it).toString().contains(searchText, ignoreCase = true)
         }
     }
     
@@ -72,8 +191,8 @@ fun ContextPicker(
                     // Allow manual entry - validate on blur/submit
                     val manualId = it.toIntOrNull()
                     if (manualId != null) {
-                        // Validate against available contexts
-                        val isValid = contexts.any { ctx -> ctx.id == manualId }
+                        // Validate against available entities
+                        val isValid = entities.any { entity -> getId(entity) == manualId }
                         if (isValid) {
                             onSelectionChange(manualId)
                         }
@@ -99,23 +218,26 @@ fun ContextPicker(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                if (filteredContexts.isEmpty()) {
+                if (filteredEntities.isEmpty()) {
                     DropdownMenuItem(
-                        text = { Text("No contexts available") },
+                        text = { Text("No options available") },
                         onClick = { expanded = false }
                     )
                 } else {
-                    filteredContexts.forEach { context ->
+                    filteredEntities.forEach { entity ->
+                        val entityId = getId(entity)
+                        val entityName = getName(entity)
+                        val description = getDescription(entity)
                         DropdownMenuItem(
                             text = { 
                                 Column {
                                     Text(
-                                        text = context.name,
+                                        text = entityName,
                                         style = MaterialTheme.typography.bodyLarge
                                     )
-                                    if (context.description != null) {
+                                    if (description != null) {
                                         Text(
-                                            text = context.description,
+                                            text = description,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -123,7 +245,7 @@ fun ContextPicker(
                                 }
                             },
                             onClick = {
-                                onSelectionChange(context.id)
+                                onSelectionChange(entityId)
                                 expanded = false
                                 searchText = ""
                             }
@@ -134,4 +256,3 @@ fun ContextPicker(
         }
     }
 }
-

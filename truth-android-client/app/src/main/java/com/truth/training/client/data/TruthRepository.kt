@@ -12,6 +12,7 @@ import com.truth.training.client.data.network.dto.InfoResponse
 import com.truth.training.client.data.network.dto.StatsResponse
 import com.truth.training.client.data.repository.*
 import com.truth.training.client.data.repository.DiscoveryRepository
+import com.truth.training.client.data.repository.KnowledgeBaseRepository
 import com.truth.training.client.data.sync.SyncQueueManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +45,7 @@ class TruthRepository(context: Context, database: TruthDatabase? = null) {
     val judgmentRepository: JudgmentRepository by lazy { JudgmentRepository(db, api) }
     val impactRepository: ImpactRepository by lazy { ImpactRepository(db, api) }
     val summaryRepository: SummaryRepository by lazy { SummaryRepository(db) }
+    val knowledgeBaseRepository: KnowledgeBaseRepository by lazy { KnowledgeBaseRepository(db) }
     
     // Discovery repository (no API dependency, uses HTTP client internally)
     val discoveryRepository: DiscoveryRepository by lazy { DiscoveryRepository(db, null) }
@@ -90,8 +92,21 @@ class TruthRepository(context: Context, database: TruthDatabase? = null) {
      */
     suspend fun getSyncStatus(): SyncStatus {
         val pendingCount = syncQueueManager.getPendingCount()
+        // Check if database is open and accessible
+        val isDbAvailable = try {
+            if (db.isOpen) {
+                val cursor = db.query("SELECT 1", null)
+                val result = cursor.moveToFirst()
+                cursor.close()
+                result
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
         return SyncStatus(
-            isOnline = true, // TODO: Check network connectivity
+            isOnline = isDbAvailable, // Database connection status
             pendingOperations = pendingCount,
             lastSyncTimestamp = _lastSync.value
         )
