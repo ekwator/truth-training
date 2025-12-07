@@ -1,6 +1,10 @@
 package com.truth.training.client.ui.compose
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -10,8 +14,31 @@ import com.truth.training.client.ui.compose.contexts.*
 import com.truth.training.client.ui.compose.judgments.*
 import com.truth.training.client.ui.compose.nodes.NodesScreen
 import com.truth.training.client.ui.compose.nodes.NodesViewModel
+import com.truth.training.client.ui.compose.summary.OverallSummaryScreen
+import com.truth.training.client.ui.compose.training.TrainingResultsScreen
+import com.truth.training.client.ui.compose.settings.SettingsScreen
+import com.truth.training.client.ui.summary.OverallSummaryViewModel
+import com.truth.training.client.ui.training.TrainingResultsViewModel
+import com.truth.training.client.ui.settings.SettingsViewModel
+import com.truth.training.client.ui.compose.summary.OverallSummaryScreen
+import com.truth.training.client.ui.compose.training.TrainingResultsScreen
+import com.truth.training.client.ui.compose.settings.SettingsScreen
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.rememberNavController
+import com.truth.training.client.ui.DashboardViewModel
+import com.truth.training.client.ui.compose.ViewModelFactory
+import com.truth.training.client.ui.events.EventListViewModel
+import com.truth.training.client.ui.events.EventDetailViewModel
+import com.truth.training.client.ui.events.EventCreateViewModel
+import com.truth.training.client.ui.contexts.ContextTemplateListViewModel
+import com.truth.training.client.ui.contexts.ContextTemplateEditorViewModel
+import com.truth.training.client.ui.judgments.JudgmentListViewModel
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
+import com.truth.training.client.TruthTrainingApplication
+import com.truth.training.client.data.TruthRepository
+import kotlinx.coroutines.launch
 
 /**
  * Main Navigation component for Truth Training Android app.
@@ -29,57 +56,331 @@ fun MainNavigation(
     onNavigateToContextEditor: (Int?) -> Unit = {},
     onNavigateToJudgments: (String) -> Unit = {},
     onNavigateToJudgmentSubmission: (String) -> Unit = {},
+    onNavigateToSummary: () -> Unit = {},
+    onNavigateToTraining: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     onNavigateBack: () -> Unit = {}
-) {
+    ) {
+    val context = LocalContext.current
+    val application = remember(context) { 
+        context.applicationContext as android.app.Application 
+    }
+    val factory = remember(application) { ViewModelFactory(application) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    
     NavHost(
         navController = navController,
-        startDestination = "events",
+        startDestination = "dashboard",
         modifier = modifier
     ) {
+        composable("dashboard") {
+            val viewModel: DashboardViewModel = viewModel(factory = factory)
+            
+            // Collect ViewModel state (StateFlow.collectAsState() is already optimized)
+            val syncStatus by viewModel.syncStatus.collectAsState()
+            val eventCount by viewModel.eventCount.collectAsState()
+            
+            // Display DashboardScreen
+            DashboardScreen(
+                syncStatus = syncStatus,
+                eventCount = eventCount,
+                onNavigateToEvents = onNavigateToEvents,
+                onNavigateToContexts = onNavigateToContexts,
+                onNavigateToJudgments = { /* TODO: Navigate to judgments list when event selection is implemented */ },
+                onSyncNow = { viewModel.refresh() },
+                onNavigateToSummary = onNavigateToSummary,
+                onNavigateToTraining = onNavigateToTraining,
+                onNavigateToSettings = onNavigateToSettings
+            )
+        }
+        
         composable("events") {
-            // EventListScreen will be provided via ViewModel state
-            // Placeholder for now
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
+            }
+            val factory = remember(application) { ViewModelFactory(application) }
+            val viewModel: EventListViewModel = viewModel(factory = factory)
+            
+            val events by viewModel.events.collectAsState()
+            val error by viewModel.error.collectAsState()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val scope = rememberCoroutineScope()
+            
+            // Show error snackbar if error occurs
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                    }
+                }
+            }
+            
+            EventListScreen(
+                events = events,
+                onEventClick = { eventId -> onNavigateToEventDetails(eventId.toString()) },
+                onNewEventClick = onNavigateToNewEvent,
+                modifier = Modifier
+            )
         }
         
         composable("event/create") {
-            // EventCreateScreen will be provided via ViewModel
-            // Placeholder for now
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
+            }
+            val factory = remember(application) { ViewModelFactory(application) }
+            val viewModel: EventCreateViewModel = viewModel(factory = factory)
+            
+            val templates by viewModel.templates.collectAsState()
+            val error by viewModel.error.collectAsState()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val scope = rememberCoroutineScope()
+            
+            // Show error snackbar if error occurs
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                    }
+                }
+            }
+            
+            EventCreateScreen(
+                onSave = { request ->
+                    viewModel.createEvent(request) {
+                        onNavigateBack()
+                    }
+                },
+                onCancel = onNavigateBack,
+                selectedTemplateContext = null,
+                contextsFlow = viewModel.templates,
+                modifier = Modifier
+            )
         }
         
         composable("event/{eventId}") { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
-            // EventDetailScreen - to be implemented
-            // Placeholder for now
+            val eventIdStr = backStackEntry.arguments?.getString("eventId") ?: ""
+            val eventId = eventIdStr.toLongOrNull() ?: 0L
+            
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
+            }
+            val factory = remember(application) { ViewModelFactory(application) }
+            val viewModel = remember(eventId) { factory.createEventDetailViewModel(eventId) }
+            
+            val event by viewModel.event.collectAsState()
+            val error by viewModel.error.collectAsState()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val scope = rememberCoroutineScope()
+            
+            // Show error snackbar if error occurs
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                    }
+                }
+            }
+            
+            EventDetailScreen(
+                event = event,
+                onEdit = { /* TODO: Navigate to edit screen */ },
+                onDelete = {
+                    viewModel.deleteEvent {
+                        onNavigateBack()
+                    }
+                },
+                onNavigateToJudgments = { onNavigateToJudgments(eventIdStr) },
+                modifier = Modifier
+            )
         }
         
         composable("contexts") {
-            // ContextTemplateListScreen will be provided via ViewModel state
-            // Placeholder for now
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
+            }
+            val factory = remember(application) { ViewModelFactory(application) }
+            val viewModel: ContextTemplateListViewModel = viewModel(factory = factory)
+            
+            val templates by viewModel.templates.collectAsState()
+            val error by viewModel.error.collectAsState()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val scope = rememberCoroutineScope()
+            
+            // Show error snackbar if error occurs
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                    }
+                }
+            }
+            
+            ContextTemplateListScreen(
+                templates = templates,
+                onTemplateClick = { templateId -> onNavigateToContextEditor(templateId) },
+                onNewTemplateClick = { onNavigateToContextEditor(null) },
+                modifier = Modifier
+            )
         }
         
         composable("context/create") {
-            // ContextTemplateEditorScreen will be provided via ViewModel
-            // Placeholder for now
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
+            }
+            val factory = remember(application) { ViewModelFactory(application) }
+            val viewModel = remember { factory.createContextTemplateEditorViewModel(null) }
+            
+            val template by viewModel.template.collectAsState()
+            val error by viewModel.error.collectAsState()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val scope = rememberCoroutineScope()
+            
+            // Show error snackbar if error occurs
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                    }
+                }
+            }
+            
+            ContextTemplateEditorScreen(
+                templateId = null,
+                initialName = "",
+                initialCategoryId = null,
+                initialFormaId = null,
+                initialCauseId = null,
+                initialDevelopId = null,
+                initialEffectId = null,
+                initialDescription = "",
+                onSave = { request ->
+                    viewModel.saveTemplate(request) {
+                        onNavigateBack()
+                    }
+                },
+                onCancel = onNavigateBack,
+                modifier = Modifier
+            )
         }
         
         composable("context/{templateId}") { backStackEntry ->
             val templateId = backStackEntry.arguments?.getString("templateId")?.toIntOrNull()
-            // ContextTemplateEditorScreen for editing
-            // Placeholder for now
+            
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
+            }
+            val factory = remember(application) { ViewModelFactory(application) }
+            val viewModel = remember(templateId) { factory.createContextTemplateEditorViewModel(templateId) }
+            
+            val template by viewModel.template.collectAsState()
+            val error by viewModel.error.collectAsState()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val scope = rememberCoroutineScope()
+            
+            // Show error snackbar if error occurs
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                    }
+                }
+            }
+            
+            ContextTemplateEditorScreen(
+                templateId = templateId,
+                initialName = template?.name ?: "",
+                initialCategoryId = template?.categoryId,
+                initialFormaId = template?.formaId,
+                initialCauseId = template?.causeId,
+                initialDevelopId = template?.developId,
+                initialEffectId = template?.effectId,
+                initialDescription = template?.description ?: "",
+                onSave = { request ->
+                    viewModel.saveTemplate(request) {
+                        onNavigateBack()
+                    }
+                },
+                onCancel = onNavigateBack,
+                modifier = Modifier
+            )
         }
         
         composable("judgments/{eventId}") { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString("eventId")?.toLongOrNull()
-            if (eventId != null) {
-                // TODO: Provide JudgmentListScreen with ViewModel data for eventId
+            val eventId = backStackEntry.arguments?.getString("eventId")?.toLongOrNull() ?: 0L
+            
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
             }
+            val factory = remember(application) { ViewModelFactory(application) }
+            val viewModel = remember(eventId) { factory.createJudgmentListViewModel(eventId) }
+            
+            val event by viewModel.event.collectAsState()
+            val judgments by viewModel.judgments.collectAsState()
+            val stats by viewModel.stats.collectAsState()
+            val error by viewModel.error.collectAsState()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val scope = rememberCoroutineScope()
+            
+            // Show error snackbar if error occurs
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                    }
+                }
+            }
+            
+            JudgmentListScreen(
+                eventTitle = event?.description ?: "Event $eventId",
+                judgments = judgments,
+                stats = stats,
+                onNewJudgmentClick = { onNavigateToJudgmentSubmission(eventId.toString()) },
+                modifier = Modifier
+            )
         }
         
         composable("judgment/submit/{eventId}") { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString("eventId")?.toLongOrNull()
-            if (eventId != null) {
-                // TODO: Provide JudgmentSubmissionScreen with ViewModel data for eventId
+            val eventId = backStackEntry.arguments?.getString("eventId")?.toLongOrNull() ?: 0L
+            
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
             }
+            val factory = remember(application) { ViewModelFactory(application) }
+            val eventViewModel = remember(eventId) { factory.createEventDetailViewModel(eventId) }
+            
+            val event by eventViewModel.event.collectAsState()
+            
+            // Create repository for judgment submission
+            val repository = remember(application) {
+                val app = application as TruthTrainingApplication
+                TruthRepository(application, app.database)
+            }
+            val scope = rememberCoroutineScope()
+            
+            JudgmentSubmissionScreen(
+                eventId = eventId,
+                eventDescription = event?.description ?: "Event $eventId",
+                onSubmit = { request ->
+                    // Submit judgment in coroutine scope
+                    scope.launch {
+                        repository.judgmentRepository.submitJudgment(request).fold(
+                            onSuccess = { onNavigateBack() },
+                            onFailure = { /* TODO: Show error */ }
+                        )
+                    }
+                },
+                onCancel = onNavigateBack,
+                modifier = Modifier
+            )
         }
         
         composable("nodes") {
@@ -93,6 +394,61 @@ fun MainNavigation(
                 }
             )
             NodesScreen(viewModel = viewModel)
+        }
+
+        composable("summary") {
+            val viewModel: OverallSummaryViewModel = viewModel(factory = factory)
+            val error by viewModel.error.collectAsState()
+
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                        (viewModel.error as? kotlinx.coroutines.flow.MutableStateFlow<String?>)?.value = null
+                    }
+                }
+            }
+            OverallSummaryScreen(
+                viewModel = viewModel,
+                modifier = Modifier
+            )
+        }
+
+        composable("training") {
+            val viewModel: TrainingResultsViewModel = viewModel(factory = factory)
+            val error by viewModel.error.collectAsState()
+
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                        (viewModel.error as? kotlinx.coroutines.flow.MutableStateFlow<String?>)?.value = null
+                    }
+                }
+            }
+            TrainingResultsScreen(
+                viewModel = viewModel,
+                modifier = Modifier
+            )
+        }
+
+        composable("settings") {
+            val viewModel: SettingsViewModel = viewModel(factory = factory)
+            val error by viewModel.error.collectAsState()
+
+            error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(errorMessage)
+                        (viewModel.error as? kotlinx.coroutines.flow.MutableStateFlow<String?>)?.value = null
+                    }
+                }
+            }
+            SettingsScreen(
+                viewModel = viewModel,
+                onNavigateBack = onNavigateBack,
+                modifier = Modifier
+            )
         }
     }
 }

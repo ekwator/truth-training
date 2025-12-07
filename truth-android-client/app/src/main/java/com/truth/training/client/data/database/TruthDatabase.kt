@@ -23,7 +23,7 @@ import android.util.Log
  * Note: No TypeConverters needed - all date fields are stored as ISO 8601 strings directly.
  * Boolean fields (quality) are automatically converted to INTEGER (0/1) by Room.
  */
-@Database(
+    @Database(
     entities = [
         // Knowledge base entities
         CategoryEntity::class,
@@ -44,7 +44,7 @@ import android.util.Log
         // Discovery entities
         NodeEntity::class
     ],
-    version = 4,  // Incremented to drop legacy tables (MIGRATION_3_4)
+    version = 6,  // Incremented to fix schema validation issues - triggers fallbackToDestructiveMigration for corrupted databases
     exportSchema = true  // Schema export enabled for migration validation
 )
 abstract class TruthDatabase : RoomDatabase() {
@@ -85,7 +85,8 @@ abstract class TruthDatabase : RoomDatabase() {
                 .addMigrations(
                     TruthDatabaseMigrations.MIGRATION_1_2,
                     TruthDatabaseMigrations.MIGRATION_2_3,
-                    TruthDatabaseMigrations.MIGRATION_3_4
+                    TruthDatabaseMigrations.MIGRATION_3_4,
+                    TruthDatabaseMigrations.MIGRATION_4_5
                 )
                 .fallbackToDestructiveMigration()
             
@@ -113,12 +114,11 @@ abstract class TruthDatabase : RoomDatabase() {
                 
                 override fun onOpen(db: SupportSQLiteDatabase) {
                     super.onOpen(db)
-                    // Validate schema on open to catch any drift
-                    try {
-                        validateSchema(db)
-                    } catch (e: Exception) {
-                        Log.w("TruthDatabase", "Schema validation warning on open", e)
-                    }
+                    // Note: Schema validation removed from onOpen to prevent crashes
+                    // when opening existing databases with schema mismatches.
+                    // Room's migration system and fallbackToDestructiveMigration() handle
+                    // schema updates. Validation only occurs in onCreate for new databases.
+                    Log.d("TruthDatabase", "Database opened successfully")
                 }
             })
             

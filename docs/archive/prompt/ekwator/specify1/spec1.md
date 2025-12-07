@@ -4,7 +4,7 @@
 
 /speckit.specify
 Goal:
-Fix the issue in truth-android-client where the application starts and instantly disappears from the screen while continuing to run in the background. The objective is to properly register the required UI screens and activities in AndroidManifest.xml so the application opens normally and stays visible.
+The objective is to properly register the required UI screens and activities in AndroidManifest.xml so the application opens normally and stays visible.
 
 Requirements:
 1. Update AndroidManifest.xml:
@@ -22,9 +22,10 @@ Important Rule:
 - The CLI part of the application is used exclusively for verifying the Core, Server, and CLI functionality by the Cursor AI agent. It must not be modified for UI-related changes.
 
 Deliverables:
-- A validated plan for required changes.
+- A validated plan for required changes use the input project specification document docs/archive/prompt/ekwator/specify1/plan/plan1.md
 - Patches for manifest, navigation, and affected Kotlin files.
 - A correctly structured PR generated from the final specification.
+- For this specification, use the input project specification document spec/24-function_mobile_android.md
 
 _Version: v1.0.0_
 

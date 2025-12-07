@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
@@ -25,59 +26,60 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        val activityStartTime = System.currentTimeMillis()
+        android.util.Log.d("MainActivity", "MainActivity.onCreate() started")
+        
         try {
-            // Get Application instance and database
-            val application = application as? TruthTrainingApplication
-                ?: throw IllegalStateException("Application must be TruthTrainingApplication")
-            
-            val database = try {
-                application.database
-            } catch (e: Exception) {
-                // Database initialization failed - show error state
-                showErrorState("Database initialization failed: ${e.message}")
-                return
+            // Verify Application instance (database will be accessed later via ViewModels)
+            if (application !is TruthTrainingApplication) {
+                throw IllegalStateException("Application must be TruthTrainingApplication")
             }
             
-            // Initialize Truth Core (non-critical, continue if fails)
-            try {
-                TruthCore.initNode()
-            } catch (e: Exception) {
-                android.util.Log.w("MainActivity", "TruthCore initialization failed: ${e.message}", e)
-                // Continue without TruthCore - app can still function
-            }
+            // Database is pre-warmed in Application.onCreate() in background
+            // No need to access it here - ViewModels will handle repository creation
+            // This avoids blocking UI thread during launch
             
-            // Repository will be created when needed via ViewModels or dependency injection
-            // No need to create here - ViewModels will handle repository creation
+            // TruthCore is initialized in Application.onCreate() in background
+            // No need to initialize again here
             
+            android.util.Log.d("MainActivity", "Setting content...")
             setContent {
+                // Optimize theme setup - use remember to avoid recreation
                 TruthTrainingTheme {
                     Surface(
                         color = MaterialTheme.colorScheme.background
                     ) {
+                        // Optimize NavController creation - rememberNavController already uses remember internally
                         val navController = rememberNavController()
                         
                         // Main navigation graph
-                        // Entry screen is explicitly defined as "events" in MainNavigation
-                        MainNavigation(
-                            navController = navController,
-                            onNavigateToEvents = { navController.navigate("events") },
-                            onNavigateToEventDetails = { eventId -> navController.navigate("event/$eventId") },
-                            onNavigateToNewEvent = { navController.navigate("event/create") },
-                            onNavigateToContexts = { navController.navigate("contexts") },
-                            onNavigateToContextEditor = { templateId -> 
-                                if (templateId != null) {
-                                    navController.navigate("context/$templateId")
-                                } else {
-                                    navController.navigate("context/create")
-                                }
-                            },
-                            onNavigateToJudgments = { eventId -> navController.navigate("judgments/$eventId") },
-                            onNavigateToJudgmentSubmission = { eventId -> navController.navigate("judgment/submit/$eventId") },
-                            onNavigateBack = { navController.popBackStack() }
-                        )
+                        // Note: Navigation callbacks are created inline to avoid unnecessary complexity
+                        // NavController is stable, so callbacks won't cause unnecessary recomposition
+                               MainNavigation(
+                                   navController = navController,
+                                   onNavigateToEvents = { navController.navigate("events") },
+                                   onNavigateToEventDetails = { eventId -> navController.navigate("event/$eventId") },
+                                   onNavigateToNewEvent = { navController.navigate("event/create") },
+                                   onNavigateToContexts = { navController.navigate("contexts") },
+                                   onNavigateToContextEditor = { templateId ->
+                                       if (templateId != null) {
+                                           navController.navigate("context/$templateId")
+                                       } else {
+                                           navController.navigate("context/create")
+                                       }
+                                   },
+                                   onNavigateToJudgments = { eventId -> navController.navigate("judgments/$eventId") },
+                                   onNavigateToJudgmentSubmission = { eventId -> navController.navigate("judgment/submit/$eventId") },
+                                   onNavigateToSummary = { navController.navigate("summary") },
+                                   onNavigateToTraining = { navController.navigate("training") },
+                                   onNavigateToSettings = { navController.navigate("settings") },
+                                   onNavigateBack = { navController.popBackStack() }
+                               )
                     }
                 }
             }
+            
+            android.util.Log.d("MainActivity", "MainActivity.onCreate() completed in ${System.currentTimeMillis() - activityStartTime}ms")
         } catch (e: Exception) {
             // Critical error during startup - show error state
             android.util.Log.e("MainActivity", "Critical startup error", e)

@@ -18,6 +18,7 @@ This document provides a comprehensive functional specification for the Android 
 - [Cross-Platform Architecture](18-cross-platform-architecture.md)
 - [Android Integration Guide](../docs/integration/android/README_INTEGRATION.md)
 - [Android Migration Guide](../docs/ANDROID_MIGRATION.md)
+- [Android Implementation Summary](../docs/ANDROID_IMPLEMENTATION_SUMMARY.md) - Implementation status, testing results, and fixes applied for v1.0.0
 
 ## Architecture
 

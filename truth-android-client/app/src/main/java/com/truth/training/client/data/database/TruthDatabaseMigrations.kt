@@ -15,10 +15,12 @@ object TruthDatabaseMigrations {
         }
 
         private fun createKnowledgeBaseTables(database: SupportSQLiteDatabase) {
+            // Note: Knowledge base tables use INTEGER PRIMARY KEY (without AUTOINCREMENT)
+            // because IDs are fixed values and should not auto-increment
             database.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `category` (
-                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER PRIMARY KEY,
                     `name` TEXT NOT NULL,
                     `description` TEXT
                 )
@@ -28,7 +30,7 @@ object TruthDatabaseMigrations {
             database.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `cause` (
-                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER PRIMARY KEY,
                     `name` TEXT NOT NULL,
                     `quality` INTEGER NOT NULL,
                     `description` TEXT
@@ -39,7 +41,7 @@ object TruthDatabaseMigrations {
             database.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `develop` (
-                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER PRIMARY KEY,
                     `name` TEXT NOT NULL,
                     `quality` INTEGER NOT NULL,
                     `description` TEXT
@@ -50,7 +52,7 @@ object TruthDatabaseMigrations {
             database.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `effect` (
-                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER PRIMARY KEY,
                     `name` TEXT NOT NULL,
                     `quality` INTEGER NOT NULL,
                     `description` TEXT
@@ -61,7 +63,7 @@ object TruthDatabaseMigrations {
             database.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `forma` (
-                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER PRIMARY KEY,
                     `name` TEXT NOT NULL,
                     `quality` INTEGER NOT NULL,
                     `description` TEXT
@@ -72,7 +74,7 @@ object TruthDatabaseMigrations {
             database.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `impact_type` (
-                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `id` INTEGER PRIMARY KEY,
                     `name` TEXT NOT NULL,
                     `description` TEXT
                 )
@@ -412,6 +414,122 @@ object TruthDatabaseMigrations {
                     "Legacy tables still exist after migration: ${existingTables.joinToString(", ")}"
                 )
             }
+        }
+    }
+    
+    /**
+     * Migration 4 → 5: Fix knowledge base table schema (remove AUTOINCREMENT).
+     * 
+     * This migration fixes the schema mismatch where knowledge base tables (category, cause, develop, effect, forma, impact_type)
+     * were created with AUTOINCREMENT, but entities use @PrimaryKey without autoGenerate.
+     * 
+     * Strategy: Recreate tables without AUTOINCREMENT, preserving data.
+     * This migration is idempotent - safe to run multiple times.
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // Recreate knowledge base tables without AUTOINCREMENT
+            // This fixes schema mismatch with entities
+            
+            fun recreateKnowledgeBaseTable(
+                tableName: String,
+                createSql: String,
+                columns: List<String>
+            ) {
+                if (tableExists(database, tableName)) {
+                    val tempTable = "${tableName}_migrate_temp"
+                    // Create new table without AUTOINCREMENT
+                    database.execSQL(createSql.replace(tableName, tempTable))
+                    // Copy data if table has rows
+                    val columnList = columns.joinToString(", ")
+                    database.execSQL("INSERT INTO `$tempTable` SELECT $columnList FROM `$tableName`")
+                    // Drop old table and rename new one
+                    database.execSQL("DROP TABLE `$tableName`")
+                    database.execSQL("ALTER TABLE `$tempTable` RENAME TO `$tableName`")
+                }
+            }
+            
+            // Category table
+            recreateKnowledgeBaseTable(
+                "category",
+                """
+                    CREATE TABLE `category_migrate_temp` (
+                        `id` INTEGER PRIMARY KEY,
+                        `name` TEXT NOT NULL,
+                        `description` TEXT
+                    )
+                """.trimIndent(),
+                listOf("id", "name", "description")
+            )
+            
+            // Cause table
+            recreateKnowledgeBaseTable(
+                "cause",
+                """
+                    CREATE TABLE `cause_migrate_temp` (
+                        `id` INTEGER PRIMARY KEY,
+                        `name` TEXT NOT NULL,
+                        `quality` INTEGER NOT NULL,
+                        `description` TEXT
+                    )
+                """.trimIndent(),
+                listOf("id", "name", "quality", "description")
+            )
+            
+            // Develop table
+            recreateKnowledgeBaseTable(
+                "develop",
+                """
+                    CREATE TABLE `develop_migrate_temp` (
+                        `id` INTEGER PRIMARY KEY,
+                        `name` TEXT NOT NULL,
+                        `quality` INTEGER NOT NULL,
+                        `description` TEXT
+                    )
+                """.trimIndent(),
+                listOf("id", "name", "quality", "description")
+            )
+            
+            // Effect table
+            recreateKnowledgeBaseTable(
+                "effect",
+                """
+                    CREATE TABLE `effect_migrate_temp` (
+                        `id` INTEGER PRIMARY KEY,
+                        `name` TEXT NOT NULL,
+                        `quality` INTEGER NOT NULL,
+                        `description` TEXT
+                    )
+                """.trimIndent(),
+                listOf("id", "name", "quality", "description")
+            )
+            
+            // Forma table
+            recreateKnowledgeBaseTable(
+                "forma",
+                """
+                    CREATE TABLE `forma_migrate_temp` (
+                        `id` INTEGER PRIMARY KEY,
+                        `name` TEXT NOT NULL,
+                        `quality` INTEGER NOT NULL,
+                        `description` TEXT
+                    )
+                """.trimIndent(),
+                listOf("id", "name", "quality", "description")
+            )
+            
+            // Impact type table
+            recreateKnowledgeBaseTable(
+                "impact_type",
+                """
+                    CREATE TABLE `impact_type_migrate_temp` (
+                        `id` INTEGER PRIMARY KEY,
+                        `name` TEXT NOT NULL,
+                        `description` TEXT
+                    )
+                """.trimIndent(),
+                listOf("id", "name", "description")
+            )
         }
     }
 }

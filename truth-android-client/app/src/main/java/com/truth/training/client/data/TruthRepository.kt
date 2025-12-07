@@ -38,18 +38,18 @@ class TruthRepository(context: Context, database: TruthDatabase? = null) {
         "TruthDatabase must be initialized in Application class before creating TruthRepository"
     )
     
-    // Repositories for each entity
-    val eventRepository: EventRepository = EventRepository(db, api)
-    val contextTemplateRepository: ContextTemplateRepository = ContextTemplateRepository(db, api)
-    val judgmentRepository: JudgmentRepository = JudgmentRepository(db, api)
-    val impactRepository: ImpactRepository = ImpactRepository(db, api)
-    val summaryRepository: SummaryRepository = SummaryRepository(db)
+    // Repositories for each entity (lazy initialization to improve startup performance)
+    val eventRepository: EventRepository by lazy { EventRepository(db, api) }
+    val contextTemplateRepository: ContextTemplateRepository by lazy { ContextTemplateRepository(db, api) }
+    val judgmentRepository: JudgmentRepository by lazy { JudgmentRepository(db, api) }
+    val impactRepository: ImpactRepository by lazy { ImpactRepository(db, api) }
+    val summaryRepository: SummaryRepository by lazy { SummaryRepository(db) }
     
     // Discovery repository (no API dependency, uses HTTP client internally)
-    val discoveryRepository: DiscoveryRepository = DiscoveryRepository(db, null)
+    val discoveryRepository: DiscoveryRepository by lazy { DiscoveryRepository(db, null) }
     
-    // Sync queue manager
-    val syncQueueManager: SyncQueueManager = SyncQueueManager(db)
+    // Sync queue manager (lazy to avoid blocking during repository creation)
+    val syncQueueManager: SyncQueueManager by lazy { SyncQueueManager(db) }
 
     private val _lastSync = MutableStateFlow<Long?>(null)
     val lastSync: Flow<Long?> = _lastSync.asStateFlow()
