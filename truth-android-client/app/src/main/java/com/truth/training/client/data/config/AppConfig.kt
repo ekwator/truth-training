@@ -74,6 +74,11 @@ class AppConfig(context: Context) {
         get() = prefs.getLong(KEY_LAST_CONNECTION_TEST_TIMESTAMP, 0L)
         set(value) = prefs.edit().putLong(KEY_LAST_CONNECTION_TEST_TIMESTAMP, value).apply()
     
+    // Locale: "en" (English) or "ru" (Russian)
+    var locale: String
+        get() = prefs.getString(KEY_LOCALE, "en") ?: "en"
+        set(value) = prefs.edit().putString(KEY_LOCALE, value).apply()
+    
     /**
      * Reset all configuration to defaults.
      */
@@ -96,6 +101,7 @@ class AppConfig(context: Context) {
         private const val KEY_GLOBAL_TTL = "global_ttl"
         private const val KEY_LAST_CONNECTION_TEST_RESULT = "last_connection_test_result"
         private const val KEY_LAST_CONNECTION_TEST_TIMESTAMP = "last_connection_test_timestamp"
+        private const val KEY_LOCALE = "locale"
     }
 }
 

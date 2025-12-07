@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
 import com.truth.training.client.data.TruthRepository
 import com.truth.training.client.data.database.TruthDatabase
+import com.truth.training.client.data.config.AppConfig
+import com.truth.training.client.utils.LocaleHelper
 import com.truth.training.client.ui.compose.MainNavigation
 import com.truth.training.client.ui.compose.theme.TruthTrainingTheme
 
@@ -23,11 +25,36 @@ import com.truth.training.client.ui.compose.theme.TruthTrainingTheme
  */
 class MainActivity : AppCompatActivity() {
     
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val appConfig = AppConfig(newBase)
+        val locale = appConfig.locale
+        android.util.Log.d("MainActivity", "attachBaseContext: locale=$locale")
+        
+        // Apply locale using LocaleHelper - this creates a new context with the locale
+        val updatedContext = LocaleHelper.setLocale(newBase, locale)
+        super.attachBaseContext(updatedContext)
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Get locale from config and verify it's applied
+        val appConfig = AppConfig(this)
+        val locale = appConfig.locale
+        val currentLocale = LocaleHelper.getLocale(this)
+        
+        android.util.Log.d("MainActivity", "MainActivity.onCreate() started with locale: $locale (current: $currentLocale)")
+        
+        // If locale doesn't match, we need to recreate the activity
+        // This should not happen if attachBaseContext worked correctly
+        if (currentLocale != locale) {
+            android.util.Log.w("MainActivity", "Locale mismatch detected, recreating activity...")
+            // Recreate activity to apply correct locale
+            recreate()
+            return
+        }
+        
         val activityStartTime = System.currentTimeMillis()
-        android.util.Log.d("MainActivity", "MainActivity.onCreate() started")
         
         try {
             // Verify Application instance (database will be accessed later via ViewModels)

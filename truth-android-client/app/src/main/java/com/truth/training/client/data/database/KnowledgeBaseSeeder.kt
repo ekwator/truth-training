@@ -2,6 +2,8 @@ package com.truth.training.client.data.database
 
 import android.content.Context
 import android.util.Log
+import androidx.room.withTransaction
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.truth.training.client.data.database.daos.*
 import com.truth.training.client.data.database.entities.*
 import kotlinx.coroutines.Dispatchers
@@ -13,8 +15,12 @@ import kotlinx.coroutines.withContext
  * This ensures that category, forma, cause, develop, effect, impact_type, and context
  * tables are populated with default values on first database initialization.
  * 
- * Note: Currently seeds English data only (Android app is EN-only).
- * Russian data can be added in the future if localization is implemented.
+ * CRITICAL: ID values MUST be identical across all languages to maintain referential integrity.
+ * The knowledge base schema is simple - records are not deleted or added, only names change.
+ * When changing language, tables are cleared and re-seeded with the same IDs but different names.
+ * This ensures that existing events maintain their foreign key relationships.
+ * 
+ * All seeding operations are wrapped in transactions to ensure atomicity and data integrity.
  */
 object KnowledgeBaseSeeder {
     private const val TAG = "KnowledgeBaseSeeder"
@@ -25,10 +31,12 @@ object KnowledgeBaseSeeder {
      * 
      * @param database TruthDatabase instance
      * @param locale Optional locale ("ru" or "en"), defaults to "en"
+     * @param forceReseed If true, clears existing data before seeding. Defaults to false.
      */
     suspend fun seedKnowledgeBase(
         database: TruthDatabase,
-        locale: String = "en"
+        locale: String = "en",
+        forceReseed: Boolean = false
     ) = withContext(Dispatchers.IO) {
         try {
             val categoryDao = database.categoryDao()
@@ -39,26 +47,284 @@ object KnowledgeBaseSeeder {
             val contextTemplateDao = database.contextTemplateDao()
             val impactTypeDao = database.impactTypeDao()
             
-            // Check if data already exists
-            // Use a one-time check - if categories exist, skip seeding
-            val categoryCount = categoryDao.getCategoryCount()
-            if (categoryCount > 0) {
-                Log.d(TAG, "Knowledge base already seeded (found $categoryCount categories), skipping")
-                return@withContext
+            // Check if data already exists (unless force reseed is requested)
+            if (!forceReseed) {
+                val categoryCount = categoryDao.getCategoryCount()
+                if (categoryCount > 0) {
+                    Log.d(TAG, "Knowledge base already seeded (found $categoryCount categories), skipping")
+                    return@withContext
+                }
             }
             
-            Log.d(TAG, "Seeding knowledge base with locale: $locale")
-            
-            if (locale == "ru") {
-                seedRussian(database, categoryDao, formaDao, causeDao, developDao, effectDao, contextTemplateDao, impactTypeDao)
-            } else {
-                seedEnglish(database, categoryDao, formaDao, causeDao, developDao, effectDao, contextTemplateDao, impactTypeDao)
+            // Use transaction to ensure atomicity of clear and seed operations
+            // This guarantees data integrity and consistent IDs across language changes
+            // CRITICAL: Use temporary tables to preserve event data during knowledge base re-seeding
+            // When deleting knowledge base records, foreign keys with SET_NULL will nullify
+            // context fields in truth_events. By using temporary tables, we preserve the data
+            // and restore it after re-seeding, maintaining referential integrity.
+            database.withTransaction {
+                if (forceReseed) {
+                    // Use temporary tables to preserve event data during knowledge base re-seeding
+                    Log.d(TAG, "Force reseed requested, using temporary tables to preserve event data")
+                    reseedKnowledgeBaseWithTemporaryTables(
+                        database = database,
+                        categoryDao = categoryDao,
+                        formaDao = formaDao,
+                        causeDao = causeDao,
+                        developDao = developDao,
+                        effectDao = effectDao,
+                        contextTemplateDao = contextTemplateDao,
+                        impactTypeDao = impactTypeDao,
+                        locale = locale
+                    )
+                } else {
+                    Log.d(TAG, "Seeding knowledge base with locale: $locale")
+                    
+                    if (locale == "ru") {
+                        seedRussian(database, categoryDao, formaDao, causeDao, developDao, effectDao, contextTemplateDao, impactTypeDao)
+                    } else {
+                        seedEnglish(database, categoryDao, formaDao, causeDao, developDao, effectDao, contextTemplateDao, impactTypeDao)
+                    }
+                }
             }
             
             Log.d(TAG, "Knowledge base seeding completed successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to seed knowledge base", e)
             // Don't throw - allow app to continue even if seeding fails
+        }
+    }
+    
+    /**
+     * Clears all knowledge base tables (categories, formas, causes, develops, effects, impact types, context templates).
+     * Used when changing language to ensure clean state before reseeding.
+     * 
+     * @param database TruthDatabase instance
+     */
+    suspend fun clearKnowledgeBase(database: TruthDatabase) = withContext(Dispatchers.IO) {
+        try {
+            val categoryDao = database.categoryDao()
+            val formaDao = database.formaDao()
+            val causeDao = database.causeDao()
+            val developDao = database.developDao()
+            val effectDao = database.effectDao()
+            val contextTemplateDao = database.contextTemplateDao()
+            val impactTypeDao = database.impactTypeDao()
+            
+            clearKnowledgeBase(database, categoryDao, formaDao, causeDao, developDao, effectDao, contextTemplateDao, impactTypeDao)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to clear knowledge base", e)
+            throw e
+        }
+    }
+    
+    private suspend fun clearKnowledgeBase(
+        database: TruthDatabase,
+        categoryDao: CategoryDao,
+        formaDao: FormaDao,
+        causeDao: CauseDao,
+        developDao: DevelopDao,
+        effectDao: EffectDao,
+        contextTemplateDao: ContextTemplateDao,
+        impactTypeDao: ImpactTypeDao
+    ) {
+        Log.d(TAG, "Clearing all knowledge base tables")
+        
+        // Clear in order: templates first (they reference other tables), then other tables
+        contextTemplateDao.clearAllTemplates()
+        categoryDao.clearAllCategories()
+        formaDao.clearAllFormas()
+        causeDao.clearAllCauses()
+        developDao.clearAllDevelops()
+        effectDao.clearAllEffects()
+        impactTypeDao.clearAllImpactTypes()
+        
+        Log.d(TAG, "Knowledge base tables cleared successfully")
+    }
+    
+    /**
+     * Re-seeds knowledge base using temporary tables to preserve event data.
+     * 
+     * CRITICAL: When deleting knowledge base records, foreign keys with SET_NULL will nullify
+     * context fields in truth_events. This method uses a move operation (copy + delete) to
+     * preserve data integrity:
+     * 1. Creates empty temporary tables for truth_events, impact, progress_metrics
+     * 2. Moves (copies and deletes) data from main tables to temporary tables
+     * 3. Deletes knowledge base records (which would nullify FK fields, but data is already moved)
+     * 4. Inserts new knowledge base records with same IDs but different names
+     * 5. Restores data from temporary tables back to main tables (FK relationships are preserved)
+     * 6. Drops temporary tables
+     * 
+     * This ensures that context fields in events remain intact after language change.
+     * All operations are performed within a single transaction for atomicity.
+     */
+    private suspend fun reseedKnowledgeBaseWithTemporaryTables(
+        database: TruthDatabase,
+        categoryDao: CategoryDao,
+        formaDao: FormaDao,
+        causeDao: CauseDao,
+        developDao: DevelopDao,
+        effectDao: EffectDao,
+        contextTemplateDao: ContextTemplateDao,
+        impactTypeDao: ImpactTypeDao,
+        locale: String
+    ) {
+        val db = database.openHelper.writableDatabase
+        
+        try {
+            Log.d(TAG, "Step 1: Creating empty temporary tables")
+            // Create empty temporary tables with same structure as main tables
+            db.execSQL("""
+                CREATE TEMP TABLE temp_truth_events (
+                    id INTEGER PRIMARY KEY,
+                    description TEXT NOT NULL,
+                    category_id INTEGER,
+                    forma_id INTEGER,
+                    cause_id INTEGER,
+                    develop_id INTEGER,
+                    effect_id INTEGER,
+                    vector INTEGER NOT NULL,
+                    detected INTEGER,
+                    corrected INTEGER NOT NULL,
+                    timestamp_start INTEGER NOT NULL,
+                    timestamp_end INTEGER,
+                    code INTEGER NOT NULL,
+                    collective_score REAL
+                )
+            """.trimIndent())
+            
+            db.execSQL("""
+                CREATE TEMP TABLE temp_impact (
+                    id INTEGER PRIMARY KEY,
+                    event_id INTEGER NOT NULL,
+                    type_id INTEGER NOT NULL,
+                    value INTEGER NOT NULL,
+                    notes TEXT,
+                    created_at INTEGER NOT NULL
+                )
+            """.trimIndent())
+            
+            db.execSQL("""
+                CREATE TEMP TABLE temp_progress_metrics (
+                    id INTEGER PRIMARY KEY,
+                    timestamp INTEGER NOT NULL,
+                    total_events INTEGER NOT NULL,
+                    total_events_group INTEGER NOT NULL,
+                    total_positive_impact REAL NOT NULL,
+                    total_positive_impact_group REAL NOT NULL,
+                    total_negative_impact REAL NOT NULL,
+                    total_negative_impact_group REAL NOT NULL,
+                    trend REAL NOT NULL,
+                    trend_group REAL NOT NULL
+                )
+            """.trimIndent())
+            
+            Log.d(TAG, "Step 2: Moving data from main tables to temporary tables")
+            // Move data: copy to temp, then delete from main (move operation)
+            // This preserves data before knowledge base deletion nullifies FK fields
+            db.execSQL("""
+                INSERT INTO temp_truth_events 
+                (id, description, category_id, forma_id, cause_id, develop_id, effect_id, 
+                 vector, detected, corrected, timestamp_start, timestamp_end, code, collective_score)
+                SELECT 
+                    id, description, category_id, forma_id, cause_id, develop_id, effect_id,
+                    vector, detected, corrected, timestamp_start, timestamp_end, code, collective_score
+                FROM truth_events
+            """.trimIndent())
+            
+            db.execSQL("""
+                INSERT INTO temp_impact 
+                (id, event_id, type_id, value, notes, created_at)
+                SELECT 
+                    id, event_id, type_id, value, notes, created_at
+                FROM impact
+            """.trimIndent())
+            
+            db.execSQL("""
+                INSERT INTO temp_progress_metrics 
+                (id, timestamp, total_events, total_events_group, 
+                 total_positive_impact, total_positive_impact_group,
+                 total_negative_impact, total_negative_impact_group,
+                 trend, trend_group)
+                SELECT 
+                    id, timestamp, total_events, total_events_group,
+                    total_positive_impact, total_positive_impact_group,
+                    total_negative_impact, total_negative_impact_group,
+                    trend, trend_group
+                FROM progress_metrics
+            """.trimIndent())
+            
+            // Delete data from main tables (completing the move operation)
+            db.execSQL("DELETE FROM truth_events")
+            db.execSQL("DELETE FROM impact")
+            db.execSQL("DELETE FROM progress_metrics")
+            
+            Log.d(TAG, "Step 3: Clearing knowledge base tables")
+            // Clear knowledge base tables
+            // Note: FK fields in truth_events are already NULL (data was moved), so no nullification occurs
+            clearKnowledgeBase(database, categoryDao, formaDao, causeDao, developDao, effectDao, contextTemplateDao, impactTypeDao)
+            
+            Log.d(TAG, "Step 4: Seeding knowledge base with locale: $locale")
+            // Seed knowledge base with new locale (same IDs, different names)
+            if (locale == "ru") {
+                seedRussian(database, categoryDao, formaDao, causeDao, developDao, effectDao, contextTemplateDao, impactTypeDao)
+            } else {
+                seedEnglish(database, categoryDao, formaDao, causeDao, developDao, effectDao, contextTemplateDao, impactTypeDao)
+            }
+            
+            Log.d(TAG, "Step 5: Restoring data from temporary tables to main tables")
+            // Restore data from temporary tables back to main tables
+            // FK relationships are preserved because IDs in knowledge_base are the same
+            db.execSQL("""
+                INSERT INTO truth_events 
+                (id, description, category_id, forma_id, cause_id, develop_id, effect_id, 
+                 vector, detected, corrected, timestamp_start, timestamp_end, code, collective_score)
+                SELECT 
+                    id, description, category_id, forma_id, cause_id, develop_id, effect_id,
+                    vector, detected, corrected, timestamp_start, timestamp_end, code, collective_score
+                FROM temp_truth_events
+            """.trimIndent())
+            
+            db.execSQL("""
+                INSERT INTO impact 
+                (id, event_id, type_id, value, notes, created_at)
+                SELECT 
+                    id, event_id, type_id, value, notes, created_at
+                FROM temp_impact
+            """.trimIndent())
+            
+            db.execSQL("""
+                INSERT INTO progress_metrics 
+                (id, timestamp, total_events, total_events_group, 
+                 total_positive_impact, total_positive_impact_group,
+                 total_negative_impact, total_negative_impact_group,
+                 trend, trend_group)
+                SELECT 
+                    id, timestamp, total_events, total_events_group,
+                    total_positive_impact, total_positive_impact_group,
+                    total_negative_impact, total_negative_impact_group,
+                    trend, trend_group
+                FROM temp_progress_metrics
+            """.trimIndent())
+            
+            Log.d(TAG, "Step 6: Dropping temporary tables")
+            // Drop temporary tables (they are automatically dropped when connection closes, but explicit is better)
+            db.execSQL("DROP TABLE IF EXISTS temp_truth_events")
+            db.execSQL("DROP TABLE IF EXISTS temp_impact")
+            db.execSQL("DROP TABLE IF EXISTS temp_progress_metrics")
+            
+            Log.d(TAG, "Knowledge base re-seeding with temporary tables completed successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to re-seed knowledge base with temporary tables", e)
+            // Try to clean up temporary tables on error
+            try {
+                db.execSQL("DROP TABLE IF EXISTS temp_truth_events")
+                db.execSQL("DROP TABLE IF EXISTS temp_impact")
+                db.execSQL("DROP TABLE IF EXISTS temp_progress_metrics")
+            } catch (cleanupError: Exception) {
+                Log.e(TAG, "Failed to clean up temporary tables", cleanupError)
+            }
+            throw e
         }
     }
     

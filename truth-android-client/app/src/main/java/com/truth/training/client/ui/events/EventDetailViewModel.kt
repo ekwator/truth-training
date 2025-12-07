@@ -35,11 +35,16 @@ class EventDetailViewModel(
             initialValue = null
         )
     
+    // Use SharingStarted.Lazily to ensure flows restart when subscribers appear
+    // This is critical for context fields display after language change, as Room flows
+    // need to re-collect data after database transactions (clear + reseed knowledge base)
+    // Lazily starts collection when first subscriber appears and keeps it active while
+    // there are subscribers, ensuring immediate updates after database changes
     val categories: StateFlow<List<com.truth.training.client.data.database.entities.CategoryEntity>> = 
         repository.knowledgeBaseRepository.getAllCategoriesFlow()
             .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
+                started = SharingStarted.Lazily,
                 initialValue = emptyList()
             )
     
@@ -47,7 +52,7 @@ class EventDetailViewModel(
         repository.knowledgeBaseRepository.getAllFormasFlow()
             .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
+                started = SharingStarted.Lazily,
                 initialValue = emptyList()
             )
     
@@ -55,7 +60,7 @@ class EventDetailViewModel(
         repository.knowledgeBaseRepository.getAllCausesFlow()
             .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
+                started = SharingStarted.Lazily,
                 initialValue = emptyList()
             )
     
@@ -63,7 +68,7 @@ class EventDetailViewModel(
         repository.knowledgeBaseRepository.getAllDevelopsFlow()
             .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
+                started = SharingStarted.Lazily,
                 initialValue = emptyList()
             )
     
@@ -71,7 +76,7 @@ class EventDetailViewModel(
         repository.knowledgeBaseRepository.getAllEffectsFlow()
             .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
+                started = SharingStarted.Lazily,
                 initialValue = emptyList()
             )
     

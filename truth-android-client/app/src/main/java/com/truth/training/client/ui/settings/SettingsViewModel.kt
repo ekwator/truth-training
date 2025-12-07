@@ -8,6 +8,7 @@ import com.truth.training.client.data.TruthRepository
 import com.truth.training.client.data.SyncStatus
 import com.truth.training.client.data.config.AppConfig
 import com.truth.training.client.data.database.TruthDatabase
+import com.truth.training.client.data.database.KnowledgeBaseSeeder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -86,6 +87,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+    
+    // Current locale
+    private val _currentLocale = MutableStateFlow(appConfig.locale)
+    val currentLocale: StateFlow<String> = _currentLocale.asStateFlow()
     
     fun setConnectionMode(mode: String) {
         _connectionMode.value = mode
@@ -196,25 +201,75 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         appConfig.globalTtl = _globalTtl.value
     }
     
-    fun initializeApp(onSuccess: () -> Unit) {
+    /**
+     * Clears all events from the database.
+     * Does not affect knowledge base, templates, or configuration.
+     */
+    fun clearEvents(onSuccess: () -> Unit) {
         viewModelScope.launch {
             _error.value = null
             try {
-                // Reset configuration
-                appConfig.reset()
-                
-                // Reinitialize database (close and reopen)
-                application.database.close()
-                TruthDatabase.closeInstance()
-                
-                // Database will be recreated on next access
-                application.database
-                
+                val eventDao = application.database.eventDao()
+                eventDao.clearAllEvents()
+                android.util.Log.d("SettingsViewModel", "All events cleared successfully")
                 onSuccess()
             } catch (e: Exception) {
-                _error.value = "Failed to initialize app: ${e.message}"
+                _error.value = "Failed to clear events: ${e.message}"
+                android.util.Log.e("SettingsViewModel", "Failed to clear events", e)
             }
         }
+    }
+    
+    /**
+     * Changes the application language and re-seeds knowledge base.
+     * 
+     * @param locale Language code ("en" or "ru")
+     * @param onLanguageChanged Callback invoked after language change is complete (should restart activity)
+     */
+    fun changeLanguage(locale: String, onLanguageChanged: () -> Unit) {
+        viewModelScope.launch {
+            _error.value = null
+            try {
+                val previousLocale = appConfig.locale
+                
+                // Only proceed if locale actually changed
+                if (locale == previousLocale) {
+                    return@launch
+                }
+                
+                // Save new locale to AppConfig
+                appConfig.locale = locale
+                _currentLocale.value = locale
+                
+                // Clear context templates (as per requirement)
+                val contextTemplateDao = application.database.contextTemplateDao()
+                contextTemplateDao.clearAllTemplates()
+                
+                // Clear and re-seed knowledge base with new locale
+                KnowledgeBaseSeeder.seedKnowledgeBase(
+                    database = application.database,
+                    locale = locale,
+                    forceReseed = true
+                )
+                
+                // Invoke callback to restart activity with new locale
+                // This should be called on the main thread
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    onLanguageChanged()
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to change language: ${e.message}"
+                android.util.Log.e("SettingsViewModel", "Failed to change language", e)
+            }
+        }
+    }
+    
+    /**
+     * Sets the language selection (updates state only, does not trigger change).
+     * Use changeLanguage() to actually apply the change.
+     */
+    fun setLanguage(locale: String) {
+        _currentLocale.value = locale
     }
 }
 

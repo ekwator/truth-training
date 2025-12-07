@@ -11,8 +11,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.truth.training.client.R
 import com.truth.training.client.ui.summary.OverallSummaryViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -31,11 +33,12 @@ fun OverallSummaryScreen(
     val stats by viewModel.stats.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val context = LocalContext.current
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Overall Summary") },
+                title = { Text(context.getString(R.string.overall_summary)) },
                 actions = {
                     IconButton(
                         onClick = { viewModel.refresh() },
@@ -43,7 +46,7 @@ fun OverallSummaryScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Refresh"
+                            contentDescription = context.getString(R.string.refresh)
                         )
                     }
                 }
@@ -66,7 +69,7 @@ fun OverallSummaryScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Error: $error",
+                        text = context.getString(R.string.error_prefix, error),
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
@@ -75,7 +78,7 @@ fun OverallSummaryScreen(
             
             // Metrics Display
             Text(
-                text = "Metrics",
+                text = context.getString(R.string.metrics),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -85,7 +88,8 @@ fun OverallSummaryScreen(
                 detectedEvents = metrics.detectedEvents,
                 eventsWithConsensus = metrics.eventsWithConsensus,
                 averageScore = metrics.averageCollectiveScore,
-                lastUpdated = metrics.lastUpdated
+                lastUpdated = metrics.lastUpdated,
+                context = context
             )
             
             // Network Stats (from API)
@@ -93,7 +97,7 @@ fun OverallSummaryScreen(
                 HorizontalDivider()
                 
                 Text(
-                    text = "Network Statistics",
+                    text = context.getString(R.string.network_statistics),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -102,7 +106,8 @@ fun OverallSummaryScreen(
                     peers = it.peers,
                     edges = it.edges,
                     avgTrust = it.avgTrust,
-                    updatedAt = it.updatedAt
+                    updatedAt = it.updatedAt,
+                    context = context
                 )
             }
             
@@ -110,25 +115,25 @@ fun OverallSummaryScreen(
             HorizontalDivider()
             
             Text(
-                text = "Event Summary",
+                text = context.getString(R.string.event_summary),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             
             Text(
-                text = "Total events: ${metrics.totalEvents}",
+                text = context.getString(R.string.total_events_count, metrics.totalEvents),
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
             
             Text(
-                text = "Detected events: ${metrics.detectedEvents}",
+                text = context.getString(R.string.detected_events_count, metrics.detectedEvents),
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
             
             Text(
-                text = "Events with consensus: ${metrics.eventsWithConsensus}",
+                text = context.getString(R.string.events_with_consensus_count, metrics.eventsWithConsensus),
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
@@ -150,7 +155,8 @@ private fun MetricsCard(
     detectedEvents: Int,
     eventsWithConsensus: Int,
     averageScore: Float?,
-    lastUpdated: Long
+    lastUpdated: Long,
+    context: android.content.Context
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -162,18 +168,18 @@ private fun MetricsCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            MetricRow("Total Events", totalEvents.toString())
-            MetricRow("Detected Events", detectedEvents.toString())
-            MetricRow("Events with Consensus", eventsWithConsensus.toString())
+            MetricRow(context.getString(R.string.total_events), totalEvents.toString(), context)
+            MetricRow(context.getString(R.string.detected_events), detectedEvents.toString(), context)
+            MetricRow(context.getString(R.string.events_with_consensus), eventsWithConsensus.toString(), context)
             
             averageScore?.let {
-                MetricRow("Average Collective Score", String.format("%.2f", it))
+                MetricRow(context.getString(R.string.average_collective_score), String.format("%.2f", it), context)
             }
             
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             Text(
-                text = "Last updated: ${formatTimestamp(lastUpdated)}",
+                text = context.getString(R.string.last_updated, formatTimestamp(lastUpdated)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -186,7 +192,8 @@ private fun NetworkStatsCard(
     peers: Int?,
     edges: Int?,
     avgTrust: Double?,
-    updatedAt: String?
+    updatedAt: String?,
+    context: android.content.Context
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -198,14 +205,14 @@ private fun NetworkStatsCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            peers?.let { MetricRow("Peers", it.toString()) }
-            edges?.let { MetricRow("Edges", it.toString()) }
-            avgTrust?.let { MetricRow("Average Trust", String.format("%.2f", it)) }
+            peers?.let { MetricRow(context.getString(R.string.peers), it.toString(), context) }
+            edges?.let { MetricRow(context.getString(R.string.edges), it.toString(), context) }
+            avgTrust?.let { MetricRow(context.getString(R.string.average_trust), String.format("%.2f", it), context) }
             
             updatedAt?.let {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text(
-                    text = "Updated: $it",
+                    text = context.getString(R.string.updated, it),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
@@ -215,7 +222,7 @@ private fun NetworkStatsCard(
 }
 
 @Composable
-private fun MetricRow(label: String, value: String) {
+private fun MetricRow(label: String, value: String, context: android.content.Context) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween

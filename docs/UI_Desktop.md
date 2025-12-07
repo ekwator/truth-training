@@ -99,10 +99,10 @@ The Context Picker is a searchable combobox component used for selecting context
   - Telemetry: `locale.change` events logged with `{from, to, success}`
 
 ### Android Localization Status
-- **Current Status**: **English-only (EN)**
-- **Language Switching**: Not implemented in Android client
-- **Parity Note**: Desktop UI supports RU/EN switching; Android localization parity is planned for a future release
-- **String Consistency**: Android English strings should match Desktop English strings for consistency
+- **Current Status**: **RU/EN Language Switching Supported**
+- **Language Switching**: Implemented via Settings screen
+- **Parity Note**: Both Desktop and Android support RU/EN language switching
+- **String Consistency**: Android strings match Desktop strings for consistency across platforms
 - **Validation Rules**: IP format validation (`^\d{1,3}(\.\d{1,3}){3}$`), port range (1-65535)
 - **Test Connection**: Test Core or HTTP connections with real-time feedback
 - **Persistence**: Configuration saved to `~/.truth-training/config.json`

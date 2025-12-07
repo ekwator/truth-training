@@ -4,9 +4,12 @@ import android.app.Application
 import androidx.room.Room
 import androidx.work.Configuration
 import androidx.work.WorkManager
+import android.content.Context
+import com.truth.training.client.data.config.AppConfig
 import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.data.database.TruthDatabaseMigrations
 import com.truth.training.client.data.sync.SyncConfiguration
+import com.truth.training.client.utils.LocaleHelper
 import com.truth.training.client.worker.NodeSyncWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +23,15 @@ import kotlinx.coroutines.launch
 class TruthTrainingApplication : Application(), Configuration.Provider {
     // Application scope for coroutines
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    
+    override fun attachBaseContext(base: Context) {
+        // Apply locale before calling super to ensure it's set for the entire application
+        val appConfig = AppConfig(base)
+        val locale = appConfig.locale
+        val updatedContext = LocaleHelper.setLocale(base, locale)
+        android.util.Log.d("TruthTrainingApplication", "attachBaseContext: locale=$locale")
+        super.attachBaseContext(updatedContext)
+    }
 
     // Room database instance (singleton)
     val database: TruthDatabase by lazy {

@@ -29,5 +29,9 @@ interface ImpactTypeDao {
     
     @Query("SELECT COUNT(*) FROM impact_type")
     suspend fun getImpactTypeCount(): Int
+    
+    // Clear all impact types (used when changing language)
+    @Query("DELETE FROM impact_type")
+    suspend fun clearAllImpactTypes()
 }
 

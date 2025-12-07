@@ -11,8 +11,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.truth.training.client.R
 import com.truth.training.client.ui.training.TrainingResultsViewModel
 
 /**
@@ -30,11 +32,12 @@ fun TrainingResultsScreen(
     val progressMetrics by viewModel.progressMetrics.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val context = LocalContext.current
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Training Results") },
+                title = { Text(context.getString(R.string.training_results)) },
                 actions = {
                     IconButton(
                         onClick = { viewModel.refresh() },
@@ -42,7 +45,7 @@ fun TrainingResultsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Refresh"
+                            contentDescription = context.getString(R.string.refresh)
                         )
                     }
                 }
@@ -65,7 +68,7 @@ fun TrainingResultsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Error: $error",
+                        text = context.getString(R.string.error_prefix, error),
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
@@ -74,7 +77,7 @@ fun TrainingResultsScreen(
             
             // Progress Metrics
             Text(
-                text = "Progress Metrics",
+                text = context.getString(R.string.progress_metrics),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -84,14 +87,15 @@ fun TrainingResultsScreen(
                 totalPositiveImpact = summary.totalPositiveImpact,
                 totalNegativeImpact = summary.totalNegativeImpact,
                 averageScore = summary.averageScore,
-                trend = summary.trend
+                trend = summary.trend,
+                context = context
             )
             
             // Impact Progress
             HorizontalDivider()
             
             Text(
-                text = "Impact Progress",
+                text = context.getString(R.string.impact_progress),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -112,7 +116,7 @@ fun TrainingResultsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                     Text(
-                        text = "Positive Impact Progress",
+                        text = context.getString(R.string.positive_impact_progress),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     LinearProgressIndicator(
@@ -132,7 +136,7 @@ fun TrainingResultsScreen(
                 HorizontalDivider()
                 
                 Text(
-                    text = "Historical Results",
+                    text = context.getString(R.string.historical_results),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -141,7 +145,8 @@ fun TrainingResultsScreen(
                     ProgressMetricRow(
                         timestamp = metric.timestamp,
                         totalEvents = metric.totalEvents,
-                        trend = metric.trend
+                        trend = metric.trend,
+                        context = context
                     )
                 }
             }
@@ -163,7 +168,8 @@ private fun ProgressMetricsCard(
     totalPositiveImpact: Double,
     totalNegativeImpact: Double,
     averageScore: Double?,
-    trend: Double
+    trend: Double,
+    context: android.content.Context
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -175,15 +181,15 @@ private fun ProgressMetricsCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            MetricRow("Total Events", totalEvents.toString())
-            MetricRow("Total Positive Impact", String.format("%.2f", totalPositiveImpact))
-            MetricRow("Total Negative Impact", String.format("%.2f", totalNegativeImpact))
+            MetricRow(context.getString(R.string.total_events), totalEvents.toString(), context)
+            MetricRow(context.getString(R.string.total_positive_impact), String.format("%.2f", totalPositiveImpact), context)
+            MetricRow(context.getString(R.string.total_negative_impact), String.format("%.2f", totalNegativeImpact), context)
             
             averageScore?.let {
-                MetricRow("Average Score", String.format("%.2f", it))
+                MetricRow(context.getString(R.string.average_score), String.format("%.2f", it), context)
             }
             
-            MetricRow("Trend", String.format("%.2f", trend))
+            MetricRow(context.getString(R.string.trend), String.format("%.2f", trend), context)
         }
     }
 }
@@ -192,7 +198,8 @@ private fun ProgressMetricsCard(
 private fun ProgressMetricRow(
     timestamp: Long,
     totalEvents: Int,
-    trend: Double
+    trend: Double,
+    context: android.content.Context
 ) {
     Card(
         modifier = Modifier
@@ -214,13 +221,13 @@ private fun ProgressMetricRow(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    text = "Events: $totalEvents",
+                    text = context.getString(R.string.events_count, totalEvents),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Text(
-                text = "Trend: ${String.format("%.2f", trend)}",
+                text = context.getString(R.string.trend_value, String.format("%.2f", trend)),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -229,7 +236,7 @@ private fun ProgressMetricRow(
 }
 
 @Composable
-private fun MetricRow(label: String, value: String) {
+private fun MetricRow(label: String, value: String, context: android.content.Context) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween

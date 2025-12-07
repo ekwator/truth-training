@@ -9,8 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.truth.training.client.R
 import com.truth.training.client.data.database.entities.EventEntity
 
 /**
@@ -24,15 +26,17 @@ fun EventListScreen(
     onNewEventClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Events") },
+                title = { Text(context.getString(R.string.events)) },
                 actions = {
                     IconButton(onClick = onNewEventClick) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = "New Event"
+                            contentDescription = context.getString(R.string.new_event)
                         )
                     }
                 }
@@ -42,7 +46,7 @@ fun EventListScreen(
             FloatingActionButton(onClick = onNewEventClick) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "New Event"
+                    contentDescription = context.getString(R.string.new_event)
                 )
             }
         }
@@ -76,6 +80,7 @@ private fun EventCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Card(
         onClick = onClick,
         modifier = modifier,
@@ -104,7 +109,7 @@ private fun EventCard(
                 AssistChip(
                     onClick = {},
                     label = {
-                        Text(if (event.vector) "Outgoing" else "Incoming")
+                        Text(if (event.vector) context.getString(R.string.outgoing) else context.getString(R.string.incoming))
                     }
                 )
                 Text(
@@ -122,6 +127,8 @@ private fun EmptyEventsView(
     onNewEventClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -130,13 +137,13 @@ private fun EmptyEventsView(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "No events yet",
+            text = context.getString(R.string.no_events_yet),
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onNewEventClick) {
-            Text("Create First Event")
+            Text(context.getString(R.string.create_first_event))
         }
     }
 }

@@ -29,5 +29,9 @@ interface DevelopDao {
     
     @Query("SELECT COUNT(*) FROM develop")
     suspend fun getDevelopCount(): Int
+    
+    // Clear all develops (used when changing language)
+    @Query("DELETE FROM develop")
+    suspend fun clearAllDevelops()
 }
 

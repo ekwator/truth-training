@@ -39,16 +39,20 @@ This document provides a comprehensive functional specification for the Android 
 - **Battery Efficiency:** Optimized background sync intervals (15 minutes)
 
 ### Localization Status
-- **Current Status:** **English-only (EN)**
-- **Language Switching:** Not implemented
-- **Translation Files:** Only `app/src/main/res/values/strings.xml` exists (no `values-ru/` directory)
-- **Parity Note:** Desktop UI supports RU/EN language switching with automatic knowledge base reseeding; Android localization parity is planned for a future release
-- **Recommendation:** Implement localization to match Desktop UI functionality:
-  - Add `values-ru/strings.xml` with Russian translations
-  - Add language selector in Settings screen
-  - Integrate locale-aware knowledge base seeding (Core supports `seed_knowledge_base` with locale parameter)
-  - Persist locale preference in SharedPreferences
-  - Trigger knowledge base reseed when locale changes
+- **Current Status:** **✅ RU/EN Language Switching Supported**
+- **Language Switching:** Fully implemented via Settings screen
+- **Translation Files:** 
+  - `app/src/main/res/values/strings.xml` (English)
+  - `app/src/main/res/values-ru/strings.xml` (Russian)
+- **Implementation:** 
+  - Language selector in Settings screen (FilterChips)
+  - Locale-aware knowledge base seeding with temporary tables solution
+  - Locale persistence in SharedPreferences via `AppConfig`
+  - Activity recreation on language change
+  - Context templates cleared on language change
+  - Event data preserved during language change
+- **Documentation:** See [`specs/014-android-localization/LOCALIZATION_IMPLEMENTATION.md`](../specs/014-android-localization/LOCALIZATION_IMPLEMENTATION.md)
+- **Parity:** ✅ Matches Desktop UI localization functionality
 
 ## Application Structure
 
@@ -85,12 +89,15 @@ Application Start → Database Init → Network Module → Truth Core Init → R
 
 ## Screens
 
-**⚠️ Implementation Status (v1.0.0):**
+**✅ Implementation Status (v1.0.0):**
 
-Most screens described below are **partially implemented** or **not yet integrated into navigation**. As of v1.0.0:
-- ✅ **NodesScreen**: Fully implemented and integrated
-- ⚠️ **Other screens**: Files exist but are not connected to MainNavigation (placeholders in navigation graph)
-- 📝 **See**: [release-info-v1_0_0-Develop.txt](../../release-info-v1_0_0-Develop.txt) for current implementation status
+All screens described below are **fully implemented and integrated** into navigation. As of v1.0.0:
+- ✅ **All 13 screens**: Fully implemented and integrated into MainNavigation
+- ✅ **Navigation flows**: All navigation patterns working correctly
+- ✅ **Localization**: RU/EN language switching fully supported
+- ✅ **Template selection**: Working with flag-based navigation
+- ✅ **Context field display**: Name resolution working correctly
+- 📝 **See**: [`docs/ANDROID_UI_SPECIFICATION.md`](../docs/ANDROID_UI_SPECIFICATION.md) for detailed implementation documentation
 
 **Screen Parity with Desktop UI:**
 

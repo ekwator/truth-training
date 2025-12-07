@@ -5,7 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.truth.training.client.TruthTrainingApplication
 import com.truth.training.client.data.TruthRepository
-import com.truth.training.client.data.database.entities.ContextTemplateEntity
+import com.truth.training.client.data.database.entities.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +28,46 @@ class ContextTemplateListViewModel(
     
     val templates: StateFlow<List<ContextTemplateEntity>> = 
         repository.contextTemplateRepository.getAllTemplatesFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    
+    val categories: StateFlow<List<CategoryEntity>> = 
+        repository.knowledgeBaseRepository.getAllCategoriesFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    
+    val formas: StateFlow<List<FormaEntity>> = 
+        repository.knowledgeBaseRepository.getAllFormasFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    
+    val causes: StateFlow<List<CauseEntity>> = 
+        repository.knowledgeBaseRepository.getAllCausesFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    
+    val develops: StateFlow<List<DevelopEntity>> = 
+        repository.knowledgeBaseRepository.getAllDevelopsFlow()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+    
+    val effects: StateFlow<List<EffectEntity>> = 
+        repository.knowledgeBaseRepository.getAllEffectsFlow()
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),

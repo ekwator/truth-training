@@ -7,12 +7,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.truth.training.client.ui.compose.events.*
 import com.truth.training.client.ui.compose.contexts.*
 import com.truth.training.client.ui.compose.judgments.*
@@ -89,12 +93,60 @@ fun MainNavigation(
             DashboardScreen(
                 syncStatus = syncStatus,
                 eventCount = eventCount,
-                onNavigateToEvents = onNavigateToEvents,
-                onNavigateToContexts = onNavigateToContexts,
-                onNavigateToJudgments = { 
-                    // Navigate to events list first, user can select event to view judgments
-                    // Alternatively, we could create a route for all judgments, but this matches UX better
+                onNavigateToEvents = { 
+                    // Clear viewJudgments flag when explicitly navigating to events via "View Events"
+                    try {
+                        navController.getBackStackEntry("events").savedStateHandle["viewJudgments"] = false
+                    } catch (e: Exception) {
+                        // Entry doesn't exist yet, will be set when navigating
+                    }
                     onNavigateToEvents()
+                },
+                onNavigateToContexts = {
+                    // Clear selectTemplateForEvent flag when navigating from Dashboard
+                    try {
+                        val contextsEntry = navController.getBackStackEntry("contexts")
+                        contextsEntry.savedStateHandle["selectTemplateForEvent"] = false
+                    } catch (e: Exception) {
+                        // Entry doesn't exist yet, will be cleared after navigation
+                    }
+                    onNavigateToContexts()
+                    // Ensure flag is cleared after navigation
+                    scope.launch {
+                        kotlinx.coroutines.delay(100)
+                        try {
+                            val contextsEntry = navController.getBackStackEntry("contexts")
+                            contextsEntry.savedStateHandle["selectTemplateForEvent"] = false
+                        } catch (e: Exception) {
+                            // Entry might not be ready yet
+                        }
+                    }
+                },
+                onNavigateToJudgments = { 
+                    // Navigate to events list with viewJudgments flag
+                    // Set flag in savedStateHandle before navigation
+                    try {
+                        // Try to get existing entry first
+                        val existingEntry = navController.getBackStackEntry("events")
+                        existingEntry.savedStateHandle["viewJudgments"] = true
+                        navController.navigate("events") {
+                            launchSingleTop = true
+                        }
+                    } catch (e: Exception) {
+                        // Entry doesn't exist yet, navigate first then set flag
+                        navController.navigate("events") {
+                            launchSingleTop = true
+                        }
+                        // Set flag after navigation
+                        scope.launch {
+                            kotlinx.coroutines.delay(100)
+                            try {
+                                navController.getBackStackEntry("events").savedStateHandle["viewJudgments"] = true
+                            } catch (ex: Exception) {
+                                // Entry still not ready, will be handled in composable
+                            }
+                        }
+                    }
                 },
                 onSyncNow = { viewModel.refresh() },
                 onNavigateToSummary = onNavigateToSummary,
@@ -103,7 +155,8 @@ fun MainNavigation(
             )
         }
         
-        composable("events") {
+        // Route for events list - supports optional viewJudgments parameter
+        composable("events") { backStackEntry ->
             val context = LocalContext.current
             val application = remember(context) { 
                 context.applicationContext as android.app.Application 
@@ -116,6 +169,23 @@ fun MainNavigation(
             val snackbarHostState = remember { SnackbarHostState() }
             val scope = rememberCoroutineScope()
             
+            // Track viewJudgments flag from savedStateHandle
+            var viewJudgments by remember { mutableStateOf(false) }
+            
+            // Check savedStateHandle for viewJudgments flag
+            LaunchedEffect(backStackEntry) {
+                // Check immediately
+                viewJudgments = backStackEntry.savedStateHandle.get<Boolean>("viewJudgments") ?: false
+                // Also check after a delay in case flag is set after composable is created
+                kotlinx.coroutines.delay(150)
+                viewJudgments = backStackEntry.savedStateHandle.get<Boolean>("viewJudgments") ?: false
+            }
+            
+            // Also listen to savedStateHandle changes
+            LaunchedEffect(backStackEntry.savedStateHandle) {
+                viewJudgments = backStackEntry.savedStateHandle.get<Boolean>("viewJudgments") ?: false
+            }
+            
             // Show error snackbar if error occurs
             error?.let { errorMessage ->
                 LaunchedEffect(errorMessage) {
@@ -127,7 +197,20 @@ fun MainNavigation(
             
             EventListScreen(
                 events = events,
-                onEventClick = { eventId -> onNavigateToEventDetails(eventId.toString()) },
+                onEventClick = { eventId -> 
+                    // Check flag value at click time (may have been set after composable creation)
+                    // Don't clear the flag - it should persist until user explicitly navigates via "View Events"
+                    val shouldViewJudgments = backStackEntry.savedStateHandle.get<Boolean>("viewJudgments") ?: false
+                    
+                    if (shouldViewJudgments) {
+                        // Navigate to judgments screen for this event
+                        // Flag remains set so subsequent event selections also go to judgments
+                        onNavigateToJudgments(eventId.toString())
+                    } else {
+                        // Navigate to event details
+                        onNavigateToEventDetails(eventId.toString())
+                    }
+                },
                 onNewEventClick = onNavigateToNewEvent,
                 modifier = Modifier
             )
@@ -151,6 +234,35 @@ fun MainNavigation(
             val snackbarHostState = remember { SnackbarHostState() }
             val scope = rememberCoroutineScope()
             
+            // Check for template context from savedStateHandle (set when template is selected from contexts screen)
+            val templateCategoryId = backStackEntry.savedStateHandle.get<Int?>("selectedTemplateCategoryId")
+            val templateFormaId = backStackEntry.savedStateHandle.get<Int?>("selectedTemplateFormaId")
+            val templateCauseId = backStackEntry.savedStateHandle.get<Int?>("selectedTemplateCauseId")
+            val templateDevelopId = backStackEntry.savedStateHandle.get<Int?>("selectedTemplateDevelopId")
+            val templateEffectId = backStackEntry.savedStateHandle.get<Int?>("selectedTemplateEffectId")
+            
+            // Update ViewModel when template context is received from contexts screen
+            LaunchedEffect(templateCategoryId, templateFormaId, templateCauseId, templateDevelopId, templateEffectId) {
+                if (templateCategoryId != null || templateFormaId != null || templateCauseId != null || 
+                    templateDevelopId != null || templateEffectId != null) {
+                    viewModel.setSelectedTemplateContext(
+                        com.truth.training.client.ui.compose.events.ContextFields(
+                            categoryId = templateCategoryId,
+                            formaId = templateFormaId,
+                            causeId = templateCauseId,
+                            developId = templateDevelopId,
+                            effectId = templateEffectId
+                        )
+                    )
+                    // Clear savedStateHandle values after using them
+                    backStackEntry.savedStateHandle["selectedTemplateCategoryId"] = null
+                    backStackEntry.savedStateHandle["selectedTemplateFormaId"] = null
+                    backStackEntry.savedStateHandle["selectedTemplateCauseId"] = null
+                    backStackEntry.savedStateHandle["selectedTemplateDevelopId"] = null
+                    backStackEntry.savedStateHandle["selectedTemplateEffectId"] = null
+                }
+            }
+            
             // Show error snackbar if error occurs
             error?.let { errorMessage ->
                 LaunchedEffect(errorMessage) {
@@ -169,51 +281,34 @@ fun MainNavigation(
                 onCancel = onNavigateBack,
                 selectedTemplateContext = selectedTemplateContext,
                 onSelectTemplate = {
-                    navController.navigate("event/create/select-template")
+                    // Navigate to contexts screen with flag to select template for event
+                    // Set flag in contexts entry's savedStateHandle before navigation
+                    try {
+                        val contextsEntry = navController.getBackStackEntry("contexts")
+                        contextsEntry.savedStateHandle["selectTemplateForEvent"] = true
+                    } catch (e: Exception) {
+                        // Entry doesn't exist yet, will be set after navigation
+                    }
+                    navController.navigate("contexts") {
+                        // Don't add to back stack if already there, just pop to it
+                        popUpTo("event/create") { inclusive = false }
+                    }
+                    // Ensure flag is set after navigation
+                    scope.launch {
+                        kotlinx.coroutines.delay(100)
+                        try {
+                            val contextsEntry = navController.getBackStackEntry("contexts")
+                            contextsEntry.savedStateHandle["selectTemplateForEvent"] = true
+                        } catch (e: Exception) {
+                            // Entry might not be ready yet
+                        }
+                    }
                 },
                 categoriesFlow = viewModel.categories,
                 formasFlow = viewModel.formas,
                 causesFlow = viewModel.causes,
                 developsFlow = viewModel.develops,
                 effectsFlow = viewModel.effects,
-                modifier = Modifier
-            )
-        }
-        
-        composable("event/create/select-template") { backStackEntry ->
-            val context = LocalContext.current
-            val application = remember(context) { 
-                context.applicationContext as android.app.Application 
-            }
-            val factory = remember(application) { ViewModelFactory(application) }
-            
-            // Get parent entry to share ViewModel instance
-            // Use try-catch in case parent entry is not available
-            val parentEntry = remember(backStackEntry) {
-                try {
-                    navController.getBackStackEntry("event/create")
-                } catch (e: Exception) {
-                    // Fallback to current entry if parent is not available
-                    backStackEntry
-                }
-            }
-            
-            // Use ViewModel from parent route to share state
-            val viewModel: EventCreateViewModel = viewModel(
-                viewModelStoreOwner = parentEntry,
-                factory = factory
-            )
-            
-            val templates by viewModel.templates.collectAsState()
-            
-            ContextTemplateSelectionScreen(
-                templates = templates,
-                onTemplateSelected = { contextFields ->
-                    // Update ViewModel state before navigating back
-                    viewModel.setSelectedTemplateContext(contextFields)
-                    navController.popBackStack()
-                },
-                onCancel = { navController.popBackStack() },
                 modifier = Modifier
             )
         }
@@ -227,7 +322,19 @@ fun MainNavigation(
                 context.applicationContext as android.app.Application 
             }
             val factory = remember(application) { ViewModelFactory(application) }
-            val viewModel = remember(eventId) { factory.createEventDetailViewModel(eventId) }
+            
+            // Get current locale to force ViewModel recreation when language changes
+            // Use LaunchedEffect to track locale changes and recreate ViewModel
+            val appConfig = remember { com.truth.training.client.data.config.AppConfig(context) }
+            var currentLocale by remember { mutableStateOf(appConfig.locale) }
+            
+            // Update locale when backStackEntry changes (e.g., after language change and activity restart)
+            LaunchedEffect(backStackEntry) {
+                currentLocale = appConfig.locale
+            }
+            
+            // Recreate ViewModel when locale changes to ensure flows are refreshed
+            val viewModel = remember(eventId, currentLocale) { factory.createEventDetailViewModel(eventId) }
             
             val event by viewModel.event.collectAsState()
             val error by viewModel.error.collectAsState()
@@ -254,6 +361,11 @@ fun MainNavigation(
                     }
                 },
                 onNavigateToJudgments = { onNavigateToJudgments(eventIdStr) },
+                categoriesFlow = viewModel.categories,
+                formasFlow = viewModel.formas,
+                causesFlow = viewModel.causes,
+                developsFlow = viewModel.develops,
+                effectsFlow = viewModel.effects,
                 modifier = Modifier
             )
         }
@@ -310,7 +422,7 @@ fun MainNavigation(
             }
         }
         
-        composable("contexts") {
+        composable("contexts") { backStackEntry ->
             val context = LocalContext.current
             val application = remember(context) { 
                 context.applicationContext as android.app.Application 
@@ -323,6 +435,20 @@ fun MainNavigation(
             val snackbarHostState = remember { SnackbarHostState() }
             val scope = rememberCoroutineScope()
             
+            // Check if we're selecting template for event creation
+            // Use LaunchedEffect to track changes in savedStateHandle
+            var selectTemplateForEvent by remember { mutableStateOf(false) }
+            LaunchedEffect(backStackEntry) {
+                selectTemplateForEvent = backStackEntry.savedStateHandle.get<Boolean>("selectTemplateForEvent") ?: false
+                // Also check after a delay in case flag is set after composable is created
+                kotlinx.coroutines.delay(150)
+                selectTemplateForEvent = backStackEntry.savedStateHandle.get<Boolean>("selectTemplateForEvent") ?: false
+            }
+            // Also listen to savedStateHandle changes
+            LaunchedEffect(backStackEntry.savedStateHandle) {
+                selectTemplateForEvent = backStackEntry.savedStateHandle.get<Boolean>("selectTemplateForEvent") ?: false
+            }
+            
             // Show error snackbar if error occurs
             error?.let { errorMessage ->
                 LaunchedEffect(errorMessage) {
@@ -334,19 +460,108 @@ fun MainNavigation(
             
             ContextTemplateListScreen(
                 templates = templates,
-                onTemplateClick = { templateId -> onNavigateToContextEditor(templateId) },
-                onNewTemplateClick = { onNavigateToContextEditor(null) },
+                onTemplateClick = { templateId -> 
+                    val template = templates.find { it.id == templateId }
+                    if (template != null) {
+                        if (selectTemplateForEvent) {
+                            // Selecting template for event creation
+                            // Store template context in event/create entry's savedStateHandle
+                            try {
+                                val eventCreateEntry = navController.getBackStackEntry("event/create")
+                                // Store template context data in event/create entry
+                                eventCreateEntry.savedStateHandle["selectedTemplateCategoryId"] = template.categoryId
+                                eventCreateEntry.savedStateHandle["selectedTemplateFormaId"] = template.formaId
+                                eventCreateEntry.savedStateHandle["selectedTemplateCauseId"] = template.causeId
+                                eventCreateEntry.savedStateHandle["selectedTemplateDevelopId"] = template.developId
+                                eventCreateEntry.savedStateHandle["selectedTemplateEffectId"] = template.effectId
+                                // Clear the flag
+                                backStackEntry.savedStateHandle["selectTemplateForEvent"] = false
+                                // Navigate back to event create screen
+                                navController.popBackStack()
+                            } catch (e: Exception) {
+                                // Event create entry not found, just navigate back
+                                backStackEntry.savedStateHandle["selectTemplateForEvent"] = false
+                                navController.popBackStack()
+                            }
+                        } else {
+                            // Normal flow: navigate to create new template with selected template's fields
+                            // Editing is not allowed, only creating new templates
+                            // Store template data in the "context/create" entry's savedStateHandle
+                            try {
+                                val createEntry = navController.getBackStackEntry("context/create")
+                                // Entry exists, set data directly
+                                createEntry.savedStateHandle["selectedTemplateId"] = templateId
+                                createEntry.savedStateHandle["selectedTemplateName"] = template.name
+                                createEntry.savedStateHandle["selectedTemplateCategoryId"] = template.categoryId
+                                createEntry.savedStateHandle["selectedTemplateFormaId"] = template.formaId
+                                createEntry.savedStateHandle["selectedTemplateCauseId"] = template.causeId
+                                createEntry.savedStateHandle["selectedTemplateDevelopId"] = template.developId
+                                createEntry.savedStateHandle["selectedTemplateEffectId"] = template.effectId
+                                createEntry.savedStateHandle["selectedTemplateDescription"] = template.description ?: ""
+                            } catch (e: Exception) {
+                                // Entry doesn't exist yet, store data in current entry to be copied on navigation
+                                backStackEntry.savedStateHandle["selectedTemplateId"] = templateId
+                                backStackEntry.savedStateHandle["selectedTemplateName"] = template.name
+                                backStackEntry.savedStateHandle["selectedTemplateCategoryId"] = template.categoryId
+                                backStackEntry.savedStateHandle["selectedTemplateFormaId"] = template.formaId
+                                backStackEntry.savedStateHandle["selectedTemplateCauseId"] = template.causeId
+                                backStackEntry.savedStateHandle["selectedTemplateDevelopId"] = template.developId
+                                backStackEntry.savedStateHandle["selectedTemplateEffectId"] = template.effectId
+                                backStackEntry.savedStateHandle["selectedTemplateDescription"] = template.description ?: ""
+                            }
+                            
+                            // Navigate to create screen
+                            navController.navigate("context/create") {
+                                launchSingleTop = true
+                            }
+                            
+                            // After navigation, ensure data is in the create entry's savedStateHandle
+                            scope.launch {
+                                kotlinx.coroutines.delay(100)
+                                try {
+                                    val createEntry = navController.getBackStackEntry("context/create")
+                                    createEntry.savedStateHandle["selectedTemplateId"] = templateId
+                                    createEntry.savedStateHandle["selectedTemplateName"] = template.name
+                                    createEntry.savedStateHandle["selectedTemplateCategoryId"] = template.categoryId
+                                    createEntry.savedStateHandle["selectedTemplateFormaId"] = template.formaId
+                                    createEntry.savedStateHandle["selectedTemplateCauseId"] = template.causeId
+                                    createEntry.savedStateHandle["selectedTemplateDevelopId"] = template.developId
+                                    createEntry.savedStateHandle["selectedTemplateEffectId"] = template.effectId
+                                    createEntry.savedStateHandle["selectedTemplateDescription"] = template.description ?: ""
+                                } catch (e: Exception) {
+                                    // Entry might not be ready yet
+                                }
+                            }
+                        }
+                    }
+                },
+                onNewTemplateClick = { navController.navigate("context/create") },
+                categoriesFlow = viewModel.categories,
+                formasFlow = viewModel.formas,
+                causesFlow = viewModel.causes,
+                developsFlow = viewModel.develops,
+                effectsFlow = viewModel.effects,
                 modifier = Modifier
             )
         }
         
-        composable("context/create") {
+        composable("context/create") { backStackEntry ->
             val context = LocalContext.current
             val application = remember(context) { 
                 context.applicationContext as android.app.Application 
             }
             val factory = remember(application) { ViewModelFactory(application) }
             val viewModel = remember { factory.createContextTemplateEditorViewModel(null) }
+            
+            // Get selected template data from savedStateHandle (if template was selected from list)
+            val selectedTemplateId = backStackEntry.savedStateHandle.get<Int>("selectedTemplateId")
+            val selectedTemplateName = backStackEntry.savedStateHandle.get<String>("selectedTemplateName") ?: ""
+            val selectedTemplateCategoryId = backStackEntry.savedStateHandle.get<Int?>("selectedTemplateCategoryId")
+            val selectedTemplateFormaId = backStackEntry.savedStateHandle.get<Int?>("selectedTemplateFormaId")
+            val selectedTemplateCauseId = backStackEntry.savedStateHandle.get<Int?>("selectedTemplateCauseId")
+            val selectedTemplateDevelopId = backStackEntry.savedStateHandle.get<Int?>("selectedTemplateDevelopId")
+            val selectedTemplateEffectId = backStackEntry.savedStateHandle.get<Int?>("selectedTemplateEffectId")
+            val selectedTemplateDescription = backStackEntry.savedStateHandle.get<String>("selectedTemplateDescription") ?: ""
             
             val template by viewModel.template.collectAsState()
             val categories by viewModel.categories.collectAsState()
@@ -369,13 +584,13 @@ fun MainNavigation(
             
             ContextTemplateEditorScreen(
                 templateId = null,
-                initialName = "",
-                initialCategoryId = null,
-                initialFormaId = null,
-                initialCauseId = null,
-                initialDevelopId = null,
-                initialEffectId = null,
-                initialDescription = "",
+                initialName = selectedTemplateName,
+                initialCategoryId = selectedTemplateCategoryId,
+                initialFormaId = selectedTemplateFormaId,
+                initialCauseId = selectedTemplateCauseId,
+                initialDevelopId = selectedTemplateDevelopId,
+                initialEffectId = selectedTemplateEffectId,
+                initialDescription = selectedTemplateDescription,
                 categoriesFlow = viewModel.categories,
                 formasFlow = viewModel.formas,
                 causesFlow = viewModel.causes,
@@ -391,58 +606,8 @@ fun MainNavigation(
             )
         }
         
-        composable("context/{templateId}") { backStackEntry ->
-            val templateId = backStackEntry.arguments?.getString("templateId")?.toIntOrNull()
-            
-            val context = LocalContext.current
-            val application = remember(context) { 
-                context.applicationContext as android.app.Application 
-            }
-            val factory = remember(application) { ViewModelFactory(application) }
-            val viewModel = remember(templateId) { factory.createContextTemplateEditorViewModel(templateId) }
-            
-            val template by viewModel.template.collectAsState()
-            val categories by viewModel.categories.collectAsState()
-            val formas by viewModel.formas.collectAsState()
-            val causes by viewModel.causes.collectAsState()
-            val develops by viewModel.develops.collectAsState()
-            val effects by viewModel.effects.collectAsState()
-            val error by viewModel.error.collectAsState()
-            val snackbarHostState = remember { SnackbarHostState() }
-            val scope = rememberCoroutineScope()
-            
-            // Show error snackbar if error occurs
-            error?.let { errorMessage ->
-                LaunchedEffect(errorMessage) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar(errorMessage)
-                    }
-                }
-            }
-            
-            ContextTemplateEditorScreen(
-                templateId = templateId,
-                initialName = template?.name ?: "",
-                initialCategoryId = template?.categoryId,
-                initialFormaId = template?.formaId,
-                initialCauseId = template?.causeId,
-                initialDevelopId = template?.developId,
-                initialEffectId = template?.effectId,
-                initialDescription = template?.description ?: "",
-                categoriesFlow = viewModel.categories,
-                formasFlow = viewModel.formas,
-                causesFlow = viewModel.causes,
-                developsFlow = viewModel.develops,
-                effectsFlow = viewModel.effects,
-                onSave = { request ->
-                    viewModel.saveTemplate(request) {
-                        onNavigateBack()
-                    }
-                },
-                onCancel = onNavigateBack,
-                modifier = Modifier
-            )
-        }
+        // Removed "context/{templateId}" route - editing is not allowed, only creating new templates
+        // When clicking on a template in the list, navigate to "context/create" with template fields pre-filled
         
         composable("judgments/{eventId}") { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString("eventId")?.toLongOrNull() ?: 0L

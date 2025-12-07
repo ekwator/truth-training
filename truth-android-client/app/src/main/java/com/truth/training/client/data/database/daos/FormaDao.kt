@@ -29,5 +29,9 @@ interface FormaDao {
     
     @Query("SELECT COUNT(*) FROM forma")
     suspend fun getFormaCount(): Int
+    
+    // Clear all formas (used when changing language)
+    @Query("DELETE FROM forma")
+    suspend fun clearAllFormas()
 }
 

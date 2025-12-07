@@ -15,8 +15,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.truth.training.client.R
 import com.truth.training.client.data.SyncStatus
 import kotlinx.coroutines.flow.Flow
 import java.text.SimpleDateFormat
@@ -39,10 +41,12 @@ fun DashboardScreen(
     onNavigateToSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dashboard") }
+                title = { Text(context.getString(R.string.dashboard)) }
             )
         }
     ) { padding ->
@@ -64,7 +68,7 @@ fun DashboardScreen(
 
             // Quick Stats
             Text(
-                text = "Quick Stats",
+                text = context.getString(R.string.quick_stats),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -74,7 +78,7 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard(
-                    title = "Events",
+                    title = context.getString(R.string.events),
                     value = eventCount.toString(),
                     icon = Icons.Filled.Event,
                     modifier = Modifier.weight(1f),
@@ -86,43 +90,43 @@ fun DashboardScreen(
 
             // Actions
             Text(
-                text = "Actions",
+                text = context.getString(R.string.actions),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
 
             QuickActionButton(
-                text = "View Events",
+                text = context.getString(R.string.view_events),
                 icon = Icons.Filled.Event,
                 onClick = onNavigateToEvents
             )
 
             QuickActionButton(
-                text = "Manage Context Templates",
+                text = context.getString(R.string.manage_context_templates),
                 icon = Icons.Filled.Settings,
                 onClick = onNavigateToContexts
             )
 
             QuickActionButton(
-                text = "View Judgments",
+                text = context.getString(R.string.view_judgments),
                 icon = Icons.Filled.CheckCircle,
                 onClick = onNavigateToJudgments
             )
             
             QuickActionButton(
-                text = "Overall Summary",
+                text = context.getString(R.string.overall_summary),
                 icon = Icons.Filled.BarChart,
                 onClick = onNavigateToSummary
             )
             
             QuickActionButton(
-                text = "Training Results",
+                text = context.getString(R.string.training_results),
                 icon = Icons.Filled.TrendingUp,
                 onClick = onNavigateToTraining
             )
             
             QuickActionButton(
-                text = "Settings",
+                text = context.getString(R.string.settings),
                 icon = Icons.Filled.Settings,
                 onClick = onNavigateToSettings
             )
@@ -135,6 +139,7 @@ private fun SyncStatusCard(
     syncStatus: SyncStatus,
     onSyncNow: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -155,13 +160,13 @@ private fun SyncStatusCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Sync Status",
+                    text = context.getString(R.string.sync_status),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Icon(
                     imageVector = if (syncStatus.isOnline) Icons.Filled.CloudDone else Icons.Filled.CloudOff,
-                    contentDescription = if (syncStatus.isOnline) "Online" else "Offline",
+                    contentDescription = if (syncStatus.isOnline) context.getString(R.string.online) else context.getString(R.string.offline),
                     tint = if (syncStatus.isOnline) {
                         MaterialTheme.colorScheme.primary
                     } else {
@@ -176,12 +181,12 @@ private fun SyncStatusCard(
             ) {
                 Column {
                     Text(
-                        text = if (syncStatus.isOnline) "Online" else "Offline",
+                        text = if (syncStatus.isOnline) context.getString(R.string.online) else context.getString(R.string.offline),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = "${syncStatus.pendingOperations} pending operations",
+                        text = context.getString(R.string.pending_operations, syncStatus.pendingOperations),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
@@ -190,7 +195,7 @@ private fun SyncStatusCard(
 
             syncStatus.lastSyncTimestamp?.let { timestamp ->
                 Text(
-                    text = "Last sync: ${formatTimestamp(timestamp)}",
+                    text = context.getString(R.string.last_sync_time, formatTimestamp(timestamp)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
                 )
@@ -204,11 +209,11 @@ private fun SyncStatusCard(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Sync,
-                        contentDescription = "Sync Now",
+                        contentDescription = context.getString(R.string.sync_now),
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Sync Now")
+                    Text(context.getString(R.string.sync_now))
                 }
             }
         }

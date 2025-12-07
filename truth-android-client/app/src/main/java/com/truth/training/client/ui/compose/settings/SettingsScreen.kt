@@ -18,13 +18,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.SyncStatus
 import com.truth.training.client.ui.settings.SettingsViewModel
+import com.truth.training.client.R
 import java.text.SimpleDateFormat
 import java.util.*
+import android.app.Activity
 
 /**
  * Settings Screen - Application configuration and connection settings.
@@ -54,16 +57,23 @@ fun SettingsScreen(
     val connectionTestTimestamp by viewModel.connectionTestTimestamp.collectAsState()
     val isTestingConnection by viewModel.isTestingConnection.collectAsState()
     val error by viewModel.error.collectAsState()
+    val currentLocale by viewModel.currentLocale.collectAsState()
+    val context = LocalContext.current
     
-    var showInitConfirmation by remember { mutableStateOf(false) }
+    var showClearEventsConfirmation by remember { mutableStateOf(false) }
+    var showLanguageChangeConfirmation by remember { mutableStateOf(false) }
+    var pendingLocale by remember { mutableStateOf<String?>(null) }
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(context.getString(R.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = context.getString(R.string.back)
+                        )
                     }
                 }
             )
@@ -85,16 +95,16 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Error: $error",
+                        text = context.getString(R.string.error_prefix, error),
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
             
-            // Connection Mode Toggle
+            // Language Selection
             Text(
-                text = "Connection Mode",
+                text = context.getString(R.string.language),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -112,18 +122,67 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Mode")
+                    Text(context.getString(R.string.language))
+                    Row {
+                        FilterChip(
+                            selected = currentLocale == "en",
+                            onClick = { 
+                                if (currentLocale != "en") {
+                                    pendingLocale = "en"
+                                    showLanguageChangeConfirmation = true
+                                }
+                            },
+                            label = { Text(context.getString(R.string.english)) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        FilterChip(
+                            selected = currentLocale == "ru",
+                            onClick = { 
+                                if (currentLocale != "ru") {
+                                    pendingLocale = "ru"
+                                    showLanguageChangeConfirmation = true
+                                }
+                            },
+                            label = { Text(context.getString(R.string.russian)) }
+                        )
+                    }
+                }
+            }
+            
+            HorizontalDivider()
+            
+            // Connection Mode Toggle
+            Text(
+                text = context.getString(R.string.connection_mode),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(context.getString(R.string.mode))
                     Row {
                         FilterChip(
                             selected = connectionMode == "core",
                             onClick = { viewModel.setConnectionMode("core") },
-                            label = { Text("Core (Local)") }
+                            label = { Text(context.getString(R.string.core_local)) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         FilterChip(
                             selected = connectionMode == "http",
                             onClick = { viewModel.setConnectionMode("http") },
-                            label = { Text("HTTP API") }
+                            label = { Text(context.getString(R.string.http_api)) }
                         )
                     }
                 }
@@ -134,7 +193,7 @@ fun SettingsScreen(
                 HorizontalDivider()
                 
                 Text(
-                    text = "Server Configuration",
+                    text = context.getString(R.string.server_configuration),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -150,12 +209,12 @@ fun SettingsScreen(
                             viewModel.setServerIp(it)
                         }
                     },
-                    label = { Text("IP Address") },
+                    label = { Text(context.getString(R.string.ip_address)) },
                     modifier = Modifier.fillMaxWidth(),
                     isError = ipText.isNotBlank() && !isValidIpAddress(ipText),
                     supportingText = {
                         if (ipText.isNotBlank() && !isValidIpAddress(ipText)) {
-                            Text("Invalid IP address format")
+                            Text(context.getString(R.string.invalid_ip_format))
                         }
                     }
                 )
@@ -169,13 +228,13 @@ fun SettingsScreen(
                             viewModel.setServerPort(port)
                         }
                     },
-                    label = { Text("Port") },
+                    label = { Text(context.getString(R.string.port)) },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError = portText.isNotBlank() && (portText.toIntOrNull() == null || portText.toIntOrNull() !in 1..65535),
                     supportingText = {
                         if (portText.isNotBlank() && (portText.toIntOrNull() == null || portText.toIntOrNull() !in 1..65535)) {
-                            Text("Port must be between 1 and 65535")
+                            Text(context.getString(R.string.port_range_error))
                         }
                     }
                 )
@@ -185,7 +244,7 @@ fun SettingsScreen(
             HorizontalDivider()
             
             Text(
-                text = "Nearby Sync",
+                text = context.getString(R.string.nearby_sync),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -205,7 +264,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Enable UDP Broadcast Discovery")
+                        Text(context.getString(R.string.enable_udp_broadcast))
                         Switch(
                             checked = nearbySyncEnabled,
                             onCheckedChange = { viewModel.setNearbySyncEnabled(it) }
@@ -224,7 +283,7 @@ fun SettingsScreen(
                                     viewModel.setNearbySyncInterval(interval)
                                 }
                             },
-                            label = { Text("Interval (ms)") },
+                            label = { Text(context.getString(R.string.interval_ms)) },
                             modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             isError = intervalText.isNotBlank() && run {
@@ -234,7 +293,7 @@ fun SettingsScreen(
                             supportingText = {
                                 val interval = intervalText.toLongOrNull()
                                 if (intervalText.isNotBlank() && (interval == null || interval !in 500..60000)) {
-                                    Text("Interval must be between 500 and 60000 ms")
+                                    Text(context.getString(R.string.interval_range_error))
                                 }
                             }
                         )
@@ -246,7 +305,7 @@ fun SettingsScreen(
             HorizontalDivider()
             
             Text(
-                text = "Discovery Worker Settings",
+                text = context.getString(R.string.discovery_worker_settings),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -266,7 +325,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Enable Background Discovery")
+                        Text(context.getString(R.string.enable_background_discovery))
                         Switch(
                             checked = discoveryWorkerEnabled,
                             onCheckedChange = { viewModel.setDiscoveryWorkerEnabled(it) }
@@ -275,42 +334,42 @@ fun SettingsScreen(
                     
                     if (discoveryWorkerEnabled) {
                         SettingNumberField(
-                            label = "LAN Interval (ms)",
+                            label = context.getString(R.string.lan_interval_ms),
                             value = lanInterval,
                             onValueChange = { viewModel.setLanInterval(it) },
                             modifier = Modifier.fillMaxWidth()
                         )
                         
                         SettingNumberField(
-                            label = "Wi-Fi Interval (ms)",
+                            label = context.getString(R.string.wifi_interval_ms),
                             value = wifiInterval,
                             onValueChange = { viewModel.setWifiInterval(it) },
                             modifier = Modifier.fillMaxWidth()
                         )
                         
                         SettingNumberField(
-                            label = "Global Interval (ms)",
+                            label = context.getString(R.string.global_interval_ms),
                             value = globalInterval,
                             onValueChange = { viewModel.setGlobalInterval(it) },
                             modifier = Modifier.fillMaxWidth()
                         )
                         
                         SettingNumberField(
-                            label = "LAN TTL (seconds)",
+                            label = context.getString(R.string.lan_ttl_seconds),
                             value = lanTtl,
                             onValueChange = { viewModel.setLanTtl(it) },
                             modifier = Modifier.fillMaxWidth()
                         )
                         
                         SettingNumberField(
-                            label = "Wi-Fi TTL (seconds)",
+                            label = context.getString(R.string.wifi_ttl_seconds),
                             value = wifiTtl,
                             onValueChange = { viewModel.setWifiTtl(it) },
                             modifier = Modifier.fillMaxWidth()
                         )
                         
                         SettingNumberField(
-                            label = "Global TTL (seconds)",
+                            label = context.getString(R.string.global_ttl_seconds),
                             value = globalTtl,
                             onValueChange = { viewModel.setGlobalTtl(it) },
                             modifier = Modifier.fillMaxWidth()
@@ -323,7 +382,7 @@ fun SettingsScreen(
             HorizontalDivider()
             
             Text(
-                text = "Connection Status",
+                text = context.getString(R.string.connection_status),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -333,7 +392,8 @@ fun SettingsScreen(
                 testResult = connectionTestResult,
                 testTimestamp = connectionTestTimestamp,
                 onTestConnection = { viewModel.testConnection() },
-                isTesting = isTestingConnection
+                isTesting = isTestingConnection,
+                context = context
             )
             
             // Action Buttons
@@ -347,48 +407,89 @@ fun SettingsScreen(
                     onClick = { viewModel.saveConnectionSettings() },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Save Connection Settings")
+                    Text(context.getString(R.string.save_connection_settings))
                 }
                 
                 Button(
                     onClick = { viewModel.saveDiscoveryWorkerSettings() },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Save Discovery Settings")
+                    Text(context.getString(R.string.save_discovery_settings))
                 }
             }
             
             OutlinedButton(
-                onClick = { showInitConfirmation = true },
+                onClick = { showClearEventsConfirmation = true },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.error
                 )
             ) {
-                Text("Initialize App (Reset Configuration)")
+                Text(context.getString(R.string.clear_events))
             }
             
-            // Init Confirmation Dialog
-            if (showInitConfirmation) {
+            // Language Change Confirmation Dialog
+            if (showLanguageChangeConfirmation && pendingLocale != null) {
                 AlertDialog(
-                    onDismissRequest = { showInitConfirmation = false },
-                    title = { Text("Initialize App") },
-                    text = { Text("This will reset all configuration and rebuild the database. Are you sure?") },
+                    onDismissRequest = { 
+                        showLanguageChangeConfirmation = false
+                        pendingLocale = null
+                    },
+                    title = { Text(context.getString(R.string.change_language)) },
+                    text = { 
+                        Text(context.getString(R.string.change_language_message)) 
+                    },
                     confirmButton = {
                         TextButton(
                             onClick = {
-                                showInitConfirmation = false
-                                viewModel.initializeApp { }
+                                val locale = pendingLocale ?: return@TextButton
+                                showLanguageChangeConfirmation = false
+                                pendingLocale = null
+                                viewModel.changeLanguage(locale) {
+                                    // Restart activity to apply new locale
+                                    if (context is Activity) {
+                                        context.recreate()
+                                    }
+                                }
                             }
                         ) {
-                            Text("Yes")
+                            Text(context.getString(R.string.yes))
                         }
                     },
                     dismissButton = {
                         TextButton(
-                            onClick = { showInitConfirmation = false }
+                            onClick = { 
+                                showLanguageChangeConfirmation = false
+                                pendingLocale = null
+                            }
                         ) {
-                            Text("No")
+                            Text(context.getString(R.string.no))
+                        }
+                    }
+                )
+            }
+            
+            // Clear Events Confirmation Dialog
+            if (showClearEventsConfirmation) {
+                AlertDialog(
+                    onDismissRequest = { showClearEventsConfirmation = false },
+                    title = { Text(context.getString(R.string.clear_events_title)) },
+                    text = { Text(context.getString(R.string.clear_events_message)) },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showClearEventsConfirmation = false
+                                viewModel.clearEvents { }
+                            }
+                        ) {
+                            Text(context.getString(R.string.yes))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { showClearEventsConfirmation = false }
+                        ) {
+                            Text(context.getString(R.string.no))
                         }
                     }
                 )
@@ -432,7 +533,8 @@ private fun ConnectionStatusCard(
     testResult: String?,
     testTimestamp: Long,
     onTestConnection: () -> Unit,
-    isTesting: Boolean
+    isTesting: Boolean,
+    context: android.content.Context
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -450,7 +552,7 @@ private fun ConnectionStatusCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (syncStatus.isOnline) "Online" else "Offline",
+                    text = if (syncStatus.isOnline) context.getString(R.string.online) else context.getString(R.string.offline),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -466,13 +568,13 @@ private fun ConnectionStatusCard(
             }
             
             Text(
-                text = "Pending operations: ${syncStatus.pendingOperations}",
+                text = context.getString(R.string.pending_operations, syncStatus.pendingOperations),
                 style = MaterialTheme.typography.bodyMedium
             )
             
             syncStatus.lastSyncTimestamp?.let {
                 Text(
-                    text = "Last sync: ${formatTimestamp(it)}",
+                    text = context.getString(R.string.last_sync_time, formatTimestamp(it)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -482,12 +584,12 @@ private fun ConnectionStatusCard(
             
             testResult?.let {
                 Text(
-                    text = "Test result: $it",
+                    text = context.getString(R.string.test_result, it),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 if (testTimestamp > 0) {
                     Text(
-                        text = "Test time: ${formatTimestamp(testTimestamp)}",
+                        text = context.getString(R.string.test_time, formatTimestamp(testTimestamp)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -505,7 +607,7 @@ private fun ConnectionStatusCard(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Test Connection")
+                    Text(context.getString(R.string.test_connection))
                 }
             }
         }

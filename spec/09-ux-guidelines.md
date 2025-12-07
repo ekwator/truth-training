@@ -107,13 +107,15 @@ CLI UX (truthctl)
 - **Fallback**: Missing translations fallback to English with console warning
 
 ### Android Client
-- **Current Status**: **English-only (EN)**
-- **Language Switching**: Not implemented
-- **Translation Files**: Only `app/src/main/res/values/strings.xml` exists (no `values-ru/`)
-- **Future Work**: RU/EN language switching parity with Desktop is planned for a future release
-- **String Consistency**: Android strings should be consistent with Desktop English strings for key screens (navigation, event creation, error messages)
+- **Current Status**: **RU/EN Language Switching Supported**
+- **Language Switching**: Implemented via Settings screen with language selection UI
+- **Translation Files**: `app/src/main/res/values/strings.xml` (English) and `app/src/main/res/values-ru/strings.xml` (Russian)
+- **Locale Persistence**: Stored in `AppConfig.locale` and SharedPreferences, persists across app restarts
+- **Knowledge Base Re-seeding**: When language changes, context templates are cleared and knowledge base is re-seeded with data in the selected language
+- **String Consistency**: Android strings are consistent with Desktop strings for key screens (navigation, event creation, error messages)
 
 ### Cross-Platform Parity
-- **Current Gap**: Desktop supports RU/EN switching, Android is EN-only
+- **Current Status**: Both Desktop and Android support RU/EN language switching
+- **Parity**: Android localization matches Desktop functionality
 - **Documentation**: All quickstarts and UI guidelines document the current localization status
-- **Consistency**: Where both platforms use English, strings should match for consistency
+- **Consistency**: Strings are consistent across both platforms for key screens (navigation, event creation, error messages)

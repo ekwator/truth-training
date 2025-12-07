@@ -29,5 +29,9 @@ interface EffectDao {
     
     @Query("SELECT COUNT(*) FROM effect")
     suspend fun getEffectCount(): Int
+    
+    // Clear all effects (used when changing language)
+    @Query("DELETE FROM effect")
+    suspend fun clearAllEffects()
 }
 

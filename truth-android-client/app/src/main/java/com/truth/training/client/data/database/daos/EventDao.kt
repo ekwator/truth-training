@@ -35,5 +35,9 @@ interface EventDao {
 
     @Query("SELECT * FROM truth_events ORDER BY timestamp_start DESC")
     fun getAllEventsFlow(): Flow<List<EventEntity>>
+    
+    // Clear all events (used for Clear Events functionality)
+    @Query("DELETE FROM truth_events")
+    suspend fun clearAllEvents()
 }
 

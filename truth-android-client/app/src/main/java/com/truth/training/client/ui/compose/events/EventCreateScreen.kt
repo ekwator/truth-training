@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -13,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.network.dto.CreateEventRequest
+import androidx.compose.ui.platform.LocalContext
+import com.truth.training.client.R
 import com.truth.training.client.ui.compose.components.ContextPicker
 import com.truth.training.client.ui.compose.components.DatePickerField
 import kotlinx.coroutines.flow.Flow
@@ -113,29 +116,62 @@ fun EventCreateScreen(
     val dataAvailable = categories.isNotEmpty() || formas.isNotEmpty() || 
                         causes.isNotEmpty() || develops.isNotEmpty() || effects.isNotEmpty()
 
+    // Validate that all context fields are filled (none can be NULL)
+    val allContextFieldsFilled = categoryId != null && formaId != null && 
+                                  causeId != null && developId != null && effectId != null
+    
     val canSave = description.isNotBlank() && 
                   timestampStart != null &&
                   timestampEndError == null &&
+                  allContextFieldsFilled &&
                   categoryError == null && formaError == null && 
                   causeError == null && developError == null && effectError == null
+
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("New Event") },
+                title = { Text(context.getString(R.string.new_event)) },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Cancel"
+                            contentDescription = context.getString(R.string.cancel)
                         )
                     }
                 },
                 actions = {
                     TextButton(
                         onClick = {
-                            // Validate context IDs before submission
-                            // Validation will be done in EventRepository, but we can do pre-check here
+                            // Validate that all context fields are filled before submission
+                            var hasValidationError = false
+                            
+                            if (categoryId == null) {
+                                categoryError = context.getString(R.string.field_required)
+                                hasValidationError = true
+                            }
+                            if (formaId == null) {
+                                formaError = context.getString(R.string.field_required)
+                                hasValidationError = true
+                            }
+                            if (causeId == null) {
+                                causeError = context.getString(R.string.field_required)
+                                hasValidationError = true
+                            }
+                            if (developId == null) {
+                                developError = context.getString(R.string.field_required)
+                                hasValidationError = true
+                            }
+                            if (effectId == null) {
+                                effectError = context.getString(R.string.field_required)
+                                hasValidationError = true
+                            }
+                            
+                            if (hasValidationError) {
+                                return@TextButton
+                            }
+                            
                             // Combine name and description if name is provided
                             val finalDescription = if (name.isNotBlank()) {
                                 "$name\n\n$description"
@@ -158,7 +194,7 @@ fun EventCreateScreen(
                         },
                         enabled = canSave
                     ) {
-                        Text("Save")
+                        Text(context.getString(R.string.save))
                     }
                 }
             )
@@ -175,7 +211,7 @@ fun EventCreateScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Name") },
+                label = { Text(context.getString(R.string.name)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -183,7 +219,7 @@ fun EventCreateScreen(
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text("Description *") },
+                label = { Text("${context.getString(R.string.description)} *") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
                 maxLines = 6
@@ -197,12 +233,23 @@ fun EventCreateScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Context Fields (optional)",
+                    text = context.getString(R.string.context_fields_title),
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
                 )
-                TextButton(onClick = onSelectTemplate) {
-                    Text("Select Template")
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = onSelectTemplate,
+                    modifier = Modifier.wrapContentWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Description,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(context.getString(R.string.select_template))
                 }
             }
             
@@ -219,12 +266,12 @@ fun EventCreateScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Knowledge base data unavailable",
+                            text = context.getString(R.string.knowledge_base_unavailable),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Please ensure database connection is available. Context fields may be empty.",
+                            text = context.getString(R.string.knowledge_base_unavailable_message),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -237,7 +284,7 @@ fun EventCreateScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ContextPicker(
-                    label = "Category",
+                    label = context.getString(R.string.category),
                     selectedId = categoryId,
                     onSelectionChange = { 
                         categoryId = it
@@ -250,7 +297,7 @@ fun EventCreateScreen(
                     errorMessage = categoryError
                 )
                 ContextPicker(
-                    label = "Forma",
+                    label = context.getString(R.string.forma),
                     selectedId = formaId,
                     onSelectionChange = { 
                         formaId = it
@@ -269,7 +316,7 @@ fun EventCreateScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ContextPicker(
-                    label = "Cause",
+                    label = context.getString(R.string.cause),
                     selectedId = causeId,
                     onSelectionChange = { 
                         causeId = it
@@ -282,7 +329,7 @@ fun EventCreateScreen(
                     errorMessage = causeError
                 )
                 ContextPicker(
-                    label = "Develop",
+                    label = context.getString(R.string.develop),
                     selectedId = developId,
                     onSelectionChange = { 
                         developId = it
@@ -297,7 +344,7 @@ fun EventCreateScreen(
             }
 
             ContextPicker(
-                label = "Effect",
+                label = context.getString(R.string.effect),
                 selectedId = effectId,
                 onSelectionChange = { 
                     effectId = it
@@ -313,13 +360,13 @@ fun EventCreateScreen(
             HorizontalDivider()
 
             Text(
-                text = "Timeline",
+                text = context.getString(R.string.timeline),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
 
             DatePickerField(
-                label = "Start Timestamp *",
+                label = "${context.getString(R.string.start_timestamp)} *",
                 selectedDate = timestampStart,
                 onDateSelected = { newDate ->
                     timestampStart = newDate
@@ -329,7 +376,7 @@ fun EventCreateScreen(
                         val normalizedStart = normalizeToStartOfDay(newDate)
                         val normalizedEnd = normalizeToStartOfDay(timestampEnd!!)
                         if (normalizedEnd < normalizedStart) {
-                            timestampEndError = "End Timestamp cannot be less than Start Timestamp (can be equal)"
+                            timestampEndError = context.getString(R.string.end_timestamp_cannot_be_less_than_start)
                         } else {
                             timestampEndError = null
                         }
@@ -341,7 +388,7 @@ fun EventCreateScreen(
             )
 
             DatePickerField(
-                label = "End Timestamp",
+                label = context.getString(R.string.end_timestamp),
                 selectedDate = timestampEnd,
                 onDateSelected = { newDate ->
                     // Validation: End Timestamp cannot be less than Start Timestamp, but can be equal
@@ -349,7 +396,7 @@ fun EventCreateScreen(
                         val normalizedStart = normalizeToStartOfDay(timestampStart!!)
                         val normalizedEnd = normalizeToStartOfDay(newDate)
                         if (normalizedEnd < normalizedStart) {
-                            timestampEndError = "End Timestamp cannot be less than Start Timestamp (can be equal)"
+                            timestampEndError = context.getString(R.string.end_timestamp_cannot_be_less_than_start)
                         } else {
                             timestampEnd = newDate
                             timestampEndError = null
@@ -372,7 +419,7 @@ fun EventCreateScreen(
             HorizontalDivider()
 
             Text(
-                text = "Direction",
+                text = context.getString(R.string.direction),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -381,12 +428,12 @@ fun EventCreateScreen(
                 FilterChip(
                     selected = vector,
                     onClick = { vector = true },
-                    label = { Text("Outgoing") }
+                    label = { Text(context.getString(R.string.outgoing)) }
                 )
                 FilterChip(
                     selected = !vector,
                     onClick = { vector = false },
-                    label = { Text("Incoming") }
+                    label = { Text(context.getString(R.string.incoming)) }
                 )
             }
 
@@ -398,7 +445,7 @@ fun EventCreateScreen(
                     )
                 ) {
                     Text(
-                        text = "Context fields prefilled from template",
+                        text = context.getString(R.string.context_fields_prefilled),
                         modifier = Modifier.padding(8.dp),
                         style = MaterialTheme.typography.bodySmall
                     )

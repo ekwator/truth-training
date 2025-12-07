@@ -9,7 +9,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.truth.training.client.R
 import com.truth.training.client.data.network.dto.CreateJudgmentRequest
 
 /**
@@ -27,16 +29,17 @@ fun JudgmentSubmissionScreen(
     var assessment by remember { mutableStateOf("true") }
     var confidenceLevel by remember { mutableStateOf("0.8") }
     var reasoning by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Submit Judgment") },
+                title = { Text(context.getString(R.string.submit_judgment)) },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Cancel"
+                        contentDescription = context.getString(R.string.cancel)
                     )
                     }
                 },
@@ -57,7 +60,7 @@ fun JudgmentSubmissionScreen(
                         },
                         enabled = assessment in listOf("true", "false", "uncertain")
                     ) {
-                        Text("Submit")
+                        Text(context.getString(R.string.submit))
                     }
                 }
             )
@@ -81,7 +84,7 @@ fun JudgmentSubmissionScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Event",
+                        text = context.getString(R.string.events),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -94,7 +97,7 @@ fun JudgmentSubmissionScreen(
             }
 
             Text(
-                text = "Assessment *",
+                text = "${context.getString(R.string.assessment)} *",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -106,25 +109,25 @@ fun JudgmentSubmissionScreen(
                 FilterChip(
                     selected = assessment == "true",
                     onClick = { assessment = "true" },
-                    label = { Text("True") },
+                    label = { Text(context.getString(R.string.assessment_true)) },
                     modifier = Modifier.weight(1f)
                 )
                 FilterChip(
                     selected = assessment == "false",
                     onClick = { assessment = "false" },
-                    label = { Text("False") },
+                    label = { Text(context.getString(R.string.assessment_false)) },
                     modifier = Modifier.weight(1f)
                 )
                 FilterChip(
                     selected = assessment == "uncertain",
                     onClick = { assessment = "uncertain" },
-                    label = { Text("Uncertain") },
+                    label = { Text(context.getString(R.string.uncertain)) },
                     modifier = Modifier.weight(1f)
                 )
             }
 
             Text(
-                text = "Confidence Level *",
+                text = "${context.getString(R.string.confidence_level)} *",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -143,9 +146,9 @@ fun JudgmentSubmissionScreen(
                 supportingText = {
                     val value = confidenceLevel.toDoubleOrNull()
                     if (value != null && value in 0.0..1.0) {
-                        Text("${(value * 100).toInt()}% confidence")
+                        Text(context.getString(R.string.confidence_percent, (value * 100).toInt()))
                     } else {
-                        Text("Must be between 0.0 and 1.0", color = MaterialTheme.colorScheme.error)
+                        Text(context.getString(R.string.must_be_between), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 isError = confidenceLevel.toDoubleOrNull()?.let { it !in 0.0..1.0 } ?: false
@@ -160,7 +163,7 @@ fun JudgmentSubmissionScreen(
             )
 
             Text(
-                text = "Reasoning (optional)",
+                text = context.getString(R.string.reasoning),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -168,15 +171,15 @@ fun JudgmentSubmissionScreen(
             OutlinedTextField(
                 value = reasoning,
                 onValueChange = { reasoning = it },
-                label = { Text("Reasoning") },
+                label = { Text(context.getString(R.string.reasoning)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
                 maxLines = 5,
-                placeholder = { Text("Explain your assessment...") }
+                placeholder = { Text(context.getString(R.string.reasoning_placeholder)) }
             )
 
             Text(
-                text = "Collective Intelligence: Your judgment contributes to truth convergence and consensus.",
+                text = context.getString(R.string.collective_intelligence_message),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth()

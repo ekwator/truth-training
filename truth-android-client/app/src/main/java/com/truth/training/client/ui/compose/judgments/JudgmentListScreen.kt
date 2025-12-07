@@ -9,7 +9,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.truth.training.client.R
 import com.truth.training.client.data.database.entities.JudgmentEntity
 import com.truth.training.client.data.network.dto.JudgmentStatsResponse
 
@@ -25,17 +27,19 @@ fun JudgmentListScreen(
     onNewJudgmentClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Judgments") },
+                title = { Text(context.getString(R.string.judgments)) },
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNewJudgmentClick) {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = "New Judgment"
+                    contentDescription = context.getString(R.string.new_judgment)
                 )
             }
         }
@@ -80,7 +84,7 @@ fun JudgmentListScreen(
                     contentAlignment = androidx.compose.ui.Alignment.Center
                 ) {
                     Text(
-                        text = "No judgments yet",
+                        text = context.getString(R.string.no_judgments_yet),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -108,6 +112,8 @@ private fun ConsensusStatsCard(
     stats: JudgmentStatsResponse,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -117,7 +123,7 @@ private fun ConsensusStatsCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "Consensus Statistics",
+                text = context.getString(R.string.consensus_statistics),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -126,9 +132,9 @@ private fun ConsensusStatsCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                StatItem("True", stats.trueCount.toString())
-                StatItem("False", stats.falseCount.toString())
-                StatItem("Uncertain", stats.uncertainCount.toString())
+                StatItem(context.getString(R.string.assessment_true), stats.trueCount.toString())
+                StatItem(context.getString(R.string.assessment_false), stats.falseCount.toString())
+                StatItem(context.getString(R.string.uncertain), stats.uncertainCount.toString())
             }
             
             HorizontalDivider()
@@ -138,7 +144,7 @@ private fun ConsensusStatsCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Average Confidence",
+                    text = context.getString(R.string.average_confidence),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
@@ -153,7 +159,7 @@ private fun ConsensusStatsCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Total Judgments",
+                    text = context.getString(R.string.total_judgments),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(

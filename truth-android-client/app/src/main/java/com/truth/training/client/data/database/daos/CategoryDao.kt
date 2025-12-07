@@ -29,5 +29,9 @@ interface CategoryDao {
     
     @Query("SELECT COUNT(*) FROM category")
     suspend fun getCategoryCount(): Int
+    
+    // Clear all categories (used when changing language)
+    @Query("DELETE FROM category")
+    suspend fun clearAllCategories()
 }
 

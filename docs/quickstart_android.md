@@ -10,9 +10,11 @@ This document provides step-by-step instructions for installing, using, and unin
 
 ## Localization Status
 
-**Android app is currently English-only (EN).** The app does not support language switching at this time. All UI strings are in English.
+**Android app supports RU/EN language switching.** The app can be switched between English and Russian via the Settings screen. Language preference persists across app restarts.
 
-**Note**: Desktop UI supports RU/EN language switching. Android localization parity is planned for a future release. For current localization status across platforms, see `spec/09-ux-guidelines.md` and `docs/UI_Desktop.md`.
+**Note**: Both Desktop and Android support RU/EN language switching. For current localization status across platforms, see `spec/09-ux-guidelines.md` and `docs/UI_Desktop.md`.
+
+**Implementation Details**: For comprehensive documentation on the localization implementation, including architecture, algorithms, and technical details, see `specs/014-android-localization/LOCALIZATION_IMPLEMENTATION.md`.
 
 ## Installation
 

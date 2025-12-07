@@ -33,10 +33,12 @@ Base configuration:
 - **Background Sync** — automated sync via WorkManager
 
 ### Localization Status
-- **Current Status**: **English-only (EN)**
-- **Language Switching**: Not implemented
-- **Parity Note**: Desktop UI supports RU/EN language switching; Android localization parity is planned for a future release
-- **Translation Files**: Only `app/src/main/res/values/strings.xml` exists (no `values-ru/`)
+- **Current Status**: **RU/EN Language Switching Supported**
+- **Language Switching**: Implemented via Settings screen
+- **Supported Locales**: English (en), Russian (ru)
+- **Locale Persistence**: Stored in `AppConfig.locale` and SharedPreferences
+- **Translation Files**: `app/src/main/res/values/strings.xml` (English) and `app/src/main/res/values-ru/strings.xml` (Russian)
+- **Knowledge Base**: Automatically re-seeded when language changes; context templates are cleared on language change
 
 ### Architecture highlights
 - **Offline-first:** all mutations are stored locally and synced in the background

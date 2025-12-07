@@ -27,6 +27,10 @@ interface ContextTemplateDao {
     @Delete
     suspend fun deleteTemplate(template: ContextTemplateEntity)
 
+    // Clear all templates (used when changing language)
+    @Query("DELETE FROM context")
+    suspend fun clearAllTemplates()
+
     // Template matching: find template with matching non-NULL fields
     @Query(
         """

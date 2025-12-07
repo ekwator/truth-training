@@ -29,5 +29,9 @@ interface CauseDao {
     
     @Query("SELECT COUNT(*) FROM cause")
     suspend fun getCauseCount(): Int
+    
+    // Clear all causes (used when changing language)
+    @Query("DELETE FROM cause")
+    suspend fun clearAllCauses()
 }
 
