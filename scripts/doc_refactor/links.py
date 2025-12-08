@@ -223,15 +223,21 @@ def _register_reference(
             record.add_outbound(rel)
             target_doc.add_inbound(str(record.path.relative_to(root)))
             status = "ok"
+            # Use normalized relative path as target
+            resolved_target = rel
         elif target in rel_map:
             record.add_outbound(target)
             rel_map[target].add_inbound(str(record.path.relative_to(root)))
             status = "ok"
+            # Use target as-is if it's in rel_map
+            resolved_target = target
         else:
             status = "missing"
             report.broken_urls.append(
                 {"source": str(record.path.relative_to(root)), "target": target or resolved_target, "status": status}
             )
+            # Keep original target for missing files
+            resolved_target = target
 
     edge = ReferenceEdge(
         source_path=str(record.path.relative_to(root)),

@@ -9,13 +9,13 @@ from scripts.doc_refactor import inventory
 
 def _build_layout(tmp_path: Path) -> Path:
     (tmp_path / "docs" / "archive").mkdir(parents=True)
-    (tmp_path / "nested" / "deep" / "tree").mkdir(parents=True)
+    (tmp_path / "docs" / "deep" / "tree").mkdir(parents=True)
 
     (tmp_path / "README.md").write_text("# Root\n", encoding="utf-8")
     (tmp_path / "docs" / "README.md").write_text("# Docs Index\n", encoding="utf-8")
     (tmp_path / "docs" / "guide.md").write_text("# Guide\n", encoding="utf-8")
     (tmp_path / "docs" / "archive" / "legacy.md").write_text("# Legacy\n", encoding="utf-8")
-    (tmp_path / "nested" / "deep" / "tree" / "detail.md").write_text("# Deep Detail\n", encoding="utf-8")
+    (tmp_path / "docs" / "deep" / "tree" / "detail.md").write_text("# Deep Detail\n", encoding="utf-8")
     (tmp_path / "CONTRIBUTING.md").write_text("skip me", encoding="utf-8")
     return tmp_path
 
@@ -36,7 +36,7 @@ def test_inventory_depth_and_roles(tmp_path: Path) -> None:
 
     deep_detail = next(record for record in records if record.path.name == "detail.md")
     assert deep_detail.role == "DETAIL"
-    assert deep_detail.depth == 3  # capped at max depth
+    assert deep_detail.depth == 3  # capped at max depth (docs/deep/tree = 3 parts)
 
     excluded_names = {record.path.name for record in records}
     assert "CONTRIBUTING.md" not in excluded_names
