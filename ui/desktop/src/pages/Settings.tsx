@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useSyncStore } from '@/stores/sync';
+import { useEventsStore } from '@/stores/events';
 import { ApiService } from '@/services/api';
 import { AppConfig, ConnectionTestResult, DiscoverySettings } from '@/types/api';
 import { useToast } from '@/components/system/Toaster';
-import { LocaleToggle } from '@/components/layout/LocaleToggle';
+// import { LocaleToggle } from '@/components/layout/LocaleToggle'; // Not used - using explicit buttons instead
+import { getCurrentLocale, setLocale } from '@/i18n';
 import { t } from '@/i18n';
 
 export const Settings: React.FC = () => {
   const { isOnline, pendingOperations } = useSyncStore();
+  const { fetchEvents } = useEventsStore();
   const { addToast } = useToast();
   const [config, setConfig] = useState<AppConfig>({
     mode: 'core',
@@ -23,6 +26,10 @@ export const Settings: React.FC = () => {
   const [discoverySettings, setDiscoverySettings] = useState<DiscoverySettings | null>(null);
   const [discoveryLoading, setDiscoveryLoading] = useState(false);
   const [discoveryErrors, setDiscoveryErrors] = useState<Record<string, string>>({});
+  const [currentLocale, setCurrentLocale] = useState<string>(getCurrentLocale());
+  const [showLanguageConfirmation, setShowLanguageConfirmation] = useState(false);
+  const [pendingLocale, setPendingLocale] = useState<string | null>(null);
+  const [showClearEventsConfirmation, setShowClearEventsConfirmation] = useState(false);
 
   useEffect(() => {
     loadConfig();
@@ -204,6 +211,93 @@ export const Settings: React.FC = () => {
       await loadConfig();
     } catch (error) {
       setTestResult({ ok: false, message: `Init failed: ${error}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLanguageSelect = (locale: string) => {
+    if (locale === currentLocale) return;
+    setPendingLocale(locale);
+    setShowLanguageConfirmation(true);
+  };
+
+  const handleLanguageChangeConfirm = async () => {
+    if (!pendingLocale) return;
+    setLoading(true);
+    
+    // Performance logging: Start timing
+    const startTime = performance.now();
+    console.log(`[Performance] Language change started: ${pendingLocale} at ${new Date().toISOString()}`);
+    
+    try {
+      // Step 1: Clear context templates
+      const clearStart = performance.now();
+      await ApiService.clearContextTemplates();
+      const clearDuration = performance.now() - clearStart;
+      console.log(`[Performance] Clear context templates: ${clearDuration.toFixed(2)}ms`);
+      
+      // Step 2: Change locale (this will trigger reseed_knowledge_base via setLocale)
+      const localeStart = performance.now();
+      await setLocale(pendingLocale, true);
+      setCurrentLocale(pendingLocale);
+      const localeDuration = performance.now() - localeStart;
+      console.log(`[Performance] Set locale: ${localeDuration.toFixed(2)}ms`);
+      
+      // Step 3: Explicitly reseed knowledge base (setLocale may have already done this, but ensure it)
+      const reseedStart = performance.now();
+      await ApiService.reseedKnowledgeBase();
+      const reseedDuration = performance.now() - reseedStart;
+      console.log(`[Performance] Reseed knowledge base: ${reseedDuration.toFixed(2)}ms`);
+      
+      const totalDuration = performance.now() - startTime;
+      console.log(`[Performance] Language change completed: ${totalDuration.toFixed(2)}ms (target: <5000ms)`);
+      
+      if (totalDuration > 5000) {
+        console.warn(`[Performance] Language change exceeded 5 second target: ${totalDuration.toFixed(2)}ms`);
+      }
+      
+      setShowLanguageConfirmation(false);
+      setPendingLocale(null);
+      addToast({
+        type: 'success',
+        title: t('settings.languageChanged'),
+        message: t('settings.languageChangedMessage')
+      });
+      // Reload page to apply locale changes
+      window.location.reload();
+    } catch (error) {
+      const totalDuration = performance.now() - startTime;
+      console.error(`[Performance] Language change failed after ${totalDuration.toFixed(2)}ms:`, error);
+      addToast({
+        type: 'error',
+        title: t('settings.errorChangingLanguage'),
+        message: error instanceof Error ? error.message : t('settings.errorChangingLanguageMessage')
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearEvents = async () => {
+    setLoading(true);
+    try {
+      // TODO: Implement clear_all_events Tauri command
+      // For now, show a message
+      addToast({
+        type: 'info',
+        title: t('settings.clearEvents'),
+        message: t('settings.clearEventsNotImplemented')
+      });
+      setShowClearEventsConfirmation(false);
+      // Refresh events list
+      await fetchEvents();
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: t('settings.errorClearingEvents'),
+        message: error instanceof Error ? error.message : t('settings.errorClearingEventsMessage')
+      });
     } finally {
       setLoading(false);
     }
@@ -609,8 +703,45 @@ export const Settings: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {t('settings.languageDescription')}
                 </label>
-                <LocaleToggle variant="dropdown" />
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleLanguageSelect('en')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentLocale === 'en'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    English
+                  </button>
+                  <button
+                    onClick={() => handleLanguageSelect('ru')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentLocale === 'ru'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Русский
+                  </button>
+                </div>
               </div>
+            </div>
+          </div>
+
+          {/* Clear Events */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">{t('settings.actions')}</h2>
+            </div>
+            <div className="px-6 py-4">
+              <button
+                onClick={() => setShowClearEventsConfirmation(true)}
+                disabled={loading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {t('settings.clearEvents')}
+              </button>
             </div>
           </div>
 
@@ -653,6 +784,59 @@ export const Settings: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Language Change Confirmation Dialog */}
+      {showLanguageConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('settings.confirmLanguageChange')}</h3>
+            <p className="text-sm text-gray-600 mb-4">{t('settings.confirmLanguageChangeMessage')}</p>
+            <div className="flex space-x-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowLanguageConfirmation(false);
+                  setPendingLocale(null);
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleLanguageChangeConfirm}
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {t('common.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Events Confirmation Dialog */}
+      {showClearEventsConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('settings.confirmClearEvents')}</h3>
+            <p className="text-sm text-gray-600 mb-4">{t('settings.confirmClearEventsMessage')}</p>
+            <div className="flex space-x-2 justify-end">
+              <button
+                onClick={() => setShowClearEventsConfirmation(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleClearEvents}
+                disabled={loading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {t('common.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

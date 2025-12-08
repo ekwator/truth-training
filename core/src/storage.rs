@@ -1335,6 +1335,34 @@ pub fn get_all_contexts(conn: &Connection) -> Result<Vec<crate::models::Context>
     Ok(contexts)
 }
 
+/// Get context template by ID
+pub fn get_context_by_id(
+    conn: &Connection,
+    id: i64,
+) -> Result<Option<crate::models::Context>, CoreError> {
+    let mut stmt = conn.prepare(
+        r#"SELECT id, name, category_id, forma_id, cause_id, develop_id, effect_id, description
+           FROM context WHERE id = ?1"#,
+    )?;
+
+    let row_opt = stmt
+        .query_row(params![id], |row| {
+            Ok(crate::models::Context {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                category_id: row.get(2)?,
+                forma_id: row.get(3)?,
+                cause_id: row.get(4)?,
+                develop_id: row.get(5)?,
+                effect_id: row.get(6)?,
+                description: row.get(7)?,
+            })
+        })
+        .optional()?;
+
+    Ok(row_opt)
+}
+
 /// Get context template by name
 pub fn get_context_by_name(
     conn: &Connection,
@@ -1366,21 +1394,35 @@ pub fn get_context_by_name(
 /// Check if context template with identical non-NULL fields already exists
 /// Returns true if duplicate found, false otherwise
 /// Only compares non-NULL fields; NULL values are ignored
+/// Matches Android behavior: if all fields are NULL, returns false (no duplicate check)
+/// If at least one field is non-NULL, checks for duplicate using Android SQL logic
 pub fn check_duplicate_context(
     conn: &Connection,
     new_ctx: &crate::models::NewContext,
 ) -> Result<bool, CoreError> {
-    // Build WHERE clause for non-NULL field comparison
-    // Logic: For each field where new_ctx has non-NULL, existing template must have same non-NULL value
-    // If new_ctx field is NULL, ignore that field in comparison
+    // Check if at least one context field is non-NULL (matches Android hasContextFields)
+    let has_context_fields = new_ctx.category_id.is_some()
+        || new_ctx.forma_id.is_some()
+        || new_ctx.cause_id.is_some()
+        || new_ctx.develop_id.is_some()
+        || new_ctx.effect_id.is_some();
+
+    // If all fields are NULL, no duplicate check (matches Android behavior)
+    if !has_context_fields {
+        return Ok(false);
+    }
+
+    // Build WHERE clause matching Android SQL logic:
+    // WHERE (:categoryId IS NULL OR category_id = :categoryId)
+    // This means: if new value is NULL, skip check (always true), else check equality
     let query = r#"
         SELECT COUNT(*) FROM context
         WHERE 
-            (category_id = ?1 OR ?1 IS NULL)
-            AND (forma_id = ?2 OR ?2 IS NULL)
-            AND (cause_id = ?3 OR ?3 IS NULL)
-            AND (develop_id = ?4 OR ?4 IS NULL)
-            AND (effect_id = ?5 OR ?5 IS NULL)
+            (?1 IS NULL OR category_id = ?1)
+            AND (?2 IS NULL OR forma_id = ?2)
+            AND (?3 IS NULL OR cause_id = ?3)
+            AND (?4 IS NULL OR develop_id = ?4)
+            AND (?5 IS NULL OR effect_id = ?5)
     "#;
 
     let count: i64 = conn.query_row(
@@ -1463,7 +1505,7 @@ pub fn add_context(
     // Check for duplicate (non-NULL field comparison)
     if check_duplicate_context(conn, &new_ctx)? {
         return Err(CoreError::InvalidArg(
-            "Template with identical non-NULL fields already exists".into(),
+            "Template with identical fields already exists (409 Conflict)".into(),
         ));
     }
 

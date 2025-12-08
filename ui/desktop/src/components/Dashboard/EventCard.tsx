@@ -6,9 +6,14 @@ import { ContextTemplate } from '@/types/contexts';
 import { Screen } from '@/components/layout/TopMenuBar';
 import { useContextEditorStore } from '@/stores/contextEditor';
 
+interface NavigationState {
+  eventId?: number;
+  [key: string]: any;
+}
+
 interface EventCardProps {
   event: Event;
-  onNavigate?: (screen: Screen) => void;
+  onNavigate?: (screen: Screen, state?: NavigationState) => void;
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ event, onNavigate }) => {

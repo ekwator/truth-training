@@ -3,14 +3,36 @@ import { ApiService } from '@/services/api';
 import { useToast } from '@/components/system/Toaster';
 import { ContextTemplate } from '@/types/contexts';
 import { ContextPicker } from '@/components/context/ContextPicker';
+import { useNavigationStore } from '@/stores/navigation';
+import { useTemplateContextStore } from '@/stores/templateContext';
+import { Screen } from '@/components/layout/TopMenuBar';
+import { t } from '@/i18n';
+import { validateEvent } from '@/utils/validation';
 
-export const NewEvent: React.FC = () => {
+interface NavigationState {
+  eventId?: number;
+  [key: string]: any;
+}
+
+interface NewEventProps {
+  onNavigate?: (screen: Screen, state?: NavigationState) => void;
+}
+
+export const NewEvent: React.FC<NewEventProps> = ({ onNavigate }) => {
   const { addToast } = useToast();
+  const { setSelectTemplateForEvent } = useNavigationStore();
+  const { selectedTemplateContext, setSelectedTemplateContext } = useTemplateContextStore();
   const [templates, setTemplates] = useState<ContextTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [confessionMode, setConfessionMode] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  // Suppress unused warnings - reserved for future use
+  // @ts-ignore
+  void loadingTemplates;
+  // @ts-ignore
+  void selectedTemplate;
   const [formData, setFormData] = useState({
     event_name: '',
     description: '',
@@ -41,10 +63,33 @@ export const NewEvent: React.FC = () => {
     fetchTemplates();
   }, [fetchTemplates]);
 
+  // Prefill form from selected template context (when returning from template selection)
+  useEffect(() => {
+    if (selectedTemplateContext) {
+      setFormData(prev => ({
+        ...prev,
+        category_id: selectedTemplateContext.categoryId || undefined,
+        forma_id: selectedTemplateContext.formaId || undefined,
+        cause_id: selectedTemplateContext.causeId || undefined,
+        develop_id: selectedTemplateContext.developId || undefined,
+        effect_id: selectedTemplateContext.effectId || undefined,
+      }));
+      // Clear template context after using
+      setSelectedTemplateContext(null);
+    }
+  }, [selectedTemplateContext, setSelectedTemplateContext]);
+
+  // Handle template selection button click
+  const handleSelectTemplate = () => {
+    setSelectTemplateForEvent(true);
+    onNavigate?.('context-editor');
+  };
+
   const handleChange = (field: string, value: string | number | boolean | undefined) => {
     setFormData({ ...formData, [field]: value });
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplate(templateId);
     if (templateId) {
@@ -79,32 +124,54 @@ export const NewEvent: React.FC = () => {
   };
 
   const handleSave = async () => {
+    // Clear previous validation errors
+    setValidationErrors({});
+    
     // In confession mode, auto-derive a minimal title if empty
     let eventName = formData.event_name.trim();
     if (confessionMode && !eventName && formData.description.trim()) {
       eventName = formData.description.trim().slice(0, 40) || 'Confession';
     }
 
-    if (!eventName) {
-      addToast({
-        type: 'error',
-        title: 'Validation Error',
-        message: 'Event Name is required.'
-      });
-      return;
-    }
-
     const description = formData.description.trim() || eventName;
 
-    // Context fields are validated by ContextPicker components
-    // Invalid IDs are already blocked by the picker's validation
+    // Convert date strings to timestamps for validation
+    const timestampStart = formData.start_date 
+      ? Math.floor(new Date(formData.start_date).getTime() / 1000)
+      : Math.floor(Date.now() / 1000);
+    const timestampEnd = formData.end_date 
+      ? Math.floor(new Date(formData.end_date).getTime() / 1000)
+      : null;
 
-    if (formData.start_date && formData.end_date && formData.start_date > formData.end_date) {
-      addToast({
-        type: 'error',
-        title: 'Validation Error',
-        message: 'Start Date must be before End Date.'
+    // Validate using validation utility
+    const validationResult = validateEvent({
+      name: eventName,
+      description: description,
+      categoryId: formData.category_id ?? null,
+      formaId: formData.forma_id ?? null,
+      causeId: formData.cause_id ?? null,
+      developId: formData.develop_id ?? null,
+      effectId: formData.effect_id ?? null,
+      timestampStart: timestampStart,
+      timestampEnd: timestampEnd,
+    }, (key: string) => t(key));
+
+    if (!validationResult.isValid) {
+      // Map validation errors to form fields
+      const errors: Record<string, string> = {};
+      validationResult.errors.forEach(error => {
+        errors[error.field] = error.message;
       });
+      setValidationErrors(errors);
+      
+      // Show first error in toast
+      if (validationResult.errors.length > 0) {
+        addToast({
+          type: 'error',
+          title: t('validation.validationError'),
+          message: validationResult.errors[0].message
+        });
+      }
       return;
     }
 
@@ -187,21 +254,51 @@ export const NewEvent: React.FC = () => {
               id="event-name"
               type="text"
               value={formData.event_name}
-              onChange={(e) => handleChange('event_name', e.target.value)}
-              className="w-full px-3 py-2 border rounded"
+              onChange={(e) => {
+                handleChange('event_name', e.target.value);
+                // Clear validation error when user types
+                if (validationErrors.name) {
+                  setValidationErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.name;
+                    return newErrors;
+                  });
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded ${
+                validationErrors.name ? 'border-red-500' : ''
+              }`}
               required
             />
+            {validationErrors.name && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-2">Description</label>
             <textarea
               value={formData.description}
-              onChange={(e) => handleChange('description', e.target.value)}
-              className="w-full px-3 py-2 border rounded"
+              onChange={(e) => {
+                handleChange('description', e.target.value);
+                // Clear validation error when user types
+                if (validationErrors.description) {
+                  setValidationErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.description;
+                    return newErrors;
+                  });
+                }
+              }}
+              className={`w-full px-3 py-2 border rounded ${
+                validationErrors.description ? 'border-red-500' : ''
+              }`}
               rows={4}
             />
-            {confessionMode && (
+            {validationErrors.description && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.description}</p>
+            )}
+            {confessionMode && !validationErrors.description && (
               <p className="mt-1 text-xs text-gray-500">
                 Description is optional in confession mode; if left blank, the event name will be used.
               </p>
@@ -221,67 +318,110 @@ export const NewEvent: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Context Template (Optional)</label>
-            {loadingTemplates ? (
-              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">
-                Loading templates...
-              </div>
-            ) : templates.length === 0 ? (
-              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">
-                No templates available. You can enter context fields manually below.
-              </div>
-            ) : (
-              <select
-                value={selectedTemplate}
-                onChange={(e) => handleTemplateSelect(e.target.value)}
-                className="w-full px-3 py-2 border rounded"
+            <label className="block text-sm font-medium mb-2">{t('events.contextTemplate')}</label>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={handleSelectTemplate}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                <option value="">None - Enter fields manually</option>
-                {templates.map((template) => (
-                  <option key={template.id} value={template.id.toString()}>
-                    {template.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            {selectedTemplate && (
-              <p className="mt-2 text-xs text-gray-500">
-                Fields prefilled from template. You can modify them below.
-              </p>
-            )}
+                {t('events.selectTemplate')}
+              </button>
+              {selectedTemplateContext && (
+                <span className="text-sm text-gray-600">{t('events.templateSelected')}</span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              {t('events.templateSelectionHint')}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ContextPicker
               label="Category"
               value={formData.category_id}
-              onChange={(value) => handleChange('category_id', value)}
+              onChange={(value) => {
+                handleChange('category_id', value);
+                if (validationErrors.categoryId) {
+                  setValidationErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.categoryId;
+                    return newErrors;
+                  });
+                }
+              }}
               placeholder="Select or enter category ID"
-              />
+              error={validationErrors.categoryId}
+              required
+            />
             <ContextPicker
               label="Forma"
               value={formData.forma_id}
-              onChange={(value) => handleChange('forma_id', value)}
+              onChange={(value) => {
+                handleChange('forma_id', value);
+                if (validationErrors.formaId) {
+                  setValidationErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.formaId;
+                    return newErrors;
+                  });
+                }
+              }}
               placeholder="Select or enter forma ID"
-              />
+              error={validationErrors.formaId}
+              required
+            />
             <ContextPicker
               label="Cause"
               value={formData.cause_id}
-              onChange={(value) => handleChange('cause_id', value)}
+              onChange={(value) => {
+                handleChange('cause_id', value);
+                if (validationErrors.causeId) {
+                  setValidationErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.causeId;
+                    return newErrors;
+                  });
+                }
+              }}
               placeholder="Select or enter cause ID"
-              />
+              error={validationErrors.causeId}
+              required
+            />
             <ContextPicker
               label="Develop"
               value={formData.develop_id}
-              onChange={(value) => handleChange('develop_id', value)}
+              onChange={(value) => {
+                handleChange('develop_id', value);
+                if (validationErrors.developId) {
+                  setValidationErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.developId;
+                    return newErrors;
+                  });
+                }
+              }}
               placeholder="Select or enter develop ID"
-              />
+              error={validationErrors.developId}
+              required
+            />
             <ContextPicker
               label="Effect"
               value={formData.effect_id}
-              onChange={(value) => handleChange('effect_id', value)}
+              onChange={(value) => {
+                handleChange('effect_id', value);
+                if (validationErrors.effectId) {
+                  setValidationErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.effectId;
+                    return newErrors;
+                  });
+                }
+              }}
               placeholder="Select or enter effect ID"
-              />
+              error={validationErrors.effectId}
+              required
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -290,18 +430,47 @@ export const NewEvent: React.FC = () => {
               <input
                 type="date"
                 value={formData.start_date}
-                onChange={(e) => handleChange('start_date', e.target.value)}
-                className="w-full px-3 py-2 border rounded"
+                onChange={(e) => {
+                  handleChange('start_date', e.target.value);
+                  if (validationErrors.timestampStart || validationErrors.timestampEnd) {
+                    setValidationErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.timestampStart;
+                      delete newErrors.timestampEnd;
+                      return newErrors;
+                    });
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded ${
+                  validationErrors.timestampStart ? 'border-red-500' : ''
+                }`}
               />
+              {validationErrors.timestampStart && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.timestampStart}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">End Date</label>
               <input
                 type="date"
                 value={formData.end_date}
-                onChange={(e) => handleChange('end_date', e.target.value)}
-                className="w-full px-3 py-2 border rounded"
+                onChange={(e) => {
+                  handleChange('end_date', e.target.value);
+                  if (validationErrors.timestampEnd) {
+                    setValidationErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.timestampEnd;
+                      return newErrors;
+                    });
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded ${
+                  validationErrors.timestampEnd ? 'border-red-500' : ''
+                }`}
               />
+              {validationErrors.timestampEnd && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.timestampEnd}</p>
+              )}
             </div>
           </div>
 

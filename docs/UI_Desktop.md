@@ -6,9 +6,13 @@ Compatible with Core/Server v1.0.0
 
 > **For comprehensive functional specification, see:** [spec/23-function_desktop.md](../spec/23-function_desktop.md)
 
-## Desktop UI Updates (Tauri) - Text-Only Interface
+> **For Android UI specification and synchronization details, see:** [docs/ANDROID_UI_SPECIFICATION.md](ANDROID_UI_SPECIFICATION.md)
 
-This document summarizes the Desktop UI (Tauri) implementation with text-only interface design.
+> **For production build instructions, see:** [docs/build_instructions.md](build_instructions.md) and [docs/Deployment.md](Deployment.md)
+
+## Desktop UI Updates (Tauri) - Synchronized with Android UI
+
+This document summarizes the Desktop UI (Tauri) implementation, which has been synchronized with the Android UI implementation to ensure visual structure, navigation, rendering behavior, component states, and localization logic parity while preserving all Desktop-specific functional features.
 
 ### Key Features
 - **Text-Only Interface**: No icons, emojis, or graphical assets - pure text and structured layout
@@ -16,6 +20,10 @@ This document summarizes the Desktop UI (Tauri) implementation with text-only in
 - **Offline-First**: Local-wins conflict resolution with background sync when online
 - **Knowledge Base Integration**: Dynamic context selection from [docs/Data_Schema.md](Data_Schema.md)
 - **Context Template System (v1.0.0)**: Reusable context templates with template selection, matching, and duplicate detection
+- **Android UI Synchronization**: Visual structure, navigation patterns, component behavior, and localization logic synchronized with Android implementation
+- **Flag-Based Navigation**: Template selection flow and view judgments flow use flag-based conditional routing matching Android patterns
+- **Localization Support**: Full RU/EN language switching with database re-seeding and context template preservation
+- **Validation Rules Parity**: Form validation rules match Android exactly (required fields, date validation, duplicate detection)
 
 ### Data Models
 - **Events**: `id`, `title`, `description`, `category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id` (all optional), `start_date`, `end_date`, `created_at`, `updated_at`, `status`
@@ -122,13 +130,34 @@ The Context Picker is a searchable combobox component used for selecting context
 - **Retry Mechanism**: Configurable max retries (default: 3)
 - **Real-time Status**: Live sync status updates in UI
 
-### Validation Rules
+### Validation Rules (Synchronized with Android)
+
+**Event Validation:**
+- **Name**: Required, cannot be empty
+- **Description**: Required, cannot be empty
+- **All Context Fields**: Required, cannot be NULL (category, forma, cause, develop, effect)
+- **Start Timestamp**: Required, defaults to current date
+- **End Timestamp**: Optional, but if provided:
+  - Cannot be less than Start Timestamp (normalized to start of day)
+  - Can be equal to Start Timestamp
+  - Date normalization handles timezone and DST edge cases
+
+**Template Validation:**
+- **Name**: Required, cannot be empty
+- **All Context Fields**: Required, cannot be NULL
+- **Duplicate Detection**: Templates with identical non-NULL context fields cannot be created (server-side validation, 409 Conflict)
+
+**Judgment Validation:**
+- **Assessment**: Required, must be "true", "false", or "uncertain"
+- **Confidence Level**: Required, must be between 0.0 and 1.0
+
+**Error Display:**
+- Inline error messages displayed below each field
+- Error messages match Android error messages exactly
+- Validation errors cleared when user corrects the field
+
+**Other Validation Rules:**
 - **Impact Level**: Must be integer between 1-5
-- **Date Order**: Start date must be before or equal to end date
-- **Context Fields (v1.0.0+)**: All context fields (`category_id`, `forma_id`, `cause_id`, `develop_id`, `effect_id`) are optional. When provided, must reference existing records in their respective tables. Invalid FK references are blocked by ContextPicker validation with inline error states. Invalid IDs emit `context_picker.validation.failure` telemetry events.
-- **Template Duplicate Detection**: Context templates with identical non-NULL fields cannot be created (409 Conflict). NULL values are ignored in comparison.
-- **Confidence Level**: Must be between 0.0-1.0
-- **Assessment**: Must be 'true', 'false', or 'uncertain'
 - **Event Title**: Required, max 200 characters
 
 ### Performance Targets

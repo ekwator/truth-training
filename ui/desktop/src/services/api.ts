@@ -451,6 +451,40 @@ export class ApiService {
     }
   }
 
+  // Knowledge Base Management
+  static async reseedKnowledgeBase(): Promise<void> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('reseed_knowledge_base');
+      } catch (error) {
+        console.error('Tauri reseedKnowledgeBase error:', error);
+        throw new Error('Failed to reseed knowledge base');
+      }
+    } else {
+      // For web development, no-op
+      console.warn('reseedKnowledgeBase is only available in Tauri environment');
+    }
+  }
+
+  // Context Templates Management
+  static async clearContextTemplates(): Promise<string> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = await invoke('clear_context_templates');
+        return result as string;
+      } catch (error) {
+        console.error('Tauri clearContextTemplates error:', error);
+        throw new Error('Failed to clear context templates');
+      }
+    } else {
+      // For web development, no-op
+      console.warn('clearContextTemplates is only available in Tauri environment');
+      return '0 context templates cleared (web mode)';
+    }
+  }
+
   static async testCoreConnection(): Promise<ConnectionTestResult> {
     if (isTauri()) {
       try {

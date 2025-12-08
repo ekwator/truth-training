@@ -251,40 +251,132 @@ pub async fn init_app(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, S
 pub async fn reseed_knowledge_base(
     db: State<'_, crate::storage::Db>,
 ) -> Result<CoreStatus, String> {
+    // Performance logging: Start timing
+    let start_time = std::time::Instant::now();
+    info!("[Performance] reseed_knowledge_base started at {:?}", std::time::SystemTime::now());
+    
     // Get current locale from config
     let config = get_app_config()
         .await
         .unwrap_or_else(|_| AppConfig::default());
     let locale = config.locale.clone();
 
-    // Clear existing knowledge base data and reseed with current locale
+    // Use temporary tables solution to preserve event data during language change
+    // All operations in a single transaction for safety
     {
         let mut conn = db.0.lock();
+        let tx = conn.transaction()
+            .map_err(|e| format!("Failed to start transaction: {}", e))?;
 
-        // Clear existing data
-        conn.execute("DELETE FROM category", [])
+        // Step 1: Create temporary tables
+        tx.execute(
+            "CREATE TEMPORARY TABLE temp_truth_events AS SELECT * FROM truth_events",
+            [],
+        ).map_err(|e| format!("Failed to create temp_truth_events: {}", e))?;
+
+        tx.execute(
+            "CREATE TEMPORARY TABLE temp_impact AS SELECT * FROM impact",
+            [],
+        ).map_err(|e| format!("Failed to create temp_impact: {}", e))?;
+
+        tx.execute(
+            "CREATE TEMPORARY TABLE temp_progress_metrics AS SELECT * FROM progress_metrics",
+            [],
+        ).map_err(|e| format!("Failed to create temp_progress_metrics: {}", e))?;
+
+        // Step 2: Clear knowledge base tables (FK constraints will be temporarily disabled)
+        // Note: SQLite doesn't support disabling FK checks per transaction, but since we're
+        // preserving data in temp tables, we can safely delete and restore
+        tx.execute("DELETE FROM category", [])
             .map_err(|e| format!("Failed to clear categories: {}", e))?;
-        conn.execute("DELETE FROM cause", [])
+        tx.execute("DELETE FROM cause", [])
             .map_err(|e| format!("Failed to clear causes: {}", e))?;
-        conn.execute("DELETE FROM develop", [])
+        tx.execute("DELETE FROM develop", [])
             .map_err(|e| format!("Failed to clear develops: {}", e))?;
-        conn.execute("DELETE FROM effect", [])
+        tx.execute("DELETE FROM effect", [])
             .map_err(|e| format!("Failed to clear effects: {}", e))?;
-        conn.execute("DELETE FROM forma", [])
+        tx.execute("DELETE FROM forma", [])
             .map_err(|e| format!("Failed to clear formas: {}", e))?;
-        conn.execute("DELETE FROM impact_type", [])
+        tx.execute("DELETE FROM impact_type", [])
             .map_err(|e| format!("Failed to clear impact_types: {}", e))?;
 
-        // Reseed with current locale
+        // Step 3: Seed knowledge base with new locale
+        // Note: We need to use the connection directly, not the transaction
+        // So we commit the transaction first, then seed, then restore
+        drop(tx); // Drop transaction to release lock
+
+        // Seed with new locale
         truth_storage::seed_knowledge_base(&mut conn, &locale)
             .map_err(|e| format!("Failed to reseed knowledge base: {}", e))?;
+
+        // Step 4: Restore data from temporary tables
+        // Since we dropped the transaction, we need to handle FK constraints
+        // The temporary tables will be automatically dropped when connection closes
+        // But we need to restore the data now
+        let restore_tx = conn.transaction()
+            .map_err(|e| format!("Failed to start restore transaction: {}", e))?;
+
+        // Check if temp tables have data before restoring
+        let events_count: i64 = restore_tx.query_row(
+            "SELECT COUNT(*) FROM temp_truth_events",
+            [],
+            |row| row.get(0),
+        ).unwrap_or(0);
+
+        if events_count > 0 {
+            // Restore events (FK constraints will validate against newly seeded knowledge base)
+            restore_tx.execute(
+                "INSERT OR IGNORE INTO truth_events SELECT * FROM temp_truth_events",
+                [],
+            ).map_err(|e| format!("Failed to restore truth_events: {}", e))?;
+        }
+
+        let impact_count: i64 = restore_tx.query_row(
+            "SELECT COUNT(*) FROM temp_impact",
+            [],
+            |row| row.get(0),
+        ).unwrap_or(0);
+
+        if impact_count > 0 {
+            restore_tx.execute(
+                "INSERT OR IGNORE INTO impact SELECT * FROM temp_impact",
+                [],
+            ).map_err(|e| format!("Failed to restore impact: {}", e))?;
+        }
+
+        let metrics_count: i64 = restore_tx.query_row(
+            "SELECT COUNT(*) FROM temp_progress_metrics",
+            [],
+            |row| row.get(0),
+        ).unwrap_or(0);
+
+        if metrics_count > 0 {
+            restore_tx.execute(
+                "INSERT OR IGNORE INTO progress_metrics SELECT * FROM temp_progress_metrics",
+                [],
+            ).map_err(|e| format!("Failed to restore progress_metrics: {}", e))?;
+        }
+
+        // Commit restore transaction
+        restore_tx.commit()
+            .map_err(|e| format!("Failed to commit restore transaction: {}", e))?;
+
+        // Step 5: Temporary tables are automatically dropped when connection closes
+        // No explicit DROP needed for TEMPORARY tables
     }
 
-    info!("Knowledge base reseeded with locale: {}", locale);
+    // Performance logging: End timing
+    let duration = start_time.elapsed();
+    info!("[Performance] reseed_knowledge_base completed in {:?} (target: <5s)", duration);
+    if duration.as_secs_f64() > 5.0 {
+        log::warn!("[Performance] reseed_knowledge_base exceeded 5 second target: {:?}", duration);
+    }
+
+    info!("Knowledge base reseeded with locale: {} (event data preserved)", locale);
 
     Ok(CoreStatus {
         ok: true,
-        message: format!("Knowledge base reseeded with locale: {}", locale),
+        message: format!("Knowledge base reseeded successfully with locale: {} (took {:?})", locale, duration),
     })
 }
 

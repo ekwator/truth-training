@@ -12,7 +12,7 @@ use commands::config::{
     core_status, get_app_config, init_app, reseed_knowledge_base, save_app_config,
     test_http_connection,
 };
-use commands::contexts::list_contexts;
+use commands::contexts::{clear_context_templates, create_context, list_contexts};
 use commands::events::{create_event_fast, get_event_fast, health_check_core, list_events_fast};
 use commands::impacts::add_impact;
 use commands::judgments::{get_judgment_stats, judgments_list_fast, submit_judgment_fast};
@@ -50,6 +50,8 @@ fn main() {
             get_judgment_stats,
             knowledge_base_list,
             list_contexts,
+            clear_context_templates,
+            create_context,
             get_overall_metrics,
             list_event_rows,
             export_overall_summary_txt,
