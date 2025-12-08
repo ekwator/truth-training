@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/components/system/Toaster';
 import { CreateContextRequest, ContextTemplate } from '@/types/contexts';
@@ -65,12 +65,29 @@ export const ContextEditor: React.FC<ContextEditorProps> = ({ onNavigate }) => {
   const develops: KnowledgeBaseEntity[] = [];
   const effects: KnowledgeBaseEntity[] = [];
 
-  // Load templates list
+  // Load templates list (matches Android: loads on mount when in list mode)
+  const fetchTemplates = useCallback(async () => {
+    setLoadingTemplates(true);
+    try {
+      const response = await ApiService.getContexts();
+      setTemplates(response.data || []);
+    } catch (error: any) {
+      console.error('Failed to fetch templates:', error);
+      addToast({
+        type: 'error',
+        title: t('contexts.errorLoading'),
+        message: t('contexts.errorLoadingMessage')
+      });
+    } finally {
+      setLoadingTemplates(false);
+    }
+  }, [addToast, t]);
+
   useEffect(() => {
     if (mode === 'list') {
       fetchTemplates();
     }
-  }, [mode]);
+  }, [mode, fetchTemplates]);
 
   // Prefill form when template is selected or store prefilled data exists
   useEffect(() => {
@@ -104,23 +121,6 @@ export const ContextEditor: React.FC<ContextEditorProps> = ({ onNavigate }) => {
       }
     }
   }, [mode, selectedTemplate, storePrefilledData, setPrefilledData]);
-
-  const fetchTemplates = async () => {
-    setLoadingTemplates(true);
-    try {
-      const response = await ApiService.getContexts();
-      setTemplates(response.data || []);
-      } catch (error: any) {
-      console.error('Failed to fetch templates:', error);
-      addToast({
-        type: 'error',
-        title: t('contexts.errorLoading'),
-        message: t('contexts.errorLoadingMessage')
-      });
-    } finally {
-      setLoadingTemplates(false);
-    }
-  };
 
   const clearValidationErrors = () => {
     setNameError(null);

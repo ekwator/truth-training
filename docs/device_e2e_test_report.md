@@ -2,7 +2,7 @@
 ## v1.0.0 - Cross-Platform Discovery, Sync, and Multi-Client Integration Release
 
 **Date:** 2024-11-19  
-**Test Environment:** Linux Desktop (192.168.1.38) ↔ Android Device (RMX3261 - 11)  
+**Test Environment:** Linux Desktop ↔ Android Device (Android 11)  
 **Test Status:** ✅ **PASSED**
 
 ---
@@ -23,7 +23,7 @@ All real-device testing workflows have been completed successfully. The unified 
 ## 1. Physical Android Device Integration Tests
 
 ### 1.1 Test Environment Setup
-- **Device:** RMX3261 - 11 (Realme device, Android 11)
+- **Device:** Physical Android device (Android 11)
 - **Connection:** USB debugging enabled
 - **Build:** `assembleLocalDebug` + `installLocalDebug`
 - **APK:** Successfully installed on device
@@ -92,7 +92,6 @@ All real-device testing workflows have been completed successfully. The unified 
 
 ### 2.1 Test Environment
 - **Linux Desktop:** 
-  - IP: `192.168.1.38`
   - Server: Running on port 8080
   - Database: `test_server_e2e.db`
 - **Android Device:**
@@ -123,7 +122,7 @@ curl http://localhost:8080/health
 - Firewall rules allowing UDP multicast
 
 #### Scenario 3: Global Registry Polling
-- **Endpoint:** `http://192.168.1.38:8080/api/v1/nodes`
+- **Endpoint:** `http://localhost:8080/api/v1/nodes` (or server IP address)
 - **Format:** JSON array or envelope `{ "nodes": [...] }`
 - **Status:** ✅ Server endpoint accessible
 
@@ -249,7 +248,7 @@ curl http://localhost:8080/health
    - `http://unreachable:8080/api/v1` (LAN, unreachable, pruned)
 
 2. **Server Nodes:**
-   - `http://192.168.1.38:8080/api/v1` (Server endpoint)
+   - `http://localhost:8080/api/v1` (Server endpoint)
 
 ### Node States Verified
 - ✅ Fresh nodes retained

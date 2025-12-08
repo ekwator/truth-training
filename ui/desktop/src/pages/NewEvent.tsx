@@ -64,6 +64,7 @@ export const NewEvent: React.FC<NewEventProps> = ({ onNavigate }) => {
   }, [fetchTemplates]);
 
   // Prefill form from selected template context (when returning from template selection)
+  // Matches Android pattern: LaunchedEffect observes savedStateHandle changes
   useEffect(() => {
     if (selectedTemplateContext) {
       setFormData(prev => ({
@@ -74,10 +75,11 @@ export const NewEvent: React.FC<NewEventProps> = ({ onNavigate }) => {
         develop_id: selectedTemplateContext.developId || undefined,
         effect_id: selectedTemplateContext.effectId || undefined,
       }));
-      // Clear template context after using
+      // Clear template context after using (matches Android: savedStateHandle values cleared after use)
       setSelectedTemplateContext(null);
     }
-  }, [selectedTemplateContext, setSelectedTemplateContext]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTemplateContext]); // setSelectedTemplateContext is stable, no need in deps
 
   // Handle template selection button click
   const handleSelectTemplate = () => {
@@ -89,7 +91,9 @@ export const NewEvent: React.FC<NewEventProps> = ({ onNavigate }) => {
     setFormData({ ...formData, [field]: value });
   };
 
+  // Reserved for future use - template selection is currently handled via navigation flow
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-ignore TS6133
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplate(templateId);
     if (templateId) {

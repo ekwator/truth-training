@@ -48,7 +48,7 @@ This release delivers a fully unified cross-platform node discovery and synchron
 - Cross-device E2E tests (Linux Desktop ↔ Android device, CLI ↔ Android ↔ Desktop)
 - All 107 Android instrumentation tests pass on real device
 - UDP multicast compatibility verified via packet roundtrip tests
-- Full test suite executed on physical Android device (RMX3261 - 11)
+- Full test suite executed on physical Android device (Android 11)
 
 ### Data Format Unification
 

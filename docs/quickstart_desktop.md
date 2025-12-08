@@ -12,19 +12,16 @@ This document provides step-by-step instructions for installing, using, and unin
 
 **Note:** In GitHub releases, file names use dots (`.`) instead of spaces. For example, `Truth.Training_1.0.0_amd64.deb` instead of `Truth Training_1.0.0_amd64.deb`. All commands below use the correct file names as they appear in releases.
 
-### Linux
+### Linux (DEB) Installation / Uninstallation
 
-#### Step 1: Install Package
+#### Installation
+
+##### Step 1: Install Package
 ```bash
-# DEB package
 sudo dpkg -i "Truth.Training_1.0.0_amd64.deb"
-
-# Or AppImage (no installation required)
-chmod +x "Truth.Training_1.0.0_amd64.AppImage"
-./"Truth.Training_1.0.0_amd64.AppImage"
 ```
 
-#### Step 2: Verify Installation
+##### Step 2: Verify Installation
 ```bash
 # Check if application is in PATH
 which truth-training-desktop
@@ -33,16 +30,82 @@ which truth-training-desktop
 # Look for "Truth Training" in your applications
 ```
 
-### macOS
+#### Uninstallation
 
-#### Step 1: Install Package
+##### Step 1: Remove Package
+```bash
+sudo dpkg -r truth-training
+```
+
+##### Step 2: Remove Configuration and Data
+```bash
+# Remove user configuration
+rm -rf ~/.truth-training/
+
+# Remove database (optional - removes all data)
+rm -f ~/.local/share/TruthTraining/truth_training.sqlite
+# Or on some systems:
+rm -f ${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite
+```
+
+##### Step 3: Verify Removal
+```bash
+which truth-training-desktop
+# Expected: Command not found
+
+ls ~/.truth-training/
+# Expected: Directory does not exist (if removed)
+```
+
+### Linux (AppImage) Installation / Uninstallation
+
+#### Installation
+
+##### Step 1: Install Package
+```bash
+# AppImage (no installation required)
+chmod +x "Truth.Training_1.0.0_amd64.AppImage"
+./"Truth.Training_1.0.0_amd64.AppImage"
+```
+
+##### Step 2: Verify Installation
+```bash
+# Check if AppImage is executable
+ls -la "Truth.Training_1.0.0_amd64.AppImage"
+
+# Launch from applications menu or directly
+./"Truth.Training_1.0.0_amd64.AppImage"
+```
+
+#### Uninstallation
+
+##### Step 1: Remove Application
+```bash
+# Simply delete the AppImage file
+rm "Truth.Training_1.0.0_amd64.AppImage"
+```
+
+##### Step 2: Remove Configuration and Data
+```bash
+# Remove user configuration
+rm -rf ~/.truth-training/
+
+# Remove database (optional)
+rm -f ~/.local/share/TruthTraining/truth_training.sqlite
+```
+
+### macOS Installation / Uninstallation
+
+#### Installation
+
+##### Step 1: Install Package
 ```bash
 # DMG package
 # Double-click "Truth.Training_1.0.0_x64.dmg"
 # Drag application to Applications folder
 ```
 
-#### Step 2: Verify Installation
+##### Step 2: Verify Installation
 ```bash
 # Check application location
 ls -la /Applications/Truth\ Training.app
@@ -51,9 +114,36 @@ ls -la /Applications/Truth\ Training.app
 open /Applications/Truth\ Training.app
 ```
 
-### Windows
+#### Uninstallation
 
-#### Step 1: Install Package
+##### Step 1: Remove Application
+```bash
+# Remove from Applications
+rm -rf /Applications/Truth\ Training.app
+
+# Or use uninstaller if provided
+```
+
+##### Step 2: Remove Configuration and Data
+```bash
+# Remove user configuration
+rm -rf ~/.truth-training/
+
+# Remove database (optional)
+rm -f ~/Library/Application\ Support/TruthTraining/truth_training.sqlite
+```
+
+##### Step 3: Remove Preferences (if any)
+```bash
+# Remove preferences
+rm -f ~/Library/Preferences/com.truth.training.plist
+```
+
+### Windows Installation / Uninstallation
+
+#### Installation
+
+##### Step 1: Install Package
 ```powershell
 # EXE installer (NSIS)
 .\"Truth.Training_1.0.0_x64-setup.exe"
@@ -63,13 +153,40 @@ open /Applications/Truth\ Training.app
 msiexec /i "Truth.Training_1.0.0_x64_en-US.msi"
 ```
 
-#### Step 2: Verify Installation
+##### Step 2: Verify Installation
 ```powershell
 # Check installation location
 Test-Path "C:\Program Files\Truth Training\truth-training-desktop.exe"
 
 # Or launch from Start Menu
 # Look for "Truth Training" in Start Menu
+```
+
+#### Uninstallation
+
+##### Step 1: Uninstall via Control Panel
+```powershell
+# Use Programs and Features in Control Panel
+# Find "Truth Training" and click Uninstall
+```
+
+##### Step 2: Remove Installation Directory
+```powershell
+Remove-Item -Recurse -Force "C:\Program Files\Truth Training"
+```
+
+##### Step 3: Remove Configuration and Data
+```powershell
+# Remove user configuration
+Remove-Item -Recurse -Force "$env:USERPROFILE\.truth-training"
+
+# Remove database (optional)
+Remove-Item -Force "$env:APPDATA\TruthTraining\truth_training.sqlite"
+```
+
+##### Step 4: Remove Start Menu Shortcuts
+```powershell
+Remove-Item -Recurse -Force "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Truth Training"
 ```
 
 ## First Launch
@@ -217,104 +334,6 @@ See [Logging Guide](logging.md) for details.
 1. Navigate to Overall Summary (`Alt+5`)
 2. Click "Export Summary"
 3. Save text file with summary data
-
-## Uninstallation
-
-### Linux (DEB)
-
-#### Step 1: Remove Package
-```bash
-sudo dpkg -r truth-training
-```
-
-#### Step 2: Remove Configuration and Data
-```bash
-# Remove user configuration
-rm -rf ~/.truth-training/
-
-# Remove database (optional - removes all data)
-rm -f ~/.local/share/TruthTraining/truth_training.sqlite
-# Or on some systems:
-rm -f ${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite
-```
-
-#### Step 3: Verify Removal
-```bash
-which truth-training-desktop
-# Expected: Command not found
-
-ls ~/.truth-training/
-# Expected: Directory does not exist (if removed)
-```
-
-### Linux (AppImage)
-
-#### Step 1: Remove Application
-```bash
-# Simply delete the AppImage file
-rm "Truth.Training_1.0.0_amd64.AppImage"
-```
-
-#### Step 2: Remove Configuration and Data
-```bash
-# Remove user configuration
-rm -rf ~/.truth-training/
-
-# Remove database (optional)
-rm -f ~/.local/share/TruthTraining/truth_training.sqlite
-```
-
-### macOS
-
-#### Step 1: Remove Application
-```bash
-# Remove from Applications
-rm -rf /Applications/Truth\ Training.app
-
-# Or use uninstaller if provided
-```
-
-#### Step 2: Remove Configuration and Data
-```bash
-# Remove user configuration
-rm -rf ~/.truth-training/
-
-# Remove database (optional)
-rm -f ~/Library/Application\ Support/TruthTraining/truth_training.sqlite
-```
-
-#### Step 3: Remove Preferences (if any)
-```bash
-# Remove preferences
-rm -f ~/Library/Preferences/com.truth.training.plist
-```
-
-### Windows
-
-#### Step 1: Uninstall via Control Panel
-```powershell
-# Use Programs and Features in Control Panel
-# Find "Truth Training" and click Uninstall
-```
-
-#### Step 2: Remove Installation Directory
-```powershell
-Remove-Item -Recurse -Force "C:\Program Files\Truth Training"
-```
-
-#### Step 3: Remove Configuration and Data
-```powershell
-# Remove user configuration
-Remove-Item -Recurse -Force "$env:USERPROFILE\.truth-training"
-
-# Remove database (optional)
-Remove-Item -Force "$env:APPDATA\TruthTraining\truth_training.sqlite"
-```
-
-#### Step 4: Remove Start Menu Shortcuts
-```powershell
-Remove-Item -Recurse -Force "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Truth Training"
-```
 
 ## Data Backup
 
