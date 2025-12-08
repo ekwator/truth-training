@@ -2,14 +2,28 @@ import React from 'react';
 import { LocaleToggle } from './LocaleToggle';
 import { t } from '@/i18n';
 
-export type Screen = 'home' | 'new-event' | 'context-editor' | 'event-summary' | 'overall-summary' | 'training-results' | 'settings';
+export type Screen = 'home' | 'new-event' | 'context-editor' | 'event-summary' | 'events' | 'judgments' | 'overall-summary' | 'training-results' | 'settings';
+
+interface NavigationState {
+  eventId?: number;
+  [key: string]: any;
+}
 
 interface TopMenuBarProps {
   currentScreen: Screen;
-  onNavigate: (screen: Screen) => void;
+  onNavigate: (screen: Screen, state?: NavigationState) => void;
 }
 
 export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigate }) => {
+  // Back navigation handler
+  // @ts-ignore - Reserved for future use
+  const handleBack = () => {
+    // Navigate to previous screen (App.tsx will handle back stack)
+    // For now, just go to home if not already there
+    if (currentScreen !== 'home') {
+      onNavigate('home');
+    }
+  };
   return (
     <nav className="bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

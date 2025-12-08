@@ -4,12 +4,78 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    
+    <!-- Background circle -->
     <path
-        android:fillColor="#FFFFFF"
+        android:fillColor="#1a1a2e"
         android:pathData="M54,12a42,42 0 1,0 0,84a42,42 0 1,0 0,-84z"/>
+    
+    <!-- Meridians (vertical curved lines) -->
+    <!-- Main meridian (center) -->
     <path
-        android:fillColor="#2B2D42"
-        android:pathData="M38,54h32v6H38z"/>
+        android:strokeColor="#8b5cf6"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M 54 12 Q 54 30 54 40 Q 54 50 54 54 Q 54 58 54 68 Q 54 78 54 96"/>
+    
+    <!-- Left meridian -->
+    <path
+        android:strokeColor="#8b5cf6"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M 40 12 Q 38 30 38 40 Q 38 50 38 54 Q 38 58 38 68 Q 38 78 40 96"/>
+    
+    <!-- Right meridian -->
+    <path
+        android:strokeColor="#8b5cf6"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M 68 12 Q 70 30 70 40 Q 70 50 70 54 Q 70 58 70 68 Q 70 78 68 96"/>
+    
+    <!-- Outer meridians -->
+    <path
+        android:strokeColor="#a78bfa"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M 28 12 Q 26 30 26 40 Q 26 50 26 54 Q 26 58 26 68 Q 26 78 28 96"/>
+    
+    <path
+        android:strokeColor="#a78bfa"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M 80 12 Q 82 30 82 40 Q 82 50 82 54 Q 82 58 82 68 Q 82 78 80 96"/>
+    
+    <!-- Parallels (horizontal curved lines) -->
+    <!-- Main parallel (equator) -->
+    <path
+        android:strokeColor="#8b5cf6"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M 20 54 Q 30 54 37 54 Q 44 54 54 54 Q 64 54 71 54 Q 78 54 88 54"/>
+    
+    <!-- Upper parallels -->
+    <path
+        android:strokeColor="#8b5cf6"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M 24 40 Q 30 38 37 38 Q 44 38 54 38 Q 64 38 71 38 Q 78 38 84 40"/>
+    
+    <path
+        android:strokeColor="#a78bfa"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M 28 30 Q 32 28 37 28 Q 42 28 54 28 Q 66 28 71 28 Q 76 28 80 30"/>
+    
+    <!-- Lower parallels -->
+    <path
+        android:strokeColor="#8b5cf6"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M 24 68 Q 30 70 37 70 Q 44 70 54 70 Q 64 70 71 70 Q 78 70 84 68"/>
+    
+    <path
+        android:strokeColor="#a78bfa"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M 28 78 Q 32 80 37 80 Q 42 80 54 80 Q 66 80 71 80 Q 76 80 80 78"/>
 </vector>
-
-

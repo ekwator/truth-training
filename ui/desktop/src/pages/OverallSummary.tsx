@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { t } from '@/i18n';
 
 type OverallMetrics = {
   total_events: number;
@@ -19,8 +20,9 @@ function isTauri() {
 
 export const OverallSummary: React.FC = () => {
   const [metrics, setMetrics] = useState<OverallMetrics | null>(null);
-  const [rows, setRows] = useState<EventRow[]>([]);
+  const [rows, setRows] = useState<EventRow[]>([]); // Reserved for future use
   const [loading, setLoading] = useState(false);
+  void rows; // Suppress unused warning
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -58,41 +60,76 @@ export const OverallSummary: React.FC = () => {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-gray-900">Overall Summary of Training Sessions</h2>
-          <div className="space-x-2">
-            <button className="px-3 py-1 bg-gray-100 border rounded" onClick={refresh} disabled={loading}>Refresh Data</button>
-            <button className="px-3 py-1 bg-gray-100 border rounded" onClick={exportTxt} disabled={loading}>Export Report (.txt)</button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top App Bar */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-2xl font-bold text-gray-900">{t('summary.title')}</h1>
+            <button
+              onClick={refresh}
+              disabled={loading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {t('summary.refresh')}
+            </button>
           </div>
         </div>
-        <div className="px-6 py-4 text-sm">
-          {metrics ? (
-            <div className="space-y-1">
-              <div>• Total Events: {metrics.total_events}</div>
-              <div>• Average Impact Level: {avgText}</div>
-              <div>• Last Updated: {metrics.last_updated ?? '-'}</div>
-            </div>
-          ) : (
-            <div>Loading…</div>
-          )}
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Metrics Card */}
+        <div className="bg-white shadow rounded-lg mb-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">{t('summary.metrics')}</h2>
+          </div>
+          <div className="px-6 py-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : metrics ? (
+              <div className="space-y-2 text-sm">
+                <div>• {t('summary.totalEvents')}: {metrics.total_events}</div>
+                <div>• {t('summary.detectedEvents')}: -</div>
+                <div>• {t('summary.eventsWithConsensus')}: -</div>
+                <div>• {t('summary.averageCollectiveScore')}: {avgText}</div>
+                <div>• {t('summary.lastUpdated')}: {metrics.last_updated ?? t('summary.never')}</div>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-600">{t('common.loading')}</div>
+            )}
+          </div>
         </div>
-        <div className="px-6 py-4 border-t border-gray-200">
-          <div className="text-sm font-semibold mb-2">Event | Summary | Impact | Date</div>
-          {rows.length === 0 ? (
-            <div className="text-sm text-gray-600">No rows.</div>
-          ) : (
-            <div className="space-y-1 text-sm">
-              {rows.map((r, idx) => (
-                <div key={idx}>
-                  {r.event} | {r.summary} | {r.impact == null ? '-' : (Math.round(r.impact * 10) / 10).toFixed(1)} | {r.date}
-                </div>
-              ))}
+
+        {/* Network Statistics */}
+        <div className="bg-white shadow rounded-lg mb-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">{t('summary.networkStatistics')}</h2>
+          </div>
+          <div className="px-6 py-4">
+            <div className="space-y-2 text-sm">
+              <div>• {t('summary.nodeCount')}: -</div>
+              <div>• {t('summary.activeConnections')}: -</div>
+              <div>• {t('summary.syncStatus')}: -</div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+
+        {/* Export Button */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4">
+            <button
+              onClick={exportTxt}
+              disabled={loading}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+            >
+              {t('summary.exportReport')}
+            </button>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

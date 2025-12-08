@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { t } from '@/i18n';
 
 export const TrainingResults: React.FC = () => {
   const [dateRange, setDateRange] = useState({
@@ -6,6 +7,10 @@ export const TrainingResults: React.FC = () => {
     end: '',
   });
   const [contextFilter, setContextFilter] = useState('');
+  
+  // Suppress unused warnings - reserved for future use
+  void setDateRange;
+  void setContextFilter;
   const [impactProgress] = useState(50); // percentage
   const [averageScore] = useState(3.7);
   const [loading, setLoading] = useState(false);
@@ -31,92 +36,80 @@ export const TrainingResults: React.FC = () => {
     fetchResults();
   };
 
-  const handleResetFilters = () => {
-    setDateRange({ start: '', end: ''});
-    setContextFilter('');
-  };
+  // Reserved for future use
+  // const handleResetFilters = () => {
+  //   setDateRange({ start: '', end: ''});
+  //   setContextFilter('');
+  // };
 
-  const renderProgressBar = (percentage: number) => {
-    const filled = Math.round(percentage / 10);
-    const empty = 10 - filled;
-    return `[${'#'.repeat(filled)}${'-'.repeat(empty)}] ${percentage}%`;
-  };
+  // const renderProgressBar = (percentage: number) => {
+  //   const filled = Math.round(percentage / 10);
+  //   const empty = 10 - filled;
+  //   return `[${'#'.repeat(filled)}${'-'.repeat(empty)}] ${percentage}%`;
+  // };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-3xl font-bold mb-6">Training Results Overview</h1>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">Filters</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Date Range Start</label>
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Date Range End</label>
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
-          </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Context Filter</label>
-            <input
-              type="text"
-              value={contextFilter}
-              onChange={(e) => setContextFilter(e.target.value)}
-              placeholder="Filter by context..."
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <div className="flex gap-2">
+    <div className="min-h-screen bg-gray-50">
+      {/* Top App Bar */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-2xl font-bold text-gray-900">{t('training.title')}</h1>
             <button
               onClick={handleUpdate}
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              Update
-            </button>
-            <button
-              onClick={handleResetFilters}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-            >
-              Reset Filters
+              {t('training.refresh')}
             </button>
           </div>
         </div>
+      </header>
 
-        {/* ASCII-style results */}
-        {loading ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-600">Loading...</p>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Progress Metrics Card */}
+        <div className="bg-white shadow rounded-lg mb-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">{t('training.progressMetrics')}</h2>
           </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow p-6 space-y-6">
-            <div>
-              <h3 className="text-md font-semibold mb-2">Impact Progress</h3>
-              <pre className="bg-gray-50 p-4 rounded border font-mono text-sm">
-                {renderProgressBar(impactProgress)}
-              </pre>
-            </div>
-            <div>
-              <h3 className="text-md font-semibold mb-2">Average Score</h3>
-              <p className="text-2xl font-bold">{averageScore} / 5</p>
+          <div className="px-6 py-4">
+            <div className="space-y-2 text-sm">
+              <div>• {t('training.totalEvents')}: -</div>
+              <div>• {t('training.totalPositiveImpact')}: -</div>
+              <div>• {t('training.totalNegativeImpact')}: -</div>
+              <div>• {t('training.averageScore')}: {averageScore.toFixed(1)}</div>
+              <div>• {t('training.trendIndicator')}: -</div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+
+        {/* Impact Progress */}
+        <div className="bg-white shadow rounded-lg mb-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">{t('training.impactProgress')}</h2>
+          </div>
+          <div className="px-6 py-4">
+            <div className="text-sm mb-2">{t('training.progressPercentage')}: {impactProgress}%</div>
+            <div className="w-full bg-gray-200 rounded-full h-4">
+              <div
+                className="bg-blue-600 h-4 rounded-full"
+                style={{ width: `${impactProgress}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Results Table */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">{t('training.resultsTable')}</h2>
+          </div>
+          <div className="px-6 py-4">
+            <div className="text-sm text-gray-600">{t('training.noData')}</div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

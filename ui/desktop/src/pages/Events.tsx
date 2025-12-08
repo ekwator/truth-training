@@ -2,15 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { useEventsStore } from '@/stores/events';
 import { EventCard } from '@/components/Dashboard/EventCard';
 import { CreateEventButton } from '@/components/Dashboard/CreateEventButton';
+import { useNavigationStore } from '@/stores/navigation';
 import { Screen } from '@/components/layout/TopMenuBar';
+import { t } from '@/i18n';
+
+interface NavigationState {
+  eventId?: number;
+  [key: string]: any;
+}
 
 interface EventsProps {
-  onNavigate?: (screen: Screen) => void;
+  onNavigate?: (screen: Screen, state?: NavigationState) => void;
 }
 
 export const Events: React.FC<EventsProps> = ({ onNavigate }) => {
   const { events, loading, error, fetchEvents, filters, setFilters } = useEventsStore();
+  const { viewJudgments } = useNavigationStore();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const handleEventClick = (eventId: number) => {
+    if (viewJudgments) {
+      // Navigate to Judgments screen for this event with eventId
+      onNavigate?.('events', { eventId });
+    } else {
+      // Navigate to Event Details screen with eventId
+      onNavigate?.('event-summary', { eventId });
+    }
+  };
 
   useEffect(() => {
     fetchEvents();
@@ -53,13 +71,13 @@ export const Events: React.FC<EventsProps> = ({ onNavigate }) => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Events</h2>
+          <h2 className="text-2xl font-bold text-red-600 mb-4">{t('events.errorLoading')}</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={() => fetchEvents()}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Retry
+            {t('common.retry')}
           </button>
         </div>
       </div>
@@ -73,8 +91,8 @@ export const Events: React.FC<EventsProps> = ({ onNavigate }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Events</h1>
-              <p className="text-sm text-gray-600">Manage and view all events</p>
+              <h1 className="text-2xl font-bold text-gray-900">{t('events.title')}</h1>
+              <p className="text-sm text-gray-600">{t('events.subtitle')}</p>
             </div>
             <CreateEventButton />
           </div>
@@ -89,20 +107,20 @@ export const Events: React.FC<EventsProps> = ({ onNavigate }) => {
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
-                  Search Events
+                  {t('events.search')}
                 </label>
                 <input
                   type="text"
                   id="search"
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
-                  placeholder="Search by description..."
+                  placeholder={t('events.searchPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div className="sm:w-48">
                 <label htmlFor="detected" className="block text-sm font-medium text-gray-700 mb-2">
-                  Detected
+                  {t('events.detected')}
                 </label>
                 <select
                   id="detected"
@@ -113,9 +131,9 @@ export const Events: React.FC<EventsProps> = ({ onNavigate }) => {
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">All</option>
-                  <option value="true">Detected</option>
-                  <option value="false">Not Detected</option>
+                  <option value="">{t('events.allStatus')}</option>
+                  <option value="true">{t('events.detected')}</option>
+                  <option value="false">{t('events.notDetected')}</option>
                 </select>
               </div>
               <div className="sm:w-48">
@@ -145,17 +163,19 @@ export const Events: React.FC<EventsProps> = ({ onNavigate }) => {
               <div className="bg-white rounded-lg shadow p-12 text-center">
                 <div className="text-gray-400 mb-4 text-sm">No data</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {searchTerm ? 'No events match your search' : 'No events yet'}
+                  {searchTerm ? t('events.noEventsFound') : t('events.noEvents')}
                 </h3>
                 <p className="text-gray-500 mb-4">
-                  {searchTerm ? 'Try adjusting your search terms.' : 'Get started by creating your first event.'}
+                  {searchTerm ? t('events.noEventsDescription') : t('events.noEventsDescription')}
                 </p>
                 {!searchTerm && <CreateEventButton />}
               </div>
             </div>
           ) : (
             filteredEvents.map((event) => (
-              <EventCard key={event.id} event={event} onNavigate={onNavigate} />
+              <div key={event.id} onClick={() => handleEventClick(event.id)} className="cursor-pointer">
+                <EventCard event={event} onNavigate={onNavigate} />
+              </div>
             ))
           )}
         </div>

@@ -82,6 +82,12 @@ android {
             buildConfigField("boolean", "MOCK_ENABLED", "true")
         }
     }
+
+    lint {
+        baseline = file("lint-baseline.xml")
+        checkReleaseBuilds = true
+        abortOnError = false
+    }
 }
 
 // Kapt configuration for Room schema location

@@ -1,6 +1,6 @@
 use crate::storage::Db;
-use core_lib::models::Context;
-use serde::Serialize;
+use core_lib::models::{Context, NewContext};
+use serde::{Deserialize, Serialize};
 use tauri::{command, State};
 
 #[derive(Debug, Serialize)]
@@ -49,4 +49,66 @@ pub async fn list_contexts(db: State<'_, Db>) -> Result<ContextListResponse, Str
         data: options,
         fetched_at,
     })
+}
+
+#[command]
+pub async fn clear_context_templates(db: State<'_, Db>) -> Result<String, String> {
+    let conn = db.0.lock();
+    
+    // Delete all context templates
+    let deleted = conn.execute("DELETE FROM context", [])
+        .map_err(|e| format!("Failed to clear context templates: {}", e))?;
+
+    log::info!("Cleared {} context templates", deleted);
+
+    Ok(format!("Cleared {} context templates", deleted))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateContextRequest {
+    pub name: String,
+    pub category_id: Option<i64>,
+    pub forma_id: Option<i64>,
+    pub cause_id: Option<i64>,
+    pub develop_id: Option<i64>,
+    pub effect_id: Option<i64>,
+    pub description: Option<String>,
+}
+
+#[command]
+pub async fn create_context(
+    db: State<'_, Db>,
+    request: CreateContextRequest,
+) -> Result<ContextOption, String> {
+    let conn = db.0.lock();
+    
+    // Convert request to NewContext
+    let new_ctx = NewContext {
+        name: request.name,
+        category_id: request.category_id,
+        forma_id: request.forma_id,
+        cause_id: request.cause_id,
+        develop_id: request.develop_id,
+        effect_id: request.effect_id,
+        description: request.description,
+    };
+
+    // Use core_lib::storage::add_context which handles duplicate detection
+    let id = core_lib::storage::add_context(&conn, new_ctx)
+        .map_err(|e| {
+            // Match Android error message exactly
+            let error_msg = format!("{}", e);
+            if error_msg.contains("identical fields already exists") || error_msg.contains("409") {
+                "Template with identical fields already exists (409 Conflict)".to_string()
+            } else {
+                format!("Failed to create context template: {}", error_msg)
+            }
+        })?;
+
+    // Fetch the created context
+    let context = core_lib::storage::get_context_by_id(&conn, id)
+        .map_err(|e| format!("Failed to fetch created context: {}", e))?
+        .ok_or_else(|| format!("Created context not found: {}", id))?;
+
+    Ok(ContextOption::from(context))
 }

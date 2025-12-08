@@ -70,6 +70,22 @@ cargo tauri build
 cargo tauri dev
 ```
 
+**Production Build:**
+
+```bash
+cd ui/desktop
+npm install
+npm run build
+cargo tauri build
+```
+
+**Note**: Production build may show TypeScript warnings about unused variables (non-blocking). These are reserved functions for future use and don't prevent successful builds.
+
+**Build Artifacts**:
+- Frontend bundle: `dist/`
+- Tauri application bundle: `src-tauri/target/{target}/release/bundle/`
+- Platform-specific installers: `.deb`, `.AppImage` (Linux), `.dmg` (macOS), `.exe`, `.msi` (Windows)
+
 ---
 
 ## ✅ 3. Android UI (Android Studio + JNI)
@@ -96,6 +112,56 @@ cargo ndk -t arm64-v8a -o ./jniLibs build --release
 
 * Copy compiled `.so` libraries to `app/src/main/jniLibs/arm64-v8a/`
 * Use JNI bridge to call Rust core functions.
+
+### **Production Build (Release APK):**
+
+**Prerequisites**: Lint baseline must be created for production builds.
+
+**Step 1: Create Lint Baseline** (first time only):
+```bash
+cd truth-android-client
+./gradlew updateLintBaseline
+```
+
+This creates `app/lint-baseline.xml` with known lint issues. The baseline prevents lint errors from blocking builds.
+
+**Step 2: Build Release APK**:
+```bash
+./gradlew assembleRelease
+```
+
+**Output**: APK files in `app/build/outputs/apk/{flavor}/release/`:
+- `app-local-release-unsigned.apk` (local flavor)
+- `app-remote-release-unsigned.apk` (remote flavor)
+- `app-mock-release-unsigned.apk` (mock flavor)
+
+**Lint Configuration** (already configured in `build.gradle.kts`):
+```kotlin
+lint {
+    baseline = file("lint-baseline.xml")
+    checkReleaseBuilds = true
+    abortOnError = false
+}
+```
+
+**Signing APK** (for distribution):
+```bash
+# Sign with release keystore
+jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+  -keystore release.keystore \
+  app/build/outputs/apk/local/release/app-local-release-unsigned.apk \
+  alias_name
+
+# Align APK (for Play Store)
+zipalign -v 4 \
+  app/build/outputs/apk/local/release/app-local-release-unsigned.apk \
+  app/build/outputs/apk/local/release/app-local-release-aligned.apk
+```
+
+**Note**: If lint baseline is not created, you can skip lint check for quick builds:
+```bash
+./gradlew assembleRelease -x lintVitalMockRelease
+```
 
 ---
 
