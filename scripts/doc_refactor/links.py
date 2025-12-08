@@ -203,12 +203,11 @@ def _register_reference(
         target, anchor = target.split("#", 1)
 
     is_external = target.startswith(("http://", "https://"))
-    resolved_target = (
-        target if is_external else _normalize_relative(root, record.path, target or str(record.path.relative_to(root)))
-    )
     status: ReferenceStatus
+    resolved_target: str
 
     if is_external:
+        resolved_target = target
         reachable = _check_url(resolved_target, timeout=external_timeout)
         status = "external_ok" if reachable else "external_warning"
         if not reachable:
@@ -233,16 +232,16 @@ def _register_reference(
             resolved_target = target
         else:
             status = "missing"
+            # Normalize target for missing files to ensure consistent format
+            resolved_target = _normalize_relative(root, record.path, target)
             report.broken_urls.append(
-                {"source": str(record.path.relative_to(root)), "target": target or resolved_target, "status": status}
+                {"source": str(record.path.relative_to(root)), "target": resolved_target, "status": status}
             )
-            # Keep original target for missing files
-            resolved_target = target
 
     edge = ReferenceEdge(
         source_path=str(record.path.relative_to(root)),
-        target=resolved_target or target,
-        link_text=label or resolved_target,
+        target=resolved_target,
+        link_text=label or resolved_target or target,
         status=status,
         is_external=is_external,
         normalized=normalized,

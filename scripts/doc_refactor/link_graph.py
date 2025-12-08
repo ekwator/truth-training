@@ -11,8 +11,8 @@ from .models import DocumentationFile, LinkGraphReport
 __all__ = ["build_link_graph", "ReferenceEdge"]
 
 
-def build_link_graph(root: Path, records: List[DocumentationFile]) -> LinkGraphReport:
+def build_link_graph(root: Path, records: List[DocumentationFile], *, dry_run: bool = False) -> LinkGraphReport:
     """Backward-compatible wrapper used by the CLI."""
 
-    return build_link_report(root=root, records=records)
+    return build_link_report(root=root, records=records, dry_run=dry_run)
 

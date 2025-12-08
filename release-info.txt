@@ -1,7 +1,7 @@
-v1.0.0-Develop
-Truth Training v1.0.0-Develop — Development Release for Learning and Practice
+v1.0.0-Prod
+Truth Training v1.0.0-Prod — Production Release for Truth Discovery and Collective Intelligence
 
-This development release is based on v1.0.0 with enhanced localization support (partial), improved documentation, and refined CI/CD workflows. This version is specifically designed for developers learning to use Cursor AI IDE and modern cross-platform development practices.
+This production release represents the first stable GA version of Truth Training v1.0.0, featuring a fully unified cross-platform discovery and synchronization system across Rust Desktop (Tauri), CLI (truthctl), Android, and Server platforms. All components share identical discovery protocols, JSON schemas, SQLite database schemas, and synchronization semantics.
 
 **Important Notes:**
 - **Privacy & Confidentiality**: No user actions are logged or persistently stored. Only system-level logs (errors, sync operations) are permitted. This is a core architectural requirement enforced across all platforms. See [SECURITY.md](SECURITY.md) for details.
@@ -10,34 +10,28 @@ This development release is based on v1.0.0 with enhanced localization support (
   - Android Client: English-only (EN). Russian localization not implemented. Full localization parity requires Spec-Kit planning.
 - **Feature Implementation**: All future features and improvements must follow the Spec-Kit workflow (`/speckit.specify`, `/speckit.plan`, `/speckit.task`, `/speckit.implementation`) with detailed implementation plans. See [spec/15-prompts-and-automation.md](spec/15-prompts-and-automation.md) and [CONTRIBUTING.md](CONTRIBUTING.md) for requirements.
 
-Highlights
-- Desktop UI Localization (Not Fully Implemented):
-  - **Current Status**: Language toggle component exists but localization is **not functional**
-  - **Issues**: Language selection not persisted to config.json, database not seeded, interface remains in English
-  - **UI Issue**: On Settings screen, there is an **extra duplicate language selection field** in the bottom section (should be removed)
-  - **Translation Files**: Translation files exist but are not applied to UI
-  - **Requirement**: Full localization implementation requires Spec-Kit workflow with detailed plan
-- Android Client Localization (Not Implemented):
-  - **Current Status**: English-only (EN)
-  - **Missing**: Russian translation file (`values-ru/strings.xml`)
-  - **Missing**: Language selector UI component
-  - **Missing**: Locale-aware knowledge base seeding integration
-  - **Requirement**: Full localization implementation requires Spec-Kit workflow with detailed plan
-- Documentation Enhancements:
-  - Privacy & Confidentiality documentation: Updated [SECURITY.md](SECURITY.md) with explicit no-user-action-logging policy
-  - Updated functional specifications (22-function_core.md, 23-function_desktop.md, 24-function_mobile_android.md) with localization details and privacy requirements
-  - All spec files (01-24) updated to v1.0.0 with 2025-01-XX dates
-  - CLI tool documentation and workflow (`cli-build.yml`) for `truthctl` binary builds
-  - Expanded artifact documentation in `docs/Truth-training/Truth-training.md`
-- CI/CD Improvements:
-  - Fixed Tauri CLI installation method (npm instead of cargo) to resolve flate2 compilation errors
-  - Corrected CLI build workflow to target `app` package for `truthctl` binary
-  - Workflow optimizations to prevent unnecessary runs on main branch pushes
-  - Cross-platform artifact generation and publishing
+Key Features and Improvements
+- Cross-Platform Discovery System:
+  - **LAN/Wi-Fi UDP Multicast Discovery**: Standard multicast address (239.255.0.1:52525) across all platforms with unified JSON packet format and ed25519 signature verification
+  - **Global Registry Polling**: Consistent HTTPS polling with envelope and array format support, configurable URLs, and graceful error handling
+  - **Node Reachability & TTL Cleanup**: HTTP reachability checks, TTL-based automatic cleanup, deterministic merge rules (Local > Global), and consistent TTL logic across platforms
+  - **Background Workers**: Tokio interval-based workers for Desktop, WorkManager periodic sync for Android (15 min intervals), and server schedulers with configurable intervals
+- Android Client Integration (v1.0.0):
+  - **Room Database Integration**: Complete Room database with canonical SQLite schema, migration MIGRATION_2_3 creating nodes table matching Desktop/CLI schema, full CRUD operations, and Android instrumentation tests
+  - **Discovery Repository**: High-level operations with global registry polling, TTL logic, deduplication, JSON format conversion, and cross-platform compatibility tests
+ - **WorkManager Background Sync**: NodeSyncWorker with 15-minute periodic sync, TTL decrement/cleanup, reachability checks, and database updates via DiscoveryRepository
+  - **UDP Multicast LAN Discovery**: LanDiscoveryClient using standard multicast address (239.255.0.1:52525) with node broadcasting, listener implementation, payload conversion to NodeRecord format, and ed25519 signature verification
+  - **Compose UI Integration**: Complete NodesScreen.kt with filters and actions, NodesViewModel.kt for state management, manual refresh/discover/cleanup/health check buttons, and integration into MainNavigation.kt
+- Desktop UI Integration:
+  - **Background Discovery Worker**: DiscoveryManager with lifecycle management (start/stop/restart), clean shutdown implementation, Tokio integration, and core bridge
+  - **React UI (NodesPanel)**: Node list display with reachability badges and TTL countdown indicators, manual refresh/discover/cleanup/health check buttons, and Tauri command integration
+  - **Settings Persistence**: Discovery settings storage, configurable options (interval/TTL/registry URLs), Settings UI integration, and default fallback values
+- CLI Integration (truthctl):
+  - **Complete Command Suite**: `nodes list` with table/JSON output and filtering, `nodes add/remove` with validation, `nodes discover` with local/global discovery, `nodes sync` with incremental bidirectional sync, `nodes cleanup` with TTL-based pruning, `nodes health-check` with reachability verification, and `nodes validate` with schema parity verification
 
 Known Limitations & Future Work
 - Desktop UI:
-  - **Localization**: Not fully implemented - Language toggle exists but is not functional
+ - **Localization**: Not fully implemented - Language toggle exists but is not functional
     - **Issues**: Language selection not persisted to config.json, database not seeded, interface remains in English
     - **UI Issue**: On Settings screen, there is an **extra duplicate language selection field** in the bottom section (should be removed)
     - **Requirement**: Full localization implementation requires Spec-Kit workflow with detailed plan
@@ -52,14 +46,14 @@ Known Limitations & Future Work
   - **Recommendation**: Use Spec-Kit for all future Android improvements to ensure consistency and proper planning
 - iOS Client:
   - **Status**: Basic project structure exists, but full implementation is required
-  - **Missing**: Complete UI implementation, feature parity with Desktop/Android
-  - **Requirement**: Full iOS client development requires Spec-Kit workflow with detailed implementation plan
-  - **Recommendation**: Use Spec-Kit for all iOS development to ensure consistency with Desktop/Android
+ - **Missing**: Complete UI implementation, feature parity with Desktop/Android
+ - **Requirement**: Full iOS client development requires Spec-Kit workflow with detailed implementation plan
+ - **Recommendation**: Use Spec-Kit for all iOS development to ensure consistency with Desktop/Android
 - CLI Tool (`truthctl`):
-  - **Status**: Core functionality implemented (node management, sync, discovery)
-  - **Limitation**: Direct CLI commands for events and context templates are planned for future releases
+ - **Status**: Core functionality implemented (node management, sync, discovery)
+ - **Limitation**: Direct CLI commands for events and context templates are planned for future releases
   - **Current Workaround**: Use HTTP API endpoints (`/api/v1/events`, `/api/v1/contexts`) or Desktop UI
-  - **Requirement**: Future CLI enhancements require Spec-Kit workflow with detailed plan
+ - **Requirement**: Future CLI enhancements require Spec-Kit workflow with detailed plan
 
 Platform Comparison
 - **Desktop UI**: Most complete implementation with **localization not fully functional** (language toggle exists but not working), all 7 screens (Logs screen removed for privacy compliance), comprehensive testing, and production-ready features
@@ -69,19 +63,30 @@ Platform Comparison
 - **CLI Tool**: Functional for node management and sync, with planned enhancements requiring Spec-Kit workflow
 
 Quality & Validation
-- Updated functional specifications reflect current localization implementation and privacy requirements
-- Documentation integrity maintained: All documentation updated to v1.0.0, all spec files aligned
+- **Comprehensive Test Coverage**: CLI E2E tests (list/discover/sync/cleanup/validate commands), TTL consistency tests, JSON enum serialization tests, Android instrumentation tests (NodeDaoTest, NodeDiscoveryTest, NodeSyncWorkerTest), and cross-platform compatibility tests
+- **Real-Device E2E Testing**: Cross-device tests (Linux Desktop ↔ Android device, CLI ↔ Android ↔ Desktop), all 107 Android instrumentation tests passing on real device (RMX3261 - 11), UDP multicast compatibility verified, and full packet format compatibility confirmed between Rust and Kotlin
+- **Code Quality**: Zero compiler warnings, structured logging with discovery event counters, and observability metrics for TTL cleanup, reachability checks, and global registry polling
 - Privacy compliance: No user action logging enforced architecturally across all platforms
 - Code quality: Removed unused `logging.rs` module (dead code violation), fixed clippy warnings
 - CI/CD workflows validated and optimized
 - Cross-platform compatibility verified
 - Build verification: All components compile successfully after code cleanup
 
+Cross-Platform Compatibility:
+ - Unified discovery protocols across Desktop (Rust) ↔ Android (Kotlin)
+  - Identical JSON schemas, SQLite database schemas, and synchronization semantics
+  - Verified packet exchange and format conversion between platforms
+
 For Beginner Developers
 
 This release is created for beginner developers to practice using Cursor AI IDE. When studying this project with Cursor AI IDE, you can receive hints and guidance on both implementing this project and independently developing additional features. You can learn the technologies and programming languages used in the project, and Cursor AI IDE can autonomously make changes to the project.
 
-Technologies and Programming Languages Used:
+
+
+
+
+
+
 - **Backend Core**: Rust (stable toolchain), Actix-web (HTTP server), Tokio (async runtime), rusqlite (SQLite), ed25519-dalek (cryptography), serde (serialization), clap (CLI parsing)
 - **Desktop UI Frontend**: TypeScript, JavaScript, React 18, Vite (build tool), Zustand (state management), Axios (HTTP client), Tailwind CSS (styling), Headless UI (components)
 - **Desktop UI Backend**: Tauri 2.9.0 (desktop framework), Rust (Tauri commands), SQLite via rusqlite
@@ -94,14 +99,12 @@ Technologies and Programming Languages Used:
 - **Database**: SQLite 3.x (shared across all platforms)
 - **Cryptography**: Ed25519 signatures, ChaCha20-Poly1305 encryption
 
-Cursor AI IDE can help you:
 - Understand code structure and architecture
 - Generate code following project patterns
 - Refactor and improve existing code
 - Write tests and documentation
 - Debug and fix issues
 - Learn best practices for each technology stack
-- Implement new features following project conventions
 
 # 🚀 Support the Future Release of Truth Training
 

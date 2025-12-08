@@ -83,13 +83,14 @@ def _should_exclude(root: Path, path: Path) -> bool:
     if any(part in EXCLUDED_DIRS for part in relative.parts):
         return True
     
-    # Exclude root-level files except README.md
+    # Allow root-level README.md
     if len(relative.parts) == 1:
-        if path.name != "README.md":
-            return True
+        if path.name == "README.md":
+            return False  # Don't exclude root README.md
+        return True  # Exclude other root-level files
     
-    # Only allow files in docs/, spec/, or root README.md
-    if len(relative.parts) > 0:
+    # Only allow files in docs/ or spec/ directories
+    if len(relative.parts) > 1:
         first_part = relative.parts[0].lower()
         if first_part not in ("docs", "spec"):
             return True

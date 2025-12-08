@@ -29,10 +29,7 @@ jest.mock('@/stores/templateContext', () => ({
 jest.mock('@/services/api', () => ({
   ApiService: {
     // @ts-expect-error - Mock function, types resolved at runtime
-    getContexts: jest.fn().mockResolvedValue({ 
-      data: [], 
-      fetched_at: new Date().toISOString() 
-    }),
+    getContexts: jest.fn(),
     createContext: jest.fn(),
   },
 }));
@@ -109,13 +106,13 @@ describe('Template Selection Flow Integration', () => {
     // @ts-expect-error - Mocked module, types resolved at runtime
     const { ApiService } = await import('@/services/api');
     // Mock getContexts to return templates in correct format (matches ContextListResponse)
-    // IMPORTANT: Must mock before render, and use mockResolvedValueOnce to ensure fresh mock
+    // IMPORTANT: Must mock before render, and use mockResolvedValue to ensure mock persists
     const mockResponse = { 
       data: [mockTemplate],
       fetched_at: new Date().toISOString(),
     };
     // @ts-expect-error - Mock function, types resolved at runtime
-    (ApiService.getContexts as jest.Mock).mockResolvedValueOnce(mockResponse);
+    (ApiService.getContexts as jest.Mock).mockResolvedValue(mockResponse);
 
     // Simulate template selection mode (matches Android: selectTemplateForEvent flag)
     (useNavigationStore as jest.Mock).mockReturnValue({
@@ -125,23 +122,28 @@ describe('Template Selection Flow Integration', () => {
 
     const { container } = renderWithProviders(<ContextEditor onNavigate={mockOnNavigate} />);
 
-    // Wait for API call
+    // Wait for API call to complete
     await waitFor(() => {
       expect(ApiService.getContexts).toHaveBeenCalled();
     }, { timeout: 3000 });
 
     // Wait for templates to be loaded and rendered
     // ContextEditor sets templates from response.data in fetchTemplates
+    // Wait for loading spinner to disappear first
     await waitFor(() => {
-      // Check if template is rendered (by name in h3 element)
+      const loadingSpinner = container.querySelector('.animate-spin');
+      return loadingSpinner === null;
+    }, { timeout: 5000 });
+
+    // Then wait for template name to appear
+    await waitFor(() => {
       const templateName = screen.queryByText(mockTemplate.name);
       if (templateName) {
         return true;
       }
-      // Or check if templates list container exists and is not empty
+      // Also check if templates list container exists (means templates loaded)
       const templatesContainer = container.querySelector('.space-y-4');
-      const loadingSpinner = container.querySelector('.animate-spin');
-      return templatesContainer && !loadingSpinner;
+      return templatesContainer !== null;
     }, { timeout: 5000 });
 
     // Find template by name (rendered in h3 element)
