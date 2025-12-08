@@ -387,8 +387,9 @@ jobs:
         with:
           name: android-release-aab
           path: |
-            truth-android-client/app/build/outputs/bundle/local/release/*.aab
+            truth-android-client/app/build/outputs/bundle/**/*.aab
           retention-days: 30
+          if-no-files-found: warn
       
       - name: Upload APK artifacts (Release)
         if: ${{ matrix.buildType == 'release' && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release') }}
