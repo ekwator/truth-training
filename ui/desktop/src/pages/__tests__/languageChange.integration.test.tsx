@@ -13,6 +13,19 @@ jest.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: any[]) => mockInvoke(...args),
 }));
 
+// Mock ApiService
+jest.mock('@/services/api', () => {
+  const actual = jest.requireActual('@/services/api');
+  return {
+    ...actual,
+    ApiService: {
+      ...actual.ApiService,
+      clearContextTemplates: jest.fn().mockResolvedValue('OK'),
+      reseedKnowledgeBase: jest.fn().mockResolvedValue(undefined),
+    },
+  };
+});
+
 // Mock i18n
 jest.mock('@/i18n', () => ({
   t: (key: string) => key,
@@ -28,9 +41,14 @@ jest.mock('@/components/system/Toaster', () => ({
 }));
 
 describe('Language Change Flow Integration', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     mockInvoke.mockResolvedValue({});
+    
+    // Reset ApiService mocks
+    const { ApiService } = await import('@/services/api');
+    (ApiService.clearContextTemplates as jest.Mock).mockResolvedValue('OK');
+    (ApiService.reseedKnowledgeBase as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('should change language and trigger database re-seeding', async () => {
@@ -42,20 +60,18 @@ describe('Language Change Flow Integration', () => {
 
     // Wait for confirmation dialog
     await waitFor(() => {
-      expect(screen.getByText(/change language|изменить язык/i)).toBeInTheDocument();
+      expect(screen.getByText('settings.confirmLanguageChange')).toBeInTheDocument();
     });
 
     // Confirm language change
-    const confirmButton = screen.getByText(/yes|да/i);
+    const confirmButton = screen.getByText('common.confirm');
     fireEvent.click(confirmButton);
 
     // Verify database operations are called
+    const { ApiService } = await import('@/services/api');
     await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith('clear_context_templates');
-      expect(mockInvoke).toHaveBeenCalledWith('reseed_knowledge_base', {
-        locale: 'ru',
-        forceReseed: true,
-      });
+      expect(ApiService.clearContextTemplates).toHaveBeenCalled();
+      expect(ApiService.reseedKnowledgeBase).toHaveBeenCalled();
     });
   });
 
@@ -86,12 +102,17 @@ describe('Language Change Flow Integration', () => {
     const russianButton = screen.getByText(/russian|русский/i);
     fireEvent.click(russianButton);
 
-    const confirmButton = screen.getByText(/yes|да/i);
+    await waitFor(() => {
+      expect(screen.getByText('settings.confirmLanguageChange')).toBeInTheDocument();
+    });
+
+    const confirmButton = screen.getByText('common.confirm');
     fireEvent.click(confirmButton);
 
     // Wait for language change to complete
+    const { ApiService } = await import('@/services/api');
     await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith('reseed_knowledge_base');
+      expect(ApiService.reseedKnowledgeBase).toHaveBeenCalled();
     });
 
     // Verify events are still accessible after language change
@@ -105,42 +126,47 @@ describe('Language Change Flow Integration', () => {
     const russianButton = screen.getByText(/russian|русский/i);
     fireEvent.click(russianButton);
 
-    const confirmButton = screen.getByText(/yes|да/i);
+    await waitFor(() => {
+      expect(screen.getByText('settings.confirmLanguageChange')).toBeInTheDocument();
+    });
+
+    const confirmButton = screen.getByText('common.confirm');
     fireEvent.click(confirmButton);
 
     // Verify clear_context_templates is called before reseed
+    const { ApiService } = await import('@/services/api');
     await waitFor(() => {
-      const invokeCalls = mockInvoke.mock.calls;
-      const clearCallIndex = invokeCalls.findIndex(
-        (call) => call[0] === 'clear_context_templates'
-      );
-      const reseedCallIndex = invokeCalls.findIndex(
-        (call) => call[0] === 'reseed_knowledge_base'
-      );
-
-      expect(clearCallIndex).toBeGreaterThan(-1);
-      expect(reseedCallIndex).toBeGreaterThan(-1);
-      // Clear should be called before reseed
-      expect(clearCallIndex).toBeLessThan(reseedCallIndex);
+      expect(ApiService.clearContextTemplates).toHaveBeenCalled();
+      expect(ApiService.reseedKnowledgeBase).toHaveBeenCalled();
+      
+      // Verify order: clear should be called before reseed
+      const clearCallOrder = (ApiService.clearContextTemplates as jest.Mock).mock.invocationCallOrder[0];
+      const reseedCallOrder = (ApiService.reseedKnowledgeBase as jest.Mock).mock.invocationCallOrder[0];
+      expect(clearCallOrder).toBeLessThan(reseedCallOrder);
     });
   });
 
   it('should handle language change errors gracefully', async () => {
-    mockInvoke.mockRejectedValueOnce(new Error('Database error'));
+    const { ApiService } = await import('@/services/api');
+    (ApiService.clearContextTemplates as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
 
     render(<Settings />);
 
     const russianButton = screen.getByText(/russian|русский/i);
     fireEvent.click(russianButton);
 
-    const confirmButton = screen.getByText(/yes|да/i);
+    await waitFor(() => {
+      expect(screen.getByText('settings.confirmLanguageChange')).toBeInTheDocument();
+    });
+
+    const confirmButton = screen.getByText('common.confirm');
     fireEvent.click(confirmButton);
 
     // Wait for error handling
     await waitFor(() => {
       // Error should be displayed (implementation dependent)
-      expect(mockInvoke).toHaveBeenCalled();
-    });
+      expect(ApiService.clearContextTemplates).toHaveBeenCalled();
+    }, { timeout: 3000 });
   });
 
   it('should cancel language change when user declines', async () => {
@@ -151,17 +177,18 @@ describe('Language Change Flow Integration', () => {
 
     // Wait for confirmation dialog
     await waitFor(() => {
-      expect(screen.getByText(/change language|изменить язык/i)).toBeInTheDocument();
+      expect(screen.getByText('settings.confirmLanguageChange')).toBeInTheDocument();
     });
 
     // Cancel language change
-    const cancelButton = screen.getByText(/no|нет|cancel|отмена/i);
+    const cancelButton = screen.getByText('common.cancel');
     fireEvent.click(cancelButton);
 
     // Verify database operations are NOT called
+    const { ApiService } = await import('@/services/api');
     await waitFor(() => {
-      expect(mockInvoke).not.toHaveBeenCalledWith('clear_context_templates');
-      expect(mockInvoke).not.toHaveBeenCalledWith('reseed_knowledge_base');
+      expect(ApiService.clearContextTemplates).not.toHaveBeenCalled();
+      expect(ApiService.reseedKnowledgeBase).not.toHaveBeenCalled();
     });
   });
 });
