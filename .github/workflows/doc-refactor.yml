@@ -31,3 +31,5 @@ jobs:
           . .venv/bin/activate
           make doc-refactor-run
           make doc-refactor-test
+
+# End of file
