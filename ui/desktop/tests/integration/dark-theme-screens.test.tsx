@@ -107,7 +107,7 @@ describe('Dark Theme Screens Integration Tests', () => {
       rerender(
         <ThemeProvider defaultTheme="dark">
           <ToastProvider>
-            <NewEvent onNavigate={mockNavigate} />
+          <NewEvent onNavigate={mockNavigate} />
           </ToastProvider>
         </ThemeProvider>
       );
