@@ -397,7 +397,7 @@ fn test_discovery_scan_mixed_types() -> Result<()> {
     // Simulate discovery scan
     let start = Instant::now();
     let scan_duration = simulate_discovery_scan(&conn, total_nodes)?;
-    let total_duration = start.elapsed();
+    let _total_duration = start.elapsed();
 
     // Performance assertion: scan should complete in <5s
     assert!(
