@@ -1,6 +1,8 @@
 //! Integration test for poll_global_registries function
 //! Tests T024: Global registry polling + HTTP reachability checks
 
+#![cfg(feature = "desktop")]
+
 use anyhow::Result;
 use core_lib::storage;
 use std::sync::Arc;
