@@ -3,11 +3,27 @@
  * Verifies Desktop-specific keyboard navigation is preserved.
  */
 
+import React from 'react';
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { App } from '@/App';
 import { ThemeProvider } from '@/components/system/ThemeProvider';
 import { ToastProvider } from '@/components/system/Toaster';
+
+// Mock window.matchMedia for jsdom
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
 
 describe('Keyboard Shortcuts Integration Tests', () => {
   let container: HTMLElement;
@@ -15,6 +31,7 @@ describe('Keyboard Shortcuts Integration Tests', () => {
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
+    localStorage.clear();
   });
 
   afterEach(() => {

@@ -7,6 +7,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { render, screen } from '@testing-library/react';
 import { ThemeProvider } from '@/components/system/ThemeProvider';
+import { ToastProvider } from '@/components/system/Toaster';
 import { Dashboard } from '@/pages/Dashboard';
 import { NewEvent } from '@/pages/NewEvent';
 import { ContextEditor } from '@/pages/ContextEditor';
@@ -20,6 +21,21 @@ import { EventSummary } from '@/pages/EventSummary';
 // Mock navigation function
 const mockNavigate = jest.fn();
 
+// Mock window.matchMedia for jsdom
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
 describe('Dark Theme Screens Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -28,7 +44,11 @@ describe('Dark Theme Screens Integration Tests', () => {
 
   const renderWithDarkTheme = (component: React.ReactElement) => {
     return render(
-      <ThemeProvider defaultTheme="dark">{component}</ThemeProvider>
+      <ThemeProvider defaultTheme="dark">
+        <ToastProvider>
+          {component}
+        </ToastProvider>
+      </ThemeProvider>
     );
   };
 
@@ -86,7 +106,9 @@ describe('Dark Theme Screens Integration Tests', () => {
 
       rerender(
         <ThemeProvider defaultTheme="dark">
-          <NewEvent onNavigate={mockNavigate} />
+          <ToastProvider>
+            <NewEvent onNavigate={mockNavigate} />
+          </ToastProvider>
         </ThemeProvider>
       );
       expect(document.documentElement.classList.contains('dark')).toBe(true);
