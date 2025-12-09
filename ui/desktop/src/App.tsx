@@ -119,6 +119,7 @@ export const App: React.FC = () => {
   const renderScreen = () => {
     // Flag-based conditional routing (Android savedStateHandle equivalent)
     // If viewJudgments is true and we're navigating to events, show judgments instead
+    // But only if we have an eventId - otherwise show events list for selection
     if (viewJudgments && currentScreen === 'events' && (navigationState.eventId || selectedEventIdForJudgments)) {
       const eventId = navigationState.eventId || (selectedEventIdForJudgments ? parseInt(selectedEventIdForJudgments) : undefined);
       return <Judgments eventId={eventId} onNavigate={handleNavigate} />;
@@ -137,11 +138,13 @@ export const App: React.FC = () => {
       case 'event-summary':
         return <EventSummary eventId={navigationState.eventId} onNavigate={handleNavigate} />;
       case 'events':
-        // If viewJudgments is true but no eventId, show events list (user will select event)
-        return <Events onNavigate={handleNavigate} />;
+        // Show events list - if viewJudgments is true, clicking an event will navigate to judgments
+        return <Events onNavigate={handleNavigate} navigationState={navigationState} />;
       case 'judgments':
         // Explicit judgments screen (can be navigated to directly)
-        return <Judgments eventId={navigationState.eventId} onNavigate={handleNavigate} />;
+        // Use eventId from navigation state or from selectedEventIdForJudgments
+        const eventId = navigationState.eventId || (selectedEventIdForJudgments ? parseInt(selectedEventIdForJudgments) : undefined);
+        return <Judgments eventId={eventId} onNavigate={handleNavigate} />;
       case 'overall-summary':
         return <OverallSummary />;
       case 'training-results':

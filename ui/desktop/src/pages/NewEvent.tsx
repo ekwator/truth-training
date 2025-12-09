@@ -5,7 +5,7 @@
  * Route: event/create (new-event)
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Screen } from '@/components/layout/TopMenuBar';
 import { useNavigationStore } from '@/stores/navigation';
 import { useEventsStore } from '@/stores/events';
@@ -13,6 +13,7 @@ import { ContextPicker } from '@/components/context/ContextPicker';
 import { DatePickerField } from '@/components/DatePickerField';
 import { validateDateRange } from '@/utils/dateNormalization';
 import { getEmoji } from '@/utils/emojiMapping';
+import { useToast } from '@/components/system/Toaster';
 
 interface NavigationState {
   eventId?: number;
@@ -30,6 +31,7 @@ export const NewEvent: React.FC<NewEventProps> = ({ onNavigate }) => {
     clearTemplateSelection 
   } = useNavigationStore();
   const { createEvent } = useEventsStore();
+  const { addToast } = useToast();
 
   // Form state
   const [name, setName] = useState('');
@@ -43,24 +45,67 @@ export const NewEvent: React.FC<NewEventProps> = ({ onNavigate }) => {
   const [timestampEnd, setTimestampEnd] = useState<number | null>(null);
   const [vector, setVector] = useState<boolean>(false); // false = Outgoing, true = Incoming
 
+  // Track which fields were populated from template for visual feedback
+  const [templateAppliedFields, setTemplateAppliedFields] = useState<Set<string>>(new Set());
+  const previousTemplateContextRef = useRef<typeof selectedTemplateContext>(null);
+
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   // Template selection flow: Observe selectedTemplateContext (Android LaunchedEffect equivalent)
   useEffect(() => {
-    if (selectedTemplateContext) {
+    // Only process if template context changed and is not null
+    if (selectedTemplateContext && selectedTemplateContext !== previousTemplateContextRef.current) {
+      const appliedFields = new Set<string>();
+      
       // Update form fields with template context (Android algorithm step 8-9)
-      setCategoryId(selectedTemplateContext.categoryId);
-      setFormaId(selectedTemplateContext.formaId);
-      setCauseId(selectedTemplateContext.causeId);
-      setDevelopId(selectedTemplateContext.developId);
-      setEffectId(selectedTemplateContext.effectId);
+      if (selectedTemplateContext.categoryId !== undefined) {
+        setCategoryId(selectedTemplateContext.categoryId);
+        appliedFields.add('category');
+      }
+      if (selectedTemplateContext.formaId !== undefined) {
+        setFormaId(selectedTemplateContext.formaId);
+        appliedFields.add('forma');
+      }
+      if (selectedTemplateContext.causeId !== undefined) {
+        setCauseId(selectedTemplateContext.causeId);
+        appliedFields.add('cause');
+      }
+      if (selectedTemplateContext.developId !== undefined) {
+        setDevelopId(selectedTemplateContext.developId);
+        appliedFields.add('develop');
+      }
+      if (selectedTemplateContext.effectId !== undefined) {
+        setEffectId(selectedTemplateContext.effectId);
+        appliedFields.add('effect');
+      }
+      
+      // Store applied fields for visual feedback
+      setTemplateAppliedFields(appliedFields);
+      
+      // Show visual feedback (toast notification)
+      if (appliedFields.size > 0) {
+        addToast({
+          type: 'success',
+          title: 'Template Applied',
+          message: `Template context fields have been populated (${appliedFields.size} field${appliedFields.size !== 1 ? 's' : ''})`,
+          duration: 3000,
+        });
+      }
+      
+      // Clear visual feedback after 3 seconds
+      setTimeout(() => {
+        setTemplateAppliedFields(new Set());
+      }, 3000);
+      
+      // Store current context to prevent duplicate processing
+      previousTemplateContextRef.current = selectedTemplateContext;
       
       // Clear template selection after use (Android algorithm step 10)
       clearTemplateSelection();
     }
-  }, [selectedTemplateContext, clearTemplateSelection]);
+  }, [selectedTemplateContext, clearTemplateSelection, addToast]);
 
   const handleSelectTemplate = () => {
     // Android algorithm step 1-2: Set flag and navigate
@@ -206,41 +251,51 @@ export const NewEvent: React.FC<NewEventProps> = ({ onNavigate }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ContextPicker
-                label={`${getEmoji('fields', 'category')} Category`}
-                value={categoryId}
-                onChange={setCategoryId}
-                error={errors.categoryId}
-                required
-              />
-              <ContextPicker
-                label={`${getEmoji('fields', 'forma')} Forma`}
-                value={formaId}
-                onChange={setFormaId}
-                error={errors.formaId}
-                required
-              />
-              <ContextPicker
-                label={`${getEmoji('fields', 'cause')} Cause`}
-                value={causeId}
-                onChange={setCauseId}
-                error={errors.causeId}
-                required
-              />
-              <ContextPicker
-                label={`${getEmoji('fields', 'develop')} Develop`}
-                value={developId}
-                onChange={setDevelopId}
-                error={errors.developId}
-                required
-              />
-              <ContextPicker
-                label={`${getEmoji('fields', 'effect')} Effect`}
-                value={effectId}
-                onChange={setEffectId}
-                error={errors.effectId}
-                required
-              />
+              <div className={templateAppliedFields.has('category') ? 'ring-2 ring-green-500 dark:ring-green-400 rounded-lg p-1 transition-all' : ''}>
+                <ContextPicker
+                  label={`${getEmoji('fields', 'category')} Category`}
+                  value={categoryId}
+                  onChange={setCategoryId}
+                  error={errors.categoryId}
+                  required
+                />
+              </div>
+              <div className={templateAppliedFields.has('forma') ? 'ring-2 ring-green-500 dark:ring-green-400 rounded-lg p-1 transition-all' : ''}>
+                <ContextPicker
+                  label={`${getEmoji('fields', 'forma')} Forma`}
+                  value={formaId}
+                  onChange={setFormaId}
+                  error={errors.formaId}
+                  required
+                />
+              </div>
+              <div className={templateAppliedFields.has('cause') ? 'ring-2 ring-green-500 dark:ring-green-400 rounded-lg p-1 transition-all' : ''}>
+                <ContextPicker
+                  label={`${getEmoji('fields', 'cause')} Cause`}
+                  value={causeId}
+                  onChange={setCauseId}
+                  error={errors.causeId}
+                  required
+                />
+              </div>
+              <div className={templateAppliedFields.has('develop') ? 'ring-2 ring-green-500 dark:ring-green-400 rounded-lg p-1 transition-all' : ''}>
+                <ContextPicker
+                  label={`${getEmoji('fields', 'develop')} Develop`}
+                  value={developId}
+                  onChange={setDevelopId}
+                  error={errors.developId}
+                  required
+                />
+              </div>
+              <div className={templateAppliedFields.has('effect') ? 'ring-2 ring-green-500 dark:ring-green-400 rounded-lg p-1 transition-all' : ''}>
+                <ContextPicker
+                  label={`${getEmoji('fields', 'effect')} Effect`}
+                  value={effectId}
+                  onChange={setEffectId}
+                  error={errors.effectId}
+                  required
+                />
+              </div>
             </div>
           </div>
 

@@ -1400,44 +1400,81 @@ pub fn check_duplicate_context(
     conn: &Connection,
     new_ctx: &crate::models::NewContext,
 ) -> Result<bool, CoreError> {
+    let count = count_duplicate_templates(
+        conn,
+        new_ctx.category_id,
+        new_ctx.forma_id,
+        new_ctx.cause_id,
+        new_ctx.develop_id,
+        new_ctx.effect_id,
+        None,
+    )?;
+    Ok(count > 0)
+}
+
+/// Count duplicate templates with identical non-NULL context fields
+/// Returns count of duplicate templates (excluding exclude_id if provided)
+/// Only compares non-NULL fields; NULL values are ignored
+/// Matches Android ContextTemplateDao.kt countDuplicateTemplates SQL logic
+pub fn count_duplicate_templates(
+    conn: &Connection,
+    category_id: Option<i64>,
+    forma_id: Option<i64>,
+    cause_id: Option<i64>,
+    develop_id: Option<i64>,
+    effect_id: Option<i64>,
+    exclude_id: Option<i64>,
+) -> Result<i64, CoreError> {
     // Check if at least one context field is non-NULL (matches Android hasContextFields)
-    let has_context_fields = new_ctx.category_id.is_some()
-        || new_ctx.forma_id.is_some()
-        || new_ctx.cause_id.is_some()
-        || new_ctx.develop_id.is_some()
-        || new_ctx.effect_id.is_some();
+    let has_context_fields = category_id.is_some()
+        || forma_id.is_some()
+        || cause_id.is_some()
+        || develop_id.is_some()
+        || effect_id.is_some();
 
     // If all fields are NULL, no duplicate check (matches Android behavior)
     if !has_context_fields {
-        return Ok(false);
+        return Ok(0);
     }
 
     // Build WHERE clause matching Android SQL logic:
-    // WHERE (:categoryId IS NULL OR category_id = :categoryId)
-    // This means: if new value is NULL, skip check (always true), else check equality
-    let query = r#"
+    // WHERE (category_id IS NULL OR category_id = ?) AND (category_id IS NOT NULL OR ? IS NULL)
+    // This means: NULL-aware comparison - only non-NULL fields are compared
+    let mut query = String::from(
+        r#"
         SELECT COUNT(*) FROM context
         WHERE 
-            (?1 IS NULL OR category_id = ?1)
-            AND (?2 IS NULL OR forma_id = ?2)
-            AND (?3 IS NULL OR cause_id = ?3)
-            AND (?4 IS NULL OR develop_id = ?4)
-            AND (?5 IS NULL OR effect_id = ?5)
-    "#;
+            (category_id IS NULL OR category_id = ?1)
+            AND (category_id IS NOT NULL OR ?1 IS NULL)
+            AND (forma_id IS NULL OR forma_id = ?2)
+            AND (forma_id IS NOT NULL OR ?2 IS NULL)
+            AND (cause_id IS NULL OR cause_id = ?3)
+            AND (cause_id IS NOT NULL OR ?3 IS NULL)
+            AND (develop_id IS NULL OR develop_id = ?4)
+            AND (develop_id IS NOT NULL OR ?4 IS NULL)
+            AND (effect_id IS NULL OR effect_id = ?5)
+            AND (effect_id IS NOT NULL OR ?5 IS NULL)
+    "#
+    );
+
+    // Exclude current template ID when checking for updates
+    if let Some(exclude) = exclude_id {
+        query.push_str(" AND id != ?6");
+        let count: i64 = conn.query_row(
+            &query,
+            params![category_id, forma_id, cause_id, develop_id, effect_id, exclude],
+            |row| row.get(0),
+        )?;
+        return Ok(count);
+    }
 
     let count: i64 = conn.query_row(
-        query,
-        params![
-            new_ctx.category_id,
-            new_ctx.forma_id,
-            new_ctx.cause_id,
-            new_ctx.develop_id,
-            new_ctx.effect_id,
-        ],
+        &query,
+        params![category_id, forma_id, cause_id, develop_id, effect_id],
         |row| row.get(0),
     )?;
 
-    Ok(count > 0)
+    Ok(count)
 }
 
 /// Match event fields to a context template using non-NULL field comparison

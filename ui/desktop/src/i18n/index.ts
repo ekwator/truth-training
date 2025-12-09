@@ -444,25 +444,25 @@ export const setLocale = async (_locale: string, _persistToBackend: boolean = tr
   localStorage.setItem('truth-locale', englishLocale);
   document.documentElement.lang = englishLocale;
   document.documentElement.dir = 'ltr';
-  
+
   // Persist to backend if in Tauri (always save as 'en')
   if (_persistToBackend && typeof window !== 'undefined') {
-    try {
-      const isTauri = (window as any).__TAURI__ !== undefined;
-      if (isTauri) {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const currentConfig = await invoke('get_app_config') as Record<string, any>;
-        
-        const updatedConfig = {
-          mode: currentConfig?.mode || 'core',
-          server_ip: currentConfig?.server_ip || '127.0.0.1',
-          server_port: currentConfig?.server_port || 8080,
-          nearby_sync: currentConfig?.nearby_sync ?? false,
-          nearby_interval_ms: currentConfig?.nearby_interval_ms || 3000,
+      try {
+        const isTauri = (window as any).__TAURI__ !== undefined;
+        if (isTauri) {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const currentConfig = await invoke('get_app_config') as Record<string, any>;
+          
+          const updatedConfig = {
+            mode: currentConfig?.mode || 'core',
+            server_ip: currentConfig?.server_ip || '127.0.0.1',
+            server_port: currentConfig?.server_port || 8080,
+            nearby_sync: currentConfig?.nearby_sync ?? false,
+            nearby_interval_ms: currentConfig?.nearby_interval_ms || 3000,
           locale: englishLocale, // Always English
-        };
-        
-        await invoke('save_app_config', { config: updatedConfig });
+          };
+          
+          await invoke('save_app_config', { config: updatedConfig });
       }
     } catch (error) {
       console.warn('Failed to persist locale to backend:', error);

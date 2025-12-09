@@ -1,11 +1,13 @@
 use dirs;
 use log::{info, error};
 use rusqlite::{params, Transaction};
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use std::fs;
 use std::path::PathBuf;
 use tauri::{command, State};
 use crate::storage::Db;
+use core_lib::storage as truth_storage;
+use core_lib::models::Context;
 
 #[derive(Debug, Serialize)]
 pub struct KBItem {
@@ -51,6 +53,52 @@ fn parse_kb_from_markdown(md: &str) -> Vec<KBItem> {
         }
     }
     items
+}
+
+/// Entity name structure for frontend
+#[derive(Debug, Serialize)]
+pub struct EntityName {
+    pub id: i64,
+    pub name: String,
+}
+
+/// Get entity names by type (category, forma, cause, develop, effect)
+/// Used by frontend for entity name resolution
+#[command]
+pub async fn get_entity_names(
+    entity_type: String,
+    db: State<'_, Db>,
+) -> Result<Vec<EntityName>, String> {
+    let conn = db.0.lock();
+    
+    let query = match entity_type.as_str() {
+        "category" => "SELECT id, name FROM category ORDER BY id",
+        "forma" => "SELECT id, name FROM forma ORDER BY id",
+        "cause" => "SELECT id, name FROM cause ORDER BY id",
+        "develop" => "SELECT id, name FROM develop ORDER BY id",
+        "effect" => "SELECT id, name FROM effect ORDER BY id",
+        _ => return Err(format!("Unknown entity type: {}", entity_type)),
+    };
+    
+    let mut stmt = conn
+        .prepare(query)
+        .map_err(|e| format!("Failed to prepare query: {}", e))?;
+    
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(EntityName {
+                id: row.get(0)?,
+                name: row.get(1)?,
+            })
+        })
+        .map_err(|e| format!("Failed to query entities: {}", e))?;
+    
+    let mut entities = Vec::new();
+    for row in rows {
+        entities.push(row.map_err(|e| format!("Failed to read row: {}", e))?);
+    }
+    
+    Ok(entities)
 }
 
 #[command]
@@ -396,57 +444,13 @@ pub async fn reseed_knowledge_base(
     
     let mut conn = db.0.lock();
     
-    // Start transaction for atomicity
-    let tx = conn.transaction()
-        .map_err(|e| format!("Failed to start transaction: {}", e))?;
-
-    // Step 1: Create temporary tables
-    if let Err(e) = create_temp_tables(&tx) {
-        let _ = tx.rollback();
-        error!("Reseeding failed at temp table creation: {}", e);
-        return Ok(ReseedResult {
-            success: false,
-            message: format!("Reseeding failed: {}", e),
-            tables_updated: vec![],
-        });
-    }
-
-    // Step 2: Fill temporary tables with English-only data
-    if let Err(e) = fill_temp_tables(&tx) {
-        let _ = tx.rollback();
-        error!("Reseeding failed at data insertion: {}", e);
-        return Ok(ReseedResult {
-            success: false,
-            message: format!("Reseeding failed: {}", e),
-            tables_updated: vec![],
-        });
-    }
-
-    // Step 3: Validate FK integrity
-    if let Err(e) = validate_temp_table_fks(&tx) {
-        let _ = tx.rollback();
-        error!("Reseeding failed at FK validation: {}", e);
-        return Ok(ReseedResult {
-            success: false,
-            message: format!("Reseeding failed: {}", e),
-            tables_updated: vec![],
-        });
-    }
-
-    // Step 4: Atomic swap
-    if let Err(e) = atomic_swap(&tx) {
-        let _ = tx.rollback();
-        error!("Reseeding failed at atomic swap: {}", e);
-        return Ok(ReseedResult {
-            success: false,
-            message: format!("Reseeding failed: {}", e),
-            tables_updated: vec![],
-        });
-    }
-
-    // Commit transaction
-    tx.commit()
-        .map_err(|e| format!("Failed to commit transaction: {}", e))?;
+    // Use core function to reseed knowledge base with English locale
+    // The core function handles transaction safety internally
+    truth_storage::seed_knowledge_base(&mut conn, "en")
+        .map_err(|e| {
+            error!("Reseeding failed: {}", e);
+            format!("Reseeding failed: {}", e)
+        })?;
 
     // Note: Frontend should refresh knowledge base data after successful reseeding
     // Event emission can be handled via separate mechanism if needed
