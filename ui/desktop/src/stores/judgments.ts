@@ -105,7 +105,7 @@ export const useJudgmentsStore = create<JudgmentsState>()(
         set({ loading: true, error: null });
         
         try {
-          // Note: Update endpoint not implemented in API service yet
+          // TODO: Implement update endpoint in API service
           // This would call ApiService.updateJudgment(id, judgmentData)
           
           // For now, just update local state
@@ -127,7 +127,7 @@ export const useJudgmentsStore = create<JudgmentsState>()(
         set({ loading: true, error: null });
         
         try {
-          // Note: Delete endpoint not implemented in API service yet
+          // TODO: Implement delete endpoint in API service
           // This would call ApiService.deleteJudgment(id)
           
           // For now, just remove from local state

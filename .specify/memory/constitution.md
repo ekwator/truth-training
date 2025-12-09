@@ -2,12 +2,12 @@
 
 <!--
 Sync Impact Report
-Version: 2.1.0 → 2.2.0
-Modified Principles: New Rule 1–7 block replaced prior implicit guidance
-Added Sections: Summary, Formal Rules, Change History table
-Removed Sections: Legacy trailing version banner only
-Templates: [.specify/templates/plan-template.md](.specify/templates/plan-template.md) ✅, [.specify/templates/spec-template.md](.specify/templates/spec-template.md) ✅, [.specify/templates/tasks-template.md](.specify/templates/tasks-template.md) ✅, .specify/templates/commands (dir missing) ⚠ document added follow-up
-Follow-ups: TODO(COMMAND_TEMPLATES): Recreate or document actual command templates under .specify/templates/commands to keep references resolvable.
+Version: 2.2.0 → 2.3.0
+Modified Principles: None
+Added Sections: Rule 8 — UI Desktop Emoji Accessibility Requirement
+Removed Sections: None
+Templates: [.specify/templates/plan-template.md](.specify/templates/plan-template.md) ⚠ pending review, [.specify/templates/spec-template.md](.specify/templates/spec-template.md) ⚠ pending review, [.specify/templates/tasks-template.md](.specify/templates/tasks-template.md) ⚠ pending review
+Follow-ups: TODO(UI_EMOJI_IMPLEMENTATION): Update Desktop UI implementation to include emojis in all interface elements. Update spec/09-ux-guidelines.md and docs/UI_Desktop.md to reflect emoji requirements.
 -->
 
 ## Summary
@@ -57,6 +57,14 @@ Truth Training orchestrates a cryptographically verifiable, anonymous truth netw
 1. `[SECURITY.md](SECURITY.md)` defines the security model; this constitution requires periodic dependency scans (Dependabot/CodeQL or equivalent) plus manual `cargo audit`, `npm audit`, and Android/Desktop security tooling runs before releases.
 2. Remediation SLAs: Critical vulnerabilities addressed within 48 hours, High within 7 days, Medium within 14 days, and documentation recorded in issues/specs.
 3. Privacy rules from `[SECURITY.md](SECURITY.md)` (no persistent identity, no telemetry, no plaintext secrets) are binding on every platform and must be validated during code review and release automation.
+
+### Rule 8 — UI Desktop Emoji Accessibility Requirement
+
+1. All Desktop UI interface elements MUST be accompanied by appropriate emojis to improve understanding of element purpose for users who have difficulty understanding the interface language.
+2. Emojis must be semantically meaningful and directly related to the function or purpose of the interface element (buttons, menu items, navigation links, form labels, status indicators, etc.).
+3. Emoji selection must be consistent across the application and follow established patterns for similar functionality.
+4. This requirement applies to all Desktop UI surfaces (Linux/Windows/macOS) and must be validated during UI development, code review, and release automation.
+5. Rationale: Emojis provide universal visual cues that transcend language barriers, making the interface more accessible to users regardless of their proficiency in the interface language.
 
 ## Philosophical Foundation
 
@@ -228,7 +236,8 @@ This constitution supersedes other practices. Amendments require documentation, 
 
 | Date       | Version | Author     | Notes                                                                                                    | Deviations vs README/CONTRIBUTING/SECURITY/CHANGELOG |
 |------------|---------|------------|----------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| 2025-12-09 | 2.3.0   | Cursor AI  | Added Rule 8 — UI Desktop Emoji Accessibility Requirement for improved interface comprehension.        | None; aligned with referenced docs                   |
 | 2025-12-01 | 2.2.0   | Cursor AI  | Added explicit cross-platform scope, release automation, dependency/DB policies, Spec-Kit enforcement.  | None; aligned with referenced docs                   |
 | 2025-10-31 | 2.1.0   | Maintainers | Prior governance uplift aligning constitution with anonymous confession and collective intelligence.     | Not recorded                                          |
 
-**Version**: 2.2.0 | **Ratified**: 2025-10-31 | **Last Amended**: 2025-12-01
+**Version**: 2.3.0 | **Ratified**: 2025-10-31 | **Last Amended**: 2025-12-09

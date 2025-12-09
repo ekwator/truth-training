@@ -39,3 +39,44 @@ export function normalizeTimestampToStartOfDay(timestamp: number): number {
   return Math.floor(normalized.getTime() / 1000); // Convert back to seconds
 }
 
+/**
+ * Validates date range (End >= Start after normalization).
+ * Matches Android validation exactly.
+ * 
+ * @param startTimestamp - Start timestamp (Unix timestamp in seconds or milliseconds)
+ * @param endTimestamp - End timestamp (Unix timestamp in seconds or milliseconds, can be null)
+ * @returns Validation result with error message if invalid
+ * 
+ * @example
+ * ```typescript
+ * const result = validateDateRange(startTimestamp, endTimestamp);
+ * if (!result.valid) {
+ *   // Display error: result.error
+ * }
+ * ```
+ */
+export function validateDateRange(
+  startTimestamp: number,
+  endTimestamp: number | null
+): { valid: boolean; error?: string } {
+  // Normalize timestamps (handle both seconds and milliseconds)
+  const startMs = startTimestamp < 1e12 ? startTimestamp * 1000 : startTimestamp;
+  const endMs = endTimestamp !== null 
+    ? (endTimestamp < 1e12 ? endTimestamp * 1000 : endTimestamp)
+    : null;
+
+  const normalizedStart = normalizeToStartOfDay(new Date(startMs));
+  const normalizedEnd = endMs !== null 
+    ? normalizeToStartOfDay(new Date(endMs))
+    : null;
+
+  if (normalizedEnd !== null && normalizedEnd < normalizedStart) {
+    return {
+      valid: false,
+      error: 'End Timestamp cannot be less than Start Timestamp',
+    };
+  }
+
+  return { valid: true };
+}
+

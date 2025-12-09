@@ -77,13 +77,14 @@ export function validateEvent(
   getErrorMessage?: (key: string) => string
 ): EventValidationResult {
   const errors: ValidationError[] = [];
-  const t = getErrorMessage || ((key: string) => key);
+  // English-only interface - use direct English strings
+  const getMessage = getErrorMessage || ((key: string) => key);
 
   // Name validation
   if (!eventData.name || eventData.name.trim() === '') {
     errors.push({
       field: 'name',
-      message: t('validation.eventNameRequired'),
+      message: getMessage('Event name is required'),
     });
   }
 
@@ -91,7 +92,7 @@ export function validateEvent(
   if (!eventData.description || eventData.description.trim() === '') {
     errors.push({
       field: 'description',
-      message: t('validation.eventDescriptionRequired'),
+      message: getMessage('Event description is required'),
     });
   }
 
@@ -99,35 +100,35 @@ export function validateEvent(
   if (eventData.categoryId === null || eventData.categoryId === undefined) {
     errors.push({
       field: 'categoryId',
-      message: t('validation.categoryRequired'),
+      message: getMessage('Category is required'),
     });
   }
 
   if (eventData.formaId === null || eventData.formaId === undefined) {
     errors.push({
       field: 'formaId',
-      message: t('validation.formaRequired'),
+      message: getMessage('Forma is required'),
     });
   }
 
   if (eventData.causeId === null || eventData.causeId === undefined) {
     errors.push({
       field: 'causeId',
-      message: t('validation.causeRequired'),
+      message: getMessage('Cause is required'),
     });
   }
 
   if (eventData.developId === null || eventData.developId === undefined) {
     errors.push({
       field: 'developId',
-      message: t('validation.developRequired'),
+      message: getMessage('Develop is required'),
     });
   }
 
   if (eventData.effectId === null || eventData.effectId === undefined) {
     errors.push({
       field: 'effectId',
-      message: t('validation.effectRequired'),
+      message: getMessage('Effect is required'),
     });
   }
 
@@ -142,7 +143,7 @@ export function validateEvent(
   } else {
     errors.push({
       field: 'timestampStart',
-      message: t('validation.startTimestampRequired'),
+      message: getMessage('Start timestamp is required'),
     });
   }
 
@@ -161,7 +162,7 @@ export function validateEvent(
     if (normalizedEnd < normalizedStart) {
       errors.push({
         field: 'timestampEnd',
-        message: t('validation.endTimestampBeforeStart'),
+        message: getMessage('End timestamp cannot be less than start timestamp'),
       });
     }
     // Note: End can be equal to Start (no error in that case)
@@ -191,13 +192,14 @@ export function validateTemplate(
   getErrorMessage?: (key: string) => string
 ): TemplateValidationResult {
   const errors: ValidationError[] = [];
-  const t = getErrorMessage || ((key: string) => key);
+  // English-only interface - use direct English strings
+  const getMessage = getErrorMessage || ((key: string) => key);
 
   // Name validation
   if (!templateData.name || templateData.name.trim() === '') {
     errors.push({
       field: 'name',
-      message: t('validation.templateNameRequired'),
+      message: getMessage('Template name is required'),
     });
   }
 
@@ -205,35 +207,35 @@ export function validateTemplate(
   if (templateData.categoryId === null || templateData.categoryId === undefined) {
     errors.push({
       field: 'categoryId',
-      message: t('validation.categoryRequired'),
+      message: getMessage('Category is required'),
     });
   }
 
   if (templateData.formaId === null || templateData.formaId === undefined) {
     errors.push({
       field: 'formaId',
-      message: t('validation.formaRequired'),
+      message: getMessage('Forma is required'),
     });
   }
 
   if (templateData.causeId === null || templateData.causeId === undefined) {
     errors.push({
       field: 'causeId',
-      message: t('validation.causeRequired'),
+      message: getMessage('Cause is required'),
     });
   }
 
   if (templateData.developId === null || templateData.developId === undefined) {
     errors.push({
       field: 'developId',
-      message: t('validation.developRequired'),
+      message: getMessage('Develop is required'),
     });
   }
 
   if (templateData.effectId === null || templateData.effectId === undefined) {
     errors.push({
       field: 'effectId',
-      message: t('validation.effectRequired'),
+      message: getMessage('Effect is required'),
     });
   }
 

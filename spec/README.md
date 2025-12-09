@@ -377,6 +377,7 @@ cargo test --target aarch64-apple-ios --features mobile
 | 22 | [22-function_core.md](22-function_core.md) | Functional Specification: Rust Core Modules |
 | 23 | [23-function_desktop.md](23-function_desktop.md) | Functional Specification: Desktop UI (TypeScript/React + Tauri) |
 | 24 | [24-function_mobile_android.md](24-function_mobile_android.md) | Functional Specification: Android Mobile Client (Kotlin) |
+| 25 | [25-emoji-mapping-desktop.md](25-emoji-mapping-desktop.md) | Emoji Mapping Specification: Desktop UI |
 
 ## Integration Guides
 

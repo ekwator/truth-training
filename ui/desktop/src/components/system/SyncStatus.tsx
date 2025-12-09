@@ -1,4 +1,5 @@
 import React from 'react';
+import { getEmoji } from '@/utils/emojiMapping';
 
 interface SyncStatusProps {
   isOnline: boolean;
@@ -14,9 +15,9 @@ export const SyncStatus: React.FC<SyncStatusProps> = ({ isOnline, pendingOperati
   };
 
   const getStatusText = () => {
-    if (!isOnline) return 'Offline';
-    if (pendingOperations > 0) return `${pendingOperations} pending`;
-    return 'Synced';
+    if (!isOnline) return `${getEmoji('status', 'offline')} Offline`;
+    if (pendingOperations > 0) return `${getEmoji('status', 'syncing')} ${pendingOperations} pending`;
+    return `${getEmoji('status', 'online')} Synced`;
   };
 
 

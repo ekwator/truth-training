@@ -44,3 +44,30 @@ export function getEntityNameById<T>(
   return id.toString();
 }
 
+/**
+ * Resolve context field ID to name, fallback to ID if not found.
+ * Matches Android algorithm exactly.
+ * 
+ * @param fieldType - Type of context field (category, forma, cause, develop, effect)
+ * @param id - Context field ID to resolve
+ * @param entities - Array of entities with id and name properties
+ * @returns Entity name if found, ID as string if not found
+ * 
+ * @example
+ * ```typescript
+ * const categoryName = resolveContextFieldName(
+ *   'category',
+ *   event.categoryId,
+ *   categories
+ * );
+ * ```
+ */
+export function resolveContextFieldName(
+  _fieldType: 'category' | 'forma' | 'cause' | 'develop' | 'effect',
+  id: number,
+  entities: Array<{ id: number; name: string }>
+): string {
+  const entity = entities.find((e) => e.id === id);
+  return entity ? entity.name : `${id}`;
+}
+

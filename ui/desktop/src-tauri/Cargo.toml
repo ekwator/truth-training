@@ -8,10 +8,10 @@ repository = "https://github.com/ekwator/truth-training"
 edition = "2021"
 
 [build-dependencies]
-tauri-build = { version = "2.5.1", features = [] }
+tauri-build = { version = "2.0.0-rc.13", features = [] }
 
 [dependencies]
-tauri = { version = "2.5.1", features = [] }
+tauri = { version = "2.0.0-rc.13", features = [] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "1.0", features = ["v4"] }

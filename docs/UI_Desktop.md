@@ -2,7 +2,7 @@
 Truth UI Desktop v1.0.0
 Compatible with Core/Server v1.0.0
 
-> Note: This UI uses a text-only interface (no graphical icons) for all functionality unless otherwise stated.
+> Note: This UI uses emoji-enhanced interface elements for all functionality. All UI elements include appropriate emojis for accessibility (constitutional requirement Rule 8). Emojis are semantically meaningful and directly related to element function.
 
 > **For comprehensive functional specification, see:** [spec/23-function_desktop.md](../spec/23-function_desktop.md)
 
@@ -15,14 +15,14 @@ Compatible with Core/Server v1.0.0
 This document summarizes the Desktop UI (Tauri) implementation, which has been synchronized with the Android UI implementation to ensure visual structure, navigation, rendering behavior, component states, and localization logic parity while preserving all Desktop-specific functional features.
 
 ### Key Features
-- **Text-Only Interface**: No icons, emojis, or graphical assets - pure text and structured layout
+- **Emoji-Enhanced Interface**: All UI elements include appropriate emojis for accessibility (constitutional requirement Rule 8). Emojis are semantically meaningful and directly related to element function, providing universal visual cues that transcend language barriers.
 - **SQLite Persistence**: Events, impacts, summaries, and judgments stored in SQLite (rusqlite 0.31, bundled)
 - **Offline-First**: Local-wins conflict resolution with background sync when online
 - **Knowledge Base Integration**: Dynamic context selection from [docs/Data_Schema.md](Data_Schema.md)
 - **Context Template System (v1.0.0)**: Reusable context templates with template selection, matching, and duplicate detection
 - **Android UI Synchronization**: Visual structure, navigation patterns, component behavior, and localization logic synchronized with Android implementation
 - **Flag-Based Navigation**: Template selection flow and view judgments flow use flag-based conditional routing matching Android patterns
-- **Localization Support**: Full RU/EN language switching with database re-seeding and context template preservation
+- **English-Only Interface**: Localization support has been removed. The interface is English-only for consistency and simplicity.
 - **Validation Rules Parity**: Form validation rules match Android exactly (required fields, date validation, duplicate detection)
 
 ### Data Models
@@ -42,9 +42,9 @@ This document summarizes the Desktop UI (Tauri) implementation, which has been s
 - **Configuration**: `get_app_config`, `save_app_config`, `core_status`, `test_http_connection`
 
 ### Navigation & Shortcuts
-- **Top Menu Bar**: [Home] | [New Event] | [Context Editor] | [Event Summary] | [Overall Summary] | [Training Results] | [Settings]
+- **Top Menu Bar**: Navigation links with emoji-enhanced labels (🏠 Dashboard | ➕ Create Event | 📝 Context Editor | Event Summary | 📊 Overall Summary | 📈 Training Results | ⚙️ Settings)
 - **Keyboard Shortcuts**: Alt+1 (Home), Alt+2 (New Event), Alt+3 (Context Editor), Alt+4 (Event Summary), Alt+5 (Overall Summary), Alt+6 (Training Results), Alt+8 (Settings)
-- **Text-Only Design**: No icons, emojis, or graphical assets - pure text and structured layout
+- **Emoji-Enhanced Design**: All UI elements include appropriate emojis for accessibility (constitutional requirement Rule 8)
 
 ### Context Editor Screen (v1.0.0)
 

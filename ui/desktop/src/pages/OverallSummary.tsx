@@ -1,137 +1,62 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { t } from '@/i18n';
+/**
+ * Overall Summary Screen
+ * Matches Android Overall Summary screen layout and behavior.
+ * Route: overall-summary
+ */
 
-type OverallMetrics = {
-  total_events: number;
-  average_impact_level: number;
-  last_updated: string | null;
-};
-
-type EventRow = {
-  event: string;
-  summary: string;
-  impact: number | null;
-  date: string;
-};
-
-function isTauri() {
-  return typeof window !== 'undefined' && '__TAURI__' in window;
-}
+import React, { useEffect, useState } from 'react';
+import { ApiService } from '@/services/api';
+import { getEmoji } from '@/utils/emojiMapping';
 
 export const OverallSummary: React.FC = () => {
-  const [metrics, setMetrics] = useState<OverallMetrics | null>(null);
-  const [rows, setRows] = useState<EventRow[]>([]); // Reserved for future use
+  const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  void rows; // Suppress unused warning
 
-  const refresh = useCallback(async () => {
+  useEffect(() => {
+    loadMetrics();
+  }, []);
+
+  const loadMetrics = async () => {
     setLoading(true);
     try {
-      if (isTauri()) {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const m = (await invoke('get_overall_metrics')) as OverallMetrics;
-        const r = (await invoke('list_event_rows')) as EventRow[];
-        setMetrics(m);
-        setRows(r);
-      } else {
-        setMetrics({ total_events: 0, average_impact_level: 0, last_updated: null });
-        setRows([]);
-      }
+      const response = await ApiService.getOverallMetrics();
+      setMetrics(response);
+    } catch (error) {
+      console.error('Failed to load metrics:', error);
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  const avgText = useMemo(() => {
-    if (!metrics) return '-';
-    return (Math.round(metrics.average_impact_level * 10) / 10).toFixed(1);
-  }, [metrics]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  const exportTxt = useCallback(async () => {
-    if (isTauri()) {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const p = (await invoke('export_overall_summary_txt')) as string;
-      alert(`Exported to: ${p}`);
-    }
-  }, []);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top App Bar */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <h1 className="text-2xl font-bold text-gray-900">{t('summary.title')}</h1>
-            <button
-              onClick={refresh}
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {t('summary.refresh')}
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+        {getEmoji('screens', 'overallSummary')} Overall Summary
+      </h1>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Metrics Card */}
-        <div className="bg-white shadow rounded-lg mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">{t('summary.metrics')}</h2>
-          </div>
-          <div className="px-6 py-4">
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-            ) : metrics ? (
-              <div className="space-y-2 text-sm">
-                <div>• {t('summary.totalEvents')}: {metrics.total_events}</div>
-                <div>• {t('summary.detectedEvents')}: -</div>
-                <div>• {t('summary.eventsWithConsensus')}: -</div>
-                <div>• {t('summary.averageCollectiveScore')}: {avgText}</div>
-                <div>• {t('summary.lastUpdated')}: {metrics.last_updated ?? t('summary.never')}</div>
-              </div>
-            ) : (
-              <div className="text-sm text-gray-600">{t('common.loading')}</div>
-            )}
-          </div>
-        </div>
-
-        {/* Network Statistics */}
-        <div className="bg-white shadow rounded-lg mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">{t('summary.networkStatistics')}</h2>
-          </div>
-          <div className="px-6 py-4">
-            <div className="space-y-2 text-sm">
-              <div>• {t('summary.nodeCount')}: -</div>
-              <div>• {t('summary.activeConnections')}: -</div>
-              <div>• {t('summary.syncStatus')}: -</div>
+      {loading ? (
+        <div className="text-center py-8 text-gray-700 dark:text-gray-300">{getEmoji('status', 'syncing')} Loading metrics...</div>
+      ) : metrics ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Events</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.total_events || 0}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Average Impact</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.avg_impact || 0}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Last Updated</p>
+              <p className="text-sm text-gray-900 dark:text-gray-100">{metrics.last_updated || 'N/A'}</p>
             </div>
           </div>
         </div>
-
-        {/* Export Button */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4">
-            <button
-              onClick={exportTxt}
-              disabled={loading}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-            >
-              {t('summary.exportReport')}
-            </button>
-          </div>
-        </div>
-      </main>
+      ) : (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">{getEmoji('status', 'warning')} No metrics available</div>
+      )}
     </div>
   );
 };
-
 

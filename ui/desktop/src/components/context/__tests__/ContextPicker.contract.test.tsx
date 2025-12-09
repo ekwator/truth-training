@@ -61,10 +61,12 @@ describe('ContextPicker Contract Tests', () => {
     render(<ContextPicker label="Context" onChange={() => {}} />);
 
     await waitFor(() => {
+      // Error message includes "Unable to load contexts. Retry"
       expect(screen.getByText(/Unable to load contexts/i)).toBeInTheDocument();
     });
 
-    const retryButton = screen.getByText('Retry');
+    // Retry button should be present (text includes "Retry")
+    const retryButton = screen.getByText(/Retry/i);
     expect(retryButton).toBeInTheDocument();
 
     // Click retry

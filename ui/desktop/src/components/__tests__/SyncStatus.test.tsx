@@ -13,7 +13,8 @@ describe('SyncStatus', () => {
       />
     );
 
-    expect(screen.getByText('Synced')).toBeInTheDocument();
+    // Component includes emoji, so check for text that includes "Synced"
+    expect(screen.getByText(/Synced/i)).toBeInTheDocument();
     // Check that time is displayed (format may vary by locale)
     expect(screen.getByText(/17:00:00|12:00:00/)).toBeInTheDocument();
   });
@@ -27,7 +28,8 @@ describe('SyncStatus', () => {
       />
     );
 
-    expect(screen.getByText('Offline')).toBeInTheDocument();
+    // Component includes emoji, so check for text that includes "Offline"
+    expect(screen.getByText(/Offline/i)).toBeInTheDocument();
   });
 
   it('should render pending operations status correctly', () => {
@@ -39,7 +41,8 @@ describe('SyncStatus', () => {
       />
     );
 
-    expect(screen.getByText('5 pending')).toBeInTheDocument();
+    // Component includes emoji, so check for text that includes "pending"
+    expect(screen.getByText(/5 pending/i)).toBeInTheDocument();
   });
 
   it('should apply correct CSS classes for online status', () => {

@@ -1,6 +1,6 @@
 import React from 'react';
+import { getEmoji } from '@/utils/emojiMapping';
 import { LocaleToggle } from './LocaleToggle';
-import { t } from '@/i18n';
 
 export type Screen = 'home' | 'new-event' | 'context-editor' | 'event-summary' | 'events' | 'judgments' | 'overall-summary' | 'training-results' | 'settings';
 
@@ -15,48 +15,50 @@ interface TopMenuBarProps {
 }
 
 export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigate }) => {
-  // Back navigation handler
-  // @ts-ignore - Reserved for future use
-  const handleBack = () => {
-    // Navigate to previous screen (App.tsx will handle back stack)
-    // For now, just go to home if not already there
-    if (currentScreen !== 'home') {
-      onNavigate('home');
-    }
-  };
+  // Flag-based navigation support (reserved for future use)
+  // const { viewJudgments, setViewJudgments } = useNavigationStore();
+
+  // Back navigation handler (reserved for future use)
+  // const handleBack = () => {
+  //   // Navigate to previous screen (App.tsx will handle back stack)
+  //   // For now, just go to home if not already there
+  //   if (currentScreen !== 'home') {
+  //     onNavigate('home');
+  //   }
+  // };
   return (
-    <nav className="bg-white border-b border-gray-200">
+    <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex space-x-1">
             <button
               onClick={() => onNavigate('home')}
               className={`px-3 py-2 text-sm font-medium ${
-                currentScreen === 'home' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
+                currentScreen === 'home' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
-              {t('navigation.dashboard')}
+              {getEmoji('navigation', 'home')} Dashboard
             </button>
             <button
               onClick={() => onNavigate('new-event')}
               className={`px-3 py-2 text-sm font-medium ${
-                currentScreen === 'new-event' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
+                currentScreen === 'new-event' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
-              {t('events.createEvent')}
+              {getEmoji('actions', 'create')} Create Event
             </button>
             <button
               onClick={() => onNavigate('context-editor')}
               className={`px-3 py-2 text-sm font-medium ${
-                currentScreen === 'context-editor' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
+                currentScreen === 'context-editor' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
-              Context Editor
+              {getEmoji('navigation', 'templates')} Context Editor
             </button>
             <button
               onClick={() => onNavigate('event-summary')}
               className={`px-3 py-2 text-sm font-medium ${
-                currentScreen === 'event-summary' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
+                currentScreen === 'event-summary' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
               Event Summary
@@ -64,26 +66,26 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigat
             <button
               onClick={() => onNavigate('overall-summary')}
               className={`px-3 py-2 text-sm font-medium ${
-                currentScreen === 'overall-summary' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
+                currentScreen === 'overall-summary' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
-              Overall Summary
+              {getEmoji('navigation', 'summary')} Overall Summary
             </button>
             <button
               onClick={() => onNavigate('training-results')}
               className={`px-3 py-2 text-sm font-medium ${
-                currentScreen === 'training-results' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
+                currentScreen === 'training-results' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
-              Training Results
+              {getEmoji('navigation', 'training')} Training Results
             </button>
             <button
               onClick={() => onNavigate('settings')}
               className={`px-3 py-2 text-sm font-medium ${
-                currentScreen === 'settings' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-700 hover:text-gray-900'
+                currentScreen === 'settings' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
-              {t('navigation.settings')}
+              {getEmoji('navigation', 'settings')} Settings
             </button>
           </div>
           <div className="flex items-center">

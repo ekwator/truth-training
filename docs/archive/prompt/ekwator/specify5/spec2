@@ -1,0 +1,117 @@
+⚙️ Request for Full Desktop UI Reconstruction and Synchronization
+Based on Android Client Implementation (UI-only Rebuild, No Localization)
+
+This request instructs Cursor AI to automatically perform all required tasks to fully reconstruct and synchronize the Desktop UI visual layer and UI behavior with the Android client implementation.
+
+Functional logic unique to Desktop MUST NOT be changed.
+Only visual components, navigation behavior, screen layouts, and UI-side algorithms should be rebuilt.
+
+The interface language is always English, but all UI elements must include emojis for accessibility (for users with limited language comprehension).
+
+📄 Primary Documentation for Synchronization
+
+Android UI Specification
+docs/ANDROID_UI_SPECIFICATION.md
+– Full description of all 13 screens, navigation flows, components, logic, and required behaviors.
+
+Android Implementation Report
+docs/ANDROID_UI_IMPLEMENTATION_REPORT.md
+
+Updated Functional Specification
+spec/24-function_mobile_android.md
+
+🖥 Desktop UI Mandatory Tasks
+
+Cursor AI must automatically perform all necessary UI updates and generate PRs.
+
+1. 🎨 FULL Rebuild of Desktop Visual UI
+
+Re-implement the Desktop UI according to Android UI patterns:
+
+Navigation structure 🧭
+
+Routing & screen transitions 🔀
+
+Component patterns (ContextPicker, DatePickerField, etc.) 🧩
+
+Screen layouts and structure 📐
+
+UI state management 🔄
+
+Visual behavior of validation rules ✔️
+
+Algorithms affecting UI:
+
+context field visibility 👁️
+
+date normalization algorithm 📅
+
+event/template/judgment UI behavior 📝
+
+Important:
+Core Desktop functionality (non-Android features) must remain unchanged.
+Only the visual interface and UI behavior layer are reworked.
+
+🗄 Database Integrity Tasks (Required)
+
+Although localization is removed, the Desktop application still requires safe knowledge-base reseeding using temporary tables when rebuilding internal datasets.
+
+Cursor must implement:
+
+✔ Safe reseed algorithm using temp tables
+
+Create temporary tables 🗂️
+
+Fill with new English-only datasets 🔤
+
+Atomically swap with main schema ♻️
+
+Drop temp tables 🧹
+
+Refresh UI based on updated DB 🔃
+
+This is required for consistent schema updates and maintaining FK → PK integrity.
+
+🔄 Synchronization Requirements
+
+Desktop UI must match Android UI in:
+
+Screen parity for 7 Desktop screens 🖼️
+
+Navigation parity (flag-based routing) 🧭
+
+Template selection logic 📝
+
+Event creation/editing UI behavior ✏️
+
+Context field visibility rules 👁️
+
+Date normalization algorithm 📅
+
+Validation and flow behavior ✔️
+
+Desktop-specific logic must be preserved and not overwritten.
+
+All UI components must include emojis for clarity.
+
+🚀 Final Directive
+
+Cursor AI must:
+
+Rebuild the entire Desktop UI layer (visual + behavior)
+
+Preserve all Desktop-specific functionality
+
+Ensure full parity with Android UI logic
+
+Add emojis to every visible UI element
+
+Implement safe DB reseed using temporary tables
+
+Update, create, and refactor files automatically
+
+Produce PRs for all changes
+
+Ensure compatibility with existing CLI tests
+
+This /specify request authorizes Cursor AI to fully reconstruct the Desktop UI, ensuring strict synchronization with the Android UI implementation while preserving Desktop-specific logic and removing localization support.
