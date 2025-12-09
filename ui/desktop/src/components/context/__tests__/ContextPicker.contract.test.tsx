@@ -65,8 +65,8 @@ describe('ContextPicker Contract Tests', () => {
       expect(screen.getByText(/Unable to load contexts/i)).toBeInTheDocument();
     });
 
-    // Retry button should be present (text includes "Retry")
-    const retryButton = screen.getByText(/Retry/i);
+    // Retry button should be present (use getByRole to find the button specifically)
+    const retryButton = screen.getByRole('button', { name: /Retry/i });
     expect(retryButton).toBeInTheDocument();
 
     // Click retry

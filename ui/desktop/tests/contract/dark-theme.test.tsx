@@ -7,6 +7,21 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { renderHook, act } from '@testing-library/react';
 import { ThemeProvider, useTheme } from '@/components/system/ThemeProvider';
 
+// Mock window.matchMedia for jsdom
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: query === '(prefers-color-scheme: dark)',
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
 describe('Dark Theme System Contract Tests', () => {
   beforeEach(() => {
     // Clear localStorage before each test
