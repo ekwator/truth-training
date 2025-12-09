@@ -154,10 +154,33 @@ export class ApiService {
         
         // Resolve entity names for events
         const entityNamesCache = await fetchEntityNames();
-        const eventsWithNames = resolveEventsEntityNames(data, entityNamesCache);
+        // Convert Event[] to format expected by resolveEventsEntityNames (null instead of undefined)
+        const eventsForResolution = data.map(e => ({
+          ...e,
+          category_id: e.category_id ?? null,
+          forma_id: e.forma_id ?? null,
+          cause_id: e.cause_id ?? null,
+          develop_id: e.develop_id ?? null,
+          effect_id: e.effect_id ?? null,
+        }));
+        const eventsWithNames = resolveEventsEntityNames(eventsForResolution, entityNamesCache);
+        // Convert back to Event format (undefined instead of null for optional fields)
+        const eventsConverted = eventsWithNames.map(e => ({
+          ...e,
+          category_id: e.category_id ?? undefined,
+          forma_id: e.forma_id ?? undefined,
+          cause_id: e.cause_id ?? undefined,
+          develop_id: e.develop_id ?? undefined,
+          effect_id: e.effect_id ?? undefined,
+          category_name: e.category_name ?? undefined,
+          forma_name: e.forma_name ?? undefined,
+          cause_name: e.cause_name ?? undefined,
+          develop_name: e.develop_name ?? undefined,
+          effect_name: e.effect_name ?? undefined,
+        }));
         
         return {
-          data: eventsWithNames,
+          data: eventsConverted,
           pagination: {
             page,
             per_page: perPage,
@@ -184,11 +207,23 @@ export class ApiService {
         
         // Resolve entity names for event
         const entityNamesCache = await fetchEntityNames();
-        const names = resolveEventEntityNames(event, entityNamesCache);
-        
+        // Convert Event to format expected by resolveEventEntityNames (null instead of undefined)
+        const eventForResolution = {
+          category_id: event.category_id ?? null,
+          forma_id: event.forma_id ?? null,
+          cause_id: event.cause_id ?? null,
+          develop_id: event.develop_id ?? null,
+          effect_id: event.effect_id ?? null,
+        };
+        const names = resolveEventEntityNames(eventForResolution, entityNamesCache);
+        // Convert back to Event format (undefined instead of null for optional fields)
         return {
           ...event,
-          ...names,
+          category_name: names.category_name ?? undefined,
+          forma_name: names.forma_name ?? undefined,
+          cause_name: names.cause_name ?? undefined,
+          develop_name: names.develop_name ?? undefined,
+          effect_name: names.effect_name ?? undefined,
         };
       } catch (error) {
         console.error('Tauri getEvent error:', error);
@@ -208,11 +243,23 @@ export class ApiService {
         
         // Resolve entity names for created event
         const entityNamesCache = await fetchEntityNames();
-        const names = resolveEventEntityNames(event, entityNamesCache);
-        
+        // Convert Event to format expected by resolveEventEntityNames (null instead of undefined)
+        const eventForResolution = {
+          category_id: event.category_id ?? null,
+          forma_id: event.forma_id ?? null,
+          cause_id: event.cause_id ?? null,
+          develop_id: event.develop_id ?? null,
+          effect_id: event.effect_id ?? null,
+        };
+        const names = resolveEventEntityNames(eventForResolution, entityNamesCache);
+        // Convert back to Event format (undefined instead of null for optional fields)
         return {
           ...event,
-          ...names,
+          category_name: names.category_name ?? undefined,
+          forma_name: names.forma_name ?? undefined,
+          cause_name: names.cause_name ?? undefined,
+          develop_name: names.develop_name ?? undefined,
+          effect_name: names.effect_name ?? undefined,
         };
       } catch (error) {
         console.error('Tauri createEvent error:', error);
@@ -258,11 +305,23 @@ export class ApiService {
         
         // Resolve entity names for updated event
         const entityNamesCache = await fetchEntityNames();
-        const names = resolveEventEntityNames(event, entityNamesCache);
-        
+        // Convert Event to format expected by resolveEventEntityNames (null instead of undefined)
+        const eventForResolution = {
+          category_id: event.category_id ?? null,
+          forma_id: event.forma_id ?? null,
+          cause_id: event.cause_id ?? null,
+          develop_id: event.develop_id ?? null,
+          effect_id: event.effect_id ?? null,
+        };
+        const names = resolveEventEntityNames(eventForResolution, entityNamesCache);
+        // Convert back to Event format (undefined instead of null for optional fields)
         return {
           ...event,
-          ...names,
+          category_name: names.category_name ?? undefined,
+          forma_name: names.forma_name ?? undefined,
+          cause_name: names.cause_name ?? undefined,
+          develop_name: names.develop_name ?? undefined,
+          effect_name: names.effect_name ?? undefined,
         };
       } catch (error) {
         console.error('Tauri updateEvent error:', error);
@@ -477,7 +536,11 @@ export class ApiService {
       // For web development, return default config
       const raw = localStorage.getItem('truth_training_config');
       if (raw) {
-        try { return JSON.parse(raw) as AppConfig; } catch {}
+        try { 
+          return JSON.parse(raw) as AppConfig; 
+        } catch {
+          // Ignore parse errors, return default config
+        }
       }
       return { mode: 'http', server_ip: '127.0.0.1', server_port: 8080, nearby_sync: false, nearby_interval_ms: 3000 };
     }

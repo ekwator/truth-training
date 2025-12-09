@@ -140,11 +140,12 @@ export const App: React.FC = () => {
       case 'events':
         // Show events list - if viewJudgments is true, clicking an event will navigate to judgments
         return <Events onNavigate={handleNavigate} navigationState={navigationState} />;
-      case 'judgments':
+      case 'judgments': {
         // Explicit judgments screen (can be navigated to directly)
         // Use eventId from navigation state or from selectedEventIdForJudgments
         const eventId = navigationState.eventId || (selectedEventIdForJudgments ? parseInt(selectedEventIdForJudgments) : undefined);
         return <Judgments eventId={eventId} onNavigate={handleNavigate} />;
+      }
       case 'overall-summary':
         return <OverallSummary />;
       case 'training-results':
