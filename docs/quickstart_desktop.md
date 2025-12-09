@@ -18,7 +18,7 @@ This document provides step-by-step instructions for installing, using, and unin
 
 ##### Step 1: Install Package
 ```bash
-sudo dpkg -i "Truth.Training_1.0.0_amd64.deb"
+sudo dpkg -i ./'Truth Training_1.0.0_amd64.deb'
 ```
 
 ##### Step 2: Verify Installation

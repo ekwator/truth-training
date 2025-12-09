@@ -30,10 +30,10 @@ This document provides a comprehensive functional specification for the Desktop 
 - **Testing:** Jest, React Testing Library, Playwright
 
 ### Design Principles
-- **Text-Only Interface:** No icons, emojis, or graphical assets - pure text and structured layout
+- **Emoji-Enhanced Interface:** All UI elements include appropriate emojis for accessibility (constitutional requirement Rule 8). Emojis are semantically meaningful and directly related to element function, providing universal visual cues that transcend language barriers.
 - **Offline-First:** Local-wins conflict resolution with background sync when online
 - **Performance:** <200ms response times, efficient resource usage
-- **Accessibility:** Keyboard shortcuts, screen reader support
+- **Accessibility:** Keyboard shortcuts, screen reader support, emoji-enhanced labels for improved comprehension
 
 ## Application Structure
 
@@ -79,7 +79,7 @@ User Input → Keyboard Event → setCurrentScreen → renderScreen() → Compon
 
 **Visual Components:**
 - **Header:** Application title, version, sync status indicator
-- **Stats Overview:** Text-only statistics display
+- **Stats Overview:** Statistics display with emoji-enhanced labels
   - Total Events count
   - Detected Events count
   - Events with Consensus count
@@ -324,7 +324,7 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 **Purpose:** Top navigation menu bar.
 
 **Visual Components:**
-- **Menu Items:** Text-only links
+- **Menu Items:** Navigation links with emoji-enhanced labels
   - [Home] | [New Event] | [Context Editor] | [Event Summary] | [Overall Summary] | [Training Results] | [Logs] | [Settings]
 - **Active Indicator:** Highlights current screen
 
@@ -366,7 +366,7 @@ Template Selection → Prefill Fields → User Modification → Validation → S
 **Purpose:** Button to create new event.
 
 **Visual Components:**
-- **Button:** Text-only "Create Event" button
+- **Button:** "Create Event" button with emoji-enhanced label
 
 **Expected Behavior:**
 - Navigates to New Event screen on click

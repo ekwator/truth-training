@@ -97,6 +97,32 @@ CLI UX (truthctl)
 
 - See [spec/README.md](README.md) for detailed explanations.
 
+## Emoji Accessibility Guidelines (Rule 8)
+
+### Overview
+All Desktop UI interface elements MUST be accompanied by appropriate emojis to improve understanding of element purpose for users who have difficulty understanding the interface language (constitutional requirement Rule 8).
+
+### Emoji Requirements
+1. **Semantic Meaning**: Emojis must be semantically meaningful and directly related to the function or purpose of the interface element (buttons, menu items, navigation links, form labels, status indicators, etc.).
+2. **Consistency**: Emoji selection must be consistent across the application and follow established patterns for similar functionality.
+3. **Universal Cues**: Emojis provide universal visual cues that transcend language barriers, making the interface more accessible to users regardless of their proficiency in the interface language.
+
+### Emoji Categories
+- **Screens**: Dashboard (🏠), New Event (➕), Context Editor (📝), Events (📋), Judgments (⚖️), Overall Summary (📊), Training Results (📈), Settings (⚙️)
+- **Actions**: Save (💾), Cancel (❌), Delete (🗑️), Edit (✏️), Create (➕), Submit (✅), Refresh (🔄), Sync (🔄), Back (⬅️), Next (➡️)
+- **Form Fields**: Name (📝), Description (📄), Category (🏷️), Forma (📐), Cause (🔍), Develop (📈), Effect (💥), Start Date (📅), End Date (📅), Assessment (⚖️), Confidence (📊), Reasoning (💭)
+- **Status Indicators**: Online (🟢), Offline (🔴), Syncing (🔄), Error (❌), Success (✅), Warning (⚠️)
+- **Navigation**: Home (🏠), Events (📋), Judgments (⚖️), Templates (📝), Summary (📊), Training (📈), Settings (⚙️)
+
+### Implementation
+- Emoji mapping is centralized in `ui/desktop/src/utils/emojiMapping.ts`
+- Use `getEmoji(category, key)` function to retrieve emojis consistently
+- All UI components should use emojis from the centralized mapping
+- Emojis are enhancement, not replacement for text labels
+
+### Graceful Degradation
+If emoji rendering fails or is not supported on a platform, text labels must remain clear and functional. Emojis are enhancement, not replacement for text.
+
 ## Localization Status
 
 ### Desktop UI

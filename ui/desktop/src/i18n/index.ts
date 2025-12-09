@@ -11,43 +11,13 @@ export interface Translation {
   [key: string]: string | Translation;
 }
 
+// English-only interface (localization removed)
 export const supportedLocales: Locale[] = [
   {
     code: 'en',
     name: 'English',
     nativeName: 'English',
     direction: 'ltr'
-  },
-  {
-    code: 'ru',
-    name: 'Russian',
-    nativeName: 'Русский',
-    direction: 'ltr'
-  },
-  // ES/FR/DE/AR remain in code but are not selectable until strings exist
-  {
-    code: 'es',
-    name: 'Spanish',
-    nativeName: 'Español',
-    direction: 'ltr'
-  },
-  {
-    code: 'fr',
-    name: 'French',
-    nativeName: 'Français',
-    direction: 'ltr'
-  },
-  {
-    code: 'de',
-    name: 'German',
-    nativeName: 'Deutsch',
-    direction: 'ltr'
-  },
-  {
-    code: 'ar',
-    name: 'Arabic',
-    nativeName: 'العربية',
-    direction: 'rtl'
   }
 ];
 
@@ -424,18 +394,9 @@ export const defaultTranslations: Translation = {
   }
 };
 
-// Get translations for current locale
-export const getTranslations = (locale: string = getCurrentLocale()): Translation => {
-  if (locale === 'ru') {
-    // Dynamic import to avoid circular dependencies
-    try {
-      const { ruTranslations } = require('./ru');
-      return ruTranslations as Translation;
-    } catch (e) {
-      console.warn('translation.missing', { locale, key: 'ru' });
-      return defaultTranslations;
-    }
-  }
+// Get translations for current locale (English-only)
+export const getTranslations = (_locale: string = getCurrentLocale()): Translation => {
+  // English-only interface - always return English translations
   return defaultTranslations;
 };
 
@@ -470,150 +431,58 @@ export const t = (key: string, locale?: string): string => {
   return typeof value === 'string' ? value : key;
 };
 
-// Locale detection
+// Locale detection (English-only)
 export const detectLocale = async (): Promise<string> => {
-  // Check localStorage first
-  const stored = localStorage.getItem('truth-locale');
-  if (stored && supportedLocales.some(l => l.code === stored)) {
-    return stored;
-  }
-  
-  // Check config from backend (if in Tauri)
-  if (typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined) {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const config = await invoke('get_app_config') as Record<string, any>;
-      if (config && config.locale && supportedLocales.some(l => l.code === config.locale)) {
-        // Sync localStorage with config
-        localStorage.setItem('truth-locale', config.locale);
-        return config.locale;
-      }
-    } catch (error) {
-      console.warn('Failed to read locale from config:', error);
-    }
-  }
-  
-  // Check browser language
-  const browserLang = navigator.language.split('-')[0];
-  const supported = supportedLocales.find(l => l.code === browserLang);
-  if (supported) {
-    return supported.code;
-  }
-  
-  // Default to English
+  // English-only interface - always return 'en'
   return 'en';
 };
 
-// Set locale with telemetry
-export const setLocale = async (locale: string, persistToBackend: boolean = true): Promise<void> => {
-  const previousLocale = getCurrentLocale();
+// Set locale (English-only, no-op for locale switching)
+export const setLocale = async (_locale: string, _persistToBackend: boolean = true): Promise<void> => {
+  // English-only interface - always use English
+  const englishLocale = 'en';
+  localStorage.setItem('truth-locale', englishLocale);
+  document.documentElement.lang = englishLocale;
+  document.documentElement.dir = 'ltr';
   
-  if (supportedLocales.some(l => l.code === locale)) {
-    localStorage.setItem('truth-locale', locale);
-    document.documentElement.lang = locale;
-    
-    // Set text direction
-    const localeInfo = supportedLocales.find(l => l.code === locale);
-    if (localeInfo) {
-      document.documentElement.dir = localeInfo.direction;
-    }
-
-    // Persist to backend if in Tauri
-    if (persistToBackend && typeof window !== 'undefined') {
-      try {
-        const isTauri = (window as any).__TAURI__ !== undefined;
-        if (isTauri) {
-          const { invoke } = await import('@tauri-apps/api/core');
-          // Get current config to preserve all fields
-          const currentConfig = await invoke('get_app_config') as Record<string, any>;
-          console.log('Current config before update:', currentConfig);
-          
-          // Create updated config with locale explicitly set
-          const updatedConfig = {
-            mode: currentConfig?.mode || 'core',
-            server_ip: currentConfig?.server_ip || '127.0.0.1',
-            server_port: currentConfig?.server_port || 8080,
-            nearby_sync: currentConfig?.nearby_sync ?? false,
-            nearby_interval_ms: currentConfig?.nearby_interval_ms || 3000,
-            locale: locale, // Always set locale explicitly
-          };
-          
-          console.log('Saving config with locale:', updatedConfig);
-          await invoke('save_app_config', { config: updatedConfig });
-          
-          // Verify config was saved correctly
-          const savedConfig = await invoke('get_app_config') as Record<string, any>;
-          console.log('Config after save:', savedConfig);
-          
-          if (savedConfig?.locale !== locale) {
-            console.error('Locale mismatch! Expected:', locale, 'Got:', savedConfig?.locale);
-            throw new Error(`Failed to save locale: expected ${locale}, got ${savedConfig?.locale}`);
-          }
-          
-          // Reseed knowledge base with new locale if locale changed
-          if (previousLocale !== locale) {
-            try {
-              // Wait a bit to ensure config is written to disk
-              await new Promise(resolve => setTimeout(resolve, 200));
-              await invoke('reseed_knowledge_base');
-              console.log('Knowledge base reseeded with locale:', locale);
-            } catch (seedError) {
-              console.warn('Failed to reseed knowledge base:', seedError);
-              // Don't throw - locale change succeeded, reseed is optional
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Failed to persist locale to backend:', error);
-        // Log telemetry: locale.change failure
-        console.warn('locale.change', { from: previousLocale, to: locale, success: false, error });
-        throw error;
+  // Persist to backend if in Tauri (always save as 'en')
+  if (_persistToBackend && typeof window !== 'undefined') {
+    try {
+      const isTauri = (window as any).__TAURI__ !== undefined;
+      if (isTauri) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const currentConfig = await invoke('get_app_config') as Record<string, any>;
+        
+        const updatedConfig = {
+          mode: currentConfig?.mode || 'core',
+          server_ip: currentConfig?.server_ip || '127.0.0.1',
+          server_port: currentConfig?.server_port || 8080,
+          nearby_sync: currentConfig?.nearby_sync ?? false,
+          nearby_interval_ms: currentConfig?.nearby_interval_ms || 3000,
+          locale: englishLocale, // Always English
+        };
+        
+        await invoke('save_app_config', { config: updatedConfig });
       }
+    } catch (error) {
+      console.warn('Failed to persist locale to backend:', error);
     }
-
-    // Log telemetry: locale.change success
-    console.log('locale.change', { from: previousLocale, to: locale, success: true });
   }
 };
 
-// Get current locale (synchronous version for immediate use)
+// Get current locale (English-only)
 export const getCurrentLocale = (): string => {
-  // Check localStorage first (synchronous)
-  const stored = localStorage.getItem('truth-locale');
-  if (stored && supportedLocales.some(l => l.code === stored)) {
-    return stored;
-  }
-  
-  // Check browser language
-  const browserLang = navigator.language.split('-')[0];
-  const supported = supportedLocales.find(l => l.code === browserLang);
-  if (supported) {
-    return supported.code;
-  }
-  
-  // Default to English
+  // English-only interface - always return 'en'
   return 'en';
 };
 
-// Initialize locale from config on app startup
+// Initialize locale (English-only)
 export const initializeLocale = async (): Promise<void> => {
-  if (typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined) {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const config = await invoke('get_app_config') as Record<string, any>;
-      if (config && config.locale && supportedLocales.some(l => l.code === config.locale)) {
-        const locale = config.locale;
-        localStorage.setItem('truth-locale', locale);
-        document.documentElement.lang = locale;
-        const localeInfo = supportedLocales.find(l => l.code === locale);
-        if (localeInfo) {
-          document.documentElement.dir = localeInfo.direction;
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to initialize locale from config:', error);
-    }
-  }
+  // English-only interface - always initialize to English
+  const englishLocale = 'en';
+  localStorage.setItem('truth-locale', englishLocale);
+  document.documentElement.lang = englishLocale;
+  document.documentElement.dir = 'ltr';
 };
 
 // Format numbers based on locale

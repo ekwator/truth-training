@@ -247,8 +247,12 @@ pub async fn init_app(db: State<'_, crate::storage::Db>) -> Result<CoreStatus, S
     })
 }
 
+// DEPRECATED: reseed_knowledge_base moved to commands::knowledge_base
+// This function is kept for backward compatibility but should not be used
+// Use commands::knowledge_base::reseed_knowledge_base instead
+#[allow(dead_code)]
 #[command]
-pub async fn reseed_knowledge_base(
+pub async fn reseed_knowledge_base_deprecated(
     db: State<'_, crate::storage::Db>,
 ) -> Result<CoreStatus, String> {
     // Performance logging: Start timing

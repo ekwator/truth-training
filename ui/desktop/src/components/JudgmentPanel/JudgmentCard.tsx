@@ -1,5 +1,6 @@
 import React from 'react';
 import { Judgment } from '@/types/judgments';
+import { getEmoji } from '@/utils/emojiMapping';
 
 interface JudgmentCardProps {
   judgment: Judgment;
@@ -9,13 +10,13 @@ export const JudgmentCard: React.FC<JudgmentCardProps> = ({ judgment }) => {
   const getAssessmentColor = (assessment: string) => {
     switch (assessment) {
       case 'confirm':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
       case 'reject':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
       case 'abstain':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
     }
   };
 
@@ -40,7 +41,7 @@ export const JudgmentCard: React.FC<JudgmentCardProps> = ({ judgment }) => {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md dark:hover:shadow-gray-700 transition-shadow">
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <div className="flex items-center space-x-3 mb-2">
@@ -53,36 +54,36 @@ export const JudgmentCard: React.FC<JudgmentCardProps> = ({ judgment }) => {
           </div>
           
           {judgment.reasoning && (
-            <p className="text-sm text-gray-700 mb-3 line-clamp-3">
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 line-clamp-3">
               {judgment.reasoning}
             </p>
           )}
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-gray-500">
+      <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
         <div className="flex items-center space-x-4">
           <span className="flex items-center">{truncateId(judgment.participant_id)}</span>
           <span className="flex items-center">{formatDate(judgment.submitted_at)}</span>
         </div>
         
         <div className="flex items-center space-x-2">
-          <button className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">
-            View Details
+          <button className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
+            {getEmoji('actions', 'edit')} View Details
           </button>
-          <button className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
-            Event
+          <button className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+            {getEmoji('navigation', 'events')} Event
           </button>
         </div>
       </div>
 
       {/* Confidence Bar */}
       <div className="mt-3">
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-          <span>Confidence Level</span>
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+          <span>{getEmoji('fields', 'confidence')} Confidence Level</span>
           <span>{(judgment.confidence_level * 100).toFixed(0)}%</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
           <div
             className={`h-2 rounded-full transition-all duration-300 ${
               judgment.confidence_level >= 0.8 ? 'bg-green-500' :

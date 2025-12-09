@@ -1,14 +1,15 @@
+/**
+ * Dashboard Screen
+ * Matches Android Dashboard screen layout and behavior.
+ * Route: dashboard (home)
+ */
+
 import React, { useEffect } from 'react';
-import { useEventsStore } from '@/stores/events';
-import { useSyncStore } from '@/stores/sync';
-import { useToast } from '@/components/system/Toaster';
-import { SyncStatus } from '@/components/system/SyncStatus';
-import { EventCard } from '@/components/Dashboard/EventCard';
-import { CreateEventButton } from '@/components/Dashboard/CreateEventButton';
 import { Screen } from '@/components/layout/TopMenuBar';
-import { NodesPanel } from '@/components/NodesPanel';
+import { useSyncStore } from '@/stores/sync';
 import { useNavigationStore } from '@/stores/navigation';
-import { t } from '@/i18n';
+import { ApiService } from '@/services/api';
+import { getEmoji } from '@/utils/emojiMapping';
 
 interface NavigationState {
   eventId?: number;
@@ -16,181 +17,184 @@ interface NavigationState {
 }
 
 interface DashboardProps {
-  onNavigate?: (screen: Screen, state?: NavigationState) => void;
+  onNavigate: (screen: Screen, state?: NavigationState) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const { events, loading, error, fetchEvents } = useEventsStore();
-  const { syncStatus, isOnline, pendingOperations, fetchSyncStatus } = useSyncStore();
-  const { addToast } = useToast();
+  const { 
+    isOnline, 
+    lastSync, 
+    pendingOperations, 
+    syncInProgress,
+    fetchSyncStatus,
+    startSync 
+  } = useSyncStore();
   const { setViewJudgments } = useNavigationStore();
+  const [totalEvents, setTotalEvents] = React.useState<number>(0);
+  const [loading, setLoading] = React.useState(true);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        await Promise.all([fetchEvents(), fetchSyncStatus()]);
-      } catch (err) {
-        addToast({
-          type: 'error',
-          title: t('errors.networkError'),
-          message: t('errors.retryMessage')
-        });
-      }
-    };
-    
-    loadData();
-  }, [fetchEvents, fetchSyncStatus, addToast]);
+    // Load sync status and event count on mount
+    fetchSyncStatus();
+    loadEventCount();
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const loadEventCount = async () => {
+    try {
+      setLoading(true);
+      const response = await ApiService.getEvents(1, 1);
+      setTotalEvents(response.pagination?.total || 0);
+    } catch (error) {
+      console.error('Failed to load event count:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">{t('dashboard.errorLoading')}</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+  const handleViewEvents = () => {
+    onNavigate('events');
+  };
+
+  const handleViewJudgments = () => {
+    setViewJudgments(true);
+    onNavigate('events');
+  };
+
+  const handleNewEvent = () => {
+    onNavigate('new-event');
+  };
+
+  const handleManageTemplates = () => {
+    onNavigate('context-editor');
+  };
+
+  const handleOverallSummary = () => {
+    onNavigate('overall-summary');
+  };
+
+  const handleTrainingResults = () => {
+    onNavigate('training-results');
+  };
+
+  const handleSettings = () => {
+    onNavigate('settings');
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+        {getEmoji('screens', 'dashboard')} Dashboard
+      </h1>
+
+      {/* Sync Status Card */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Sync Status</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
+            {lastSync && (
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Last sync: {new Date(lastSync).toLocaleString()}
+              </span>
+            )}
+            {pendingOperations > 0 && (
+              <span className="text-sm text-yellow-600 dark:text-yellow-400">
+                {pendingOperations} pending operations
+              </span>
+            )}
+          </div>
           <button
-            onClick={() => fetchEvents()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={startSync}
+            disabled={syncInProgress || !isOnline}
+            className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {t('common.retry')}
+            {getEmoji('actions', 'sync')} {syncInProgress ? 'Syncing...' : 'Sync'}
           </button>
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{t('dashboard.title')}</h1>
-              <p className="text-sm text-gray-600">{t('dashboard.subtitle')} • UI Desktop v1.0.0</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <SyncStatus 
-                isOnline={isOnline}
-                pendingOperations={pendingOperations}
-                lastSync={syncStatus?.lastSync ?? null}
-              />
-              <CreateEventButton />
-            </div>
-          </div>
+      {/* Quick Stats */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Quick Stats</h2>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={handleViewEvents}
+            className="text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer"
+          >
+            {loading ? '...' : totalEvents} Events
+          </button>
         </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Quick Stats */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">{t('dashboard.quickStats')}</h2>
-          <div className="space-y-2 text-sm text-gray-800">
-            <div>
-              <button
-                onClick={() => {
-                  setViewJudgments(false);
-                  onNavigate?.('events');
-                }}
-                className="text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                {t('dashboard.totalEvents')}: {events.length}
-              </button>
-            </div>
-            <div>• {t('dashboard.detectedEvents')}: {events.filter(e => e.detected === true).length}</div>
-            <div>• {t('dashboard.withConsensus')}: {events.filter(e => e.collective_score !== null && e.collective_score !== undefined).length}</div>
-            <div>• {t('dashboard.participants')}: -</div>
-          </div>
-        </div>
+      {/* Action Buttons */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <button
+          onClick={handleViewEvents}
+          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
+        >
+          <div className="text-2xl mb-2">{getEmoji('navigation', 'events')}</div>
+          <div className="font-semibold text-gray-900 dark:text-gray-100">View Events</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">View all events</div>
+        </button>
 
-        {/* Action Buttons */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">{t('dashboard.actions')}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <button
-              onClick={() => {
-                setViewJudgments(false);
-                onNavigate?.('events');
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              {t('dashboard.viewEvents')}
-            </button>
-            <button
-              onClick={() => {
-                setViewJudgments(true);
-                onNavigate?.('events');
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              {t('dashboard.viewJudgments')}
-            </button>
-            <button
-              onClick={() => onNavigate?.('new-event')}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              {t('dashboard.newEvent')}
-            </button>
-            <button
-              onClick={() => onNavigate?.('context-editor')}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              {t('dashboard.manageContextTemplates')}
-            </button>
-            <button
-              onClick={() => onNavigate?.('overall-summary')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              {t('dashboard.overallSummary')}
-            </button>
-            <button
-              onClick={() => onNavigate?.('training-results')}
-              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              {t('dashboard.trainingResults')}
-            </button>
-            <button
-              onClick={() => onNavigate?.('settings')}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              {t('dashboard.settings')}
-            </button>
-          </div>
-        </div>
+        <button
+          onClick={handleViewJudgments}
+          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
+        >
+          <div className="text-2xl mb-2">{getEmoji('navigation', 'judgments')}</div>
+          <div className="font-semibold text-gray-900 dark:text-gray-100">View Judgments</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">View event judgments</div>
+        </button>
 
-        <div className="mb-8">
-          <NodesPanel />
-        </div>
+        <button
+          onClick={handleNewEvent}
+          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
+        >
+          <div className="text-2xl mb-2">{getEmoji('actions', 'create')}</div>
+          <div className="font-semibold text-gray-900 dark:text-gray-100">New Event</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create a new event</div>
+        </button>
 
-        {/* Events List */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">{t('dashboard.recentEvents')}</h2>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {events.length === 0 ? (
-              <div className="px-6 py-12 text-center">
-                <div className="text-gray-400 mb-4 text-sm">{t('dashboard.noData')}</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('dashboard.noEvents')}</h3>
-                <p className="text-gray-500 mb-4">{t('dashboard.noEventsDescription')}</p>
-                <CreateEventButton />
-              </div>
-            ) : (
-              events.map((event) => (
-                <EventCard key={event.id} event={event} onNavigate={onNavigate} />
-              ))
-            )}
-          </div>
-        </div>
-      </main>
+        <button
+          onClick={handleManageTemplates}
+          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
+        >
+          <div className="text-2xl mb-2">{getEmoji('navigation', 'templates')}</div>
+          <div className="font-semibold text-gray-900 dark:text-gray-100">Manage Context Templates</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create and edit templates</div>
+        </button>
+
+        <button
+          onClick={handleOverallSummary}
+          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
+        >
+          <div className="text-2xl mb-2">{getEmoji('navigation', 'summary')}</div>
+          <div className="font-semibold text-gray-900 dark:text-gray-100">Overall Summary</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">View overall statistics</div>
+        </button>
+
+        <button
+          onClick={handleTrainingResults}
+          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
+        >
+          <div className="text-2xl mb-2">{getEmoji('navigation', 'training')}</div>
+          <div className="font-semibold text-gray-900 dark:text-gray-100">Training Results</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">View training metrics</div>
+        </button>
+
+        <button
+          onClick={handleSettings}
+          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
+        >
+          <div className="text-2xl mb-2">{getEmoji('navigation', 'settings')}</div>
+          <div className="font-semibold text-gray-900 dark:text-gray-100">Settings</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure application</div>
+        </button>
+      </div>
     </div>
   );
 };
+

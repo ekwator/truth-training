@@ -25,7 +25,7 @@ export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [navigationState, setNavigationState] = useState<NavigationState>({});
   const navigationStack = useRef<Screen[]>(['home']);
-  const { viewJudgments } = useNavigationStore();
+  const { viewJudgments, selectedEventIdForJudgments } = useNavigationStore();
 
   // Initialize locale on app start
   useEffect(() => {
@@ -75,7 +75,9 @@ export const App: React.FC = () => {
         return;
       }
 
-      // Keyboard shortcuts (Alt+1 through Alt+8) - preserved
+      // Desktop-specific feature: Keyboard shortcuts (Alt+1 through Alt+8)
+      // This is a Desktop-only feature, not present in Android UI
+      // Preserved during UI reconstruction to maintain Desktop-specific functionality
       if (event.altKey) {
         switch (event.key) {
           case '1':
@@ -115,10 +117,11 @@ export const App: React.FC = () => {
   }, [currentScreen]);
 
   const renderScreen = () => {
-    // Flag-based conditional routing
+    // Flag-based conditional routing (Android savedStateHandle equivalent)
     // If viewJudgments is true and we're navigating to events, show judgments instead
-    if (viewJudgments && currentScreen === 'events' && navigationState.eventId) {
-      return <Judgments eventId={navigationState.eventId} onNavigate={handleNavigate} />;
+    if (viewJudgments && currentScreen === 'events' && (navigationState.eventId || selectedEventIdForJudgments)) {
+      const eventId = navigationState.eventId || (selectedEventIdForJudgments ? parseInt(selectedEventIdForJudgments) : undefined);
+      return <Judgments eventId={eventId} onNavigate={handleNavigate} />;
     }
 
     // If selectTemplateForEvent is true and we're in context-editor, handle template selection mode
@@ -155,7 +158,7 @@ export const App: React.FC = () => {
       <ThemeProvider>
         <ToastProvider>
           <TopMenuBar currentScreen={currentScreen} onNavigate={setCurrentScreen} />
-          <div className="bg-gray-50">
+          <div className="bg-gray-900 dark:bg-gray-900">
             {renderScreen()}
           </div>
         </ToastProvider>

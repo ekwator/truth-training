@@ -156,7 +156,7 @@ export const useEventsStore = create<EventsState>()(
         set({ loading: true, error: null });
         
         try {
-          // Note: Update endpoint not implemented in API service yet
+          // TODO: Implement update endpoint in API service
           // This would call ApiService.updateEvent(id, eventData)
           
           // For now, just update local state
@@ -181,7 +181,7 @@ export const useEventsStore = create<EventsState>()(
         set({ loading: true, error: null });
         
         try {
-          // Note: Delete endpoint not implemented in API service yet
+          // TODO: Implement delete endpoint in API service
           // This would call ApiService.deleteEvent(id)
           
           // For now, just remove from local state

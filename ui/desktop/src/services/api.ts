@@ -436,7 +436,7 @@ export class ApiService {
 
   static async startNearbySync(intervalMs: number): Promise<void> {
     if (isTauri()) {
-      // TODO: bridge command in desktop backend if needed
+      // TODO: Implement bridge command in desktop backend if needed
       return;
     } else {
       await apiClient.post('/api/v1/nearby_sync/start', { interval_ms: intervalMs });

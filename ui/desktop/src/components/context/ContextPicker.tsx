@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ApiService } from '@/services/api';
 import { ContextTemplate } from '@/types/contexts';
+import { getEmoji } from '@/utils/emojiMapping';
+import { listenForKnowledgeBaseRefresh } from '@/services/knowledgeBase';
 
 export interface ContextPickerProps {
   value?: number;
@@ -96,6 +98,26 @@ export const ContextPicker: React.FC<ContextPickerProps> = ({
     loadContexts();
   }, [loadContexts]);
 
+  // Listen for knowledge base refresh events
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+
+    listenForKnowledgeBaseRefresh(() => {
+      // Reload contexts when knowledge base is refreshed
+      loadContexts(false);
+    }).then((fn) => {
+      unlisten = fn;
+    }).catch((err) => {
+      console.error('Failed to set up knowledge base refresh listener:', err);
+    });
+
+    return () => {
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, [loadContexts]);
+
   // Validate manual entry against dataset
   const validateValue = useCallback((id: number | undefined): boolean => {
     if (id === undefined) {
@@ -161,30 +183,41 @@ export const ContextPicker: React.FC<ContextPickerProps> = ({
   // Find selected context for display
   const selectedContext = value ? contexts.find((c) => c.id === value) : null;
 
+  // Get emoji for field type based on label
+  const getFieldEmoji = () => {
+    const lowerLabel = label.toLowerCase();
+    if (lowerLabel.includes('category')) return getEmoji('fields', 'category');
+    if (lowerLabel.includes('forma')) return getEmoji('fields', 'forma');
+    if (lowerLabel.includes('cause')) return getEmoji('fields', 'cause');
+    if (lowerLabel.includes('develop')) return getEmoji('fields', 'develop');
+    if (lowerLabel.includes('effect')) return getEmoji('fields', 'effect');
+    return '';
+  };
+
   return (
     <div className="relative" ref={containerRef}>
-      <label className="block text-sm font-medium mb-2">
-        {label}
+      <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+        {getFieldEmoji()} {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       
       {/* Stale data warning */}
       {isStale && fetchedAt && (
-        <div className="mb-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+        <div className="mb-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded text-sm text-yellow-800 dark:text-yellow-200">
           Data is stale (last updated: {new Date(fetchedAt).toLocaleString()}). Please refresh.
         </div>
       )}
 
       {/* Error state */}
       {errorState && (
-        <div className="mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+        <div className="mb-2 px-3 py-2 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded text-sm text-red-800 dark:text-red-200">
           {errorState}
         </div>
       )}
 
       {/* Loading state */}
       {loading && (
-        <div className="mb-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">
+        <div className="mb-2 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-sm text-gray-600 dark:text-gray-400">
           Loading contexts...
         </div>
       )}
@@ -194,9 +227,9 @@ export const ContextPicker: React.FC<ContextPickerProps> = ({
         <button
           type="button"
           onClick={() => loadContexts(false)}
-          className="mb-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="mb-2 px-3 py-1 text-sm bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"
         >
-          Retry
+          {getEmoji('actions', 'refresh')} Retry
         </button>
       )}
 
@@ -210,9 +243,9 @@ export const ContextPicker: React.FC<ContextPickerProps> = ({
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
           disabled={disabled || loading}
-          className={`w-full px-3 py-2 border rounded ${
-            errorState || error ? 'border-red-500' : 'border-gray-300'
-          } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+          className={`w-full px-3 py-2 border rounded dark:bg-gray-700 dark:text-gray-100 ${
+            errorState || error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+          } ${disabled ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''}`}
           aria-expanded={isOpen}
           aria-haspopup="listbox"
           role="combobox"
@@ -221,7 +254,7 @@ export const ContextPicker: React.FC<ContextPickerProps> = ({
         {/* Dropdown */}
         {isOpen && !loading && filteredContexts.length > 0 && (
           <ul
-            className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-60 overflow-auto"
+            className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg dark:shadow-gray-700 max-h-60 overflow-auto"
             role="listbox"
           >
             {filteredContexts.map((ctx) => (
