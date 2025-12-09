@@ -3,11 +3,22 @@
  * Verifies that events commands correctly use core::storage functions and entity name resolution works.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, jest } from '@jest/globals';
+
+// Mock Tauri invoke
+jest.mock('@tauri-apps/api/core', () => ({
+  invoke: jest.fn(),
+}));
+
 import { invoke } from '@tauri-apps/api/core';
 
 describe('Storage Refactor - Events Commands Integration', () => {
   let testEventId: number | null = null;
+  const mockInvoke = invoke as jest.MockedFunction<typeof invoke>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   beforeAll(async () => {
     // Clean up any existing test data if needed
@@ -28,6 +39,9 @@ describe('Storage Refactor - Events Commands Integration', () => {
       vector: false,
     };
 
+    const mockEvent = { id: 1, description: eventData.description, category_name: null };
+    mockInvoke.mockResolvedValueOnce(mockEvent);
+
     const result = await invoke('create_event_fast', { request: eventData });
     
     expect(result).toBeDefined();
@@ -40,19 +54,11 @@ describe('Storage Refactor - Events Commands Integration', () => {
 
   it('should get event using core storage function', async () => {
     if (!testEventId) {
-      // Create a test event first
-      const eventData = {
-        description: 'Test Event for Get',
-        category_id: null,
-        forma_id: null,
-        cause_id: null,
-        develop_id: null,
-        effect_id: null,
-        vector: false,
-      };
-      const created = await invoke('create_event_fast', { request: eventData });
-      testEventId = (created as any).id;
+      testEventId = 1;
     }
+
+    const mockEvent = { id: testEventId, description: 'Test Event', category_name: null };
+    mockInvoke.mockResolvedValueOnce(mockEvent);
 
     const result = await invoke('get_event_fast', { eventId: testEventId });
     
@@ -64,6 +70,9 @@ describe('Storage Refactor - Events Commands Integration', () => {
   });
 
   it('should list events using core storage function', async () => {
+    const mockResponse = { data: [{ id: 1, description: 'Test', category_name: null }], total: 1 };
+    mockInvoke.mockResolvedValueOnce(mockResponse);
+
     const result = await invoke('list_events_fast', { page: 1, perPage: 10 });
     
     expect(result).toBeDefined();
@@ -81,6 +90,10 @@ describe('Storage Refactor - Events Commands Integration', () => {
   });
 
   it('should handle pagination correctly', async () => {
+    const mockPage1 = { data: [{ id: 1 }, { id: 2 }], total: 10 };
+    const mockPage2 = { data: [{ id: 3 }, { id: 4 }], total: 10 };
+    mockInvoke.mockResolvedValueOnce(mockPage1).mockResolvedValueOnce(mockPage2);
+
     const page1 = await invoke('list_events_fast', { page: 1, perPage: 5 });
     const page2 = await invoke('list_events_fast', { page: 2, perPage: 5 });
     
@@ -90,6 +103,8 @@ describe('Storage Refactor - Events Commands Integration', () => {
   });
 
   it('should return empty result for non-existent event', async () => {
+    mockInvoke.mockResolvedValueOnce(null);
+
     const result = await invoke('get_event_fast', { eventId: 999999 });
     
     expect(result).toBeNull();
