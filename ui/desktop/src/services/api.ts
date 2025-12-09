@@ -4,6 +4,8 @@ import { AppConfig, ConnectionTestResult, DiscoverySettings, DiscoverRun, NodeRe
 // Import shared domain types
 import type { Event as TruthEvent, EventDetails, CreateEventRequest } from '@/types/events';
 import type { Judgment, CreateJudgmentRequest } from '@/types/judgments';
+// Import entity name resolution
+import { fetchEntityNames, resolveEventsEntityNames, resolveEventEntityNames, clearEntityNamesCache } from '@/utils/entityNames';
 
 export type { TruthEvent as Event, EventDetails, CreateEventRequest };
 export type { Judgment, CreateJudgmentRequest };
@@ -149,8 +151,13 @@ export class ApiService {
         const { invoke } = await import('@tauri-apps/api/core');
         const res = await invoke('list_events_fast', { page, perPage });
         const { data, total } = res as { data: TruthEvent[]; total: number };
+        
+        // Resolve entity names for events
+        const entityNamesCache = await fetchEntityNames();
+        const eventsWithNames = resolveEventsEntityNames(data, entityNamesCache);
+        
         return {
-          data,
+          data: eventsWithNames,
           pagination: {
             page,
             per_page: perPage,
@@ -173,8 +180,16 @@ export class ApiService {
     if (isTauri()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        const event = await invoke('get_event_fast', { eventId: id });
-        return event as TruthEvent;
+        const event = await invoke('get_event_fast', { eventId: id }) as TruthEvent;
+        
+        // Resolve entity names for event
+        const entityNamesCache = await fetchEntityNames();
+        const names = resolveEventEntityNames(event, entityNamesCache);
+        
+        return {
+          ...event,
+          ...names,
+        };
       } catch (error) {
         console.error('Tauri getEvent error:', error);
         throw new Error('Failed to fetch event from desktop backend');
@@ -189,8 +204,16 @@ export class ApiService {
     if (isTauri()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        const event = await invoke('create_event_fast', { request: eventData });
-        return event as TruthEvent;
+        const event = await invoke('create_event_fast', { request: eventData }) as TruthEvent;
+        
+        // Resolve entity names for created event
+        const entityNamesCache = await fetchEntityNames();
+        const names = resolveEventEntityNames(event, entityNamesCache);
+        
+        return {
+          ...event,
+          ...names,
+        };
       } catch (error) {
         console.error('Tauri createEvent error:', error);
         throw new Error('Failed to create event in desktop backend');
@@ -207,6 +230,47 @@ export class ApiService {
         vector: eventData.vector
       };
       const response = await apiClient.post('/events', payload);
+      return response.data as TruthEvent;
+    }
+  }
+
+  static async updateEvent(
+    eventId: number,
+    data: { detected?: boolean; corrected?: boolean; timestamp_end?: number | null }
+  ): Promise<TruthEvent> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const request: { detected?: boolean; corrected?: boolean; timestamp_end?: number | null } = {};
+        if (data.detected !== undefined) {
+          request.detected = data.detected;
+        }
+        if (data.corrected !== undefined) {
+          request.corrected = data.corrected;
+        }
+        if (data.timestamp_end !== undefined) {
+          request.timestamp_end = data.timestamp_end;
+        }
+        const event = await invoke('update_event_fast', { 
+          eventId, 
+          request 
+        }) as TruthEvent;
+        
+        // Resolve entity names for updated event
+        const entityNamesCache = await fetchEntityNames();
+        const names = resolveEventEntityNames(event, entityNamesCache);
+        
+        return {
+          ...event,
+          ...names,
+        };
+      } catch (error) {
+        console.error('Tauri updateEvent error:', error);
+        throw new Error('Failed to update event in desktop backend');
+      }
+    } else {
+      // HTTP API mode
+      const response = await apiClient.patch(`/events/${eventId}`, data);
       return response.data as TruthEvent;
     }
   }
@@ -457,6 +521,8 @@ export class ApiService {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         await invoke('reseed_knowledge_base');
+        // Clear entity names cache after reseeding
+        clearEntityNamesCache();
       } catch (error) {
         console.error('Tauri reseedKnowledgeBase error:', error);
         throw new Error('Failed to reseed knowledge base');
@@ -682,6 +748,44 @@ export class ApiService {
     } else {
       const response = await apiClient.post('/contexts', request);
       return response.data;
+    }
+  }
+
+  static async checkDuplicateTemplate(
+    template: {
+      category_id?: number | null;
+      forma_id?: number | null;
+      cause_id?: number | null;
+      develop_id?: number | null;
+      effect_id?: number | null;
+    },
+    excludeId?: number
+  ): Promise<boolean> {
+    if (isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = await invoke('check_duplicate_template', {
+          request: {
+            category_id: template.category_id ?? null,
+            forma_id: template.forma_id ?? null,
+            cause_id: template.cause_id ?? null,
+            develop_id: template.develop_id ?? null,
+            effect_id: template.effect_id ?? null,
+            exclude_id: excludeId ?? null,
+          },
+        });
+        return result as boolean;
+      } catch (error) {
+        console.error('Tauri checkDuplicateTemplate error:', error);
+        throw new Error('Failed to check for duplicate template in desktop backend');
+      }
+    } else {
+      // For web development, call HTTP API
+      const response = await apiClient.post('/contexts/check-duplicate', {
+        ...template,
+        exclude_id: excludeId,
+      });
+      return response.data.duplicate as boolean;
     }
   }
 

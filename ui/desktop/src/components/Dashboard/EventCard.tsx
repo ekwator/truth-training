@@ -15,9 +15,20 @@ interface NavigationState {
 interface EventCardProps {
   event: Event;
   onNavigate?: (screen: Screen, state?: NavigationState) => void;
+  onViewEvent?: () => void;
+  onViewJudgments?: () => void;
+  onEditEvent?: () => void;
+  onClick?: () => void;
 }
 
-export const EventCard: React.FC<EventCardProps> = ({ event, onNavigate }) => {
+export const EventCard: React.FC<EventCardProps> = ({ 
+  event, 
+  onNavigate,
+  onViewEvent,
+  onViewJudgments,
+  onEditEvent,
+  onClick
+}) => {
   const { setPrefilledData } = useContextEditorStore();
   const [openView, setOpenView] = useState(false);
   const [openJudge, setOpenJudge] = useState(false);
@@ -91,7 +102,10 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onNavigate }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 hover:shadow-md dark:hover:shadow-gray-600 transition-shadow duration-200">
+    <div 
+      className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 hover:shadow-md dark:hover:shadow-gray-600 transition-shadow duration-200 cursor-pointer"
+      onClick={onClick}
+    >
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
@@ -150,12 +164,59 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onNavigate }) => {
           </div>
           
           <div className="flex space-x-2">
-            <button className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors" onClick={() => setOpenView(true)}>
-              {getEmoji('actions', 'edit')} View
-            </button>
-            <button className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" onClick={() => setOpenJudge(true)}>
-              {getEmoji('navigation', 'judgments')} Judge
-            </button>
+            {onViewEvent ? (
+              <button 
+                className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewEvent();
+                }}
+              >
+                {getEmoji('screens', 'events')} View Event
+              </button>
+            ) : (
+              <button 
+                className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenView(true);
+                }}
+              >
+                {getEmoji('actions', 'edit')} View
+              </button>
+            )}
+            {onEditEvent && (
+              <button 
+                className="px-3 py-1 text-sm bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditEvent();
+                }}
+              >
+                {getEmoji('actions', 'edit')} Edit
+              </button>
+            )}
+            {onViewJudgments ? (
+              <button 
+                className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewJudgments();
+                }}
+              >
+                {getEmoji('navigation', 'judgments')} View Judgments
+              </button>
+            ) : (
+              <button 
+                className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenJudge(true);
+                }}
+              >
+                {getEmoji('navigation', 'judgments')} Judge
+              </button>
+            )}
           </div>
         </div>
       </div>

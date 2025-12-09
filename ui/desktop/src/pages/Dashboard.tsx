@@ -7,7 +7,6 @@
 import React, { useEffect } from 'react';
 import { Screen } from '@/components/layout/TopMenuBar';
 import { useSyncStore } from '@/stores/sync';
-import { useNavigationStore } from '@/stores/navigation';
 import { ApiService } from '@/services/api';
 import { getEmoji } from '@/utils/emojiMapping';
 
@@ -29,23 +28,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     fetchSyncStatus,
     startSync 
   } = useSyncStore();
-  const { setViewJudgments } = useNavigationStore();
   const [totalEvents, setTotalEvents] = React.useState<number>(0);
+  const [averageImpact, setAverageImpact] = React.useState<number>(0);
   const [loading, setLoading] = React.useState(true);
 
   useEffect(() => {
-    // Load sync status and event count on mount
+    // Load sync status and quick stats on mount
     fetchSyncStatus();
-    loadEventCount();
+    loadQuickStats();
   }, []);
 
-  const loadEventCount = async () => {
+  const loadQuickStats = async () => {
     try {
       setLoading(true);
-      const response = await ApiService.getEvents(1, 1);
-      setTotalEvents(response.pagination?.total || 0);
+      const metrics = await ApiService.getOverallMetrics();
+      setTotalEvents(metrics.total_events || 0);
+      setAverageImpact(metrics.average_impact_level || 0);
     } catch (error) {
-      console.error('Failed to load event count:', error);
+      console.error('Failed to load quick stats:', error);
     } finally {
       setLoading(false);
     }
@@ -53,31 +53,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   const handleViewEvents = () => {
     onNavigate('events');
-  };
-
-  const handleViewJudgments = () => {
-    setViewJudgments(true);
-    onNavigate('events');
-  };
-
-  const handleNewEvent = () => {
-    onNavigate('new-event');
-  };
-
-  const handleManageTemplates = () => {
-    onNavigate('context-editor');
-  };
-
-  const handleOverallSummary = () => {
-    onNavigate('overall-summary');
-  };
-
-  const handleTrainingResults = () => {
-    onNavigate('training-results');
-  };
-
-  const handleSettings = () => {
-    onNavigate('settings');
   };
 
   return (
@@ -118,82 +93,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {/* Quick Stats */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Quick Stats</h2>
-        <div className="flex items-center space-x-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          {getEmoji('status', 'success')} Quick Stats
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             onClick={handleViewEvents}
-            className="text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer"
+            className="text-left p-4 bg-blue-50 dark:bg-blue-900 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
           >
-            {loading ? '...' : totalEvents} Events
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+              {loading ? '...' : totalEvents}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              {getEmoji('navigation', 'events')} Total Events
+            </div>
           </button>
+          <div className="text-left p-4 bg-green-50 dark:bg-green-900 rounded-lg">
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+              {loading ? '...' : averageImpact.toFixed(2)}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              {getEmoji('status', 'success')} Average Impact Level
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <button
-          onClick={handleViewEvents}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
-        >
-          <div className="text-2xl mb-2">{getEmoji('navigation', 'events')}</div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">View Events</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">View all events</div>
-        </button>
-
-        <button
-          onClick={handleViewJudgments}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
-        >
-          <div className="text-2xl mb-2">{getEmoji('navigation', 'judgments')}</div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">View Judgments</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">View event judgments</div>
-        </button>
-
-        <button
-          onClick={handleNewEvent}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
-        >
-          <div className="text-2xl mb-2">{getEmoji('actions', 'create')}</div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">New Event</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create a new event</div>
-        </button>
-
-        <button
-          onClick={handleManageTemplates}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
-        >
-          <div className="text-2xl mb-2">{getEmoji('navigation', 'templates')}</div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">Manage Context Templates</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create and edit templates</div>
-        </button>
-
-        <button
-          onClick={handleOverallSummary}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
-        >
-          <div className="text-2xl mb-2">{getEmoji('navigation', 'summary')}</div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">Overall Summary</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">View overall statistics</div>
-        </button>
-
-        <button
-          onClick={handleTrainingResults}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
-        >
-          <div className="text-2xl mb-2">{getEmoji('navigation', 'training')}</div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">Training Results</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">View training metrics</div>
-        </button>
-
-        <button
-          onClick={handleSettings}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6 text-left hover:shadow-md dark:hover:shadow-gray-600 transition-shadow"
-        >
-          <div className="text-2xl mb-2">{getEmoji('navigation', 'settings')}</div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">Settings</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure application</div>
-        </button>
-      </div>
     </div>
   );
 };

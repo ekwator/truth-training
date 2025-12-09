@@ -1,6 +1,7 @@
 import React from 'react';
 import { getEmoji } from '@/utils/emojiMapping';
 import { LocaleToggle } from './LocaleToggle';
+import { useNavigationStore } from '@/stores/navigation';
 
 export type Screen = 'home' | 'new-event' | 'context-editor' | 'event-summary' | 'events' | 'judgments' | 'overall-summary' | 'training-results' | 'settings';
 
@@ -15,17 +16,7 @@ interface TopMenuBarProps {
 }
 
 export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigate }) => {
-  // Flag-based navigation support (reserved for future use)
-  // const { viewJudgments, setViewJudgments } = useNavigationStore();
-
-  // Back navigation handler (reserved for future use)
-  // const handleBack = () => {
-  //   // Navigate to previous screen (App.tsx will handle back stack)
-  //   // For now, just go to home if not already there
-  //   if (currentScreen !== 'home') {
-  //     onNavigate('home');
-  //   }
-  // };
+  const { setViewJudgments } = useNavigationStore();
   return (
     <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -40,12 +31,31 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigat
               {getEmoji('navigation', 'home')} Dashboard
             </button>
             <button
+              onClick={() => onNavigate('events')}
+              className={`px-3 py-2 text-sm font-medium ${
+                currentScreen === 'events' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+              }`}
+            >
+              {getEmoji('navigation', 'events')} View Events
+            </button>
+            <button
+              onClick={() => {
+                setViewJudgments(true);
+                onNavigate('events');
+              }}
+              className={`px-3 py-2 text-sm font-medium ${
+                currentScreen === 'judgments' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+              }`}
+            >
+              {getEmoji('navigation', 'judgments')} View Judgments
+            </button>
+            <button
               onClick={() => onNavigate('new-event')}
               className={`px-3 py-2 text-sm font-medium ${
                 currentScreen === 'new-event' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
-              {getEmoji('actions', 'create')} Create Event
+              {getEmoji('actions', 'create')} New Event
             </button>
             <button
               onClick={() => onNavigate('context-editor')}
@@ -53,15 +63,7 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({ currentScreen, onNavigat
                 currentScreen === 'context-editor' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
-              {getEmoji('navigation', 'templates')} Context Editor
-            </button>
-            <button
-              onClick={() => onNavigate('event-summary')}
-              className={`px-3 py-2 text-sm font-medium ${
-                currentScreen === 'event-summary' ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
-              }`}
-            >
-              Event Summary
+              {getEmoji('navigation', 'templates')} Manage Context Templates
             </button>
             <button
               onClick={() => onNavigate('overall-summary')}

@@ -112,3 +112,36 @@ pub async fn create_context(
 
     Ok(ContextOption::from(context))
 }
+
+#[derive(Debug, Deserialize)]
+pub struct CheckDuplicateRequest {
+    pub category_id: Option<i64>,
+    pub forma_id: Option<i64>,
+    pub cause_id: Option<i64>,
+    pub develop_id: Option<i64>,
+    pub effect_id: Option<i64>,
+    pub exclude_id: Option<i64>,
+}
+
+#[command]
+pub async fn check_duplicate_template(
+    db: State<'_, Db>,
+    request: CheckDuplicateRequest,
+) -> Result<bool, String> {
+    let conn = db.0.lock();
+    
+    // Call core storage function to count duplicates
+    let count = core_lib::storage::count_duplicate_templates(
+        &conn,
+        request.category_id,
+        request.forma_id,
+        request.cause_id,
+        request.develop_id,
+        request.effect_id,
+        request.exclude_id,
+    )
+    .map_err(|e| format!("Failed to check for duplicate template: {}", e))?;
+    
+    // Return true if duplicate exists (count > 0)
+    Ok(count > 0)
+}
