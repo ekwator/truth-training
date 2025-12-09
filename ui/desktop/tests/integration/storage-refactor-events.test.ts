@@ -18,6 +18,8 @@ describe('Storage Refactor - Events Commands Integration', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset test event ID
+    testEventId = null;
   });
 
   beforeAll(async () => {

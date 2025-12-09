@@ -23,7 +23,7 @@ describe('Storage Refactor - Impacts Commands Integration', () => {
 
   beforeAll(async () => {
     // Test event ID is set in beforeEach
-    testEventId = 1;
+    // No async setup needed
   });
 
   it('should add impact using core storage function', async () => {
