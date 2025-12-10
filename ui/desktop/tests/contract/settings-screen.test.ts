@@ -6,12 +6,26 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { ApiService } from '@/services/api';
+import { ApiService, setApiClient } from '@/services/api';
 import type { AppConfig, ConnectionTestResult } from '@/types/api';
+
+// Mock apiClient
+const mockApiClient = {
+  get: jest.fn(),
+  post: jest.fn(),
+  put: jest.fn(),
+  delete: jest.fn(),
+  interceptors: {
+    request: { use: jest.fn(), eject: jest.fn() },
+    response: { use: jest.fn(), eject: jest.fn() },
+  },
+};
 
 describe('Settings Screen Contract Tests', () => {
   beforeEach(() => {
-    // Reset any mocks if needed
+    jest.clearAllMocks();
+    // Set mock apiClient
+    setApiClient(mockApiClient as any);
   });
 
   describe('Configuration Management', () => {
@@ -134,31 +148,58 @@ describe('Settings Screen Contract Tests', () => {
 
   describe('Nearby Sync', () => {
     it('should start nearby sync with valid interval', async () => {
+      mockApiClient.post.mockResolvedValueOnce({ data: { success: true } });
+      
       await expect(
         ApiService.startNearbySync(3000)
       ).resolves.not.toThrow();
+      
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/v1/nearby_sync/start', { interval_ms: 3000 });
     });
 
     it('should stop nearby sync', async () => {
+      mockApiClient.post.mockResolvedValueOnce({ data: { success: true } });
+      
       await expect(
         ApiService.stopNearbySync()
       ).resolves.not.toThrow();
+      
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/v1/nearby_sync/stop');
     });
   });
 
   describe('IP Address Validation', () => {
     it('should validate IP address format', () => {
       const validIPs = ['127.0.0.1', '192.168.1.1', '10.0.0.1', '255.255.255.255'];
-      const invalidIPs = ['invalid', '256.1.1.1', '1.1.1', '1.1.1.1.1'];
+      // Invalid IPs: 'invalid' (not numeric), '1.1.1' (missing octet), '1.1.1.1.1' (too many octets)
+      // Note: '256.1.1.1' would pass the basic regex but fail value validation (256 > 255)
+      const invalidIPs = ['invalid', '1.1.1', '1.1.1.1.1'];
 
       validIPs.forEach(ip => {
         const regex = /^\d{1,3}(\.\d{1,3}){3}$/;
         expect(regex.test(ip)).toBe(true);
+        // Also validate that each octet is <= 255
+        const octets = ip.split('.').map(Number);
+        octets.forEach(octet => {
+          expect(octet).toBeGreaterThanOrEqual(0);
+          expect(octet).toBeLessThanOrEqual(255);
+        });
       });
 
       invalidIPs.forEach(ip => {
         const regex = /^\d{1,3}(\.\d{1,3}){3}$/;
         expect(regex.test(ip)).toBe(false);
+      });
+      
+      // Test IPs that match format but have invalid values
+      const invalidValueIPs = ['256.1.1.1', '1.256.1.1', '1.1.1.256', '999.999.999.999'];
+      invalidValueIPs.forEach(ip => {
+        const regex = /^\d{1,3}(\.\d{1,3}){3}$/;
+        // Format matches but values are invalid
+        expect(regex.test(ip)).toBe(true);
+        const octets = ip.split('.').map(Number);
+        const hasInvalidOctet = octets.some(octet => octet > 255);
+        expect(hasInvalidOctet).toBe(true);
       });
     });
   });

@@ -1,8 +1,9 @@
 //! Integration test for poll_global_registries function
 //! Tests T024: Global registry polling + HTTP reachability checks
 
+#![cfg(feature = "desktop")]
+
 use anyhow::Result;
-use core_lib::models::{Node, NodeSource, NodeType};
 use core_lib::storage;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -45,7 +46,8 @@ async fn test_poll_global_registries_invalid_url() -> Result<()> {
     // Should not panic, but may return 0 or log warnings
     let count = poll_global_registries(&config, conn.clone()).await?;
     // Count may be 0 if registry is unreachable, which is acceptable
-    assert!(count >= 0, "Count should be non-negative");
+    // count is usize, which is always >= 0, so we just verify it's a valid result
+    assert_eq!(count, 0, "Invalid registry URL should return 0 nodes");
     Ok(())
 }
 

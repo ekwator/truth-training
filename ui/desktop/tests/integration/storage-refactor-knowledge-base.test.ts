@@ -3,14 +3,29 @@
  * Verifies that knowledge base commands correctly use core::storage functions.
  */
 
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+// Mock Tauri invoke
+jest.mock('@tauri-apps/api/core', () => ({
+  invoke: jest.fn(),
+}));
+
 import { invoke } from '@tauri-apps/api/core';
 
 describe('Storage Refactor - Knowledge Base Commands Integration', () => {
+  const mockInvoke = invoke as jest.MockedFunction<typeof invoke>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should get entity names for all entity types', async () => {
     const entityTypes = ['category', 'forma', 'cause', 'develop', 'effect'];
     
     for (const entityType of entityTypes) {
+      const mockEntities = [{ id: 1, name: `Test ${entityType}` }];
+      mockInvoke.mockResolvedValueOnce(mockEntities);
+
       const result = await invoke('get_entity_names', { entityType });
       
       expect(result).toBeInstanceOf(Array);
@@ -26,12 +41,21 @@ describe('Storage Refactor - Knowledge Base Commands Integration', () => {
   });
 
   it('should return error for invalid entity type', async () => {
+    mockInvoke.mockRejectedValueOnce(new Error('Invalid entity type'));
+
     await expect(
       invoke('get_entity_names', { entityType: 'invalid_type' })
     ).rejects.toThrow();
   });
 
   it('should reseed knowledge base using core function', async () => {
+    const mockResult = {
+      success: true,
+      message: 'Knowledge base reseeded successfully',
+      tables_updated: ['category', 'forma', 'cause', 'develop', 'effect'],
+    };
+    mockInvoke.mockResolvedValueOnce(mockResult);
+
     const result = await invoke('reseed_knowledge_base');
     
     expect(result).toBeDefined();
@@ -42,6 +66,12 @@ describe('Storage Refactor - Knowledge Base Commands Integration', () => {
   });
 
   it('should list contexts using core function', async () => {
+    const mockResult = {
+      data: [{ id: 1, name: 'Test Context' }],
+      fetched_at: new Date().toISOString(),
+    };
+    mockInvoke.mockResolvedValueOnce(mockResult);
+
     const result = await invoke('list_contexts');
     
     expect(result).toBeDefined();

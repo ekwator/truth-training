@@ -3,7 +3,13 @@
  * Verifies that entity names are correctly resolved from IDs using the entityNames utility.
  */
 
-import { describe, it, expect, beforeAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, beforeEach, jest } from '@jest/globals';
+
+// Mock Tauri invoke
+jest.mock('@tauri-apps/api/core', () => ({
+  invoke: jest.fn(),
+}));
+
 import { invoke } from '@tauri-apps/api/core';
 import {
   fetchEntityNames,
@@ -13,12 +19,23 @@ import {
 } from '@/utils/entityNames';
 
 describe('Entity Name Resolution Integration', () => {
+  const mockInvoke = invoke as jest.MockedFunction<typeof invoke>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    clearEntityNamesCache();
+  });
+
   beforeAll(async () => {
     // Clear cache to ensure fresh fetch
     clearEntityNamesCache();
   });
 
   it('should fetch entity names for all types', async () => {
+    // Mock entity names for all types (called 5 times for 5 entity types)
+    const mockEntities = [{ id: 1, name: 'Test Entity' }];
+    mockInvoke.mockResolvedValue(mockEntities);
+
     const cache = await fetchEntityNames();
     
     expect(cache).toBeDefined();
@@ -33,21 +50,33 @@ describe('Entity Name Resolution Integration', () => {
   it('should cache entity names', async () => {
     clearEntityNamesCache();
     
-    const start1 = Date.now();
+    // Mock entity names (will be called 5 times for 5 entity types)
+    const mockEntities = [{ id: 1, name: 'Test Entity' }];
+    mockInvoke.mockResolvedValue(mockEntities);
+    
     const cache1 = await fetchEntityNames();
-    const time1 = Date.now() - start1;
     
-    const start2 = Date.now();
+    // Clear mocks to verify second call doesn't invoke again
+    const invokeCallCount1 = mockInvoke.mock.calls.length;
+    mockInvoke.mockClear();
+    
     const cache2 = await fetchEntityNames();
-    const time2 = Date.now() - start2;
+    const invokeCallCount2 = mockInvoke.mock.calls.length;
     
-    // Second call should be faster (cached)
-    expect(time2).toBeLessThan(time1);
+    // Second call should use cache (no new invoke calls)
+    expect(invokeCallCount2).toBe(0);
     expect(cache1.lastUpdated).toBe(cache2.lastUpdated);
   });
 
   it('should resolve entity names for event', async () => {
+    // Mock entity names
+    const mockEntities = [{ id: 1, name: 'Test Category' }];
+    mockInvoke.mockResolvedValue(mockEntities);
     const cache = await fetchEntityNames();
+    
+    // Mock event list
+    const mockEvent = { id: 1, category_id: 1, forma_id: null, cause_id: null, develop_id: null, effect_id: null };
+    mockInvoke.mockResolvedValueOnce({ data: [mockEvent], total: 1 });
     
     // Get a test event with entity IDs
     const events = await invoke('list_events_fast', { page: 1, perPage: 1 });
@@ -77,7 +106,18 @@ describe('Entity Name Resolution Integration', () => {
   });
 
   it('should resolve entity names for multiple events', async () => {
+    // Mock entity names
+    const mockEntities = [{ id: 1, name: 'Test Category' }];
+    mockInvoke.mockResolvedValue(mockEntities);
     const cache = await fetchEntityNames();
+    
+    // Mock event list
+    const mockEvents = [
+      { id: 1, category_id: 1, forma_id: null, cause_id: null, develop_id: null, effect_id: null },
+      { id: 2, category_id: null, forma_id: 1, cause_id: null, develop_id: null, effect_id: null },
+    ];
+    mockInvoke.mockResolvedValueOnce({ data: mockEvents, total: 2 });
+    
     const events = await invoke('list_events_fast', { page: 1, perPage: 5 });
     const eventList = (events as any).data;
     

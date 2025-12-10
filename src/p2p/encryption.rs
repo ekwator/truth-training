@@ -76,6 +76,7 @@ impl CryptoIdentity {
 
     /// Создание CryptoIdentity из SigningKey (для tests)
     #[cfg(test)]
+    #[allow(dead_code)] // Used in integration tests
     pub fn from_keypair(signing_key: SigningKey) -> Self {
         let verifying_key = signing_key.verifying_key();
         Self {

@@ -11,6 +11,21 @@ import { ThemeProvider } from '@/components/system/ThemeProvider';
 import { ToastProvider } from '@/components/system/Toaster';
 import ApiService from '@/services/api';
 
+// Mock window.matchMedia for jsdom
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
 // Mock ApiService
 jest.mock('@/services/api', () => ({
   listNodes: jest.fn(),
@@ -40,8 +55,12 @@ describe('NodesPanel Integration Tests', () => {
       
       renderNodesPanel();
       
-      // Verify NodesPanel title is displayed
-      expect(screen.getByText(/Nodes/i)).toBeInTheDocument();
+      // Verify NodesPanel title is displayed (use getAllByText since there may be multiple matches)
+      const nodesElements = screen.getAllByText(/Nodes/i);
+      expect(nodesElements.length).toBeGreaterThan(0);
+      // Check that at least one is an h2 heading
+      const heading = nodesElements.find(el => el.tagName === 'H2');
+      expect(heading).toBeInTheDocument();
     });
 
     it('should display loading state when fetching nodes', async () => {
@@ -138,8 +157,13 @@ describe('NodesPanel Integration Tests', () => {
       renderNodesPanel();
       
       await waitFor(() => {
-        // Verify filter dropdown exists (check for ALL option)
-        expect(screen.getByText(/ALL/i)).toBeInTheDocument();
+        // Verify filter dropdown exists (check for ALL option in select element)
+        const allOptions = screen.getAllByText(/ALL/i);
+        // Find the one in the node type filter (value="ALL")
+        const nodeTypeOption = allOptions.find(el => 
+          el.tagName === 'OPTION' && (el as HTMLOptionElement).value === 'ALL'
+        );
+        expect(nodeTypeOption).toBeInTheDocument();
       });
     });
 
@@ -149,8 +173,12 @@ describe('NodesPanel Integration Tests', () => {
       renderNodesPanel();
       
       await waitFor(() => {
-        // Verify reachability filter exists
-        expect(screen.getByText(/All/i)).toBeInTheDocument();
+        // Verify reachability filter exists (check for All option in select with value="all")
+        const allOptions = screen.getAllByText(/All/i);
+        const reachabilityOption = allOptions.find(el => 
+          el.tagName === 'OPTION' && (el as HTMLOptionElement).value === 'all'
+        );
+        expect(reachabilityOption).toBeInTheDocument();
       });
     });
   });

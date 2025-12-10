@@ -99,13 +99,13 @@ describe('Template Population Integration Tests', () => {
       store.setSelectedTemplateContext(templateContext);
       
       // Verify context is set
-      expect(store.getState().selectedTemplateContext).toEqual(templateContext);
+      expect(useNavigationStore.getState().selectedTemplateContext).toEqual(templateContext);
       
       // Clear template selection (simulating form population completion)
       store.clearTemplateSelection();
       
       // Verify context is cleared
-      expect(store.getState().selectedTemplateContext).toBeNull();
+      expect(useNavigationStore.getState().selectedTemplateContext).toBeNull();
     });
 
     it('should handle multiple template selections sequentially', () => {
@@ -120,7 +120,7 @@ describe('Template Population Integration Tests', () => {
         effectId: null,
       };
       store.setSelectedTemplateContext(template1);
-      expect(store.getState().selectedTemplateContext).toEqual(template1);
+      expect(useNavigationStore.getState().selectedTemplateContext).toEqual(template1);
       
       // Clear and select second template
       store.clearTemplateSelection();
@@ -133,7 +133,7 @@ describe('Template Population Integration Tests', () => {
         effectId: null,
       };
       store.setSelectedTemplateContext(template2);
-      expect(store.getState().selectedTemplateContext).toEqual(template2);
+      expect(useNavigationStore.getState().selectedTemplateContext).toEqual(template2);
     });
   });
 
@@ -150,7 +150,7 @@ describe('Template Population Integration Tests', () => {
       };
       
       store.setSelectedTemplateContext(templateContext);
-      const context = store.getState().selectedTemplateContext;
+      const context = useNavigationStore.getState().selectedTemplateContext;
       
       // Verify field mapping (these should map to form fields: category_id, forma_id, etc.)
       expect(context?.categoryId).toBeDefined();

@@ -4,12 +4,36 @@
  * Test logic verified against spec/23-function_desktop.md lines 243-261.
  */
 
-import { describe, it, expect } from '@jest/globals';
-import { ApiService } from '@/services/api';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import { ApiService, setApiClient } from '@/services/api';
+
+// Mock apiClient
+const mockApiClient = {
+  get: jest.fn(),
+  post: jest.fn(),
+  put: jest.fn(),
+  delete: jest.fn(),
+  interceptors: {
+    request: { use: jest.fn(), eject: jest.fn() },
+    response: { use: jest.fn(), eject: jest.fn() },
+  },
+};
 
 describe('Training Results Screen Contract Tests', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Set mock apiClient
+    setApiClient(mockApiClient as any);
+  });
   describe('Metrics Display', () => {
     it('should load overall metrics', async () => {
+      const mockMetrics = {
+        total_events: 10,
+        average_impact_level: 3.5,
+        last_updated: new Date().toISOString(),
+      };
+      mockApiClient.get.mockResolvedValueOnce({ data: mockMetrics });
+      
       const metrics = await ApiService.getOverallMetrics();
       
       expect(metrics).toBeDefined();
@@ -19,9 +43,25 @@ describe('Training Results Screen Contract Tests', () => {
       expect(typeof metrics.average_impact_level).toBe('number');
       expect(metrics.total_events).toBeGreaterThanOrEqual(0);
       expect(metrics.average_impact_level).toBeGreaterThanOrEqual(0);
+      expect(mockApiClient.get).toHaveBeenCalledWith('/summary/metrics');
     });
 
     it('should load event rows for results table', async () => {
+      const mockRows = [
+        {
+          event: 'Test Event 1',
+          summary: 'Test Summary 1',
+          date: '2024-01-01T00:00:00Z',
+          impact: 5,
+        },
+        {
+          event: 'Test Event 2',
+          summary: 'Test Summary 2',
+          date: '2024-01-02T00:00:00Z',
+        },
+      ];
+      mockApiClient.get.mockResolvedValueOnce({ data: mockRows });
+      
       const rows = await ApiService.getEventRows();
       
       expect(rows).toBeDefined();
@@ -41,11 +81,19 @@ describe('Training Results Screen Contract Tests', () => {
           expect(typeof firstRow.impact).toBe('number');
         }
       }
+      expect(mockApiClient.get).toHaveBeenCalledWith('/summary/events');
     });
   });
 
   describe('Progress Indicators', () => {
     it('should have metrics with valid structure', async () => {
+      const mockMetrics = {
+        total_events: 10,
+        average_impact_level: 3.5,
+        last_updated: new Date().toISOString(),
+      };
+      mockApiClient.get.mockResolvedValueOnce({ data: mockMetrics });
+      
       const metrics = await ApiService.getOverallMetrics();
       
       // Verify metrics structure matches expected format
@@ -62,6 +110,12 @@ describe('Training Results Screen Contract Tests', () => {
     });
 
     it('should display progress metrics correctly', async () => {
+      const mockMetrics = {
+        total_events: 10,
+        average_impact_level: 3.5,
+      };
+      mockApiClient.get.mockResolvedValueOnce({ data: mockMetrics });
+      
       const metrics = await ApiService.getOverallMetrics();
       
       // Metrics should be non-negative
@@ -72,6 +126,15 @@ describe('Training Results Screen Contract Tests', () => {
 
   describe('Data Loading', () => {
     it('should load training data on mount', async () => {
+      const mockMetrics = {
+        total_events: 10,
+        average_impact_level: 3.5,
+      };
+      const mockRows: any[] = [];
+      mockApiClient.get
+        .mockResolvedValueOnce({ data: mockMetrics })
+        .mockResolvedValueOnce({ data: mockRows });
+      
       // Simulate component mount - load both metrics and event rows
       const [metrics, rows] = await Promise.all([
         ApiService.getOverallMetrics(),
@@ -83,15 +146,33 @@ describe('Training Results Screen Contract Tests', () => {
     });
 
     it('should handle empty results gracefully', async () => {
+      mockApiClient.get.mockResolvedValueOnce({ data: [] });
+      
       const rows = await ApiService.getEventRows();
       
       // Should return empty array, not throw error
       expect(Array.isArray(rows)).toBe(true);
+      expect(rows.length).toBe(0);
     });
   });
 
   describe('Results Table Structure', () => {
     it('should have consistent row structure', async () => {
+      const mockRows = [
+        {
+          event: 'Test Event 1',
+          summary: 'Test Summary 1',
+          date: '2024-01-01T00:00:00Z',
+        },
+        {
+          event: 'Test Event 2',
+          summary: 'Test Summary 2',
+          date: '2024-01-02T00:00:00Z',
+          impact: 5,
+        },
+      ];
+      mockApiClient.get.mockResolvedValueOnce({ data: mockRows });
+      
       const rows = await ApiService.getEventRows();
       
       rows.forEach(row => {
@@ -105,6 +186,15 @@ describe('Training Results Screen Contract Tests', () => {
     });
 
     it('should format dates correctly', async () => {
+      const mockRows = [
+        {
+          event: 'Test Event 1',
+          summary: 'Test Summary 1',
+          date: '2024-01-01T00:00:00Z',
+        },
+      ];
+      mockApiClient.get.mockResolvedValueOnce({ data: mockRows });
+      
       const rows = await ApiService.getEventRows();
       
       rows.forEach(row => {

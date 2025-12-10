@@ -24,8 +24,8 @@ describe('View Event Navigation Integration Tests', () => {
       const eventId = 123;
       
       // Verify: viewJudgments flag should remain false
-      expect(store.getState().viewJudgments).toBe(false);
-      expect(store.getState().selectedEventIdForJudgments).toBeNull();
+      expect(useNavigationStore.getState().viewJudgments).toBe(false);
+      expect(useNavigationStore.getState().selectedEventIdForJudgments).toBeNull();
     });
 
     it('should set viewJudgments flag only when explicitly viewing judgments', () => {
@@ -36,8 +36,8 @@ describe('View Event Navigation Integration Tests', () => {
       store.setSelectedEventIdForJudgments('123');
       
       // Verify: viewJudgments flag is set
-      expect(store.getState().viewJudgments).toBe(true);
-      expect(store.getState().selectedEventIdForJudgments).toBe('123');
+      expect(useNavigationStore.getState().viewJudgments).toBe(true);
+      expect(useNavigationStore.getState().selectedEventIdForJudgments).toBe('123');
     });
 
     it('should distinguish between View Event and View Judgments actions', () => {
@@ -45,13 +45,13 @@ describe('View Event Navigation Integration Tests', () => {
       
       // View Event action should NOT set viewJudgments
       // (In actual implementation, this would navigate to event detail screen)
-      const state1 = store.getState();
+      const state1 = useNavigationStore.getState();
       expect(state1.viewJudgments).toBe(false);
       
       // View Judgments action SHOULD set viewJudgments
       store.setViewJudgments(true);
       store.setSelectedEventIdForJudgments('456');
-      const state2 = store.getState();
+      const state2 = useNavigationStore.getState();
       expect(state2.viewJudgments).toBe(true);
       expect(state2.selectedEventIdForJudgments).toBe('456');
     });
@@ -67,8 +67,8 @@ describe('View Event Navigation Integration Tests', () => {
       store.clearJudgmentsSelection();
       
       // Verify: Flags are cleared
-      expect(store.getState().viewJudgments).toBe(false);
-      expect(store.getState().selectedEventIdForJudgments).toBeNull();
+      expect(useNavigationStore.getState().viewJudgments).toBe(false);
+      expect(useNavigationStore.getState().selectedEventIdForJudgments).toBeNull();
     });
   });
 
@@ -81,15 +81,15 @@ describe('View Event Navigation Integration Tests', () => {
       store.setSelectedEventIdForJudgments('100');
       
       // Verify judgments state
-      expect(store.getState().viewJudgments).toBe(true);
-      expect(store.getState().selectedEventIdForJudgments).toBe('100');
+      expect(useNavigationStore.getState().viewJudgments).toBe(true);
+      expect(useNavigationStore.getState().selectedEventIdForJudgments).toBe('100');
       
       // Clear judgments (simulating View Event action)
       store.clearJudgmentsSelection();
       
       // Verify judgments state is cleared, but other navigation state remains
-      expect(store.getState().viewJudgments).toBe(false);
-      expect(store.getState().selectedEventIdForJudgments).toBeNull();
+      expect(useNavigationStore.getState().viewJudgments).toBe(false);
+      expect(useNavigationStore.getState().selectedEventIdForJudgments).toBeNull();
     });
   });
 });
