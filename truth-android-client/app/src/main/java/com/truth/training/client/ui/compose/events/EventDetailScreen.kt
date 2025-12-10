@@ -23,8 +23,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.R
 import com.truth.training.client.data.database.entities.*
+import com.truth.training.client.ui.compose.impacts.AddImpactDialog
+import com.truth.training.client.ui.compose.judgments.SubmitJudgmentDialog
+import com.truth.training.client.ui.events.EventDetailViewModel
 import com.truth.training.client.utils.EmojiMapping
+import com.truth.training.client.utils.ImpactLevelMapper
 import kotlinx.coroutines.flow.Flow
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * Helper function to get entity name by ID from a list
@@ -43,6 +49,7 @@ private fun <T> getEntityNameById(
 @Composable
 fun EventDetailScreen(
     event: EventEntity?,
+    viewModel: EventDetailViewModel?,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onNavigateToJudgments: () -> Unit,
@@ -63,7 +70,15 @@ fun EventDetailScreen(
     val develops by developsFlow.collectAsState(initial = emptyList())
     val effects by effectsFlow.collectAsState(initial = emptyList())
     
-    if (event == null) {
+    // Collect impacts and judgments from ViewModel
+    val impacts by viewModel?.impacts?.collectAsState(initial = emptyList()) ?: remember { mutableStateOf(emptyList<ImpactEntity>()) }
+    val judgments by viewModel?.judgments?.collectAsState(initial = emptyList()) ?: remember { mutableStateOf(emptyList<JudgmentEntity>()) }
+    
+    // Dialog state
+    var showAddImpactDialog by remember { mutableStateOf(false) }
+    var showSubmitJudgmentDialog by remember { mutableStateOf(false) }
+    
+    if (event == null || viewModel == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
@@ -192,6 +207,129 @@ fun EventDetailScreen(
 
             Divider()
 
+            // Impacts Section
+            Text(
+                text = "${EmojiMapping.getEmoji("screens", "events")} ${context.getString(R.string.impacts)}",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Button(
+                onClick = { showAddImpactDialog = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.add_impact)}")
+            }
+            
+            if (impacts.isEmpty()) {
+                Text(
+                    text = "${EmojiMapping.getEmoji("status", "warning")} ${context.getString(R.string.no_impacts_yet)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                impacts.forEach { impact ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${EmojiMapping.getEmoji("fields", "assessment")} ${if (impact.value) "Positive (Level 4-5)" else "Negative (Level 1-3)"}",
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    text = formatTimestamp(impact.createdAt),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            impact.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+                                Text(
+                                    text = notes,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Divider()
+            
+            // Judgments Section
+            Text(
+                text = "${EmojiMapping.getEmoji("screens", "judgments")} ${context.getString(R.string.judgments)}",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Button(
+                onClick = { showSubmitJudgmentDialog = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("${EmojiMapping.getEmoji("actions", "submit")} ${context.getString(R.string.submit_judgment)}")
+            }
+            
+            if (judgments.isEmpty()) {
+                Text(
+                    text = "${EmojiMapping.getEmoji("status", "warning")} ${context.getString(R.string.no_judgments_yet)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                judgments.forEach { judgment ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${EmojiMapping.getEmoji("fields", "assessment")} ${judgment.assessment}",
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    text = formatJudgmentTimestamp(judgment.submittedAt),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                text = "${EmojiMapping.getEmoji("fields", "confidence")} ${context.getString(R.string.confidence_percent, (judgment.confidenceLevel * 100).toInt())}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            judgment.reasoning?.takeIf { it.isNotBlank() }?.let { reasoning ->
+                                Text(
+                                    text = reasoning,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Divider()
+
             Button(onClick = onNavigateToJudgments, modifier = Modifier.fillMaxWidth()) {
                 Text(context.getString(R.string.view_judgments))
             }
@@ -199,6 +337,52 @@ fun EventDetailScreen(
                 Text(context.getString(R.string.edit_event))
             }
         }
+    }
+    
+    // Add Impact Dialog
+    if (showAddImpactDialog) {
+        AddImpactDialog(
+            eventId = event.id,
+            onSave = { impactLevel, notes ->
+                viewModel.addImpact(impactLevel, notes)
+                showAddImpactDialog = false
+            },
+            onDismiss = { showAddImpactDialog = false }
+        )
+    }
+    
+    // Submit Judgment Dialog
+    if (showSubmitJudgmentDialog) {
+        SubmitJudgmentDialog(
+            eventId = event.id,
+            onSubmit = { assessment, confidenceLevel, reasoning ->
+                viewModel.submitJudgment(assessment, confidenceLevel, reasoning)
+                showSubmitJudgmentDialog = false
+            },
+            onDismiss = { showSubmitJudgmentDialog = false }
+        )
+    }
+}
+
+/**
+ * Format timestamp (milliseconds) to human-readable string.
+ */
+private fun formatTimestamp(timestampMs: Long): String {
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    return dateFormat.format(Date(timestampMs))
+}
+
+/**
+ * Format judgment timestamp (ISO string) to human-readable string.
+ */
+private fun formatJudgmentTimestamp(timestamp: String): String {
+    return try {
+        val instant = java.time.Instant.parse(timestamp)
+        val date = Date.from(instant)
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        dateFormat.format(date)
+    } catch (e: Exception) {
+        timestamp // Return original if parsing fails
     }
 }
 

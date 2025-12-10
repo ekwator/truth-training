@@ -306,26 +306,41 @@ You can invoke it multiple times—it is idempotent. After running, inspect the 
 ### Adding Impacts
 
 1. Open event detail view
-2. Click "Add Impact"
-3. Set impact level (1-5)
+2. Tap "Add Impact"
+3. Set impact level (1-5) using slider
 4. Add notes (optional)
-5. Click "Save"
+5. Tap "Save"
 
 ### Submitting Judgments
 
 1. Open event detail view
-2. Click "Submit Judgment"
+2. Tap "Submit Judgment"
 3. Select assessment: 'true', 'false', or 'uncertain'
-4. Set confidence level (0.0-1.0)
+4. Set confidence level (0.0-1.0) using slider
 5. Add reasoning (optional)
-6. Click "Submit"
+6. Tap "Submit"
 
-### Viewing Logs
+### Viewing Network Nodes
 
-Desktop UI follows the confidentiality principle: no user actions are logged or stored. To view system-level logs:
+1. Tap "Nodes" in bottom navigation
+2. View discovered nodes
+3. Tap refresh to discover new nodes
+4. View node details:
+   - Address
+   - Type (Hub/Leaf)
+   - Status (reachable/unreachable)
+   - Last seen timestamp
 
-1. **Frontend logs**: Open browser DevTools (F12) → Console tab
-2. **Backend logs**: Check the terminal/console where the application was launched
+### Synchronization
+
+1. App automatically syncs in background every 15 minutes
+2. Manual sync:
+   - Go to Dashboard
+   - Tap "Sync Now" button
+3. View sync status:
+   - Online/Offline indicator
+   - Last sync time
+   - Pending operations count
 
 See [Logging Guide](logging.md) for details.
 

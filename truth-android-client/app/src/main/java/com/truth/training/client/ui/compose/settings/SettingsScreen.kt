@@ -39,6 +39,7 @@ import android.app.Activity
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onNavigateBack: () -> Unit,
+    onNavigateToNodes: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val connectionMode by viewModel.connectionMode.collectAsState()
@@ -377,6 +378,14 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+            
+            // Network Nodes Button
+            Button(
+                onClick = onNavigateToNodes,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("${EmojiMapping.getEmoji("navigation", "events")} ${context.getString(R.string.node_discovery)}")
             }
             
             // Connection Status Panel

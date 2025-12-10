@@ -1,5 +1,6 @@
 package com.truth.training.client.ui.compose.nodes
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.truth.training.client.R
 import com.truth.training.client.data.database.entities.NodeEntity
 import com.truth.training.client.utils.EmojiMapping
+import com.truth.training.client.utils.NodeTypeMapper
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -33,6 +35,7 @@ import java.util.*
 @Composable
 fun NodesScreen(
     viewModel: NodesViewModel,
+    onNodeClick: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val nodes by viewModel.nodes.collectAsState()
@@ -47,7 +50,11 @@ fun NodesScreen(
     
     val context = LocalContext.current
     val nodeTypes = listOf("ALL", "LAN", "WIFI", "GLOBAL", "RELAY", "CLIENT")
-    val reachableOptions = listOf("All" to null, "Reachable" to 1, "Unreachable" to 0)
+    val reachableOptions = listOf(
+        context.getString(R.string.all) to null,
+        context.getString(R.string.node_status_reachable) to 1,
+        context.getString(R.string.node_status_unreachable) to 0
+    )
     
     Scaffold(
         topBar = {
@@ -57,7 +64,7 @@ fun NodesScreen(
                     IconButton(onClick = { viewModel.refreshNodes() }) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Refresh"
+                            contentDescription = context.getString(R.string.node_refresh)
                         )
                     }
                 }
@@ -90,7 +97,7 @@ fun NodesScreen(
                         FilterChip(
                             selected = nodeTypeFilter != null,
                             onClick = { showTypeFilterMenu = true },
-                            label = { Text(nodeTypeFilter ?: "All Types") }
+                            label = { Text(nodeTypeFilter ?: context.getString(R.string.all_types)) }
                         )
                         
                         // Reachability Filter
@@ -100,9 +107,9 @@ fun NodesScreen(
                             label = {
                                 Text(
                                     when (reachableFilter) {
-                                        1 -> "Reachable"
-                                        0 -> "Unreachable"
-                                        else -> "All"
+                                        1 -> context.getString(R.string.node_status_reachable)
+                                        0 -> context.getString(R.string.node_status_unreachable)
+                                        else -> context.getString(R.string.all)
                                     }
                                 )
                             }
@@ -117,7 +124,7 @@ fun NodesScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Search,
-                                contentDescription = "Discover"
+                                contentDescription = context.getString(R.string.discover)
                             )
                         }
                         
@@ -127,7 +134,7 @@ fun NodesScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Delete,
-                                contentDescription = "Cleanup"
+                                contentDescription = context.getString(R.string.cleanup)
                             )
                         }
                         
@@ -137,7 +144,7 @@ fun NodesScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.HealthAndSafety,
-                                contentDescription = "Health Check"
+                                contentDescription = context.getString(R.string.health_check)
                             )
                         }
                     }
@@ -154,7 +161,7 @@ fun NodesScreen(
                     // Last Updated
                     if (lastUpdated != null) {
                         Text(
-                            text = "Last updated: ${SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(lastUpdated!!))}",
+                            text = context.getString(R.string.nodes_last_updated, SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(lastUpdated!!))),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -180,12 +187,12 @@ fun NodesScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = "No nodes discovered yet",
+                            text = context.getString(R.string.no_nodes_discovered),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Button(onClick = { viewModel.discoverNodes() }) {
-                            Text("Start Discovery")
+                            Text(context.getString(R.string.start_discovery))
                         }
                     }
                 }
@@ -196,7 +203,11 @@ fun NodesScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(nodes, key = { it.id }) { node ->
-                        NodeCard(node = node, lastUpdated = lastUpdated)
+                        NodeCard(
+                            node = node,
+                            lastUpdated = lastUpdated,
+                            onClick = { onNodeClick(node.id) }
+                        )
                     }
                 }
             }
@@ -244,14 +255,20 @@ fun NodesScreen(
 private fun NodeCard(
     node: NodeEntity,
     lastUpdated: Long?,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val now = System.currentTimeMillis() / 1000
     val ageSeconds = lastUpdated?.let { (it / 1000) - node.lastSeen } ?: 0
     val expiresIn = (node.ttl - ageSeconds).coerceAtLeast(0)
     
+    val userFriendlyType = NodeTypeMapper.mapToUserFriendly(node.type)
+    
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -275,7 +292,13 @@ private fun NodeCard(
                 
                 AssistChip(
                     onClick = {},
-                    label = { Text(node.type) }
+                    label = {
+                        Text(
+                            if (userFriendlyType == "Hub") context.getString(R.string.node_type_hub)
+                            else if (userFriendlyType == "Leaf") context.getString(R.string.node_type_leaf)
+                            else context.getString(R.string.node_unknown_type)
+                        )
+                    }
                 )
             }
             
@@ -294,7 +317,7 @@ private fun NodeCard(
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        text = if (node.reachable == 1) "Online" else "Offline",
+                        text = if (node.reachable == 1) context.getString(R.string.online) else context.getString(R.string.offline),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (node.reachable == 1)
@@ -309,12 +332,12 @@ private fun NodeCard(
                     horizontalAlignment = Alignment.End
                 ) {
                     Text(
-                        text = "TTL: ${node.ttl}s",
+                        text = context.getString(R.string.ttl_label, node.ttl),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = if (expiresIn > 0) "Expires: ${formatDuration(expiresIn)}" else "Expired",
+                        text = if (expiresIn > 0) context.getString(R.string.expires_label, formatDuration(expiresIn)) else context.getString(R.string.node_expired),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (expiresIn > 0) 
                             MaterialTheme.colorScheme.onSurfaceVariant 
@@ -331,13 +354,13 @@ private fun NodeCard(
             ) {
                 if (node.source != null) {
                     Text(
-                        text = "Source: ${node.source}",
+                        text = context.getString(R.string.source_label, node.source),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Text(
-                    text = "Last seen: ${SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(node.lastSeen * 1000))}",
+                    text = context.getString(R.string.last_seen_label, SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(node.lastSeen * 1000))),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

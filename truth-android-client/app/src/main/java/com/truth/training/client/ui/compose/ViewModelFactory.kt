@@ -7,6 +7,7 @@ import com.truth.training.client.TruthTrainingApplication
 import com.truth.training.client.data.database.TruthDatabase
 import com.truth.training.client.ui.DashboardViewModel
 import com.truth.training.client.ui.compose.nodes.NodesViewModel
+import com.truth.training.client.ui.nodes.NodeDetailViewModel
 import com.truth.training.client.ui.events.EventListViewModel
 import com.truth.training.client.ui.events.EventDetailViewModel
 import com.truth.training.client.ui.events.EventCreateViewModel
@@ -38,6 +39,11 @@ class ViewModelFactory(
             }
             modelClass.isAssignableFrom(NodesViewModel::class.java) -> {
                 NodesViewModel(application) as T
+            }
+            modelClass.isAssignableFrom(NodeDetailViewModel::class.java) -> {
+                // For node detail, we need nodeId - this will be handled via SavedStateHandle
+                // For now, throw - should be created with nodeId parameter
+                throw IllegalArgumentException("NodeDetailViewModel requires nodeId parameter. Use createNodeDetailViewModel() instead.")
             }
             modelClass.isAssignableFrom(EventListViewModel::class.java) -> {
                 EventListViewModel(application) as T
@@ -95,6 +101,13 @@ class ViewModelFactory(
      */
     fun createContextTemplateEditorViewModel(templateId: Int? = null): ContextTemplateEditorViewModel {
         return ContextTemplateEditorViewModel(application, templateId)
+    }
+    
+    /**
+     * Create NodeDetailViewModel with nodeId.
+     */
+    fun createNodeDetailViewModel(nodeId: Long): NodeDetailViewModel {
+        return NodeDetailViewModel(application, nodeId)
     }
 }
 
