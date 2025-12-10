@@ -1,5 +1,184 @@
 # Changelog
 
+## [1.0.0-Prot] — Prototype Release for Truth Discovery and Collective Intelligence
+
+**Release Date**: 2025-01-XX  
+**Status**: Prototype Release
+
+For a narrative overview of this release, see [`release-info.txt`](release-info.txt).
+
+### 🎉 Feature Implementation: Impacts, Judgments, and Network Nodes
+
+This release implements core user interaction features across both Android and Desktop platforms, enabling users to assess events, submit judgments, and monitor network infrastructure.
+
+#### 📱 Android Client Enhancements
+
+**Impacts**
+- **Add Impact Screen**: Full implementation for adding impact assessments to events
+  - Impact level selection (1-5 scale) with visual slider
+  - Optional notes field for detailed observations
+  - Integration with Event Summary screen
+  - Full Russian localization support
+- **Impact Display**: List view showing all impacts for an event with level indicators
+- **Data Model**: `ImpactEntity` with Room database integration
+- **API Integration**: RESTful API endpoints for impact submission and retrieval
+
+**Judgments**
+- **Submit Judgment Screen**: Complete implementation for ternary judgment submission
+  - Assessment selection: Confirm (true), Reject (false), or Abstain (uncertain)
+  - Confidence level slider (0.0-1.0) with percentage display
+  - Optional reasoning field for detailed explanations
+  - Form validation and error handling
+  - Full Russian localization support
+- **Judgment Display**: List view showing all judgments with color-coded assessment types
+- **Data Model**: `JudgmentEntity` with Room database integration
+- **API Integration**: RESTful API endpoints for judgment submission and retrieval
+
+**Network Nodes**
+- **Network Nodes Screen**: Complete node discovery and management interface
+  - Full Russian localization (all strings translated)
+  - Node type display (Hub/Leaf) using `NodeTypeMapper`
+  - Reachability status indicators (Online/Offline)
+  - TTL (Time To Live) display and expiration tracking
+  - Manual actions: Refresh, Discover, Cleanup, Health Check
+  - Filtering by type and reachability status
+  - Navigation integration from Settings screen
+- **Node Detail Screen**: Detailed view for individual nodes
+  - Complete node information display (address, type, status, timestamps, TTL, source, node ID)
+  - Age calculation and expiration tracking
+  - Full Russian localization
+  - Refresh and close actions
+
+**Localization Improvements**
+- **Complete Russian Translation**: All Network Nodes screen strings translated
+  - Added entries to `strings.xml` and `strings-ru.xml`
+  - Removed hardcoded English strings
+  - Consistent terminology across all UI elements
+- **String Resources**: Comprehensive localization for:
+  - Impact-related strings (add_impact, impact_level, impact_notes, etc.)
+  - Judgment-related strings (submit_judgment, assessment, confidence, reasoning, etc.)
+  - Node-related strings (all_types, node_type_hub, node_type_leaf, node_status_reachable, etc.)
+
+#### 🖥️ Desktop UI Enhancements
+
+**Impacts Implementation**
+- **AddImpactModal Component**: React modal dialog for adding impacts
+  - Impact level slider (1-5) with visual feedback
+  - Optional notes field
+  - Form validation and error handling
+  - Emoji support (constitutional requirement Rule 8)
+  - Localization support (EN/RU)
+  - Integration with Event Summary page
+- **Impact Display**: Enhanced Event Summary page showing:
+  - List of all impacts with level range display
+  - Empty state messages
+  - Automatic list updates after impact submission
+
+**Judgments Implementation**
+- **SubmitJudgmentModal Component**: React modal dialog for submitting judgments
+  - Assessment selection (confirm/reject/abstain) with radio buttons
+  - Confidence slider (0.0-1.0) with percentage display
+  - Optional reasoning field
+  - Form validation and error handling
+  - Emoji support (constitutional requirement Rule 8)
+  - Localization support (EN/RU)
+  - Integration with Event Summary page
+- **Judgment Display**: Enhanced Event Summary page showing:
+  - List of all judgments with color-coded assessment types
+  - Confidence percentage display
+  - Empty state messages
+  - Automatic list updates after judgment submission
+
+**Network Nodes Implementation**
+- **NodeDetailView Component**: React modal dialog for detailed node information
+  - Complete node field display (address, type, status, timestamps, TTL, source, node ID)
+  - `expires_in` and `age` calculations
+  - Node type mapping using `NodeTypeMapper` utility
+  - Refresh and close actions
+  - Emoji support (constitutional requirement Rule 8)
+  - Localization support (EN/RU)
+- **NodesPanel Enhancement**: Made node rows clickable
+  - Click handler integration
+  - State management for selected node
+  - Opens `NodeDetailView` modal on node click
+
+**Utility Functions**
+- **ImpactLevelMapper** (`ui/desktop/src/utils/impactLevelMapper.ts`): Utility for mapping impact levels (1-5) to boolean values and helper functions
+- **NodeTypeMapper** (`ui/desktop/src/utils/nodeTypeMapper.ts`): Utility for mapping technical node types to user-friendly types (Hub/Leaf)
+
+**Type Definitions**
+- **Impact Types** (`ui/desktop/src/types/impacts.ts`): TypeScript interfaces for `Impact` and `AddImpactRequest`
+- **NodeRecord Enhancement**: Added `created_at` field to align with data model
+
+### 🧪 Testing & Quality Assurance
+
+**Unit Tests**
+- **ImpactLevelMapper Tests** (`ui/desktop/tests/unit/impactLevelMapper.test.ts`): Comprehensive test coverage for impact level mapping functions
+- **NodeTypeMapper Tests** (`ui/desktop/tests/unit/nodeTypeMapper.test.ts`): Complete test coverage for node type mapping functions
+
+**Component Tests**
+- **AddImpactModal Tests** (`ui/desktop/tests/component/AddImpactModal.test.tsx`): Component rendering, form interaction, validation, and submission tests
+- **Headless UI Mocks**: Added mocks for `@headlessui/react` components in `setupTests.ts` for proper Jest/JSDOM environment
+
+**Jest Configuration**
+- Updated `ui/desktop/jest.config.ts` to include `tests/unit/` and `tests/component/` directories in `testMatch`
+
+### 🔧 Code Quality & Build Improvements
+
+**Rust Compiler Warnings Fixed**
+- **events.rs**: Fixed unused variable `limit` warning (prefixed with `_`)
+- **knowledge_base.rs**: Added `#[allow(dead_code)]` attributes for reserved functions:
+  - `create_temp_tables` (reserved for Phase 5, User Story 3)
+  - `fill_temp_tables` (reserved for Phase 5, User Story 3)
+  - `validate_temp_table_fks` (reserved for Phase 5, User Story 3)
+  - `atomic_swap` (reserved for Phase 5, User Story 3)
+- **Build Status**: All Rust compilation warnings resolved, clean build achieved
+
+**CI/CD Workflow Enhancements**
+- **Android Build Workflow** (`.github/workflows/android-build.yml`): Major improvements
+  - **Universal Build**: All flavors (local, mock, remote) now build for both debug and release
+  - **AAB & APK**: Both AAB and APK files are built for all flavors in release mode
+  - **Tag-Independent**: Builds execute regardless of tags (removed tag-based conditions)
+  - **Test Exclusion**: Tests are skipped for tag pushes (as requested)
+  - **Release Artifacts**: All built files (debug and release, all flavors) are included in GitHub Release
+  - **Tag Handling**: Improved tag name extraction for both push tags and release events
+
+### 📚 Documentation Updates
+
+**Quickstart Guides**
+- **Android Quickstart** (`docs/quickstart_android.md`): Updated with detailed instructions for:
+  - Adding Impacts: Step-by-step guide with screenshots descriptions
+  - Submitting Judgments: Complete workflow documentation
+  - Viewing Network Nodes: Navigation and usage instructions
+- **Desktop Quickstart** (`docs/quickstart_desktop.md`): Updated with detailed instructions for:
+  - Adding Impacts: Modal usage and form interaction
+  - Submitting Judgments: Assessment selection and confidence setting
+  - Viewing Network Nodes: Node detail view and panel interaction
+
+### 🔐 Privacy and Confidentiality
+
+**Core Principle Maintained**: No user actions are logged or persistently stored. The application does not track, record, or save any user interactions, navigation patterns, clicks, or behavioral data. This ensures complete privacy and anonymity.
+
+**Key Privacy Guarantees:**
+- ✅ **No User Action Logging**: No clicks, navigation, or interaction history is stored
+- ✅ **No Persistent User Tracking**: No identifiers, session data, or behavioral analytics
+- ✅ **No Telemetry Collection**: No user activity is transmitted or stored
+- ✅ **Ephemeral Logs Only**: Only system-level logs (errors, sync operations) are temporarily stored for debugging purposes
+
+This confidentiality principle is enforced across all platforms (Desktop UI, Android, Server, CLI) and is a core architectural requirement.
+
+### 🎓 For Developers
+
+This release demonstrates cross-platform feature parity between Android and Desktop implementations, with consistent user experience, data models, and API integration patterns. All new features follow the established architectural patterns and maintain privacy compliance.
+
+**Technologies Used:**
+- **Android**: Jetpack Compose, Room Database, Retrofit, Kotlin Coroutines
+- **Desktop**: React 18, TypeScript, Headless UI, Zustand, Tauri
+- **Testing**: Jest, React Testing Library, JUnit, Android Instrumentation Tests
+- **Build Tools**: Gradle, npm/pnpm, Cargo
+
+---
+
 ## [1.0.0-Develop] — Development Release for Learning and Practice
 
 **Release Date**: 2025-01-XX  
