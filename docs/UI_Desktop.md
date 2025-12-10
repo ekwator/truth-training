@@ -10,6 +10,8 @@ Compatible with Core/Server v1.0.0
 
 > **For production build instructions, see:** [docs/build_instructions.md](build_instructions.md) and [docs/Deployment.md](Deployment.md)
 
+> **For implementation verification and status report, see:** [Desktop UI Implementation Verification](DESKTOP_UI_VERIFICATION.md)
+
 ## Desktop UI Updates (Tauri) - Synchronized with Android UI
 
 This document summarizes the Desktop UI (Tauri) implementation, which has been synchronized with the Android UI implementation to ensure visual structure, navigation, rendering behavior, component states, and localization logic parity while preserving all Desktop-specific functional features.
@@ -181,5 +183,9 @@ The Context Picker is a searchable combobox component used for selecting context
 - ✅ Desktop builds: Linux/Windows/macOS (rusqlite bundled)
 - ✅ Mobile builds: Android/iOS (truth_core only)
 - ✅ Cross-platform artifacts: libtruth_core-desktop per OS
+
+### Implementation Verification
+
+For detailed verification of Desktop UI implementation status, including all screens, components, services, and features, see: **[Desktop UI Implementation Verification Report](DESKTOP_UI_VERIFICATION.md)**
 
 

@@ -41,6 +41,7 @@ Use this index to reach every human-facing reference.
 - [Test Report Android V1.0.0](TEST_REPORT_ANDROID_v1.0.0.md)
 - [Cross Device E2E Tests](cross_device_e2e_tests.md)
 - [Device E2E Test Report](device_e2e_test_report.md)
+- [Desktop UI Implementation Verification](DESKTOP_UI_VERIFICATION.md) - Complete verification report for Desktop UI implementation status
 - [Final Validation](final_validation.md)
 - [Node Discovery Test Results](node_discovery_test_results.md)
 - [Troubleshooting](troubleshooting.md)
