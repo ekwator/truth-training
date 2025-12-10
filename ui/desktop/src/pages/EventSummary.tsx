@@ -13,8 +13,11 @@ import React, { useEffect, useState } from 'react';
 import { Screen } from '@/components/layout/TopMenuBar';
 import { ApiService, Impact, Consensus } from '@/services/api';
 import { Event } from '@/types/events';
-import { Judgment } from '@/types/judgments';
+import { Judgment, JudgmentAssessment } from '@/types/judgments';
 import { getEmoji } from '@/utils/emojiMapping';
+import { AddImpactModal } from '@/components/impacts/AddImpactModal';
+import { SubmitJudgmentModal } from '@/components/judgments/SubmitJudgmentModal';
+import { mapToBoolean, getDisplayText } from '@/utils/impactLevelMapper';
 
 interface NavigationState {
   eventId?: number;
@@ -28,11 +31,13 @@ interface EventSummaryProps {
 
 export const EventSummary: React.FC<EventSummaryProps> = ({ eventId, onNavigate }) => {
   const [event, setEvent] = useState<Event | null>(null);
-  const [impacts] = useState<Impact[]>([]); // Reserved for future API implementation
+  const [impacts, setImpacts] = useState<Impact[]>([]);
   const [judgments, setJudgments] = useState<Judgment[]>([]);
   const [consensus, setConsensus] = useState<Consensus | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingRelated, setLoadingRelated] = useState(false);
+  const [isAddImpactModalOpen, setIsAddImpactModalOpen] = useState(false);
+  const [isSubmitJudgmentModalOpen, setIsSubmitJudgmentModalOpen] = useState(false);
 
   useEffect(() => {
     if (eventId) {
@@ -71,8 +76,10 @@ export const EventSummary: React.FC<EventSummaryProps> = ({ eventId, onNavigate 
         console.debug('Consensus not available for event:', eventId);
       }
 
-      // Note: Impacts loading would go here if API method becomes available
-      // For now, impacts section will only show if impacts are passed via props or loaded elsewhere
+      // Load impacts for event
+      // TODO: Implement getImpactsForEvent API method or filter from all impacts
+      // For now, impacts will be loaded when added via modal
+      // In a real implementation, we would call: ApiService.getImpactsForEvent(eventId)
     } catch (error) {
       console.error('Failed to load related data:', error);
     } finally {
@@ -88,6 +95,30 @@ export const EventSummary: React.FC<EventSummaryProps> = ({ eventId, onNavigate 
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const formatDateString = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleImpactAdded = (impact: Impact) => {
+    // Add new impact to list
+    setImpacts((prev) => [...prev, impact]);
+    // Reload related data to ensure consistency
+    loadRelatedData();
+  };
+
+  const handleJudgmentSubmitted = (judgment: Judgment) => {
+    // Add new judgment to list
+    setJudgments((prev) => [...prev, judgment]);
+    // Reload related data to ensure consistency
+    loadRelatedData();
   };
 
 
@@ -296,78 +327,140 @@ export const EventSummary: React.FC<EventSummaryProps> = ({ eventId, onNavigate 
         )}
 
         {/* Judgments Section */}
-        {judgments.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               {getEmoji('navigation', 'judgments')} Judgments ({judgments.length})
             </h2>
-            <div className="space-y-3">
-              {judgments.slice(0, 5).map((judgment) => (
-                <div
-                  key={judgment.id}
-                  className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <span className={`px-2 py-1 rounded text-sm font-medium ${
-                      judgment.assessment === 'confirm'
-                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                        : judgment.assessment === 'reject'
-                        ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                        : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                    }`}>
-                      {judgment.assessment}
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      Confidence: {(judgment.confidence_level * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                  {judgment.reasoning && (
-                    <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">{judgment.reasoning}</p>
-                  )}
-                </div>
-              ))}
-              {judgments.length > 5 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                  ... and {judgments.length - 5} more judgment{judgments.length - 5 !== 1 ? 's' : ''}
-                </p>
-              )}
-            </div>
-            {onNavigate && (
-              <button
-                onClick={() => onNavigate('judgments', { eventId })}
-                className="mt-4 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-              >
-                {getEmoji('navigation', 'judgments')} View All Judgments
-              </button>
-            )}
+            <button
+              onClick={() => setIsSubmitJudgmentModalOpen(true)}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-500 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              {getEmoji('actions', 'submit')} Submit Judgment
+            </button>
           </div>
-        )}
-
-        {/* Impacts Section */}
-        {impacts.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              {getEmoji('status', 'success')} Impacts ({impacts.length})
-            </h2>
+          
+          {judgments.length > 0 ? (
             <div className="space-y-3">
-              {impacts.map((impact) => (
-                <div
-                  key={impact.id}
-                  className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-700 dark:text-gray-300">
-                      Level {impact.impact_level}
-                    </span>
-                    {impact.notes && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{impact.notes}</p>
+              {judgments.map((judgment) => {
+                // Map assessment from API format to display format
+                const assessmentMap: Record<string, JudgmentAssessment> = {
+                  'true': 'confirm',
+                  'false': 'reject',
+                  'uncertain': 'abstain'
+                };
+                const displayAssessment = assessmentMap[judgment.assessment as string] || judgment.assessment as JudgmentAssessment;
+                
+                return (
+                  <div
+                    key={judgment.id}
+                    className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-3">
+                        <span className={`px-2 py-1 rounded text-sm font-medium capitalize ${
+                          displayAssessment === 'confirm'
+                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                            : displayAssessment === 'reject'
+                            ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                            : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                        }`}>
+                          {displayAssessment}
+                        </span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          Confidence: {(judgment.confidence_level * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatDateString(judgment.submitted_at)}
+                      </span>
+                    </div>
+                    {judgment.reasoning && (
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">{judgment.reasoning}</p>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">
+                {getEmoji('status', 'warning')} No judgments submitted yet
+              </p>
+              <button
+                onClick={() => setIsSubmitJudgmentModalOpen(true)}
+                className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+              >
+                {getEmoji('actions', 'submit')} Submit First Judgment
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Impacts Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              {getEmoji('status', 'success')} Impacts ({impacts.length})
+            </h2>
+            <button
+              onClick={() => setIsAddImpactModalOpen(true)}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-500 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              {getEmoji('actions', 'create')} Add Impact
+            </button>
           </div>
-        )}
+          
+          {impacts.length > 0 ? (
+            <div className="space-y-3">
+              {impacts.map((impact) => {
+                // Map impact_level to boolean value for display
+                const isPositive = mapToBoolean(impact.impact_level);
+                const displayText = getDisplayText(isPositive);
+                
+                return (
+                  <div
+                    key={impact.id}
+                    className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <span className={`text-sm font-medium ${
+                          isPositive 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {displayText}
+                        </span>
+                        <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                          (Level {impact.impact_level})
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatDateString(impact.created_at)}
+                      </span>
+                    </div>
+                    {impact.notes && (
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">{impact.notes}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">
+                {getEmoji('status', 'warning')} No impacts recorded yet
+              </p>
+              <button
+                onClick={() => setIsAddImpactModalOpen(true)}
+                className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+              >
+                {getEmoji('actions', 'create')} Add First Impact
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Empty States */}
         {!loadingRelated && judgments.length === 0 && impacts.length === 0 && !consensus && (
@@ -378,6 +471,26 @@ export const EventSummary: React.FC<EventSummaryProps> = ({ eventId, onNavigate 
           </div>
         )}
       </div>
+
+      {/* Add Impact Modal */}
+      {eventId && (
+        <AddImpactModal
+          isOpen={isAddImpactModalOpen}
+          onClose={() => setIsAddImpactModalOpen(false)}
+          eventId={eventId}
+          onImpactAdded={handleImpactAdded}
+        />
+      )}
+
+      {/* Submit Judgment Modal */}
+      {eventId && (
+        <SubmitJudgmentModal
+          isOpen={isSubmitJudgmentModalOpen}
+          onClose={() => setIsSubmitJudgmentModalOpen(false)}
+          eventId={eventId}
+          onJudgmentSubmitted={handleJudgmentSubmitted}
+        />
+      )}
     </div>
   );
 };

@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.R
+import com.truth.training.client.utils.EmojiMapping
 import com.truth.training.client.data.database.entities.JudgmentEntity
 import com.truth.training.client.data.network.dto.JudgmentStatsResponse
 
@@ -32,14 +33,14 @@ fun JudgmentListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.judgments)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "judgments")} ${context.getString(R.string.judgments)}") },
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNewJudgmentClick) {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = context.getString(R.string.new_judgment)
+                    contentDescription = "${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.new_judgment)}"
                 )
             }
         }

@@ -16,6 +16,7 @@ import com.truth.training.client.R
 import com.truth.training.client.data.database.entities.EventEntity
 import com.truth.training.client.data.network.dto.UpdateEventRequest
 import com.truth.training.client.ui.compose.components.DatePickerField
+import com.truth.training.client.utils.EmojiMapping
 import kotlinx.coroutines.flow.Flow
 import com.truth.training.client.data.database.entities.*
 import java.util.Calendar
@@ -137,10 +138,10 @@ fun EventEditScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.edit_event)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "newEvent")} ${context.getString(R.string.edit_event)}") },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.cancel))
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "${EmojiMapping.getEmoji("actions", "cancel")} ${context.getString(R.string.cancel)}")
                     }
                 },
                 actions = {
@@ -167,7 +168,7 @@ fun EventEditScreen(
                         },
                         enabled = canSave
                     ) {
-                        Text(context.getString(R.string.save))
+                        Text("${EmojiMapping.getEmoji("actions", "save")} ${context.getString(R.string.save)}")
                     }
                 }
             )
@@ -185,7 +186,7 @@ fun EventEditScreen(
             OutlinedTextField(
                 value = initialName,
                 onValueChange = { },
-                label = { Text(context.getString(R.string.name)) },
+                label = { Text("${EmojiMapping.getEmoji("fields", "name")} ${context.getString(R.string.name)}") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = false,
                 readOnly = true,
@@ -196,7 +197,7 @@ fun EventEditScreen(
             OutlinedTextField(
                 value = initialDescription,
                 onValueChange = { },
-                label = { Text(context.getString(R.string.description)) },
+                label = { Text("${EmojiMapping.getEmoji("fields", "description")} ${context.getString(R.string.description)}") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = false,
                 readOnly = true,
@@ -273,7 +274,7 @@ fun EventEditScreen(
             )
 
             DatePickerField(
-                label = context.getString(R.string.start_timestamp),
+                label = "${EmojiMapping.getEmoji("fields", "startDate")} ${context.getString(R.string.start_timestamp)}",
                 selectedDate = timestampStart,
                 onDateSelected = { },
                 modifier = Modifier.fillMaxWidth(),
@@ -281,7 +282,7 @@ fun EventEditScreen(
             )
 
             DatePickerField(
-                label = "${context.getString(R.string.end_timestamp)} *",
+                label = "${EmojiMapping.getEmoji("fields", "endDate")} ${context.getString(R.string.end_timestamp)} *",
                 selectedDate = timestampEnd,
                 onDateSelected = { newDate ->
                     // Validation: End Timestamp cannot be less than Start Timestamp, but can be equal

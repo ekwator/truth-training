@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.SyncStatus
 import com.truth.training.client.ui.settings.SettingsViewModel
 import com.truth.training.client.R
+import com.truth.training.client.utils.EmojiMapping
 import java.text.SimpleDateFormat
 import java.util.*
 import android.app.Activity
@@ -38,6 +39,7 @@ import android.app.Activity
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onNavigateBack: () -> Unit,
+    onNavigateToNodes: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val connectionMode by viewModel.connectionMode.collectAsState()
@@ -67,12 +69,12 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.settings)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "settings")} ${context.getString(R.string.settings)}") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = context.getString(R.string.back)
+                            contentDescription = "${EmojiMapping.getEmoji("actions", "back")} ${context.getString(R.string.back)}"
                         )
                     }
                 }
@@ -95,7 +97,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = context.getString(R.string.error_prefix, error),
+                        text = "${EmojiMapping.getEmoji("status", "error")} ${context.getString(R.string.error_prefix, error)}",
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
@@ -378,6 +380,14 @@ fun SettingsScreen(
                 }
             }
             
+            // Network Nodes Button
+            Button(
+                onClick = onNavigateToNodes,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("${EmojiMapping.getEmoji("navigation", "events")} ${context.getString(R.string.node_discovery)}")
+            }
+            
             // Connection Status Panel
             HorizontalDivider()
             
@@ -407,14 +417,14 @@ fun SettingsScreen(
                     onClick = { viewModel.saveConnectionSettings() },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(context.getString(R.string.save_connection_settings))
+                    Text("${EmojiMapping.getEmoji("actions", "save")} ${context.getString(R.string.save_connection_settings)}")
                 }
                 
                 Button(
                     onClick = { viewModel.saveDiscoveryWorkerSettings() },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(context.getString(R.string.save_discovery_settings))
+                    Text("${EmojiMapping.getEmoji("actions", "save")} ${context.getString(R.string.save_discovery_settings)}")
                 }
             }
             
@@ -552,7 +562,10 @@ private fun ConnectionStatusCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (syncStatus.isOnline) context.getString(R.string.online) else context.getString(R.string.offline),
+                    text = if (syncStatus.isOnline) 
+                        "${EmojiMapping.getEmoji("status", "online")} ${context.getString(R.string.online)}" 
+                    else 
+                        "${EmojiMapping.getEmoji("status", "offline")} ${context.getString(R.string.offline)}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -568,7 +581,10 @@ private fun ConnectionStatusCard(
             }
             
             Text(
-                text = context.getString(R.string.pending_operations, syncStatus.pendingOperations),
+                text = if (syncStatus.pendingOperations > 0)
+                    "${EmojiMapping.getEmoji("status", "syncing")} ${context.getString(R.string.pending_operations, syncStatus.pendingOperations)}"
+                else
+                    context.getString(R.string.pending_operations, syncStatus.pendingOperations),
                 style = MaterialTheme.typography.bodyMedium
             )
             
@@ -583,8 +599,15 @@ private fun ConnectionStatusCard(
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             testResult?.let {
+                val emoji = if (it.contains("Success", ignoreCase = true)) {
+                    EmojiMapping.getEmoji("status", "success")
+                } else if (it.contains("Failed", ignoreCase = true)) {
+                    EmojiMapping.getEmoji("status", "error")
+                } else {
+                    ""
+                }
                 Text(
-                    text = context.getString(R.string.test_result, it),
+                    text = if (emoji.isNotEmpty()) "$emoji ${context.getString(R.string.test_result, it)}" else context.getString(R.string.test_result, it),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 if (testTimestamp > 0) {
@@ -596,7 +619,7 @@ private fun ConnectionStatusCard(
                 }
             }
             
-            Button(
+            OutlinedButton(
                 onClick = onTestConnection,
                 enabled = !isTesting,
                 modifier = Modifier.fillMaxWidth()
@@ -607,7 +630,7 @@ private fun ConnectionStatusCard(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text(context.getString(R.string.test_connection))
+                    Text("${EmojiMapping.getEmoji("actions", "refresh")} ${context.getString(R.string.test_connection)}")
                 }
             }
         }

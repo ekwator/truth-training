@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.R
 import com.truth.training.client.data.database.entities.*
+import com.truth.training.client.utils.EmojiMapping
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -59,12 +60,12 @@ fun ContextTemplateListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.context_templates)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "contextEditor")} ${context.getString(R.string.context_templates)}") },
                 actions = {
                     IconButton(onClick = onNewTemplateClick) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = context.getString(R.string.new_template)
+                            contentDescription = "${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.new_template)}"
                         )
                     }
                 }
@@ -74,7 +75,7 @@ fun ContextTemplateListScreen(
             FloatingActionButton(onClick = onNewTemplateClick) {
                 Icon(
                     imageVector = androidx.compose.material.icons.Icons.Filled.Add,
-                    contentDescription = context.getString(R.string.new_template)
+                    contentDescription = "${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.new_template)}"
                 )
             }
         }
@@ -230,7 +231,7 @@ private fun EmptyTemplatesView(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onNewTemplateClick) {
-            Text(context.getString(R.string.create_first_template))
+            Text("${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.create_first_template)}")
         }
     }
 }

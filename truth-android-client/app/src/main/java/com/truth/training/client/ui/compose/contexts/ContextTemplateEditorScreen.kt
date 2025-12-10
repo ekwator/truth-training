@@ -14,6 +14,7 @@ import com.truth.training.client.R
 import com.truth.training.client.data.network.dto.CreateContextRequest
 import com.truth.training.client.data.database.entities.*
 import com.truth.training.client.ui.compose.components.ContextPicker
+import com.truth.training.client.utils.EmojiMapping
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -114,12 +115,12 @@ fun ContextTemplateEditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.new_template)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "contextEditor")} ${context.getString(R.string.new_template)}") },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = context.getString(R.string.cancel)
+                            contentDescription = "${EmojiMapping.getEmoji("actions", "cancel")} ${context.getString(R.string.cancel)}"
                         )
                     }
                 },
@@ -177,7 +178,7 @@ fun ContextTemplateEditorScreen(
                         },
                         enabled = canSave
                     ) {
-                        Text(context.getString(R.string.save))
+                        Text("${EmojiMapping.getEmoji("actions", "save")} ${context.getString(R.string.save)}")
                     }
                 }
             )
@@ -210,7 +211,7 @@ fun ContextTemplateEditorScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(context.getString(R.string.template_name)) },
+                label = { Text("${EmojiMapping.getEmoji("fields", "name")} ${context.getString(R.string.template_name)}") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 isError = name.isEmpty()
@@ -219,7 +220,7 @@ fun ContextTemplateEditorScreen(
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text(context.getString(R.string.template_description)) },
+                label = { Text("${EmojiMapping.getEmoji("fields", "description")} ${context.getString(R.string.template_description)}") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
                 maxLines = 5
@@ -241,7 +242,7 @@ fun ContextTemplateEditorScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = context.getString(R.string.knowledge_base_unavailable),
+                            text = "${EmojiMapping.getEmoji("status", "warning")} ${context.getString(R.string.knowledge_base_unavailable)}",
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -259,7 +260,7 @@ fun ContextTemplateEditorScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ContextPicker(
-                    label = context.getString(R.string.category),
+                    label = "${EmojiMapping.getEmoji("fields", "category")} ${context.getString(R.string.category)}",
                     selectedId = categoryId,
                     onSelectionChange = { 
                         categoryId = it
@@ -272,7 +273,7 @@ fun ContextTemplateEditorScreen(
                     errorMessage = categoryError
                 )
                 ContextPicker(
-                    label = context.getString(R.string.forma),
+                    label = "${EmojiMapping.getEmoji("fields", "forma")} ${context.getString(R.string.forma)}",
                     selectedId = formaId,
                     onSelectionChange = { 
                         formaId = it
@@ -291,7 +292,7 @@ fun ContextTemplateEditorScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ContextPicker(
-                    label = context.getString(R.string.cause),
+                    label = "${EmojiMapping.getEmoji("fields", "cause")} ${context.getString(R.string.cause)}",
                     selectedId = causeId,
                     onSelectionChange = { 
                         causeId = it
@@ -304,7 +305,7 @@ fun ContextTemplateEditorScreen(
                     errorMessage = causeError
                 )
                 ContextPicker(
-                    label = context.getString(R.string.develop),
+                    label = "${EmojiMapping.getEmoji("fields", "develop")} ${context.getString(R.string.develop)}",
                     selectedId = developId,
                     onSelectionChange = { 
                         developId = it
@@ -319,7 +320,7 @@ fun ContextTemplateEditorScreen(
             }
 
             ContextPicker(
-                label = context.getString(R.string.effect),
+                label = "${EmojiMapping.getEmoji("fields", "effect")} ${context.getString(R.string.effect)}",
                 selectedId = effectId,
                 onSelectionChange = { 
                     effectId = it

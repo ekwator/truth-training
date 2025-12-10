@@ -20,6 +20,7 @@ import androidx.navigation.navArgument
 import com.truth.training.client.ui.compose.events.*
 import com.truth.training.client.ui.compose.contexts.*
 import com.truth.training.client.ui.compose.judgments.*
+import com.truth.training.client.ui.compose.nodes.NodeDetailScreen
 import com.truth.training.client.ui.compose.nodes.NodesScreen
 import com.truth.training.client.ui.compose.nodes.NodesViewModel
 import com.truth.training.client.ui.compose.summary.OverallSummaryScreen
@@ -352,6 +353,7 @@ fun MainNavigation(
             
             EventDetailScreen(
                 event = event,
+                viewModel = viewModel,
                 onEdit = { 
                     navController.navigate("event/$eventId/edit")
                 },
@@ -690,7 +692,34 @@ fun MainNavigation(
                     }
                 }
             )
-            NodesScreen(viewModel = viewModel)
+            NodesScreen(
+                viewModel = viewModel,
+                onNodeClick = { nodeId ->
+                    navController.navigate("node/$nodeId")
+                }
+            )
+        }
+        
+        composable(
+            route = "node/{nodeId}",
+            arguments = listOf(
+                navArgument("nodeId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val nodeIdStr = backStackEntry.arguments?.getLong("nodeId") ?: 0L
+            val nodeId = nodeIdStr
+            
+            val context = LocalContext.current
+            val application = remember(context) { 
+                context.applicationContext as android.app.Application 
+            }
+            val factory = remember(application) { ViewModelFactory(application) }
+            val viewModel = remember(nodeId) { factory.createNodeDetailViewModel(nodeId) }
+            
+            NodeDetailScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable("summary") {
@@ -744,6 +773,9 @@ fun MainNavigation(
             SettingsScreen(
                 viewModel = viewModel,
                 onNavigateBack = onNavigateBack,
+                onNavigateToNodes = {
+                    navController.navigate("nodes")
+                },
                 modifier = Modifier
             )
         }

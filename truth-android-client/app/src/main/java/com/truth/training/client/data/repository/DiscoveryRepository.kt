@@ -68,6 +68,12 @@ class DiscoveryRepository(
         nodeDao.getNodeByAddress(address)
     
     /**
+     * Get node by ID.
+     */
+    suspend fun getNodeById(id: Long): NodeEntity? = 
+        nodeDao.getNode(id)
+    
+    /**
      * Upsert node by address (canonical deduplication).
      * Matches core/src/storage.rs::upsert_node_by_address()
      * 

@@ -14,6 +14,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.R
 import com.truth.training.client.data.database.entities.EventEntity
+import com.truth.training.client.utils.EmojiMapping
 
 /**
  * Event List Screen (Compose) - Displays list of events with embedded context fields.
@@ -31,12 +32,12 @@ fun EventListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.events)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "events")} ${context.getString(R.string.events)}") },
                 actions = {
                     IconButton(onClick = onNewEventClick) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = context.getString(R.string.new_event)
+                            contentDescription = "${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.new_event)}"
                         )
                     }
                 }
@@ -46,7 +47,7 @@ fun EventListScreen(
             FloatingActionButton(onClick = onNewEventClick) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = context.getString(R.string.new_event)
+                    contentDescription = "${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.new_event)}"
                 )
             }
         }
@@ -143,7 +144,7 @@ private fun EmptyEventsView(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onNewEventClick) {
-            Text(context.getString(R.string.create_first_event))
+            Text("${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.create_first_event)}")
         }
     }
 }

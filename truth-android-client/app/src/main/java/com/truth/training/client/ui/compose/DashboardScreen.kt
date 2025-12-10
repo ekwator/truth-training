@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.R
 import com.truth.training.client.data.SyncStatus
+import com.truth.training.client.utils.EmojiMapping
 import kotlinx.coroutines.flow.Flow
 import java.text.SimpleDateFormat
 import java.util.*
@@ -46,7 +47,7 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.dashboard)) }
+                title = { Text("${EmojiMapping.getEmoji("screens", "dashboard")} ${context.getString(R.string.dashboard)}") }
             )
         }
     ) { padding ->
@@ -68,7 +69,7 @@ fun DashboardScreen(
 
             // Quick Stats
             Text(
-                text = context.getString(R.string.quick_stats),
+                text = "${EmojiMapping.getEmoji("screens", "dashboard")} ${context.getString(R.string.quick_stats)}",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -90,43 +91,43 @@ fun DashboardScreen(
 
             // Actions
             Text(
-                text = context.getString(R.string.actions),
+                text = "${EmojiMapping.getEmoji("screens", "dashboard")} ${context.getString(R.string.actions)}",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
 
             QuickActionButton(
-                text = context.getString(R.string.view_events),
+                text = "${EmojiMapping.getEmoji("navigation", "events")} ${context.getString(R.string.view_events)}",
                 icon = Icons.Filled.Event,
                 onClick = onNavigateToEvents
             )
 
             QuickActionButton(
-                text = context.getString(R.string.manage_context_templates),
+                text = "${EmojiMapping.getEmoji("navigation", "templates")} ${context.getString(R.string.manage_context_templates)}",
                 icon = Icons.Filled.Settings,
                 onClick = onNavigateToContexts
             )
 
             QuickActionButton(
-                text = context.getString(R.string.view_judgments),
+                text = "${EmojiMapping.getEmoji("navigation", "judgments")} ${context.getString(R.string.view_judgments)}",
                 icon = Icons.Filled.CheckCircle,
                 onClick = onNavigateToJudgments
             )
             
             QuickActionButton(
-                text = context.getString(R.string.overall_summary),
+                text = "${EmojiMapping.getEmoji("navigation", "summary")} ${context.getString(R.string.overall_summary)}",
                 icon = Icons.Filled.BarChart,
                 onClick = onNavigateToSummary
             )
             
             QuickActionButton(
-                text = context.getString(R.string.training_results),
+                text = "${EmojiMapping.getEmoji("navigation", "training")} ${context.getString(R.string.training_results)}",
                 icon = Icons.Filled.TrendingUp,
                 onClick = onNavigateToTraining
             )
             
             QuickActionButton(
-                text = context.getString(R.string.settings),
+                text = "${EmojiMapping.getEmoji("navigation", "settings")} ${context.getString(R.string.settings)}",
                 icon = Icons.Filled.Settings,
                 onClick = onNavigateToSettings
             )
@@ -181,12 +182,18 @@ private fun SyncStatusCard(
             ) {
                 Column {
                     Text(
-                        text = if (syncStatus.isOnline) context.getString(R.string.online) else context.getString(R.string.offline),
+                        text = if (syncStatus.isOnline) 
+                            "${EmojiMapping.getEmoji("status", "online")} ${context.getString(R.string.online)}" 
+                        else 
+                            "${EmojiMapping.getEmoji("status", "offline")} ${context.getString(R.string.offline)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = context.getString(R.string.pending_operations, syncStatus.pendingOperations),
+                        text = if (syncStatus.pendingOperations > 0)
+                            "${EmojiMapping.getEmoji("status", "syncing")} ${context.getString(R.string.pending_operations, syncStatus.pendingOperations)}"
+                        else
+                            context.getString(R.string.pending_operations, syncStatus.pendingOperations),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
@@ -213,7 +220,7 @@ private fun SyncStatusCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(context.getString(R.string.sync_now))
+                    Text("${EmojiMapping.getEmoji("actions", "sync")} ${context.getString(R.string.sync_now)}")
                 }
             }
         }
