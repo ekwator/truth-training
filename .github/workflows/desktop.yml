@@ -87,13 +87,6 @@ jobs:
       - name: Integration Tests
         working-directory: ./ui/desktop
         run: npm test -- tests/integration --verbose
-      - name: Create Windows ICO icon
-        working-directory: ./ui/desktop/src-tauri
-        run: |
-          # Install ImageMagick for icon conversion
-          sudo apt-get install -y imagemagick
-          # Convert PNG to ICO for Windows
-          convert icons/icon.png -resize 256x256 icons/icon.ico
       - name: Build Web
         working-directory: ./ui/desktop
         run: npm run build
@@ -235,14 +228,6 @@ jobs:
       - name: Integration Tests
         working-directory: ./ui/desktop
         run: npm test -- tests/integration --verbose
-      - name: Install ImageMagick (for icon conversion)
-        run: brew install imagemagick
-      - name: Prepare icons (ensure ICO exists)
-        working-directory: ./ui/desktop/src-tauri
-        run: |
-          if [ ! -f icons/icon.ico ]; then
-            magick convert icons/icon.png -resize 256x256 icons/icon.ico
-          fi
       - name: Build Web
         working-directory: ./ui/desktop
         run: npm run build
@@ -354,8 +339,6 @@ jobs:
           done
           echo "❌ Failed to install Tauri CLI after 5 attempts"
           exit 1
-      - name: Install ImageMagick (for ICO conversion)
-        run: choco install imagemagick -y
       - name: Install NSIS and WiX
         run: |
           # Check if NSIS is already installed
@@ -408,12 +391,6 @@ jobs:
           if ($attempt -gt $maxAttempts) {
             echo "❌ Failed to install WiX after $maxAttempts attempts"
             exit 1
-          }
-      - name: Create Windows ICO icon
-        working-directory: ./ui/desktop/src-tauri
-        run: |
-          if (!(Test-Path icons/icon.ico)) {
-            magick convert icons/icon.png -resize 256x256 icons/icon.ico
           }
       - name: Install deps
         working-directory: ./ui/desktop

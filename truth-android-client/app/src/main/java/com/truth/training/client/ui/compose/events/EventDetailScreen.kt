@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.R
 import com.truth.training.client.data.database.entities.*
+import com.truth.training.client.utils.EmojiMapping
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -72,7 +73,7 @@ fun EventDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.event_details)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "events")} ${context.getString(R.string.event_details)}") },
                 actions = {
                     IconButton(onClick = onEdit) {
                         Icon(imageVector = Icons.Filled.Edit, contentDescription = context.getString(R.string.edit))

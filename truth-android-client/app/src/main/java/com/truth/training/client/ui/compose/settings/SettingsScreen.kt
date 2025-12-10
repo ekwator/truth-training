@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.SyncStatus
 import com.truth.training.client.ui.settings.SettingsViewModel
 import com.truth.training.client.R
+import com.truth.training.client.utils.EmojiMapping
 import java.text.SimpleDateFormat
 import java.util.*
 import android.app.Activity
@@ -67,7 +68,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.settings)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "settings")} ${context.getString(R.string.settings)}") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -95,7 +96,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = context.getString(R.string.error_prefix, error),
+                        text = "${EmojiMapping.getEmoji("status", "error")} ${context.getString(R.string.error_prefix, error)}",
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
@@ -552,7 +553,10 @@ private fun ConnectionStatusCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (syncStatus.isOnline) context.getString(R.string.online) else context.getString(R.string.offline),
+                    text = if (syncStatus.isOnline) 
+                        "${EmojiMapping.getEmoji("status", "online")} ${context.getString(R.string.online)}" 
+                    else 
+                        "${EmojiMapping.getEmoji("status", "offline")} ${context.getString(R.string.offline)}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -568,7 +572,10 @@ private fun ConnectionStatusCard(
             }
             
             Text(
-                text = context.getString(R.string.pending_operations, syncStatus.pendingOperations),
+                text = if (syncStatus.pendingOperations > 0)
+                    "${EmojiMapping.getEmoji("status", "syncing")} ${context.getString(R.string.pending_operations, syncStatus.pendingOperations)}"
+                else
+                    context.getString(R.string.pending_operations, syncStatus.pendingOperations),
                 style = MaterialTheme.typography.bodyMedium
             )
             

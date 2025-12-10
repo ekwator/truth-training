@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.truth.training.client.R
 import com.truth.training.client.ui.compose.components.ContextPicker
 import com.truth.training.client.ui.compose.components.DatePickerField
+import com.truth.training.client.utils.EmojiMapping
 import kotlinx.coroutines.flow.Flow
 import com.truth.training.client.data.database.entities.*
 import android.util.Log
@@ -132,7 +133,7 @@ fun EventCreateScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.new_event)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "newEvent")} ${context.getString(R.string.new_event)}") },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
                         Icon(
@@ -194,7 +195,7 @@ fun EventCreateScreen(
                         },
                         enabled = canSave
                     ) {
-                        Text(context.getString(R.string.save))
+                        Text("${EmojiMapping.getEmoji("actions", "save")} ${context.getString(R.string.save)}")
                     }
                 }
             )
@@ -211,7 +212,7 @@ fun EventCreateScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(context.getString(R.string.name)) },
+                label = { Text("${EmojiMapping.getEmoji("fields", "name")} ${context.getString(R.string.name)}") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -219,7 +220,7 @@ fun EventCreateScreen(
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text("${context.getString(R.string.description)} *") },
+                label = { Text("${EmojiMapping.getEmoji("fields", "description")} ${context.getString(R.string.description)} *") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
                 maxLines = 6
@@ -266,7 +267,7 @@ fun EventCreateScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = context.getString(R.string.knowledge_base_unavailable),
+                            text = "${EmojiMapping.getEmoji("status", "warning")} ${context.getString(R.string.knowledge_base_unavailable)}",
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -284,7 +285,7 @@ fun EventCreateScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ContextPicker(
-                    label = context.getString(R.string.category),
+                    label = "${EmojiMapping.getEmoji("fields", "category")} ${context.getString(R.string.category)}",
                     selectedId = categoryId,
                     onSelectionChange = { 
                         categoryId = it
@@ -297,7 +298,7 @@ fun EventCreateScreen(
                     errorMessage = categoryError
                 )
                 ContextPicker(
-                    label = context.getString(R.string.forma),
+                    label = "${EmojiMapping.getEmoji("fields", "forma")} ${context.getString(R.string.forma)}",
                     selectedId = formaId,
                     onSelectionChange = { 
                         formaId = it
@@ -316,7 +317,7 @@ fun EventCreateScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ContextPicker(
-                    label = context.getString(R.string.cause),
+                    label = "${EmojiMapping.getEmoji("fields", "cause")} ${context.getString(R.string.cause)}",
                     selectedId = causeId,
                     onSelectionChange = { 
                         causeId = it
@@ -329,7 +330,7 @@ fun EventCreateScreen(
                     errorMessage = causeError
                 )
                 ContextPicker(
-                    label = context.getString(R.string.develop),
+                    label = "${EmojiMapping.getEmoji("fields", "develop")} ${context.getString(R.string.develop)}",
                     selectedId = developId,
                     onSelectionChange = { 
                         developId = it
@@ -344,7 +345,7 @@ fun EventCreateScreen(
             }
 
             ContextPicker(
-                label = context.getString(R.string.effect),
+                label = "${EmojiMapping.getEmoji("fields", "effect")} ${context.getString(R.string.effect)}",
                 selectedId = effectId,
                 onSelectionChange = { 
                     effectId = it
@@ -366,7 +367,7 @@ fun EventCreateScreen(
             )
 
             DatePickerField(
-                label = "${context.getString(R.string.start_timestamp)} *",
+                label = "${EmojiMapping.getEmoji("fields", "startDate")} ${context.getString(R.string.start_timestamp)} *",
                 selectedDate = timestampStart,
                 onDateSelected = { newDate ->
                     timestampStart = newDate
@@ -388,7 +389,7 @@ fun EventCreateScreen(
             )
 
             DatePickerField(
-                label = context.getString(R.string.end_timestamp),
+                label = "${EmojiMapping.getEmoji("fields", "endDate")} ${context.getString(R.string.end_timestamp)}",
                 selectedDate = timestampEnd,
                 onDateSelected = { newDate ->
                     // Validation: End Timestamp cannot be less than Start Timestamp, but can be equal

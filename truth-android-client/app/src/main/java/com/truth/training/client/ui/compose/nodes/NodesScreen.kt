@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.data.database.entities.NodeEntity
+import com.truth.training.client.utils.EmojiMapping
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -48,7 +49,7 @@ fun NodesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Node Discovery") },
+                title = { Text("${EmojiMapping.getEmoji("screens", "events")} Node Discovery") },
                 actions = {
                     IconButton(onClick = { viewModel.refreshNodes() }) {
                         Icon(

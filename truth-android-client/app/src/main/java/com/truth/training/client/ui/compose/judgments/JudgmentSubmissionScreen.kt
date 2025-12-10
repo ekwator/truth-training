@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.R
 import com.truth.training.client.data.network.dto.CreateJudgmentRequest
+import com.truth.training.client.utils.EmojiMapping
 
 /**
  * Judgment Submission Screen (Compose) - Form for submitting judgments.
@@ -34,7 +35,7 @@ fun JudgmentSubmissionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.submit_judgment)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "judgments")} ${context.getString(R.string.submit_judgment)}") },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
                     Icon(
@@ -60,7 +61,7 @@ fun JudgmentSubmissionScreen(
                         },
                         enabled = assessment in listOf("true", "false", "uncertain")
                     ) {
-                        Text(context.getString(R.string.submit))
+                        Text("${EmojiMapping.getEmoji("actions", "submit")} ${context.getString(R.string.submit)}")
                     }
                 }
             )
@@ -97,7 +98,7 @@ fun JudgmentSubmissionScreen(
             }
 
             Text(
-                text = "${context.getString(R.string.assessment)} *",
+                text = "${EmojiMapping.getEmoji("fields", "assessment")} ${context.getString(R.string.assessment)} *",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -127,7 +128,7 @@ fun JudgmentSubmissionScreen(
             }
 
             Text(
-                text = "${context.getString(R.string.confidence_level)} *",
+                text = "${EmojiMapping.getEmoji("fields", "confidence")} ${context.getString(R.string.confidence_level)} *",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -163,7 +164,7 @@ fun JudgmentSubmissionScreen(
             )
 
             Text(
-                text = context.getString(R.string.reasoning),
+                text = "${EmojiMapping.getEmoji("fields", "reasoning")} ${context.getString(R.string.reasoning)}",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -171,7 +172,7 @@ fun JudgmentSubmissionScreen(
             OutlinedTextField(
                 value = reasoning,
                 onValueChange = { reasoning = it },
-                label = { Text(context.getString(R.string.reasoning)) },
+                label = { Text("${EmojiMapping.getEmoji("fields", "reasoning")} ${context.getString(R.string.reasoning)}") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
                 maxLines = 5,

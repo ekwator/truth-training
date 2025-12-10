@@ -1,110 +1,40 @@
-v1.0.0-Prod
-Truth Training v1.0.0-Prod — Production Release for Truth Discovery and Collective Intelligence
+v1.0.0-Finalize
+Truth Training v1.0.0-Finalize — Finalize Release for Truth Discovery and Collective Intelligence
 
-This production release represents the first stable GA version of Truth Training v1.0.0, featuring a fully unified cross-platform discovery and synchronization system across Rust Desktop (Tauri), CLI (truthctl), Android, and Server platforms. All components share identical discovery protocols, JSON schemas, SQLite database schemas, and synchronization semantics.
+# 🌐 Truth Training — The Network of Anonymous Trust  
+*(Created in Cursor AI IDE)*
 
-**Important Notes:**
-- **Privacy & Confidentiality**: No user actions are logged or persistently stored. Only system-level logs (errors, sync operations) are permitted. This is a core architectural requirement enforced across all platforms. See [SECURITY.md](SECURITY.md) for details.
-- **Localization Status**: 
-  - Desktop UI: **Localization not fully implemented** - Language toggle exists but does not persist to config.json, database is not seeded with selected language, interface remains in English. Full implementation requires Spec-Kit planning.
-  - Android Client: English-only (EN). Russian localization not implemented. Full localization parity requires Spec-Kit planning.
-- **Feature Implementation**: All future features and improvements must follow the Spec-Kit workflow (`/speckit.specify`, `/speckit.plan`, `/speckit.task`, `/speckit.implementation`) with detailed implementation plans. See [spec/15-prompts-and-automation.md](spec/15-prompts-and-automation.md) and [CONTRIBUTING.md](CONTRIBUTING.md) for requirements.
+## 🔐 Privacy and Confidentiality
 
-Key Features and Improvements
-- Cross-Platform Discovery System:
-  - **LAN/Wi-Fi UDP Multicast Discovery**: Standard multicast address (239.255.0.1:52525) across all platforms with unified JSON packet format and ed25519 signature verification
-  - **Global Registry Polling**: Consistent HTTPS polling with envelope and array format support, configurable URLs, and graceful error handling
-  - **Node Reachability & TTL Cleanup**: HTTP reachability checks, TTL-based automatic cleanup, deterministic merge rules (Local > Global), and consistent TTL logic across platforms
-  - **Background Workers**: Tokio interval-based workers for Desktop, WorkManager periodic sync for Android (15 min intervals), and server schedulers with configurable intervals
-- Android Client Integration (v1.0.0):
-  - **Room Database Integration**: Complete Room database with canonical SQLite schema, migration MIGRATION_2_3 creating nodes table matching Desktop/CLI schema, full CRUD operations, and Android instrumentation tests
-  - **Discovery Repository**: High-level operations with global registry polling, TTL logic, deduplication, JSON format conversion, and cross-platform compatibility tests
- - **WorkManager Background Sync**: NodeSyncWorker with 15-minute periodic sync, TTL decrement/cleanup, reachability checks, and database updates via DiscoveryRepository
-  - **UDP Multicast LAN Discovery**: LanDiscoveryClient using standard multicast address (239.255.0.1:52525) with node broadcasting, listener implementation, payload conversion to NodeRecord format, and ed25519 signature verification
-  - **Compose UI Integration**: Complete NodesScreen.kt with filters and actions, NodesViewModel.kt for state management, manual refresh/discover/cleanup/health check buttons, and integration into MainNavigation.kt
-- Desktop UI Integration:
-  - **Background Discovery Worker**: DiscoveryManager with lifecycle management (start/stop/restart), clean shutdown implementation, Tokio integration, and core bridge
-  - **React UI (NodesPanel)**: Node list display with reachability badges and TTL countdown indicators, manual refresh/discover/cleanup/health check buttons, and Tauri command integration
-  - **Settings Persistence**: Discovery settings storage, configurable options (interval/TTL/registry URLs), Settings UI integration, and default fallback values
-- CLI Integration (truthctl):
-  - **Complete Command Suite**: `nodes list` with table/JSON output and filtering, `nodes add/remove` with validation, `nodes discover` with local/global discovery, `nodes sync` with incremental bidirectional sync, `nodes cleanup` with TTL-based pruning, `nodes health-check` with reachability verification, and `nodes validate` with schema parity verification
+**Truth Training is built on the fundamental principle of confidentiality**: **No user actions are logged or persistently stored**. The application does not track, record, or save any user interactions, navigation patterns, clicks, or behavioral data. This ensures complete privacy and anonymity — users can interact with the system without leaving any trace of their actions.
 
-Known Limitations & Future Work
-- Desktop UI:
- - **Localization**: Not fully implemented - Language toggle exists but is not functional
-    - **Issues**: Language selection not persisted to config.json, database not seeded, interface remains in English
-    - **UI Issue**: On Settings screen, there is an **extra duplicate language selection field** in the bottom section (should be removed)
-    - **Requirement**: Full localization implementation requires Spec-Kit workflow with detailed plan
-- Android Client:
-  - **Localization**: English-only (EN) - Russian localization not implemented
-    - **Requirement**: Full localization implementation requires Spec-Kit workflow (`/speckit.specify`, `/speckit.plan`, `/speckit.task`, `/speckit.implementation`) with detailed implementation plan
-  - **Screen Coverage**: Not all activities/screens are fully implemented compared to Desktop UI
-    - **Current**: NodesScreen fully integrated; other screens (Dashboard, New Event, Context Editor, Event Summary, Overall Summary, Training Results, Settings) exist but require navigation integration
-    - **Target**: 7 screens matching Desktop UI (Logs screen removed for privacy compliance)
-    - **Requirement**: Screen integration requires Spec-Kit workflow with detailed implementation plan
-  - **Missing Features**: Some advanced features from Desktop UI need Android equivalents
-  - **Recommendation**: Use Spec-Kit for all future Android improvements to ensure consistency and proper planning
-- iOS Client:
-  - **Status**: Basic project structure exists, but full implementation is required
- - **Missing**: Complete UI implementation, feature parity with Desktop/Android
- - **Requirement**: Full iOS client development requires Spec-Kit workflow with detailed implementation plan
- - **Recommendation**: Use Spec-Kit for all iOS development to ensure consistency with Desktop/Android
-- CLI Tool (`truthctl`):
- - **Status**: Core functionality implemented (node management, sync, discovery)
- - **Limitation**: Direct CLI commands for events and context templates are planned for future releases
-  - **Current Workaround**: Use HTTP API endpoints (`/api/v1/events`, `/api/v1/contexts`) or Desktop UI
- - **Requirement**: Future CLI enhancements require Spec-Kit workflow with detailed plan
+**Key Privacy Guarantees:**
+- ✅ **No User Action Logging**: No clicks, navigation, or interaction history is stored
+- ✅ **No Persistent User Tracking**: No identifiers, session data, or behavioral analytics
+- ✅ **No Telemetry Collection**: No user activity is transmitted or stored
+- ✅ **Ephemeral Logs Only**: Only system-level logs (errors, sync operations) are temporarily stored for debugging purposes
 
-Platform Comparison
-- **Desktop UI**: Most complete implementation with **localization not fully functional** (language toggle exists but not working), all 7 screens (Logs screen removed for privacy compliance), comprehensive testing, and production-ready features
-- **Android Client**: Partial implementation with EN-only localization, NodesScreen fully integrated, other screens require navigation integration. Full localization and screen completion require Spec-Kit planning
-- **iOS Client**: Project structure only, requires full implementation via Spec-Kit workflow
-- **Core Library**: Full feature support with locale-aware knowledge base seeding, no user action logging
-- **CLI Tool**: Functional for node management and sync, with planned enhancements requiring Spec-Kit workflow
+This confidentiality principle is enforced across all platforms (Desktop UI, Android, Server, CLI) and is a core architectural requirement.
 
-Quality & Validation
-- **Comprehensive Test Coverage**: CLI E2E tests (list/discover/sync/cleanup/validate commands), TTL consistency tests, JSON enum serialization tests, Android instrumentation tests (NodeDaoTest, NodeDiscoveryTest, NodeSyncWorkerTest), and cross-platform compatibility tests
-- **Real-Device E2E Testing**: Cross-device tests (Linux Desktop ↔ Android device, CLI ↔ Android ↔ Desktop), all 107 Android instrumentation tests passing on real device (RMX3261 - 11), UDP multicast compatibility verified, and full packet format compatibility confirmed between Rust and Kotlin
-- **Code Quality**: Zero compiler warnings, structured logging with discovery event counters, and observability metrics for TTL cleanup, reachability checks, and global registry polling
-- Privacy compliance: No user action logging enforced architecturally across all platforms
-- Code quality: Removed unused `logging.rs` module (dead code violation), fixed clippy warnings
-- CI/CD workflows validated and optimized
-- Cross-platform compatibility verified
-- Build verification: All components compile successfully after code cleanup
+---
 
-Cross-Platform Compatibility:
- - Unified discovery protocols across Desktop (Rust) ↔ Android (Kotlin)
-  - Identical JSON schemas, SQLite database schemas, and synchronization semantics
-  - Verified packet exchange and format conversion between platforms
+Truth Training is a decentralized communication ecosystem where **truth travels without identity**.  
+Events move freely through the network — encrypted, verified, and echoed by others — creating a distributed field of awareness instead of a chain of messages.
 
-For Beginner Developers
+Each reflection of an event confirms its existence; each independent echo increases its credibility.  
+Like confession without a priest, users anonymously release truths into the network — and the collective conscience responds.
 
-This release is created for beginner developers to practice using Cursor AI IDE. When studying this project with Cursor AI IDE, you can receive hints and guidance on both implementing this project and independently developing additional features. You can learn the technologies and programming languages used in the project, and Cursor AI IDE can autonomously make changes to the project.
+It can serve as an **alternative to voting systems**, measuring the authenticity of social signals and public sentiment not through ballots, but through shared evaluation of facts.
 
+Unlike LoRa-based mesh systems such as **Meshtastic**, Truth Training builds a **mesh of minds, not hardware** — using Wi-Fi and the Internet as carriers of encrypted meaning, forming an autonomous infrastructure of human understanding.
 
+Originally conceived to combat fraud, Truth Training evolves into a **self-learning immunity against falsehood** — distinguishing truth from deception through context, correlation, and collective resonance.
 
+And beyond communication, Truth Training enables **teamwork without a team lead** — a coordination model where decisions arise from **collective consensus**, not hierarchy, creating a self-organizing environment for groups and projects.
 
+Ultimately, without network connectivity, the application can serve as a **personal electronic diary** — a private space for individual reflection and truth-tracking.
 
-
-
-- **Backend Core**: Rust (stable toolchain), Actix-web (HTTP server), Tokio (async runtime), rusqlite (SQLite), ed25519-dalek (cryptography), serde (serialization), clap (CLI parsing)
-- **Desktop UI Frontend**: TypeScript, JavaScript, React 18, Vite (build tool), Zustand (state management), Axios (HTTP client), Tailwind CSS (styling), Headless UI (components)
-- **Desktop UI Backend**: Tauri 2.9.0 (desktop framework), Rust (Tauri commands), SQLite via rusqlite
-- **Android Client**: Kotlin 2.0.20, Android SDK (API 24+, target 35), Jetpack Compose (UI), Room (database), Retrofit (networking), OkHttp (HTTP client), WorkManager (background tasks), Kotlin Coroutines (async), BouncyCastle (cryptography), Gradle (build system)
-- **iOS Client**: Swift (planned), SwiftUI (planned), Rust FFI bindings
-- **Testing**: Jest (JavaScript), React Testing Library, Playwright (E2E), JUnit (Java/Kotlin), Android Instrumentation Tests
-- **Build Tools**: Cargo (Rust), npm/pnpm (Node.js), Gradle (Android), Xcode (iOS)
-- **CI/CD**: GitHub Actions, Python 3.11 (documentation tools)
-- **Documentation**: Markdown, Python scripts for doc-refactor automation
-- **Database**: SQLite 3.x (shared across all platforms)
-- **Cryptography**: Ed25519 signatures, ChaCha20-Poly1305 encryption
-
-- Understand code structure and architecture
-- Generate code following project patterns
-- Refactor and improve existing code
-- Write tests and documentation
-- Debug and fix issues
-- Learn best practices for each technology stack
+---
 
 # 🚀 Support the Future Release of Truth Training
 

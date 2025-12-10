@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.R
 import com.truth.training.client.ui.training.TrainingResultsViewModel
+import com.truth.training.client.utils.EmojiMapping
 
 /**
  * Training Results Screen - Displays training progress and results.
@@ -37,7 +38,7 @@ fun TrainingResultsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.training_results)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "trainingResults")} ${context.getString(R.string.training_results)}") },
                 actions = {
                     IconButton(
                         onClick = { viewModel.refresh() },

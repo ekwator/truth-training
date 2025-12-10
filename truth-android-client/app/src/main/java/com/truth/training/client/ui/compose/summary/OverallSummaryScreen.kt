@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.truth.training.client.R
 import com.truth.training.client.ui.summary.OverallSummaryViewModel
+import com.truth.training.client.utils.EmojiMapping
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -38,7 +39,7 @@ fun OverallSummaryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(context.getString(R.string.overall_summary)) },
+                title = { Text("${EmojiMapping.getEmoji("screens", "overallSummary")} ${context.getString(R.string.overall_summary)}") },
                 actions = {
                     IconButton(
                         onClick = { viewModel.refresh() },
