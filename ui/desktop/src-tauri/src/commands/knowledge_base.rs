@@ -157,6 +157,8 @@ pub async fn knowledge_base_list() -> Result<KBListResponse, String> {
 
 /// Create temporary tables for knowledge base reseeding.
 /// Creates temp_category, temp_forma, temp_cause, temp_develop, temp_effect, temp_context.
+/// Reserved for future use (Phase 5, User Story 3).
+#[allow(dead_code)]
 fn create_temp_tables(tx: &Transaction) -> Result<(), String> {
     info!("Creating temporary tables for reseeding...");
     
@@ -240,6 +242,8 @@ fn create_temp_tables(tx: &Transaction) -> Result<(), String> {
 
 /// Fill temporary tables with English-only data.
 /// Inserts data into all temporary tables.
+/// Reserved for future use (Phase 5, User Story 3).
+#[allow(dead_code)]
 fn fill_temp_tables(tx: &Transaction) -> Result<(), String> {
     info!("Filling temporary tables with English-only data...");
     
@@ -353,6 +357,8 @@ fn fill_temp_tables(tx: &Transaction) -> Result<(), String> {
 
 /// Validate FK integrity of temporary tables before swap.
 /// Ensures all foreign keys in temp tables reference valid primary keys.
+/// Reserved for future use (Phase 5, User Story 3).
+#[allow(dead_code)]
 fn validate_temp_table_fks(tx: &Transaction) -> Result<(), String> {
     info!("Validating FK integrity of temporary tables...");
     
@@ -378,6 +384,8 @@ fn validate_temp_table_fks(tx: &Transaction) -> Result<(), String> {
 
 /// Atomic swap of temporary tables to main tables.
 /// Uses transaction to ensure atomicity.
+/// Reserved for future use (Phase 5, User Story 3).
+#[allow(dead_code)]
 fn atomic_swap(tx: &Transaction) -> Result<(), String> {
     info!("Performing atomic swap of temporary tables...");
     

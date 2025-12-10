@@ -24,7 +24,7 @@ sudo dpkg -i ./'Truth Training_1.0.0_amd64.deb'
 ##### Step 2: Verify Installation
 ```bash
 # Check if application is in PATH
-which truth-training-desktop
+which truth-training
 
 # Or launch from applications menu
 # Look for "Truth Training" in your applications
@@ -50,7 +50,7 @@ rm -f ${XDG_DATA_HOME:-~/.local/share}/TruthTraining/truth_training.sqlite
 
 ##### Step 3: Verify Removal
 ```bash
-which truth-training-desktop
+which truth-training
 # Expected: Command not found
 
 ls ~/.truth-training/
@@ -156,7 +156,7 @@ msiexec /i "Truth.Training_1.0.0_x64_en-US.msi"
 ##### Step 2: Verify Installation
 ```powershell
 # Check installation location
-Test-Path "C:\Program Files\Truth Training\truth-training-desktop.exe"
+Test-Path "C:\Program Files\Truth Training\truth-training.exe"
 
 # Or launch from Start Menu
 # Look for "Truth Training" in Start Menu
@@ -192,7 +192,7 @@ Remove-Item -Recurse -Force "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\
 ## First Launch
 
 ### Step 1: Launch Application
-- **Linux:** Launch from applications menu or run `truth-training-desktop`
+- **Linux:** Launch from applications menu or run `truth-training`
 - **macOS:** Open from Applications folder or Spotlight
 - **Windows:** Launch from Start Menu
 
@@ -305,31 +305,52 @@ You can invoke it multiple times—it is idempotent. After running, inspect the 
 
 ### Adding Impacts
 
-1. Open event detail view
-2. Tap "Add Impact"
-3. Set impact level (1-5) using slider
-4. Add notes (optional)
-5. Tap "Save"
+1. Navigate to Events screen (via menu or Alt+4)
+2. Click on an event to open Event Summary screen
+3. In Event Summary, locate "Impacts" section
+4. Click "Add Impact" button
+5. Set impact level (1-5) using slider:
+   - Level 1-3: Negative impact
+   - Level 4-5: Positive impact
+6. Add notes (optional)
+7. Click "Save"
+8. Impact appears in Impacts list with level range and timestamp
 
 ### Submitting Judgments
 
-1. Open event detail view
-2. Tap "Submit Judgment"
-3. Select assessment: 'true', 'false', or 'uncertain'
-4. Set confidence level (0.0-1.0) using slider
-5. Add reasoning (optional)
-6. Tap "Submit"
+1. Navigate to Events screen
+2. Click on an event to open Event Summary screen
+3. In Event Summary, locate "Judgments" section
+4. Click "Submit Judgment" button
+5. Select assessment:
+   - **Confirm** (True): Event is confirmed/true
+   - **Reject** (False): Event is rejected/false
+   - **Abstain** (Uncertain): Uncertain about event
+6. Set confidence level (0.0-1.0) using slider (displayed as percentage)
+7. Add reasoning (optional)
+8. Click "Submit"
+9. Judgment appears in Judgments list with assessment, confidence, and timestamp
 
 ### Viewing Network Nodes
 
-1. Tap "Nodes" in bottom navigation
-2. View discovered nodes
-3. Tap refresh to discover new nodes
-4. View node details:
+1. Navigate to Settings screen (Alt+8 or via menu)
+2. Access NodesPanel (or via Dashboard if available)
+3. View discovered nodes in table format:
    - Address
-   - Type (Hub/Leaf)
-   - Status (reachable/unreachable)
+   - Type (Hub/Leaf with technical type in parentheses)
+   - Status (Online/Offline)
+   - TTL and expiration info
    - Last seen timestamp
+4. Click on a node row to open Node Detail View
+5. View detailed node information:
+   - Address and Node ID
+   - Type (User-friendly Hub/Leaf and technical type)
+   - Status (Reachable/Unreachable)
+   - Last Seen timestamp and age
+   - TTL and Expires In countdown
+   - Source (if available)
+6. Click "Refresh" to reload node data
+7. Click "Close" to return to nodes list
 
 ### Synchronization
 

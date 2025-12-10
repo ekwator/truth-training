@@ -25,6 +25,8 @@ const config: Config = {
     '<rootDir>/tests/contract/**/*.(test|spec).(ts|tsx)',
     '<rootDir>/tests/integration/**/*.(test|spec).(ts|tsx)',
     '<rootDir>/tests/performance/**/*.(test|spec).(ts|tsx)',
+    '<rootDir>/tests/unit/**/*.(test|spec).(ts|tsx)',
+    '<rootDir>/tests/component/**/*.(test|spec).(ts|tsx)',
   ],
   testPathIgnorePatterns: [
     '<rootDir>/tests/e2e/',

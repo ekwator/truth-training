@@ -14,6 +14,8 @@ import ApiService from '@/services/api';
 import type { NodeRecord } from '@/types/api';
 import { useToast } from '@/components/system/Toaster';
 import { getEmoji } from '@/utils/emojiMapping';
+import { mapToUserFriendly } from '@/utils/nodeTypeMapper';
+import { NodeDetailView } from './nodes/NodeDetailView';
 
 const NODE_TYPES = ['ALL', 'LAN', 'WIFI', 'GLOBAL', 'RELAY', 'CLIENT'];
 
@@ -25,6 +27,8 @@ export const NodesPanel: React.FC = () => {
   const [filterReachable, setFilterReachable] = useState<'all' | 'online' | 'offline'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [now, setNow] = useState(Date.now());
+  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
+  const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -212,29 +216,42 @@ export const NodesPanel: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-900 dark:text-gray-100">
-                {rows.map((node) => (
-                  <tr key={node.id}>
-                    <td className="px-3 py-2 font-mono text-xs">{node.address}</td>
-                    <td className="px-3 py-2">{node.node_type}</td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          node.reachable ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                        }`}
-                      >
-                        {node.reachable ? 'Online' : 'Offline'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center">{node.ttl}</td>
-                    <td className="px-3 py-2 text-center">
-                      {formatDuration(node.expires_in)}
-                    </td>
-                    <td className="px-3 py-2 text-xs">{node.source ?? '—'}</td>
-                    <td className="px-3 py-2 text-xs">
-                      {new Date(node.last_seen * 1000).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((node) => {
+                  const userFriendlyType = mapToUserFriendly(node.node_type);
+                  return (
+                    <tr
+                      key={node.id}
+                      onClick={() => {
+                        setSelectedNodeId(node.id);
+                        setIsDetailViewOpen(true);
+                      }}
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <td className="px-3 py-2 font-mono text-xs">{node.address}</td>
+                      <td className="px-3 py-2">
+                        <span className="font-medium">{userFriendlyType}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({node.node_type})</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            node.reachable ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                          }`}
+                        >
+                          {node.reachable ? 'Online' : 'Offline'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center">{node.ttl}</td>
+                      <td className="px-3 py-2 text-center">
+                        {formatDuration(node.expires_in)}
+                      </td>
+                      <td className="px-3 py-2 text-xs">{node.source ?? '—'}</td>
+                      <td className="px-3 py-2 text-xs">
+                        {new Date(node.last_seen * 1000).toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -245,6 +262,19 @@ export const NodesPanel: React.FC = () => {
           </p>
         )}
       </div>
+
+      {/* Node Detail View */}
+      {selectedNodeId && (
+        <NodeDetailView
+          isOpen={isDetailViewOpen}
+          onClose={() => {
+            setIsDetailViewOpen(false);
+            setSelectedNodeId(null);
+          }}
+          nodeId={selectedNodeId}
+          initialNode={nodes.find(n => n.id === selectedNodeId)}
+        />
+      )}
     </div>
   );
 };

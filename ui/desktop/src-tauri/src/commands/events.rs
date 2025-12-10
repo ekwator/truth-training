@@ -173,7 +173,8 @@ pub async fn list_events_fast(
     // Calculate pagination
     let total = all_events.len() as i64;
     let offset = (page.saturating_sub(1) as usize) * (per_page as usize);
-    let limit = offset + (per_page as usize);
+    // Note: limit is calculated but not used directly - pagination uses skip/take instead
+    let _limit = offset + (per_page as usize);
     
     // Get paginated events
     let paginated_events: Vec<_> = all_events

@@ -371,31 +371,95 @@ adb devices
 
 ### Adding Impacts
 
-1. Open event detail view
-2. Tap "Add Impact"
-3. Set impact level (1-5) using slider
-4. Add notes (optional)
-5. Tap "Save"
+1. Navigate to Events screen (tap "Events" in bottom navigation)
+2. Tap on an event to open Event Detail screen
+3. In Event Detail screen, locate "Impacts" section
+4. Tap "Add Impact" button (with emoji icon)
+5. Add Impact dialog opens
+6. Set impact level (1-5) using slider:
+   - Level 1-3: Negative impact
+   - Level 4-5: Positive impact
+7. Add notes (optional) in the text field
+8. Tap "Save" button
+9. Impact appears in Impacts list:
+   - Shows "Positive (Level 4-5)" or "Negative (Level 1-3)"
+   - Displays notes if provided
+   - Shows creation timestamp
+
+**Expected Result**: Impact is saved and displayed in the Impacts list section.
 
 ### Submitting Judgments
 
-1. Open event detail view
-2. Tap "Submit Judgment"
-3. Select assessment: 'true', 'false', or 'uncertain'
-4. Set confidence level (0.0-1.0) using slider
-5. Add reasoning (optional)
-6. Tap "Submit"
+1. Navigate to Events screen
+2. Tap on an event to open Event Detail screen
+3. In Event Detail screen, locate "Judgments" section
+4. Tap "Submit Judgment" button (with emoji icon)
+5. Submit Judgment dialog opens
+6. Select assessment using FilterChip buttons:
+   - **True**: Event is confirmed/true
+   - **False**: Event is rejected/false
+   - **Uncertain**: Uncertain about event
+7. Set confidence level (0.0-1.0) using slider:
+   - Current confidence is displayed
+   - 0.0: No confidence
+   - 0.5: Medium confidence
+   - 1.0: Full confidence
+8. Add reasoning (optional) in the text field
+9. Tap "Submit" button
+10. Judgment appears in Judgments list:
+    - Shows assessment (True/False/Uncertain)
+    - Displays confidence level
+    - Shows reasoning if provided
+    - Shows submission timestamp
+
+**Expected Result**: Judgment is submitted and displayed in the Judgments list section.
 
 ### Viewing Network Nodes
 
+**Method 1: Via Bottom Navigation**
 1. Tap "Nodes" in bottom navigation
-2. View discovered nodes
-3. Tap refresh to discover new nodes
-4. View node details:
-   - Address
-   - Type (Hub/Leaf)
-   - Status (reachable/unreachable)
-   - Last seen timestamp
+2. Nodes screen opens with list of discovered nodes
+
+**Method 2: Via Settings**
+1. Tap "Settings" in bottom navigation
+2. Scroll to "Discovery Worker Settings" section
+3. Tap "Network Nodes" button (located under Discovery Worker Settings block)
+4. Nodes screen opens
+
+**Viewing Node List:**
+- Nodes screen displays list of discovered nodes
+- Each node card shows:
+  - Address
+  - Type (Hub or Leaf with technical type)
+  - Status (Reachable/Unreachable badge)
+  - TTL and expiration countdown
+  - Last seen timestamp
+- Use filters to filter by:
+  - Node type (ALL, LAN, WIFI, GLOBAL, RELAY, CLIENT)
+  - Reachability status (All, Reachable, Unreachable)
+- Actions available:
+  - **Refresh**: Reload nodes list
+  - **Discover**: Run manual discovery cycle
+  - **Cleanup**: Remove stale nodes (expired TTL)
+  - **Health Check**: Check reachability of all nodes
+
+**Viewing Node Details:**
+1. Tap on a node card in the list
+2. Node Detail screen opens
+3. View detailed node information:
+   - **Address**: Network address
+   - **Type**: Hub/Leaf (user-friendly) and technical type (LAN/WIFI/GLOBAL/RELAY/CLIENT)
+   - **Status**: Reachable/Unreachable badge
+   - **Last Seen**: Timestamp of last contact
+   - **TTL**: Time-to-live value
+   - **Expires In**: Time until TTL expires (or "Expired")
+   - **Age**: Time since last seen
+   - **Source**: Discovery source (if available)
+   - **Node ID**: Unique node identifier (if available)
+4. Tap refresh icon in top bar to reload node data
+5. Tap back arrow to return to nodes list
+
+**Expected Result**: Node details are displayed correctly with all information.
 
 ### Synchronization
 

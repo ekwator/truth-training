@@ -1,5 +1,5 @@
 v1.0.0-Finalize
-Truth Training v1.0.0-Finalize — Finalize Release for Truth Discovery and Collective Intelligence
+Truth Training v1.0.0-Prot — Prototipe Release for Truth Discovery and Collective Intelligence
 
 # 🌐 Truth Training — The Network of Anonymous Trust  
 *(Created in Cursor AI IDE)*
