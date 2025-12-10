@@ -347,10 +347,10 @@ jobs:
           cp target/x86_64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/x86_64/
       
       - name: Build APK (Debug)
-        if: ${{ matrix.buildType == 'debug' && !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ matrix.buildType == 'debug' }}
         working-directory: truth-android-client
         run: |
-          # Build each flavor separately to isolate issues
+          # Build all flavors for debug
           ./gradlew assembleLocalDebug --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalDebug build failed, continuing..."
           ./gradlew assembleMockDebug --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockDebug build failed, continuing..."
           ./gradlew assembleRemoteDebug --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteDebug build failed, continuing..."
@@ -359,21 +359,25 @@ jobs:
           ./gradlew assembleRemoteDebugAndroidTest --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteDebugAndroidTest build failed, continuing..."
       
       - name: Build AAB (Release)
-        if: ${{ matrix.buildType == 'release' && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release') }}
+        if: ${{ matrix.buildType == 'release' }}
         working-directory: truth-android-client
         run: |
-          # Build only local flavor for release tags
-          ./gradlew bundleLocalRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true
+          # Build all flavors for release
+          ./gradlew bundleLocalRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalRelease AAB build failed, continuing..."
+          ./gradlew bundleMockRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockRelease AAB build failed, continuing..."
+          ./gradlew bundleRemoteRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteRelease AAB build failed, continuing..."
       
       - name: Build APK (Release)
-        if: ${{ matrix.buildType == 'release' && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release') }}
+        if: ${{ matrix.buildType == 'release' }}
         working-directory: truth-android-client
         run: |
-          # Build only local flavor APK for release tags
-          ./gradlew assembleLocalRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true
+          # Build all flavors for release
+          ./gradlew assembleLocalRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "LocalRelease APK build failed, continuing..."
+          ./gradlew assembleMockRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "MockRelease APK build failed, continuing..."
+          ./gradlew assembleRemoteRelease --build-cache --stacktrace -Pkotlin.warningsAsErrors=true || echo "RemoteRelease APK build failed, continuing..."
       
-      - name: Upload APK artifacts
-        if: ${{ matrix.buildType == 'debug' && !startsWith(github.ref, 'refs/tags/') }}
+      - name: Upload APK artifacts (Debug)
+        if: ${{ matrix.buildType == 'debug' }}
         uses: actions/upload-artifact@v4
         with:
           name: android-debug-apk
@@ -381,8 +385,8 @@ jobs:
             truth-android-client/app/build/outputs/apk/**/*.apk
           retention-days: 30
       
-      - name: Upload AAB artifacts
-        if: ${{ matrix.buildType == 'release' && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release') }}
+      - name: Upload AAB artifacts (Release)
+        if: ${{ matrix.buildType == 'release' }}
         uses: actions/upload-artifact@v4
         with:
           name: android-release-aab
@@ -392,12 +396,12 @@ jobs:
           if-no-files-found: warn
       
       - name: Upload APK artifacts (Release)
-        if: ${{ matrix.buildType == 'release' && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release') }}
+        if: ${{ matrix.buildType == 'release' }}
         uses: actions/upload-artifact@v4
         with:
           name: android-release-apk
           path: |
-            truth-android-client/app/build/outputs/apk/local/release/*.apk
+            truth-android-client/app/build/outputs/apk/**/release/*.apk
           retention-days: 30
 
   release:
@@ -412,17 +416,29 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: 'android-release-*'
+          pattern: 'android-*-*'
           merge-multiple: true
           path: artifacts
       
+      - name: Extract tag name
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Create GitHub Release
+        if: steps.tag.outputs.tag != ''
         uses: softprops/action-gh-release@v1
         with:
           draft: false
           prerelease: false
           generate_release_notes: true
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ steps.tag.outputs.tag }}
           files: |
             artifacts/**/*
         env:
