@@ -141,7 +141,7 @@ fun EventEditScreen(
                 title = { Text("${EmojiMapping.getEmoji("screens", "newEvent")} ${context.getString(R.string.edit_event)}") },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.cancel))
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "${EmojiMapping.getEmoji("actions", "cancel")} ${context.getString(R.string.cancel)}")
                     }
                 },
                 actions = {

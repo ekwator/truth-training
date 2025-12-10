@@ -59,6 +59,254 @@ wget https://github.com/ekwator/truth-training/releases/download/v1.0.0/app-rele
 2. Tap to launch
 3. App should open to Dashboard screen
 
+### From ADB (Android Debug Bridge)
+
+This method is recommended for developers and testers who have Android Debug Bridge (ADB) installed and a device connected via USB or wireless debugging.
+
+#### Prerequisites
+
+1. **Install ADB:**
+   ```bash
+   # On Linux (Debian/Ubuntu)
+   sudo apt install android-tools-adb
+   
+   # On macOS
+   brew install android-platform-tools
+   
+   # On Windows
+   # Download from: https://developer.android.com/studio/releases/platform-tools
+   ```
+
+2. **Enable USB Debugging on Device:**
+   - Go to Settings → About Phone
+   - Tap "Build Number" 7 times to enable Developer Options
+   - Go to Settings → Developer Options
+   - Enable "USB Debugging"
+
+3. **Connect Device:**
+   ```bash
+   # Check if device is connected
+   adb devices
+   # Should show your device ID
+   ```
+
+#### Build Variants Overview
+
+The Android app has **3 product flavors** and **2 build types**, resulting in **6 build variants**:
+
+| Flavor | Description | Base URL | Use Case |
+|--------|-------------|----------|----------|
+| **local** | Local development | `http://10.0.2.2:8080` | Development with local server (Android Emulator) |
+| **mock** | Mock/Testing | `http://mock` | Testing without real server, uses mock data |
+| **remote** | Production/Remote | `https://truth-core.example.com` | Production deployment with remote server |
+
+| Build Type | Description | Use Case |
+|------------|-------------|----------|
+| **debug** | Debug build | Development, testing, includes debug symbols |
+| **release** | Release build | Production, optimized, no debug symbols |
+
+#### Building APK Files
+
+Navigate to the project root and build the desired variant:
+
+```bash
+cd truth-android-client
+
+# Local variants (for development with local server)
+./gradlew assembleLocalDebug      # Debug build for local development
+./gradlew assembleLocalRelease    # Release build for local testing
+
+# Mock variants (for testing without server)
+./gradlew assembleMockDebug       # Debug build with mock data
+./gradlew assembleMockRelease      # Release build with mock data
+
+# Remote variants (for production/remote server)
+./gradlew assembleRemoteDebug     # Debug build for remote server
+./gradlew assembleRemoteRelease   # Release build for production
+```
+
+**APK File Locations:**
+
+After building, APK files are located at:
+```
+truth-android-client/app/build/outputs/apk/{flavor}/{buildType}/app-{flavor}-{buildType}.apk
+```
+
+**Specific file paths:**
+- **Local Debug:** `app/build/outputs/apk/local/debug/app-local-debug.apk`
+- **Local Release:** `app/build/outputs/apk/local/release/app-local-release-unsigned.apk` (unsigned, requires signing for production)
+- **Mock Debug:** `app/build/outputs/apk/mock/debug/app-mock-debug.apk`
+- **Mock Release:** `app/build/outputs/apk/mock/release/app-mock-release-unsigned.apk` (unsigned, requires signing for production)
+- **Remote Debug:** `app/build/outputs/apk/remote/debug/app-remote-debug.apk`
+- **Remote Release:** `app/build/outputs/apk/remote/release/app-remote-release-unsigned.apk` (unsigned, requires signing for production)
+
+**Note:** Release APK files are unsigned by default. For production deployment, you need to sign them using `jarsigner` or Android Studio's signing configuration.
+
+#### Building AAB Files (Android App Bundle)
+
+AAB files are used for Google Play Store distribution:
+
+```bash
+cd truth-android-client
+
+# Build AAB files
+./gradlew bundleLocalDebug        # Local debug bundle
+./gradlew bundleLocalRelease      # Local release bundle
+./gradlew bundleMockDebug         # Mock debug bundle
+./gradlew bundleMockRelease       # Mock release bundle
+./gradlew bundleRemoteDebug       # Remote debug bundle
+./gradlew bundleRemoteRelease     # Remote release bundle
+```
+
+**AAB File Locations:**
+
+AAB files are located at:
+```
+truth-android-client/app/build/outputs/bundle/{flavor}{BuildType}/app-{flavor}-{buildType}.aab
+```
+
+**Specific file paths:**
+- **Local Debug:** `app/build/outputs/bundle/localDebug/app-local-debug.aab`
+- **Local Release:** `app/build/outputs/bundle/localRelease/app-local-release.aab`
+- **Mock Debug:** `app/build/outputs/bundle/mockDebug/app-mock-debug.aab`
+- **Mock Release:** `app/build/outputs/bundle/mockRelease/app-mock-release.aab`
+- **Remote Debug:** `app/build/outputs/bundle/remoteDebug/app-remote-debug.aab`
+- **Remote Release:** `app/build/outputs/bundle/remoteRelease/app-remote-release.aab`
+
+#### Installing via ADB
+
+**Step 1: Build APK**
+```bash
+cd truth-android-client
+
+# Choose the variant you need (example: local debug)
+./gradlew assembleLocalDebug
+```
+
+**Step 2: Install APK on Device**
+```bash
+# From project root
+adb install -r truth-android-client/app/build/outputs/apk/local/debug/app-local-debug.apk
+
+# Or use full path
+adb install -r /path/to/truth-training/truth-android-client/app/build/outputs/apk/local/debug/app-local-debug.apk
+```
+
+**Step 3: Launch Application**
+```bash
+adb shell am start -n com.truth.training.client/.MainActivity
+```
+
+**Step 4: Verify Installation**
+```bash
+# Check if app is installed
+adb shell pm list packages | grep truth.training
+
+# Check app version
+adb shell dumpsys package com.truth.training.client | grep versionName
+```
+
+#### Quick Install Commands
+
+**For Local Development (most common):**
+```bash
+cd truth-android-client
+./gradlew assembleLocalDebug
+adb install -r app/build/outputs/apk/local/debug/app-local-debug.apk
+adb shell am start -n com.truth.training.client/.MainActivity
+```
+
+**For Testing with Mock Data:**
+```bash
+cd truth-android-client
+./gradlew assembleMockDebug
+adb install -r app/build/outputs/apk/mock/debug/app-mock-debug.apk
+adb shell am start -n com.truth.training.client/.MainActivity
+```
+
+**For Production Testing:**
+```bash
+cd truth-android-client
+./gradlew assembleRemoteRelease
+adb install -r app/build/outputs/apk/remote/release/app-remote-release-unsigned.apk
+adb shell am start -n com.truth.training.client/.MainActivity
+```
+
+#### Uninstalling via ADB
+
+```bash
+# Uninstall the app
+adb uninstall com.truth.training.client
+
+# Verify removal
+adb shell pm list packages | grep truth.training
+# Should return nothing
+```
+
+#### Build Variant Selection Guide
+
+**Choose `local` variant if:**
+- You're developing the app
+- You have a local Truth Core server running (e.g., on `localhost:8080`)
+- You're using Android Emulator (10.0.2.2 maps to host's localhost)
+- You need to test with real server but locally
+
+**Choose `mock` variant if:**
+- You want to test UI without a real server
+- You're testing offline functionality
+- You need consistent test data
+- You're running automated tests
+
+**Choose `remote` variant if:**
+- You're deploying to production
+- You're testing with a remote Truth Core server
+- You're preparing for Google Play Store release
+- You need production-like configuration
+
+**Choose `debug` build if:**
+- You're developing or debugging
+- You need debug symbols and logging
+- You want to use Android Studio debugger
+- You're testing new features
+
+**Choose `release` build if:**
+- You're preparing for production
+- You want optimized performance
+- You're submitting to Google Play Store
+- You need production-ready build
+
+#### Troubleshooting ADB Installation
+
+**Device not detected:**
+```bash
+# Check ADB connection
+adb devices
+
+# Restart ADB server
+adb kill-server
+adb start-server
+adb devices
+```
+
+**Installation fails:**
+```bash
+# Uninstall existing version first
+adb uninstall com.truth.training.client
+
+# Then install again
+adb install -r app/build/outputs/apk/local/debug/app-local-debug.apk
+```
+
+**Permission denied:**
+```bash
+# Check USB debugging is enabled on device
+# On device: Settings → Developer Options → USB Debugging
+
+# Check ADB has proper permissions
+adb devices
+# If device shows "unauthorized", accept the prompt on device
+```
+
 ## First Launch
 
 ### Step 1: Launch Application

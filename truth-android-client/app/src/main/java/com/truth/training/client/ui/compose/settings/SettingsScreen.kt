@@ -73,7 +73,7 @@ fun SettingsScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = context.getString(R.string.back)
+                            contentDescription = "${EmojiMapping.getEmoji("actions", "back")} ${context.getString(R.string.back)}"
                         )
                     }
                 }
@@ -408,14 +408,14 @@ fun SettingsScreen(
                     onClick = { viewModel.saveConnectionSettings() },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(context.getString(R.string.save_connection_settings))
+                    Text("${EmojiMapping.getEmoji("actions", "save")} ${context.getString(R.string.save_connection_settings)}")
                 }
                 
                 Button(
                     onClick = { viewModel.saveDiscoveryWorkerSettings() },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(context.getString(R.string.save_discovery_settings))
+                    Text("${EmojiMapping.getEmoji("actions", "save")} ${context.getString(R.string.save_discovery_settings)}")
                 }
             }
             
@@ -590,8 +590,15 @@ private fun ConnectionStatusCard(
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             testResult?.let {
+                val emoji = if (it.contains("Success", ignoreCase = true)) {
+                    EmojiMapping.getEmoji("status", "success")
+                } else if (it.contains("Failed", ignoreCase = true)) {
+                    EmojiMapping.getEmoji("status", "error")
+                } else {
+                    ""
+                }
                 Text(
-                    text = context.getString(R.string.test_result, it),
+                    text = if (emoji.isNotEmpty()) "$emoji ${context.getString(R.string.test_result, it)}" else context.getString(R.string.test_result, it),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 if (testTimestamp > 0) {
@@ -603,7 +610,7 @@ private fun ConnectionStatusCard(
                 }
             }
             
-            Button(
+            OutlinedButton(
                 onClick = onTestConnection,
                 enabled = !isTesting,
                 modifier = Modifier.fillMaxWidth()
@@ -614,7 +621,7 @@ private fun ConnectionStatusCard(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text(context.getString(R.string.test_connection))
+                    Text("${EmojiMapping.getEmoji("actions", "refresh")} ${context.getString(R.string.test_connection)}")
                 }
             }
         }

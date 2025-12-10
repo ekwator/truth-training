@@ -37,7 +37,7 @@ fun EventListScreen(
                     IconButton(onClick = onNewEventClick) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = context.getString(R.string.new_event)
+                            contentDescription = "${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.new_event)}"
                         )
                     }
                 }
@@ -47,7 +47,7 @@ fun EventListScreen(
             FloatingActionButton(onClick = onNewEventClick) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = context.getString(R.string.new_event)
+                    contentDescription = "${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.new_event)}"
                 )
             }
         }

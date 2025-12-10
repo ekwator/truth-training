@@ -9,8 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.truth.training.client.R
 import com.truth.training.client.data.database.entities.NodeEntity
 import com.truth.training.client.utils.EmojiMapping
 import java.text.SimpleDateFormat
@@ -43,13 +45,14 @@ fun NodesScreen(
     var showTypeFilterMenu by remember { mutableStateOf(false) }
     var showReachableFilterMenu by remember { mutableStateOf(false) }
     
+    val context = LocalContext.current
     val nodeTypes = listOf("ALL", "LAN", "WIFI", "GLOBAL", "RELAY", "CLIENT")
     val reachableOptions = listOf("All" to null, "Reachable" to 1, "Unreachable" to 0)
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("${EmojiMapping.getEmoji("screens", "events")} Node Discovery") },
+                title = { Text("${EmojiMapping.getEmoji("navigation", "events")} ${context.getString(R.string.node_discovery)}") },
                 actions = {
                     IconButton(onClick = { viewModel.refreshNodes() }) {
                         Icon(

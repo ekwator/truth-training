@@ -76,10 +76,10 @@ fun EventDetailScreen(
                 title = { Text("${EmojiMapping.getEmoji("screens", "events")} ${context.getString(R.string.event_details)}") },
                 actions = {
                     IconButton(onClick = onEdit) {
-                        Icon(imageVector = Icons.Filled.Edit, contentDescription = context.getString(R.string.edit))
+                        Icon(imageVector = Icons.Filled.Edit, contentDescription = "${EmojiMapping.getEmoji("actions", "edit")} ${context.getString(R.string.edit)}")
                     }
                     IconButton(onClick = onDelete) {
-                        Icon(imageVector = Icons.Filled.Delete, contentDescription = context.getString(R.string.delete))
+                        Icon(imageVector = Icons.Filled.Delete, contentDescription = "${EmojiMapping.getEmoji("actions", "delete")} ${context.getString(R.string.delete)}")
                     }
                 }
             )

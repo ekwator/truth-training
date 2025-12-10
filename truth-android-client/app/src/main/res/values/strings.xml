@@ -166,6 +166,7 @@
     <string name="historical_results">Historical Results</string>
     <string name="events_count">Events: %1$d</string>
     <string name="trend_value">Trend: %1$s</string>
+    <string name="node_discovery">Node Discovery</string>
 </resources>
 
 

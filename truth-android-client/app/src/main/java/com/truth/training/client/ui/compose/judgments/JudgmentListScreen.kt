@@ -40,7 +40,7 @@ fun JudgmentListScreen(
             FloatingActionButton(onClick = onNewJudgmentClick) {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = context.getString(R.string.new_judgment)
+                    contentDescription = "${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.new_judgment)}"
                 )
             }
         }

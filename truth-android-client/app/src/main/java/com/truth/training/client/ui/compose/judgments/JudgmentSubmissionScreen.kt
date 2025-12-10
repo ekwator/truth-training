@@ -40,9 +40,9 @@ fun JudgmentSubmissionScreen(
                     IconButton(onClick = onCancel) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = context.getString(R.string.cancel)
+                        contentDescription = "${EmojiMapping.getEmoji("actions", "cancel")} ${context.getString(R.string.cancel)}"
                     )
-                    }
+                }
                 },
                 actions = {
                     TextButton(

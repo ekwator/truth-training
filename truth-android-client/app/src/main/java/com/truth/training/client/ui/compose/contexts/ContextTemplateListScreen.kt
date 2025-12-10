@@ -65,7 +65,7 @@ fun ContextTemplateListScreen(
                     IconButton(onClick = onNewTemplateClick) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = context.getString(R.string.new_template)
+                            contentDescription = "${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.new_template)}"
                         )
                     }
                 }
@@ -75,7 +75,7 @@ fun ContextTemplateListScreen(
             FloatingActionButton(onClick = onNewTemplateClick) {
                 Icon(
                     imageVector = androidx.compose.material.icons.Icons.Filled.Add,
-                    contentDescription = context.getString(R.string.new_template)
+                    contentDescription = "${EmojiMapping.getEmoji("actions", "create")} ${context.getString(R.string.new_template)}"
                 )
             }
         }

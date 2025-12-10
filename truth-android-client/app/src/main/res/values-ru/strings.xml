@@ -177,5 +177,6 @@
     <string name="historical_results">Исторические результаты</string>
     <string name="events_count">События: %1$d</string>
     <string name="trend_value">Тренд: %1$s</string>
+    <string name="node_discovery">Обнаружение узлов</string>
 </resources>
 
