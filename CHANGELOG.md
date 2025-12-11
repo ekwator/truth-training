@@ -5,7 +5,11 @@
 **Release Date**: 2025-01-XX  
 **Status**: Prototype Release
 
+<<<<<<< HEAD
 For a narrative overview of this release, see [`release-info-v1_0_0-Prot.txt`](release-info-v1_0_0-Prot.txt).
+=======
+For a narrative overview of this release, see [`release-info.txt`](release-info.txt).
+>>>>>>> origin/main
 
 ### 🎉 Feature Implementation: Impacts, Judgments, and Network Nodes
 

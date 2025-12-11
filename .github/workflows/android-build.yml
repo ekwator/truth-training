@@ -347,7 +347,11 @@ jobs:
           cp target/x86_64-linux-android/release/libtruth_core.so truth-android-client/app/src/main/jniLibs/x86_64/
       
       - name: Build APK (Debug)
+<<<<<<< HEAD
         if: ${{ matrix.buildType == 'debug' }}
+=======
+        if: ${{ matrix.buildType == 'debug') && !startsWith(github.ref, 'refs/tags/') }}
+>>>>>>> origin/main
         working-directory: truth-android-client
         run: |
           # Build all flavors for debug
