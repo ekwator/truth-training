@@ -65,6 +65,8 @@ Use this index to reach every human-facing reference.
 - [Android Migration](ANDROID_MIGRATION.md)
 - [Constitution Compliance](Constitution-Compliance.md)
 - [Data Schema](Data_Schema.md)
+- [Database Schema for Truth Training](schema-truth_teraining.sql) - Current implementation schema for the main Truth Training database
+- [Database Schema for Discovery Nodes](schema-discovery_nodes.sql) - Current implementation schema for the discovery and node management database
 - [Documentation Refactor Inventory](Documentation_Refactor_Inventory.md)
 - [Documentation Refactor Links](Documentation_Refactor_Links.md)
 - [Spec Summary](SPEC_SUMMARY.md)
@@ -73,4 +75,5 @@ Use this index to reach every human-facing reference.
 - [Api Reference](api_reference/API_REFERENCE.md)
 - [Cross Platform Discovery Compatibility](cross_platform_discovery_compatibility.md)
 - [Event Rating Protocol](event_rating_protocol.md)
+- [Formal Mathematical Model](mat_model.md) - Based on the project constitution, this document provides the formal mathematical model with database structure implementation for Truth Training
 - [Post Integration Hardening](post_integration_hardening.md)

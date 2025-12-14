@@ -1,0 +1,4 @@
+# Project Documentation Update
+## In accordance with the updated project constitution, it is necessary to update all project documentation in the docs/ and spec/ folders
+## Desktop UI, Android client, and iOS applications must have localization for two languages: Russian and English. Language switching is done using "Русский" and "English" buttons in the Settings menu.
+## Desktop UI interface implementation must be completely identical to the Android client interface, with the same text placement, button positioning, and color scheme across all screens. The current Android client interface implementation takes priority. To achieve this, a specification document describing the Android client interface implementation must be created, and based on it, a similar document describing the Desktop UI interface implementation should be developed.

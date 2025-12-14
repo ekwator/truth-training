@@ -1,12 +1,12 @@
 name: Android Build & Test
 
 on:
-  push:
-    branches: ['**']
-    tags:
-      - '**'
-  pull_request:
-    branches: [ main ]
+#  push:
+#    branches: ['**']
+#    tags:
+#      - '**'
+#  pull_request:
+#    branches: [ main ]
   workflow_dispatch:
   
 permissions:

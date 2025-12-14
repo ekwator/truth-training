@@ -33,23 +33,248 @@ Ultimately, without network connectivity, the application can serve as a **perso
 
 ---
 
-##  Благодарности - Мир должен знать настоящих героев.
+🧠 **Truth Training — Operating Logic and Computational Model**
 
-Огромное спасибо мировому сообществу за сложившуюся ситуацию, ставшую предпосылкой создания этого проекта.
+## 1. Core Idea and Purpose of the System
 
-Особая благодарность моей жене за то, что помогла справиться с этой ситуацией.
+**Truth Training** is a system for collective evaluation of events and statements, based on the principle of the *wisdom of the crowd*.  
+It does not assume the presence of a central arbiter of truth and does not require expert knowledge from individual participants.
 
-Моему брату за то, что не послал меня подальше с моими бесконечными постами с презентациями проекта.  
-🙏**Слова рождают смысл** **-** **имя с N параметрами - любая вещь**
-- **Непосредственный вклад также внесли:**
+In the system, truth:
 
-| | |
-|---|---|
-|Разработчики Cursor AI IDE | hi@cursor.com |
-|Open Source Developers and Open AI (Chat GPT)<br>за возможность бесплатного доступа к их продуктам | |
-|Nanitnet<br>сам того не подозревая внес огромный вклад в доведение этого проекта до соответствия спецификации | |
+- is not declared  
+- is not voted on directly  
+- is not determined by authority  
 
-🙏**Всем спасибо, надеюсь, что этот список** **-** **будет продолжен.**
+Instead, it emerges statistically — as a stable result of independent evaluations accumulated over time.
+
+---
+
+## 2. Core Entity: Event (Truth Event)
+
+An **Event** is a statement or fact that has been recorded in the system.
+
+An event:
+
+- appears as unverified  
+- circulates within the system  
+- receives independent evaluations  
+- over time is either reinforced or rejected  
+
+### Key Logic
+
+- No event is immediately considered true or false  
+- Truthfulness is a **process**, not a state  
+
+---
+
+## 3. Event Code (Field Code)
+
+Each event has an **8-bit code** used not for semantic meaning, but for protocol-level propagation logic.
+
+In the described model, the code controls:
+
+- event transmission  
+- retransmission  
+- termination of propagation  
+
+The code:
+
+- does not directly participate in truth calculation  
+- can be algorithmically modified during propagation  
+
+This allows the system to:
+
+- prevent infinite propagation  
+- implement P2P logic without changing data structures  
+- separate transport logic from evaluation logic  
+
+---
+
+## 4. Event Evaluation (Impact)
+
+### What Is Impact
+
+**Impact** is a subjective assessment of the *consequences* of an event, not an evaluation of the fact itself.
+
+Impact answers the question:
+
+> “What effect did (or will) this event have?”
+
+Each Impact:
+
+- is linked to a specific event  
+- has a type (reputation, finance, emotions, etc.)  
+- has a sign:
+  - positive  
+  - negative  
+- is time-stamped  
+
+### Key Principle
+
+The system does not ask *“Is this true?”*  
+It asks:
+
+> “What happened as a result of this being accepted as true?”
+
+---
+
+## 5. Truth Calculation (Implicit Truth Score)
+
+The truthfulness of an event is not stored as a field and is not explicitly defined.
+
+It is derived from:
+
+- the number of Impact evaluations  
+- their direction (positive / negative)  
+- accumulation over time  
+- stability of the result  
+
+### Simplified Calculation Model
+
+Event truthfulness ≈
+(Σ positive impacts − Σ negative impacts)
+÷ number of events  
+
+**Important:**
+
+- early evaluations carry less weight  
+- stable evaluations gain significance over time  
+- sharp changes indicate conflicting interpretations  
+
+---
+
+## 6. The “Wisdom of the Crowd” Principle
+
+The system embeds key conditions for valid collective evaluation:
+
+- **Independence of participants**  
+  - participants do not see others’ evaluations  
+
+- **Diversity of sources**  
+  - different contexts, motivations, experiences  
+
+- **Sufficient number of evaluations**  
+  - the law of large numbers applies  
+
+- **Absence of a central truth authority**  
+
+Truth emerges as statistical equilibrium, not as a decision.
+
+---
+
+## 7. Evaluation Context
+
+Each event is linked to a **context**, which defines:
+
+- domain (social, financial, political, etc.)  
+- form (truth, deception, omission)  
+- cause  
+- development path  
+- effect  
+
+Context:
+
+- does not define truth  
+- provides a frame for interpreting consequences  
+
+---
+
+## 8. Aggregated Metrics (Progress Metrics)
+
+The system periodically computes aggregates:
+
+- total number of events  
+- ratio of positive to negative impacts  
+- trend (slope of trust change)  
+
+These metrics:
+
+- are not used for decision-making  
+- serve as system state indicators  
+- allow observation of dynamics  
+
+---
+
+## 9. Database Schema (Semantic Overview)
+
+### Core Tables
+
+#### `truth_events`
+
+Stores events:
+
+- description  
+- context  
+- timestamps  
+- discovery status  
+- protocol propagation code  
+
+#### `impact`
+
+Stores impacts:
+
+- link to event  
+- impact type  
+- sign (positive / negative)  
+- timestamp  
+
+#### `impact_type`
+
+Impact classification:
+
+- reputation  
+- finance  
+- emotions  
+- law  
+- health  
+- time  
+
+#### `context`
+
+Multifactor interpretation model:
+
+- category  
+- form  
+- cause  
+- development  
+- effect  
+
+#### `progress_metrics`
+
+Aggregated system state indicators
+
+---
+
+## 10. The Main Consequence
+
+**Truth Training:**
+
+- does not fight lies directly  
+- does not require acknowledging falsehood  
+- does not force truth  
+
+Instead, the system:
+
+- allows events to “live through time”  
+- records consequences  
+- shows which statements remain stable over time  
+
+Truth here is:
+
+> that which continues to function without destroying the system
+
+---
+
+## 11. Why This Logic Is Resilient
+
+- lies may be profitable in the short term  
+- but their consequences accumulate  
+- collective evaluation does not require trust in participants  
+- only trust in statistics  
+
+Thus, the system naturally identifies and suppresses fraud —  
+not through control, but through observation of consequences.
 
 ---
 
