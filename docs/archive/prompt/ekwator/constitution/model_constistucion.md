@@ -2,7 +2,7 @@
 # Formalized - Model and Database Schema
 ## Truth Training
 
-**Document Version:** 1.0
+**Document Version:** 2.4.0
 **Status:** Draft / Specification
 **Purpose:** formal description of data structure used
 in Truth Training application and its compliance with
@@ -15,25 +15,64 @@ The model is designed for:
 - description of relationships between events, consequences and judgments;
 - ensuring reproducibility of truth calculation;
 - alignment of Core / Desktop / Mobile implementations.
+
+The model is designed for:
+- formalization of application entities;
+- description of relationships between events, consequences and judgments;
+- ensuring reproducibility of truth calculation;
+- alignment of Core / Desktop / Mobile implementations.
 Truth Training system is based on the following principles:
 
-1. Truth is not stored as a fixed value —
-   it is calculated as an aggregated function of multiple judgments.
+1. Truth is *computed*, not stored.
+2. Errors are allowed locally; stability arises globally.
+3. No trusted authority; robustness is statistical.
+4. Two orthogonal axes:
+   - **Consequences axis** → *Impact*
+   - **Truth axis** → *Judgments*
 
-2. Each event is considered in two independent dimensions:
-   - impact axis
-   - truth axis
+• System is distributed: multiple independent nodes N = {N₁, N₂, …}. Each node stores a local copy of the database, separately evaluates events, participates in P2P exchange.
+• Event does not have a single "truth" — truth emerges statistically as a stable form of collective judgments.
+• System has two independent axes of event evaluation:
+◦ Consequence axis → impact
+◦ Truth axis → judgments
+• Local metrics (csᵢ, ciᵢ, cjᵢ) are used for training and aggregation — they are not equal to the final truth.
 
-3. System allows parallel, conflicting assessments,
-   which may stabilize or disappear over time.
-
-4. Each assessment is local and contextual,
-   while global values are statistical in nature.
 Model reflects "one-to-many" principle:
 
 - one event → multiple interpretations;
 - one source → multiple consequences;
 - one observation → multiple judgments.
+
+The system operates on a distributed set of nodes:
+
+N={N_1, N_2, \dots, N_k\}
+
+Each node maintains a local database, evaluates events independently, and participates in P2P circulation.
+
+By analogy:
+- neural network = vector + relational structure;
+- system nodes = assessors;
+- connections = judgments and consequences.
+- application model includes the following main entity classes:
+
+- Event
+- Impact
+- Judgment
+- Participant / User
+- Consensus / Aggregation
+
+Each entity is mapped to one or more relational database tables.
+Model reflects "one-to-many" principle:
+
+- one event → multiple interpretations;
+- one source → multiple consequences;
+- one observation → multiple judgments.
+
+The system operates on a distributed set of nodes:
+
+N={N_1, N_2, \dots, N_k\}
+
+Each node maintains a local database, evaluates events independently, and participates in P2P circulation.
 
 By analogy:
 - neural network = vector + relational structure;
@@ -69,69 +108,306 @@ Database structure complies with following principles:
 ### Table: participants
 
 Purpose:
-Stores information about system participants who form judgments, initiate events and confirm consequences.
+Stores information about collective intelligence system participants.
 
 Fields:
-- id (UUID, PK) — unique participant identifier
-- public_key (TEXT, UNIQUE) — participant's public key
-- created_at (TIMESTAMP) — registration time
-- status (ENUM) — participant status (active, suspended, revoked)
+- id (TEXT, PK) — unique participant identifier (public key)
+- public_key (TEXT, UNIQUE, NOT NULL) — participant's public key
+- reputation_score (REAL, NOT NULL, DEFAULT 0.5) — participant's reputation score
+- total_judgments (INTEGER, NOT NULL, DEFAULT 0) — total number of judgments made
+- accurate_judgments (INTEGER, NOT NULL, DEFAULT 0) — number of accurate judgments
+- created_at (INTEGER, NOT NULL) — registration time
+- last_activity (INTEGER) — timestamp of last activity
 
 Notes:
 - Participant is not tied to identity
 - Authentication is based on cryptographic key
+- Reputation is calculated based on accuracy of judgments
 
-### Table: contexts
+## 3. Context as Semantic Space
+Structure of tables:Context is fixed 5‑tuple:
+
+ctx=⟨category,forma,cause,develop,effect⟩
+
+Each element is FK:
+
+category_id FK → PK  category.id
+forma_id    FK → PK  forma.id
+cause_id    FK → PK  cause.id
+develop_id  FK → PK  develop.id
+effect_id   FK → PK  effect.id
+
+##### Context sets interpretation frame for consequences but does **not** affect truth directly.
+Context table structure in project is implemented to store context templates used for classifying and describing events in Truth Training system.
+Context can be filled manually by selecting appropriate records from subordinate tables with PK → FK filling:
+For automatic filling of context fields context table is used
+
+##### Purpose of context table:
+Table is used to store context templates representing predefined combinations of categories, forms, causes, manifestations and effects. These templates allow systematizing and standardizing event description, facilitating their analysis and matching. Contextual templates are used for matching with events based on embedded context fields.
+
+##### Table is integrated into event classification system and used for matching events with predefined context templates, allowing standardization of description and analysis of events in Truth Training system.
+
+##### Table Structure:
+
+```sql
+
+CREATE TABLE context (
+    id          INTEGER PRIMARY KEY,
+    name        TEXT NOT NULL,
+    category_id INTEGER,     -- FK → category.id
+    forma_id    INTEGER,     -- FK → forma.id
+    cause_id    INTEGER,     -- FK → cause.id
+    develop_id  INTEGER,     -- FK → develop.id
+    effect_id   INTEGER,     -- FK → effect.id
+    description TEXT,
+    FOREIGN KEY(category_id) REFERENCES category(id),
+    FOREIGN KEY(forma_id)    REFERENCES forma(id),
+    FOREIGN KEY(cause_id)    REFERENCES cause(id),
+    FOREIGN KEY(develop_id)  REFERENCES develop(id),
+    FOREIGN KEY(effect_id)   REFERENCES effect(id)
+);
+
+```
+
+Where structure is described:
+In data schema documentation: docs/Data_Schema.md - contains description of context table as part of knowledge_base block, including all fields and their purpose
+In implementation code: core/src/storage.rs - contains SQL definition of table in SCHEMA_SQL constant
+In template matching logic: docs/Data_Schema.md - describes template matching system and duplicate detection based on context fields
+
+### Table: context
 
 Purpose:
-Describes context within which event assessment takes place. Context affects admissible consequences and interpretations.
+Storing interpretation context templates representing predefined combinations of categories, forms, causes, manifestations and effects.
 
 Fields:
-- id (UUID, PK)
-- name (TEXT)
+- id (INTEGER, PK) — unique context identifier
+- name (TEXT, NOT NULL) — context name
+- category_id (INTEGER) — FK to category.id
+- forma_id (INTEGER) — FK to forma.id
+- cause_id (INTEGER) — FK to cause.id
+- develop_id (INTEGER) — FK to develop.id
+- effect_id (INTEGER) — FK to effect.id
+- description (TEXT) — context description
 
 ## 3. Events and Consequence Axis (Impact Axis)
 
 Event is central entity of Truth Training model.
 It represents a fixed fact or statement around which truth assessments and observable consequences are formed.
 
-### Table: events
+##### Table: truth_events
+Event is formalized as a vector:
+
+E_i=⟨gid_i,author_i,desc_i,ctx_i,v_i,d_i,c_i,t_start,t_end,cs_i,ci_i,cj_i⟩
+
+Where:
+
+gid_i — global event identifier
+	truth_events.global_id
+author_i - creator public key
+	user_uuid
+ctx_i — semantic context
+v_i ∈{0,1} — direction vector
+	truth_events.vector
+d_i ∈ {0,1,∅} — detection flag
+	truth_events.detected
+c_i ∈ [0,255] — circulation code
+	truth_events.code
+cs_i - learning progress metric
+	truth_events.collective_score
+ci_i - impact metric
+	truth_events.impact_score
+cj_i - judgment metric
+	truth_events.judgments_score
+
+- Used for filtering and sorting when viewing events.
+
+t_start,t_end — time boundaries determined by following rules:
+	truth_events.timestamp_start
+	truth_events.timestamp_end
+- t_start - non-empty value, for new event can have any value, for existing event cannot be changed
+- t_end - for new event can be undefined (empty value), cannot be less than t_start, for existing event can be changed and if date was already set automatically flag cr_i (corrected) is set
+- Used for filtering and sorting when viewing events.
+
+cs_i - Calculated value of training progress.
+	truth_events.collective_score
+- Calculated by corresponding algorithm working at local level individually for user without using network
+- On global level used for calculating group training.
+
+📌 cs_i — is not the final truth, but a training metric based on event at local level
+Detailed mathematical model of training metric calculation described in section 7
+ 
+ci_i - Calculated value of event impact (impact)
+- Calculated by corresponding algorithm working at local level.
+- When transmitted over network aggregated at local nodes for averaging and subsequent transmission to next nodes.
+📌 ci_i - is not the final truth, but a consequence metric of event at local level
+Detailed mathematical model of impact described in section 4.1
+
+cj_i - Calculated value of judgments about event (judgments)
+- Calculated by corresponding algorithm working at local level.
+- When transmitted over network aggregated at local nodes for averaging and subsequent transmission to next nodes.
+📌 cj_i - is not the final truth, but a judgment metric about event at local level
+Detailed mathematical model of judgments described in section 4.2
+
+##### ⚠️ Important:
+Fields code (c_i), detected (d_i), corrected (cr_i) do not participate in truth calculation directly, only in transport logic
+Detailed mathematical model of transport logic described in section 5
+Fields collective_score (cs_i), impact (ci_i), judgments (cj_i) influence event relevance, training progress calculation and truth determination.
+
+### Table: truth_events
 
 Purpose:
-Stores atomic system events. Event is immutable object and serves as intersection point of truth and consequence axes.
+Storing main data about events in Truth Training system, including their description, context, timestamps, vector (incoming/outgoing), detection and correction status, and various assessments.
 
 Fields:
-- id (UUID, PK) — unique event identifier
-- author_id (UUID, FK → participants.id) — event initiator
-- context_id (UUID, FK → contexts.id) — event context
-- payload_hash (TEXT) — hash of event content
-- created_at (TIMESTAMP) — event recording time
-- visibility (ENUM) — visibility scope (public, restricted, private)
+- id (INTEGER, PK, AUTOINCREMENT) — local auto-increment identifier
+- description (TEXT, NOT NULL) — event description
+- global_id (TEXT, NOT NULL, UNIQUE) — global event identifier for network identification
+- user_uuid (TEXT, NOT NULL) — author's public key
+- category_id (INTEGER, NOT NULL) — FK to category.id
+- forma_id (INTEGER, NOT NULL) — FK to forma.id
+- cause_id (INTEGER, NOT NULL) — FK to cause.id
+- develop_id (INTEGER, NOT NULL) — FK to develop.id
+- effect_id (INTEGER, NOT NULL) — FK to effect.id
+- vector (INTEGER, NOT NULL) — event direction (0/1)
+- detected (INTEGER) — detection flag (0/1/NULL)
+- corrected (INTEGER, NOT NULL, DEFAULT 0) — correction flag
+- timestamp_start (INTEGER, NOT NULL) — start time of event
+- timestamp_end (INTEGER) — end time of event
+- code (INTEGER, NOT NULL, DEFAULT 1) — circulation code for distribution protocol
+- collective_score (REAL) — local training/assessment metric
+- impact_score (REAL) — local impact metric
+- judgments_score (REAL) — local judgments metric
+- signature (TEXT) — cryptographic signature
+- public_key (TEXT) — public key for verification
 
 Notes:
-- Event content is stored outside DB or in encrypted form
-- Hash is used for integrity check
-- Event is not changed after creation
+- Event identity is defined by (global_id, user_uuid), never by local autoincrement id
+- Event content is stored in embedded context fields (category, forma, cause, etc.)
+- Circulation code controls distribution protocol, not truth calculation
+- collective_score, impact_score, and judgments_score are local metrics, not final truth values
 
-### Table: impacts
+## 4 Impact Assessment and judgments
+
+### 4.1 Impact as Observation and Prediction, impact is individual for each user
+Each impact:
+
+I_{ij} = ⟨event_i, type_j, value_j, t_j⟩
+
+Where:
+
+event_id → truth_events.id (FK)
+type_id → impact_type.id
+value ∈{0,1} — negative / positive
+t_j - time of recording
+
+Impact aggregates into a local metric:
+
+ci_i = g(I(E_i))
+
+##### Purpose of tables:
+Structure of impact_type and impact tables in project is implemented to store event impact assessments in Truth Training system.
+impact_type table - used for classifying types of event impacts (reputational, financial, moral, etc.). Serves as reference for impact types that can be applied to events.
+impact table - used for storing subjective assessments (impacts) of events issued by validators. Each record represents assessment of specific event by specific validator, where:
+Concept: impact — subjective observation/prediction of consequences from specific participant. impact is not equal to truth judgment.
+
+##### Tables are integrated into event assessment system and used for calculating collective event assessments (S_e) based on weighted average by validators, and for updating author and validator reputations. See also docs/event_rating_protocol.md for algorithm description for calculating assessments based on data from impact table.
+
+##### Table Structures:
+
+```sql
+
+CREATE TABLE impact_type (
+ id          INTEGER PRIMARY KEY,
+  name        TEXT NOT NULL,
+  description TEXT
+);
+
+CREATE TABLE impact (
+ id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id    INTEGER NOT NULL,  -- FK → truth_events.id
+  type_id     INTEGER NOT NULL,  -- FK → impact_type.id
+  value       INTEGER NOT NULL,  -- 0/1 (negative/positive)
+  notes       TEXT,
+  created_at  INTEGER NOT NULL,
+ signature   TEXT,
+ public_key  TEXT,
+ FOREIGN KEY(event_id) REFERENCES truth_events(id),
+  FOREIGN KEY(type_id)  REFERENCES impact_type(id)
+);
+
+CREATE INDEX idx_impact_type_id    ON impact(type_id);
+CREATE INDEX idx_impact_created_at ON impact(created_at);
+
+```
+
+value - boolean value (0/1 or false/true), indicating positive or negative impact
+type_id - reference to impact type (reputational, financial, etc.)
+event_id - reference to event being assessed
+signature and public_key - cryptographic data for verification of assessment authenticity
+
+##### Where structure is described:
+In event rating protocol documentation: docs/event_rating_protocol.md - describes purpose of impact table as storage of subjective event assessments, with type_id as impact type identifier and value as boolean value (true = confirmation, false = refutation)
+In implementation code: core/src/storage.rs - contains SQL definition of both tables in SCHEMA_SQL constant
+In impact processing logic: core/src/storage.rs - add_impact function for adding impact records
+
+📌 Key idea:
+Impact is observation and prediction of consequences for user, not opinion on truthfulness. For each user consequences may be different.
+
+### 4.2 Judgments, individual for each user
+
+Judgments are explicit truth assessments.
+
+J_{u,i} = ⟨a_{u,i}, c_{u,i}⟩
+
+Where:
+- a_{u,i} ∈ {-1, +1}
+- c_{u,i} ∈ (0,1]
+
+Local judgment metric:
+
+cj_i^{(u)} = a_{u,i} ⋅ c_{u,i}
+
+📌 Key idea:
+judgments is key moment of truth determination. After creating event its truthfulness is determined as follows:
+
+#### 4.2.1 judgments Table
+
+##### Purpose of judgments table:
+judgments table structure in project is implemented to store judgments of system participants about events.
+Table is used to store judgments that collective intelligence system participants issue about events. Each judgment represents assessment of specific event by specific participant and includes type of assessment, confidence level, reasoning and cryptographic signature.
+
+##### Table is integrated into collective intelligence system and used for collecting participant opinions about events, which subsequently allows calculating consensus and updating participant reputations based on accuracy of their judgments.
+
+### Table: impact_type
 
 Purpose:
-Records consequences caused by event.
-Consequences reflect "Impact" axis and can be both immediate and delayed.
+Classifying types of event impacts (reputational, financial, moral, etc.) serving as reference for impact types that can be applied to events.
 
 Fields:
-- id (UUID, PK)
-- event_id (UUID, FK → events.id)
-- observer_id (UUID, FK → participants.id)
-- impact_type (ENUM) — consequence type (system, social, economic, logical)
-- magnitude (FLOAT) — impact magnitude
-- direction (ENUM) — positive / negative / neutral
-- recorded_at (TIMESTAMP) — consequence recording time
+- id (INTEGER, PK) — unique impact type identifier
+- name (TEXT, NOT NULL) — impact type name
+- description (TEXT) — description of the impact type
+
+### Table: impact
+
+Purpose:
+Storing subjective assessments (impacts) of events issued by validators, representing observation and prediction of consequences from specific participant, not opinion on truthfulness.
+
+Fields:
+- id (INTEGER, PK, AUTOINCREMENT) — unique impact identifier
+- event_id (INTEGER, NOT NULL) — FK to truth_events.id
+- type_id (INTEGER, NOT NULL) — FK to impact_type.id
+- value (INTEGER, NOT NULL) — impact value (0/1 for negative/positive)
+- notes (TEXT) — additional notes about the impact
+- created_at (INTEGER, NOT NULL) — timestamp of impact recording
+- signature (TEXT) — cryptographic signature for verification
+- public_key (TEXT) — public key for verification
 
 Notes:
 - Consequence is always linked to specific event
 - One event can have multiple consequences
 - Consequences are not aggregated at DB level
+- value is boolean (0/1) indicating negative/positive impact
 
 ### Table: impact_links
 
@@ -163,19 +439,20 @@ Unlike consequence axis, truth is not an objective value and is formed through s
 ### Table: judgments
 
 Purpose:
-Stores individual participant judgments about event truth.
-Each judgment is an act of interpretation, not a fact.
+Storing judgments that collective intelligence system participants issue about events, representing assessment of specific event by specific participant.
 
 Fields:
-- id (UUID, PK)
-- event_id (UUID, FK → events.id)
-- participant_id (UUID, FK → participants.id)
-- judgment_value (ENUM) — true / false / uncertain / abstain
-- confidence (FLOAT) — confidence level (0.0 – 1.0)
-- created_at (TIMESTAMP)
+- id (TEXT, PK) — unique judgment identifier
+- participant_id (TEXT, NOT NULL) — FK to participants.id
+- event_id (TEXT, NOT NULL) — FK to events_ci.id
+- assessment (TEXT, NOT NULL) — type of assessment
+- confidence_level (REAL, NOT NULL) — confidence level of the assessment
+- reasoning (TEXT) — reasoning behind the judgment
+- submitted_at (INTEGER, NOT NULL) — timestamp of submission
+- signature (TEXT, NOT NULL) — cryptographic signature
 
 Constraints:
-- (event_id, participant_id) — unique pair
+- UNIQUE(participant_id, event_id) — each participant can have only one judgment per event
 
 Notes:
 - Judgment is not changed, only new record is possible
@@ -198,37 +475,60 @@ Notes:
 - Weight is not set manually
 - Weight is derivative of action history
 
-### Table: judgment_aggregation
+### Table: reputation_history
 
 Purpose:
-Stores aggregated truth values of event based on multiple judgments.
+Tracking changes in collective intelligence system participant reputations for auditing and analyzing changes in participant reputations, understanding reasons for reputation changes, analyzing participant behavior and judgment effectiveness, and ensuring transparency of reputation system.
 
 Fields:
-- event_id (UUID, PK, FK → events.id)
-- collective_score (FLOAT)
-- entropy (FLOAT)
-- total_judgments (INTEGER)
-- last_updated (TIMESTAMP)
+- id (TEXT, PK) — unique history record identifier
+- participant_id (TEXT, NOT NULL) — FK to participants.id
+- old_reputation (REAL, NOT NULL) — previous reputation score
+- new_reputation (REAL, NOT NULL) — new reputation score
+- change_reason (TEXT, NOT NULL) — reason for reputation change
+- event_id (TEXT) — associated event ID
+- updated_at (INTEGER, NOT NULL) — timestamp of update
 
 Notes:
-- collective_score ∈ [-1.0; 1.0]
-- entropy reflects degree of opinion divergence
+- Used for auditing and transparency of reputation changes
+- Tracks historical changes for analysis
 
-### Table: judgment_history
+### Table: consensus_ci
 
 Purpose:
-Records evolution of event truth over time.
+Storing computed consensus on events based on participant judgments, representing collective opinion formed based on individual judgments and used for determining general event assessment result.
 
 Fields:
-- id (UUID, PK)
-- event_id (UUID, FK → events.id)
-- collective_score (FLOAT)
-- entropy (FLOAT)
-- snapshot_at (TIMESTAMP)
+- id (TEXT, PK) — unique consensus identifier
+- event_id (TEXT, NOT NULL) — FK to events_ci.id
+- consensus_value (TEXT, NOT NULL) — the consensus value reached
+- confidence_score (REAL, NOT NULL) — confidence in the consensus
+- participant_count (INTEGER, NOT NULL) — number of participants involved
+- calculated_at (INTEGER, NOT NULL) — timestamp of calculation
+- algorithm_version (TEXT, NOT NULL) — version of algorithm used
 
 Notes:
-- Used for learning and dynamics analysis
-- Not involved in online calculations
+- Used for storing aggregated event assessment results
+- Enables system to make collective decisions based on individual participant judgments
+### Table: events_ci
+
+Purpose:
+Storing events within collective intelligence system (Collective Intelligence Layer) for participant assessment, classification using event_type field, tracking event status (active, resolved, archived), and storing event result data in resolution_data field.
+
+Fields:
+- id (TEXT, PK) — unique event identifier
+- title (TEXT, NOT NULL) — event title
+- description (TEXT) — event description
+- event_type (TEXT, NOT NULL) — type of event
+- created_by (TEXT, NOT NULL) — FK to participants.id
+- created_at (INTEGER, NOT NULL) — timestamp of creation
+- status (TEXT, NOT NULL, DEFAULT 'active') — event status
+- resolution_data (TEXT) — data about event resolution
+
+Notes:
+- Events are created by participants
+- Other participants can leave judgments in the judgments table
+- Consensus is calculated in the consensus_ci table
 Truth axis (Judgments Axis) is subjective and dynamic.
 
 Key properties:
@@ -714,10 +1014,207 @@ Fields:
 
 quadrant(E) =
   Q1 if T(E) ≥ θ_T and I(E) ≥ θ_I
-  Q2 if T(E) ≥ θ_T and I(E) < θ_I
-  Q3 if T(E) < θ_T and I(E) ≥ θ_I
-  Q4 otherwise
+ Q2 if T(E) ≥ θ_T and I(E) < θ_I
+ Q3 if T(E) < θ_T and I(E) ≥ θ_I
+ Q4 otherwise
 
+### Table: statements
+
+Purpose:
+Aggregating local csᵢ for transfer to global level for calculating group training, calculated based on all events and cs_i field (truth_events.collective_score).
+
+Fields:
+- id (INTEGER, PK, AUTOINCREMENT) — unique statement identifier
+- event_id (INTEGER, NOT NULL) — FK to truth_events.id
+- truth_score (REAL) — aggregated truth score
+- created_at (INTEGER, NOT NULL) — timestamp of creation
+- updated_at (INTEGER, NOT NULL) — timestamp of last update
+- signature (TEXT) — cryptographic signature
+- public_key (TEXT) — public key for verification
+
+### Table: group_ratings
+
+Purpose:
+Storing group ratings for collective assessment of truth training progress.
+
+Fields:
+- group_id (TEXT, PK) — unique group identifier
+- members (TEXT, NOT NULL) — list of group members
+- avg_score (REAL, NOT NULL) — average score of the group
+- coherence (REAL, NOT NULL) — coherence of the group's assessments
+- last_updated (INTEGER, NOT NULL) — timestamp of last update
+
+### Table: progress_metrics
+
+Purpose:
+Aggregating individual, group, and comparative trends for system metrics.
+
+Fields:
+- id (INTEGER, PK, AUTOINCREMENT) — unique metric identifier
+- timestamp (INTEGER, NOT NULL) — timestamp of the metric
+- total_events (INTEGER, NOT NULL) — total number of events
+- total_events_group (INTEGER, NOT NULL) — total number of group events
+- total_positive_impact (REAL, NOT NULL) — total positive impact
+- total_positive_impact_group (REAL, NOT NULL) — total positive impact for group
+- total_negative_impact (REAL, NOT NULL) — total negative impact
+- total_negative_impact_group (REAL, NOT NULL) — total negative impact for group
+- trend (REAL, NOT NULL) — trend calculation
+- trend_group (REAL, NOT NULL) — group trend calculation
+
+### Table: nodes
+
+Purpose:
+Storing information about discovered nodes in Truth Training network for tracking peer nodes, their addresses, types, availability and other discovery metadata.
+
+Fields:
+- id (INTEGER, PK, AUTOINCREMENT) — unique node identifier
+- address (TEXT, NOT NULL, UNIQUE) — URL or ip:port of node (e.g. http://192.168.1.100:8080/api/v1)
+- type (TEXT, NOT NULL) — node type (LAN, WIFI, GLOBAL, RELAY, CLIENT)
+- reachable (INTEGER, NOT NULL) — availability flag (0/1)
+- last_seen (INTEGER, NOT NULL) — time of last successful contact
+- ttl (INTEGER, NOT NULL) — record lifetime before automatic deletion
+- source (TEXT) — source of node discovery
+- node_id (TEXT) — node public key (optional)
+- created_at (INTEGER, NOT NULL) — timestamp of creation
+- updated_at (INTEGER, NOT NULL) — timestamp of last update
+
+### Table: node_ratings
+
+Purpose:
+Storing node reputation and trust for evaluating node reliability based on their activity and assessment accuracy.
+
+Fields:
+- node_id (TEXT, PK) — unique node identifier (public key)
+- events_true (INTEGER, NOT NULL, DEFAULT 0) — number of true events
+- events_false (INTEGER, NOT NULL, DEFAULT 0) — number of false events
+- validations (INTEGER, NOT NULL, DEFAULT 0) — number of confirmations
+- reused_events (INTEGER, NOT NULL, DEFAULT 0) — number of reused events
+- trust_score (REAL, NOT NULL, DEFAULT 0.0) — overall trust rating (-1.0 .. 1.0)
+- propagation_priority (REAL, NOT NULL, DEFAULT 0.0) — distribution priority (0.0 .. 1.0)
+- last_updated (INTEGER, NOT NULL) — timestamp of last update
+
+### Table: node_metrics
+
+Purpose:
+Monitoring node performance and status for tracking node performance metrics for synchronization optimization.
+
+Fields:
+- pubkey (TEXT, PK) — public key of the node
+- last_seen (INTEGER, NOT NULL) — time of last contact
+- relay_success_rate (REAL, NOT NULL, DEFAULT 0.0) — percentage of successful transfers
+- quality_index (REAL, NOT NULL, DEFAULT 0.0) — quality index (0.0 .. 1.0) - continuity of trust indicator
+- propagation_priority (REAL, NOT NULL, DEFAULT 0.0) — distribution priority (0.0 .. 1.0)
+
+### Table: active_tokens
+
+Purpose:
+Managing authentication sessions based on JWT tokens for storing active refresh tokens allowing access token renewal without re-authentication.
+
+Fields:
+- public_key (TEXT, NOT NULL) — public key of the user
+- refresh_token (TEXT, NOT NULL, UNIQUE) — refresh token value
+- expires_at (INTEGER, NOT NULL) — expiration timestamp
+
+### Table: peer_history
+
+Purpose:
+Storing peer synchronization history for tracking interaction history with each node for diagnostics and reliability analysis.
+
+Fields:
+- id (INTEGER, PK, AUTOINCREMENT) — unique history record identifier
+- peer_url (TEXT, NOT NULL) — node URL
+- last_sync (INTEGER) — time of last synchronization
+- success_count (INTEGER, DEFAULT 0) — counter of successful attempts
+- fail_count (INTEGER, DEFAULT 0) — counter of failed attempts
+- last_quality_index (REAL, DEFAULT 0.0) — last quality index during synchronization
+- last_trust_score (REAL, DEFAULT 0.0) — last trust score during synchronization
+
+### Table: sync_log
+
+Purpose:
+Tracking low-level synchronization operations for tracking changes at individual record level, auditing and debugging synchronization, checking data integrity during exchange between nodes, tracking authenticity of changes via digital signatures.
+
+Fields:
+- id (INTEGER, PK, AUTOINCREMENT) — unique log record identifier
+- op (TEXT, NOT NULL) — operation type (insert, update, delete)
+- table_name (TEXT, NOT NULL) — name of the table affected
+- record_id (TEXT, NOT NULL) — identifier of the record affected
+- signature (TEXT) — signature of the synchronization participant
+- public_key (TEXT) — public key of the synchronization participant
+- created_at (INTEGER, NOT NULL) — timestamp of the operation
+
+### Table: sync_logs
+
+Purpose:
+Tracking high-level synchronization attempts between nodes for network operation monitoring, analysis of synchronization success between nodes, diagnosis of connection and performance problems.
+
+Fields:
+- id (INTEGER, PK, AUTOINCREMENT) — unique log record identifier
+- timestamp (INTEGER, NOT NULL) — timestamp of the synchronization event
+- peer_url (TEXT, NOT NULL) — URL of the peer node
+- mode (TEXT, NOT NULL) — synchronization mode
+- status (TEXT, NOT NULL) — status of the synchronization
+- details (TEXT, NOT NULL) — details of the synchronization process
+
+## 7. Collective Event Assessment
+Set of event impacts:
+
+I(E_i)={I_(i1),I_(i2),…,I_(in)}
+
+Divide by sign:
+
+P_i=∑I_(ij)^(+), N_i=∑I_(ij)^(-)
+
+### 7.1 Truthfulness as Statistical Function
+----------------------
+cs_i-local = f-local(I(E_i))
+where:
+
+I(E_i) — set of user judgments
+
+function f-local depends only on local data
+network not used
+
+At global level, using network infrastructure, statements table is used, statements.truth_score is transferred to global level for calculating group training, calculated based on all events and cs_i field (truth_events.collective_score):
+
+truth_score_i-global = f-global({ cs_i-local_j })
+
+Where:
+
+{cs_i-local_j} — local assessments of different nodes
+
+-aggregated without trust to source
+-stability arises statistically
+
+progress_metrics aggregates:
+-individual
+-group
+-comparative trends
+
+Event truthfulness is not stored but calculated:
+
+Truth(E_i) = (P_i − N_i) / (|I(E_i)| + ε)
+
+Where:
+
+ε — protection from division by zero
+result ∈ (−1, +1)
+
+Interpretation:
+
+→ +1 : stably confirmed
+→ −1 : stably refuted
+≈ 0 : conflict / lack of data
+
+### 7.2 Aggregated System Metrics
+
+Table: progress_metrics
+
+State functions are recorded:
+
+Trend=(∑P−∑N) / total_events
+
+This is observation, not management.
 ---
 
 ### 9.5 Event movement dynamics
@@ -1352,3 +1849,6 @@ Truth Training — is not application. This:
 - way of collective thinking
 - formalized ethical mechanism
 - distributed cognitive system
+
+> **Truth is not what was said first.
+> Truth is what survives circulation.**
