@@ -4,15 +4,10 @@ Constitution — Data Model & Schema Supplement
 
 The canonical descriptions of the model and schema are the authoritative sources for DB structure and semantics:
 
-mat_model.md — canonical mathematical model and mapping to DB structures. 
+[mat_model.md](../../../../../docs/mat_model.md) — canonical mathematical model and mapping to DB structures. 
 
-[mat_model.md](../../../../../docs/mat_model.md)  
-
-spec/04-data-model.md and docs/Data_Schema.md — canonical SQL/markdown schema specifications for implementers. 
-
-[04-data-model.md](../../../../../spec/04-data-model.md)  
-
-[Data_Schema.md](../../../../../docs/Data_Schema.md)  
+[04-data-model.md](../../../../../spec/04-data-model.md) — canonical SQL schema specifications for implementers. 
+[Data_Schema.md](../../../../../docs/Data_Schema.md) — canonical markdown schema specifications for implementers. 
 
 Rule (Authority): Any change to the runtime DB schema, table names, primary/foreign key types, or semantic meaning of fields must be reconciled with — and implemented as — updates to the canonical files above. Implementations that diverge without an approved migration plan violate the constitution.
 
