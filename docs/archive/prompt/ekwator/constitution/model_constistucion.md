@@ -2,13 +2,13 @@
 # Formalized - Model and Database Schema
 ## Truth Training
 
-**Document Version:** 2.4.0
-**Status:** Draft / Specification
+**Document Version:** 2.4.0  
+**Status:** Specification  
 **Purpose:** formal description of data structure used
 in Truth Training application and its compliance with
 mathematical model of event, consequence and truth assessment.
 This document describes the formal mathematical model of
-Truth Training application with emphasis on relational database structure.
+Truth Training application with emphasis on relational database structure.  
 
 The model is designed for:
 - formalization of application entities;
@@ -16,12 +16,7 @@ The model is designed for:
 - ensuring reproducibility of truth calculation;
 - alignment of Core / Desktop / Mobile implementations.
 
-The model is designed for:
-- formalization of application entities;
-- description of relationships between events, consequences and judgments;
-- ensuring reproducibility of truth calculation;
-- alignment of Core / Desktop / Mobile implementations.
-Truth Training system is based on the following principles:
+## 1 Truth Training system is based on the following principles:
 
 1. Truth is *computed*, not stored.
 2. Errors are allowed locally; stability arises globally.
@@ -36,30 +31,6 @@ Truth Training system is based on the following principles:
 ◦ Consequence axis → impact
 ◦ Truth axis → judgments
 • Local metrics (csᵢ, ciᵢ, cjᵢ) are used for training and aggregation — they are not equal to the final truth.
-
-Model reflects "one-to-many" principle:
-
-- one event → multiple interpretations;
-- one source → multiple consequences;
-- one observation → multiple judgments.
-
-The system operates on a distributed set of nodes:
-
-N={N_1, N_2, \dots, N_k\}
-
-Each node maintains a local database, evaluates events independently, and participates in P2P circulation.
-
-By analogy:
-- neural network = vector + relational structure;
-- system nodes = assessors;
-- connections = judgments and consequences.
-- application model includes the following main entity classes:
-
-- Event
-- Impact
-- Judgment
-- Participant / User
-- Consensus / Aggregation
 
 Each entity is mapped to one or more relational database tables.
 Model reflects "one-to-many" principle:
@@ -89,12 +60,14 @@ By analogy:
 Each entity is mapped to one or more relational database tables.
 Document is coordinated and should be used jointly with:
 
-- mat_model.md — more complete and accurate description of mathematical model with database structure implementation;
+- mat_model.md — canonical mathematical model and mapping to DB structures.  
+- 04-data-model.md — canonical SQL schema specifications for implementers.  
+- Data_Schema.md — canonical markdown schema specifications for implementers.  
 - SECURITY.md — security and verification requirements;
 - CONTRIBUTING.md — quality and testing requirements;
 - 14-quality-gates.md — minimum requirements for PR acceptance.
 
-## 2. Basic Model Entities and Service Tables
+## 2 Basic Model Entities and Service Tables
 
 This chapter describes fundamental database tables that provide object identification, their lifecycle and integrity of Truth Training model.
 Database structure complies with following principles:
@@ -124,7 +97,43 @@ Notes:
 - Authentication is based on cryptographic key
 - Reputation is calculated based on accuracy of judgments
 
-## 3. Context as Semantic Space
+### 2.1 Context as Semantic Space
+
+#### 2.1.1 Reference (knowledge-base) context tables
+##### Table:category 
+- id          INTEGER PRIMARY KEY,
+- name        TEXT NOT NULL,
+- description TEXT
+
+##### Table: forma 
+- id          INTEGER PRIMARY KEY,
+- name        TEXT NOT NULL,
+- quality     INTEGER NOT NULL, -- 0/1
+- description TEXT
+
+##### Table: cause 
+- id          INTEGER PRIMARY KEY,
+- name        TEXT NOT NULL,
+- quality     INTEGER NOT NULL, -- 0/1
+- description TEXT
+
+##### Table: develop 
+- id          INTEGER PRIMARY KEY,
+- name        TEXT NOT NULL,
+- quality     INTEGER NOT NULL, -- 0/1
+- description TEXT
+
+##### Table: effect 
+- id          INTEGER PRIMARY KEY,
+- name        TEXT NOT NULL,
+- quality     INTEGER NOT NULL, -- 0/1
+- description TEXT
+
+##### Explanation:
+- quality ∈ {0,1} — semantic valence (positive/negative). This is not a truth metric; used for analytics/filtering and trends.
+
+#### 2.1.2 Model: Context
+
 Structure of tables:Context is fixed 5‑tuple:
 
 ctx=⟨category,forma,cause,develop,effect⟩
@@ -137,64 +146,49 @@ cause_id    FK → PK  cause.id
 develop_id  FK → PK  develop.id
 effect_id   FK → PK  effect.id
 
-##### Context sets interpretation frame for consequences but does **not** affect truth directly.
+### 2.2 Contexts, Observers and System Learning
+
+Context defines framework for interpretation of events and judgments.
+Without context, neither consequences nor truth can be correctly matched or aggregated.
+
+Context acts as coordinate system in which observer draws conclusion.
+
+#### Table: contexts
+
+Purpose:
+Describes logical, temporal or thematic areas within which events are assessed and judgments are formed.
+
+Fields:
+- id (UUID, PK)
+- name (TEXT)
+- category_id INTEGER,     -- FK → category.id
+- forma_id    INTEGER,     -- FK → forma.id
+- cause_id    INTEGER,     -- FK → cause.id
+- develop_id  INTEGER,     -- FK → develop.id
+- effect_id   INTEGER,     -- FK → effect.id
+- description (TEXT)
+
+#### Context sets interpretation frame for consequences but does **not** affect truth directly.
 Context table structure in project is implemented to store context templates used for classifying and describing events in Truth Training system.
 Context can be filled manually by selecting appropriate records from subordinate tables with PK → FK filling:
 For automatic filling of context fields context table is used
 
-##### Purpose of context table:
+#### Purpose of context table:
 Table is used to store context templates representing predefined combinations of categories, forms, causes, manifestations and effects. These templates allow systematizing and standardizing event description, facilitating their analysis and matching. Contextual templates are used for matching with events based on embedded context fields.
 
-##### Table is integrated into event classification system and used for matching events with predefined context templates, allowing standardization of description and analysis of events in Truth Training system.
-
-##### Table Structure:
-
-```sql
-
-CREATE TABLE context (
-    id          INTEGER PRIMARY KEY,
-    name        TEXT NOT NULL,
-    category_id INTEGER,     -- FK → category.id
-    forma_id    INTEGER,     -- FK → forma.id
-    cause_id    INTEGER,     -- FK → cause.id
-    develop_id  INTEGER,     -- FK → develop.id
-    effect_id   INTEGER,     -- FK → effect.id
-    description TEXT,
-    FOREIGN KEY(category_id) REFERENCES category(id),
-    FOREIGN KEY(forma_id)    REFERENCES forma(id),
-    FOREIGN KEY(cause_id)    REFERENCES cause(id),
-    FOREIGN KEY(develop_id)  REFERENCES develop(id),
-    FOREIGN KEY(effect_id)   REFERENCES effect(id)
-);
-
-```
+#### Table is integrated into event classification system and used for matching events with predefined context templates, allowing standardization of description and analysis of events in Truth Training system.
 
 Where structure is described:
 In data schema documentation: docs/Data_Schema.md - contains description of context table as part of knowledge_base block, including all fields and their purpose
 In implementation code: core/src/storage.rs - contains SQL definition of table in SCHEMA_SQL constant
 In template matching logic: docs/Data_Schema.md - describes template matching system and duplicate detection based on context fields
 
-### Table: context
-
-Purpose:
-Storing interpretation context templates representing predefined combinations of categories, forms, causes, manifestations and effects.
-
-Fields:
-- id (INTEGER, PK) — unique context identifier
-- name (TEXT, NOT NULL) — context name
-- category_id (INTEGER) — FK to category.id
-- forma_id (INTEGER) — FK to forma.id
-- cause_id (INTEGER) — FK to cause.id
-- develop_id (INTEGER) — FK to develop.id
-- effect_id (INTEGER) — FK to effect.id
-- description (TEXT) — context description
-
-## 3. Events and Consequence Axis (Impact Axis)
+### 2.3 Events
 
 Event is central entity of Truth Training model.
 It represents a fixed fact or statement around which truth assessments and observable consequences are formed.
 
-##### Table: truth_events
+#### Model: Events
 Event is formalized as a vector:
 
 E_i=⟨gid_i,author_i,desc_i,ctx_i,v_i,d_i,c_i,t_start,t_end,cs_i,ci_i,cj_i⟩
@@ -248,12 +242,12 @@ cj_i - Calculated value of judgments about event (judgments)
 📌 cj_i - is not the final truth, but a judgment metric about event at local level
 Detailed mathematical model of judgments described in section 4.2
 
-##### ⚠️ Important:
+#### ⚠️ Important:
 Fields code (c_i), detected (d_i), corrected (cr_i) do not participate in truth calculation directly, only in transport logic
 Detailed mathematical model of transport logic described in section 5
 Fields collective_score (cs_i), impact (ci_i), judgments (cj_i) influence event relevance, training progress calculation and truth determination.
 
-### Table: truth_events
+#### Table: truth_events
 
 Purpose:
 Storing main data about events in Truth Training system, including their description, context, timestamps, vector (incoming/outgoing), detection and correction status, and various assessments.
@@ -286,9 +280,9 @@ Notes:
 - Circulation code controls distribution protocol, not truth calculation
 - collective_score, impact_score, and judgments_score are local metrics, not final truth values
 
-## 4 Impact Assessment and judgments
+### 2.4 Impact Assessment and judgments
 
-### 4.1 Impact as Observation and Prediction, impact is individual for each user
+#### 2.4.1 Impact as Observation and Prediction, impact is individual for each user
 Each impact:
 
 I_{ij} = ⟨event_i, type_j, value_j, t_j⟩
@@ -312,73 +306,7 @@ Concept: impact — subjective observation/prediction of consequences from speci
 
 ##### Tables are integrated into event assessment system and used for calculating collective event assessments (S_e) based on weighted average by validators, and for updating author and validator reputations. See also docs/event_rating_protocol.md for algorithm description for calculating assessments based on data from impact table.
 
-##### Table Structures:
-
-```sql
-
-CREATE TABLE impact_type (
- id          INTEGER PRIMARY KEY,
-  name        TEXT NOT NULL,
-  description TEXT
-);
-
-CREATE TABLE impact (
- id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  event_id    INTEGER NOT NULL,  -- FK → truth_events.id
-  type_id     INTEGER NOT NULL,  -- FK → impact_type.id
-  value       INTEGER NOT NULL,  -- 0/1 (negative/positive)
-  notes       TEXT,
-  created_at  INTEGER NOT NULL,
- signature   TEXT,
- public_key  TEXT,
- FOREIGN KEY(event_id) REFERENCES truth_events(id),
-  FOREIGN KEY(type_id)  REFERENCES impact_type(id)
-);
-
-CREATE INDEX idx_impact_type_id    ON impact(type_id);
-CREATE INDEX idx_impact_created_at ON impact(created_at);
-
-```
-
-value - boolean value (0/1 or false/true), indicating positive or negative impact
-type_id - reference to impact type (reputational, financial, etc.)
-event_id - reference to event being assessed
-signature and public_key - cryptographic data for verification of assessment authenticity
-
-##### Where structure is described:
-In event rating protocol documentation: docs/event_rating_protocol.md - describes purpose of impact table as storage of subjective event assessments, with type_id as impact type identifier and value as boolean value (true = confirmation, false = refutation)
-In implementation code: core/src/storage.rs - contains SQL definition of both tables in SCHEMA_SQL constant
-In impact processing logic: core/src/storage.rs - add_impact function for adding impact records
-
-📌 Key idea:
-Impact is observation and prediction of consequences for user, not opinion on truthfulness. For each user consequences may be different.
-
-### 4.2 Judgments, individual for each user
-
-Judgments are explicit truth assessments.
-
-J_{u,i} = ⟨a_{u,i}, c_{u,i}⟩
-
-Where:
-- a_{u,i} ∈ {-1, +1}
-- c_{u,i} ∈ (0,1]
-
-Local judgment metric:
-
-cj_i^{(u)} = a_{u,i} ⋅ c_{u,i}
-
-📌 Key idea:
-judgments is key moment of truth determination. After creating event its truthfulness is determined as follows:
-
-#### 4.2.1 judgments Table
-
-##### Purpose of judgments table:
-judgments table structure in project is implemented to store judgments of system participants about events.
-Table is used to store judgments that collective intelligence system participants issue about events. Each judgment represents assessment of specific event by specific participant and includes type of assessment, confidence level, reasoning and cryptographic signature.
-
-##### Table is integrated into collective intelligence system and used for collecting participant opinions about events, which subsequently allows calculating consensus and updating participant reputations based on accuracy of their judgments.
-
-### Table: impact_type
+##### Table: impact_type
 
 Purpose:
 Classifying types of event impacts (reputational, financial, moral, etc.) serving as reference for impact types that can be applied to events.
@@ -388,7 +316,7 @@ Fields:
 - name (TEXT, NOT NULL) — impact type name
 - description (TEXT) — description of the impact type
 
-### Table: impact
+##### Table: impact
 
 Purpose:
 Storing subjective assessments (impacts) of events issued by validators, representing observation and prediction of consequences from specific participant, not opinion on truthfulness.
@@ -409,7 +337,7 @@ Notes:
 - Consequences are not aggregated at DB level
 - value is boolean (0/1) indicating negative/positive impact
 
-### Table: impact_links
+##### Table: impact_links
 
 Purpose:
 Allows linking consequences to each other, forming chains of cause-and-effect relationships.
@@ -431,12 +359,37 @@ Unlike truth axis:
 - Impact is measurable and comparable
 - Impact forms system's learning feedback
 
-## 4. Truth Axis (Judgments Axis)
+##### Where structure is described:
+In event rating protocol documentation: docs/event_rating_protocol.md - describes purpose of impact table as storage of subjective event assessments, with type_id as impact type identifier and value as boolean value (true = confirmation, false = refutation)
+In implementation code: core/src/storage.rs - contains SQL definition of both tables in SCHEMA_SQL constant
+In impact processing logic: core/src/storage.rs - add_impact function for adding impact records
+
+📌 Key idea:
+Impact is observation and prediction of consequences for user, not opinion on truthfulness. For each user consequences may be different.
+
+#### 2.4.2 Judgments, individual for each user
+
+Judgments are explicit truth assessments.
+
+J_{u,i} = ⟨a_{u,i}, c_{u,i}⟩
+
+Where:
+- a_{u,i} ∈ {-1, +1}
+- c_{u,i} ∈ (0,1]
+
+Local judgment metric:
+
+cj_i^{(u)} = a_{u,i} ⋅ c_{u,i}
+
+📌 Key idea:
+judgments is key moment of truth determination. After creating event its truthfulness is determined as follows:
+
+##### Truth Axis (Judgments Axis)
 
 Truth axis describes process of collective and individual event assessment.
 Unlike consequence axis, truth is not an objective value and is formed through system participants' judgments.
 
-### Table: judgments
+##### Table: judgments
 
 Purpose:
 Storing judgments that collective intelligence system participants issue about events, representing assessment of specific event by specific participant.
@@ -458,7 +411,7 @@ Notes:
 - Judgment is not changed, only new record is possible
 - Absence of judgment ≠ negative judgment
 
-### Table: judgment_weights
+##### Table: judgment_weights
 
 Purpose:
 Defines weight of participant's judgment in specific context.
@@ -475,7 +428,7 @@ Notes:
 - Weight is not set manually
 - Weight is derivative of action history
 
-### Table: reputation_history
+##### Table: reputation_history
 
 Purpose:
 Tracking changes in collective intelligence system participant reputations for auditing and analyzing changes in participant reputations, understanding reasons for reputation changes, analyzing participant behavior and judgment effectiveness, and ensuring transparency of reputation system.
@@ -493,7 +446,7 @@ Notes:
 - Used for auditing and transparency of reputation changes
 - Tracks historical changes for analysis
 
-### Table: consensus_ci
+##### Table: consensus_ci
 
 Purpose:
 Storing computed consensus on events based on participant judgments, representing collective opinion formed based on individual judgments and used for determining general event assessment result.
@@ -510,7 +463,8 @@ Fields:
 Notes:
 - Used for storing aggregated event assessment results
 - Enables system to make collective decisions based on individual participant judgments
-### Table: events_ci
+
+##### Table: events_ci
 
 Purpose:
 Storing events within collective intelligence system (Collective Intelligence Layer) for participant assessment, classification using event_type field, tracking event status (active, resolved, archived), and storing event result data in resolution_data field.
@@ -546,101 +500,16 @@ Their intersection occurs:
 - not in logic
 - but in system learning
 
-## 5. Contexts, Observers and System Learning
 
-Context defines framework for interpretation of events and judgments.
-Without context, neither consequences nor truth can be correctly matched or aggregated.
+##### Purpose of judgments table:
+judgments table structure in project is implemented to store judgments of system participants about events.
+Table is used to store judgments that collective intelligence system participants issue about events. Each judgment represents assessment of specific event by specific participant and includes type of assessment, confidence level, reasoning and cryptographic signature.
 
-Context acts as coordinate system in which observer draws conclusion.
+##### Table is integrated into collective intelligence system and used for collecting participant opinions about events, which subsequently allows calculating consensus and updating participant reputations based on accuracy of their judgments.
 
-### Table: contexts
 
-Purpose:
-Describes logical, temporal or thematic areas within which events are assessed and judgments are formed.
 
-Fields:
-- id (UUID, PK)
-- name (TEXT)
-- description (TEXT)
-- context_type (ENUM) — global / local / temporal / thematic
-- created_at (TIMESTAMP)
-
-Notes:
-- Same event can exist in multiple contexts
-- Contexts can intersect
-
-### Table: context_events
-
-Purpose:
-Links events to their interpretation contexts.
-
-Fields:
-- context_id (UUID, FK → contexts.id)
-- event_id (UUID, FK → events.id)
-- linked_at (TIMESTAMP)
-
-Constraints:
-- (context_id, event_id) — composite PK
-
-### Table: observers
-
-Purpose:
-Records system participants as observers, not as truth sources.
-
-Fields:
-- id (UUID, PK)
-- participant_id (UUID, FK → participants.id)
-- observer_role (ENUM) — witness / evaluator / analyzer
-- created_at (TIMESTAMP)
-
-Notes:
-- Observer can have multiple roles
-- Role affects admissible actions
-
-### Table: observer_contexts
-
-Purpose:
-Defines in which contexts observer is active.
-
-Fields:
-- observer_id (UUID, FK → observers.id)
-- context_id (UUID, FK → contexts.id)
-- trust_level (FLOAT)
-- assigned_at (TIMESTAMP)
-
-Constraints:
-- (observer_id, context_id) — composite PK
-
-### Table: learning_snapshots
-
-Purpose:
-Stores system states for learning and analysis.
-
-Fields:
-- id (UUID, PK)
-- context_id (UUID, FK → contexts.id)
-- model_version (TEXT)
-- snapshot_data (JSONB)
-- created_at (TIMESTAMP)
-
-Notes:
-- Used for offline learning
-- Does not directly affect online decisions
-System learning occurs not on events, but on differences in event interpretations in different contexts.
-
-Context → distortion
-Observer → filter
-Judgment → signal
-Consequence → feedback
-Truth Training does not learn "truth".
-System learns to recognize stable structures between perception, consequences and collective judgment.
-
-This makes system:
-- resistant to manipulation
-- insensitive to single sources
-- capable of self-correction
-
-## 6. Temporal Dynamics and Truth Evolution
+## 3 Temporal Dynamics and Truth Evolution
 
 Truth in Truth Training system is not static value.
 It exists as function of time, context and accumulated experience.
@@ -744,7 +613,7 @@ System:
 - can re-assess past
 without rewriting it
 
-## 7. Truth Axis (Judgments Axis)
+## 4 Judgments Axis 
 
 Truth axis describes process of formation, change and collective stabilization of event truth.
 
@@ -862,7 +731,7 @@ System:
 - allows parallel contradictions
 - measures not "who is right", but "how stable is opinion"
 
-## 8. Impact Axis
+## 5 Impact Axis
 
 Impact axis describes measurable, observable and predictable effects of events over time.
 
@@ -971,7 +840,7 @@ System:
 - allows uncertainty
 - supports prediction without truth assertion
 
-## 9. Axis Intersection: Truth × Impact
+## 6 Axis Intersection: Judgments × Impact (Truth Axis)
 
 Each event in Truth Training system exists simultaneously in two independent spaces:
 
@@ -1156,7 +1025,7 @@ Fields:
 - status (TEXT, NOT NULL) — status of the synchronization
 - details (TEXT, NOT NULL) — details of the synchronization process
 
-## 7. Collective Event Assessment
+## 7 Collective Event Assessment
 Set of event impacts:
 
 I(E_i)={I_(i1),I_(i2),…,I_(in)}
@@ -1215,9 +1084,8 @@ State functions are recorded:
 Trend=(∑P−∑N) / total_events
 
 This is observation, not management.
----
 
-### 9.5 Event movement dynamics
+### 7.3 Event movement dynamics
 
 Event can move across plane over time:
 
@@ -1247,7 +1115,7 @@ attention(E) ∝ |∂I/∂t| × uncertainty(T)
 
 ---
 
-### 9.9 Neural network analogy
+### 7.4 Neural network analogy
 
 - Truth axis → confidence weight
 - Impact axis → activation output
@@ -1259,7 +1127,7 @@ System:
 - does not suppress axes
 - allows coexistence of truth and harm
 
-## 10. Temporal Dimension and Event Evolution
+## 8 Temporal Dimension and Event Evolution
 
 Events in Truth Training are not static objects.
 Each event exists in time and changes its position in Truth × Impact space as new data arrives.
@@ -1312,10 +1180,6 @@ Event is considered stabilized if:
 Where:
 ε_T, ε_I — stabilization thresholds
 
----
-
-### 10.7 Table `event_stability`
-
 ### Table: event_stability
 
 Purpose:
@@ -1337,72 +1201,7 @@ Event can be reactivated:
 - contextual changes
 Time is not attribute of event, but separate dimension of its existence.
 
-## 11. Context as Interpretation Space
-
-In Truth Training, context is not auxiliary attribute of event.
-Context — is space in which event acquires meaning, and its consequences and truth become interpretable.
-Context C is defined as structured set of features:
-
-C = { c₁, c₂, …, cₙ }
-
-Context affects:
-- event interpretation
-- admissible judgments
-- admissible impacts
-Each event E does not exist in vacuum, but in context coordinates:
-
-E ⊂ C
-
-Context change:
-- does not change event itself
-- changes its meaning and assessments
-
-Contexts can be:
-- social
-- temporal
-- cultural
-- legal
-- technological
-- domain
-Judgment(E) is admissible only if it is consistent with context C.
-
-Context:
-- limits admissible interpretations
-- prevents false extrapolations
-
-### Table: contexts
-
-Purpose:
-Storing interpretation context templates.
-
-Fields:
-- id (UUID, PK)
-- name (TEXT, UNIQUE)
-- description (TEXT)
-- domain (TEXT)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
-One event can exist in multiple contexts simultaneously.
-
-### Table: event_contexts
-
-Purpose:
-Event-context link (M:N).
-
-Fields:
-- event_id (UUID, FK → events.id)
-- context_id (UUID, FK → contexts.id)
-- PRIMARY KEY (event_id, context_id)
-
-Contexts can:
-- be supplemented
-- be refined
-- become obsolete
-
-Contradictory judgments can be admissible if they belong to different contexts.
-Context — is space of meanings, not event metadata.
-
-## 12. Expert Functions and Assessment Heuristics
+## 9 Expert Functions and Assessment Heuristics
 
 Truth Training does not use centralized expert system.
 Expert role is performed by network participants, and their assessments form distributed interpretation field.
@@ -1464,7 +1263,7 @@ Expert function:
 Conflict of heuristics is admissible and recorded in system as state of uncertainty.
 Expertise — is contribution, not authority.
 
-## 13. Assessment Aggregation and Collective Truth
+## 10 Assessment Aggregation and Collective Truth
 
 In Truth Training, truth is not determined by single act.
 It arises as result of aggregation of independent assessments in distributed system of observers.
@@ -1538,7 +1337,7 @@ Polarization is recorded when assessments form multiple clusters.
 Truth — is not result.
 Truth — is process of alignment.
 
-## 14. Constraints, Security and Anti-Manipulation Mechanisms
+## 11 Constraints, Security and Anti-Manipulation Mechanisms
 
 Truth Training is designed as system resistant to manipulation, centralization and substitution of collective truth.
 
@@ -1571,10 +1370,6 @@ Used:
 - temporal correlations
 - network patterns
 - cross-checking impact ↔ judgments
-
----
-
-### 14.5 Table `node_behavior_signatures`
 
 ### Table: node_behavior_signatures
 
@@ -1635,7 +1430,7 @@ Security:
 - measurable
 - reproducible
 
-## 15. Cognitive and Neural Network Analogies of Mathematical Model
+## 12 Cognitive and Neural Network Analogies of Mathematical Model
 
 Mathematical model of Truth Training is intentionally designed to be isomorphic to natural human cognitive processes and principles of neural network operation.
 
@@ -1731,7 +1526,7 @@ neural network + relational DB + human.
 Each component is necessary.
 Removing any destroys system.
 
-## 16. Connection of Mathematical Model with Quality Gates
+## 13 Connection of Mathematical Model with Quality Gates
 
 Mathematical model of Truth Training is not abstract theory — it directly determines quality criteria for code, data and system behavior.
 Quality Gates serve as formalized mechanism for checking that implementation does not violate basic model principles.
@@ -1800,7 +1595,7 @@ With Quality Gates:
 - architecture — verifiable
 - development — safe
 
-## 17. Formal Conclusion of Mathematical Model
+## 14 Formal Conclusion of Mathematical Model
 
 Truth Training — is formally defined system consisting of:
 - relational database
