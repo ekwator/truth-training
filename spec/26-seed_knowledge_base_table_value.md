@@ -10,7 +10,7 @@ Use /spec as the primary decision source before reading /docs.
 
 ## Purpose
 
-This document defines **reference (seed) values** for the Knowledge Base tables used by the **Truth Training / Gossip** system.
+This document defines **reference (seed) values** for the Knowledge Base tables used by the **Truth Training** system.
 
 The tables represent **context decomposition** in a strict logical order:
 
@@ -99,7 +99,29 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 
 ---
 
-## 6. Time Axes (time_axes table)
+## 6. Contexts (context table)
+
+| ID | Name                                   | Category ID | Forma ID | Cause ID | Develop ID | Effect ID | Description |
+|----|----------------------------------------|-------------|----------|----------|------------|-----------|-------------|
+| 1 | Interpersonal: openness                 | 1           | 6        | 5        | 3          | 2         | Proactive full disclosure leading to trust growth |
+| 2  | Interpersonal: concealment              | 1           | 1        | 1        | 1          | 1         | Withholding facts causing trust loss |
+| 3 | Interpersonal: manipulation             | 1           | 1        | 7        | 2          | 3         | Intentional distortion of facts through manipulation escalating conflict |
+| 4 | Financial: fraud                        | 2           | 1        | 2        | 5          | 9         | Intentional distortion of facts for personal gain resulting in financial loss |
+| 5  | Financial: risky transparency           | 2           | 2        | 5        | 3          | 6         | Risky transparency causing instability |
+| 6 | Financial: transparent reporting        | 2           | 2        | 5        | 4          | 8         | Factual, verifiable information with cross-checking sources improving reputation |
+| 7 | Politics: treaty breach                 | 3           | 1        | 2        | 1          | 1         | Intentional distortion of facts about treaty compliance leading to loss of trust |
+| 8 | Politics: strategic ambiguity           | 3           | 1        | 7        | 2          | 3         | Intentional distortion of facts through ambiguous statements increasing tension |
+| 9 | Politics: treaty compliance             | 3           | 2        | 5        | 4          | 2         | Factual, verifiable information with cross-checking sources confirming execution of obligations |
+| 10 | Organization: admitting a mistake       | 6           | 2        | 5        | 6          | 6         | Factual, verifiable information with admission and correction improve learning |
+| 11 | Organization: hiding an error           | 6           | 1        | 1        | 1          | 5         | Concealed failure causing systemic damage |
+| 12 | Media: disinformation                   | 7           | 1        | 7        | 2          | 3         | Intentional distortion of facts through manipulation leading to conflict |
+| 13 | Media: fact-checking                    | 7           | 2        | 5        | 4          | 2         | Factual, verifiable information with cross-checking sources restoring public trust |
+| 14 | Technology: security disclosure         | 8           | 2        | 5        | 3          | 6         | Factual, verifiable information with open availability of data preventing escalation |
+| 15 | Technology: vulnerability concealment   | 8           | 1        | 1        | 1          | 9         | Hidden flaws leading to major financial losses |
+
+---
+
+## 7. Time Axes (time_axes table)
 
 | ID | Time Type | Description                        |
 |----|-----------|------------------------------------|
@@ -181,6 +203,28 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 | 8  | Рост репутации         | 1 | Повышение статуса |
 | 9  | Финансовая потеря      | 0 | Экономический ущерб |
 | 10 | Финансовая устойчивость| 1 | Сохранение или восстановление ресурсов |
+
+---
+
+## 6. Contexts (context table)
+
+| ID | Name                                   | Category ID | Forma ID | Cause ID | Develop ID | Effect ID | Description |
+|----|----------------------------------------|-------------|----------|----------|------------|-----------|-------------|
+| 1 | Межличностные: открытость               | 1           | 6        | 5        | 3          | 2         | Добровольное раскрытие приводит к росту доверия |
+| 2  | Межличностные: сокрытие                 | 1           | 1        | 1        | 1          | 1         | Утаивание фактов вызывает потерю доверия |
+| 3 | Межличностные: манипуляция              | 1           | 1        | 7        | 2          | 3         | Сознательное искажение фактов через манипуляцию ведёт к конфликту |
+| 4 | Финансовые: мошенничество               | 2           | 1        | 2        | 5          | 9         | Сознательное искажение фактов в целях личной выгоды приводит к финансовым потерям |
+| 5 | Финансовые: рискованная прозрачность    | 2           | 2        | 5        | 3          | 6         | Проверяемая фактическая информация с открытым доступом создаёт нестабильность, но ведёт к обучению |
+| 6 | Финансовые: прозрачная отчётность       | 2           | 2        | 5        | 4          | 8         | Проверяемая фактическая информация с сопоставлением источников повышает репутацию |
+| 7 | Политика: нарушение договора            | 3           | 1        | 2        | 1          | 1         | Сознательное искажение фактов о соблюдении договора ведёт к падению доверия |
+| 8 | Политика: стратегическая неоднозначность| 3           | 1        | 7        | 2          | 3         | Сознательное искажение фактов через неоднозначные заявления усиливает напряжение |
+| 9 | Политика: соблюдение договора           | 3           | 2        | 5        | 4          | 2         | Проверяемая фактическая информация с сопоставлением источников подтверждает выполнение обязательств |
+| 10 | Организация: признание ошибки           | 6           | 2        | 5        | 6          | 6         | Проверяемая фактическая информация с признанием и исправлением усиливают обучение |
+| 11 | Организация: сокрытие ошибки            | 6           | 1        | 1        | 1          | 5         | Скрытая ошибка приводит к системному ущербу |
+| 12 | Медиа: дезинформация                    | 7           | 1        | 7        | 2          | 3         | Сознательное искажение фактов через манипуляции приводит к конфликтам |
+| 13 | Медиа: фактчекинг                       | 7           | 2        | 5        | 4          | 2         | Проверяемая фактическая информация с сопоставлением источников восстанавливает доверие |
+| 14 | Технологии: раскрытие уязвимости        | 8           | 2        | 5        | 3          | 6         | Проверяемая фактическая информация с открытым доступом к данным предотвращает эскалацию |
+| 15 | Технологии: сокрытие уязвимости         | 8           | 1        | 1        | 1          | 9         | Скрытые дефекты приводят к крупным финансовым потерям |
 
 ---
 
