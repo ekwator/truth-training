@@ -1,4 +1,4 @@
-v1.1.0 - Doc
+v1.1.0-Doc
 Truth Training v1.1.0 — Documentation Update Release
 
 This release focuses on comprehensive documentation updates for the Truth Training application v1.1.0. The changes include updated documentation files that reflect the next development phase of the application. Additionally, the project constitution has been updated through the `rule_constistucion.md` file to align with the new documentation, as processed by the /constitution command of the Spec-Kit tool from GitHub.
