@@ -33,9 +33,10 @@ Ultimately, without network connectivity, the application can serve as a **perso
 
 ---
 
-🧠 **Truth Training — Operating Logic and Computational Model**
-
 ## 1. Core Idea and Purpose of the System
+
+🧠 **Truth Training — Operating Logic and Computational Model**
+For more details see : [docs/model_core.md](docs/model_core.md)
 
 **Truth Training** is a system for collective evaluation of events and statements, based on the principle of the *wisdom of the crowd*.  
 It does not assume the presence of a central arbiter of truth and does not require expert knowledge from individual participants.
@@ -219,16 +220,6 @@ Stores impacts:
 - sign (positive / negative)  
 - timestamp  
 
-#### `impact_type`
-
-Impact classification:
-
-- reputation  
-- finance  
-- emotions  
-- law  
-- health  
-- time  
 
 #### `context`
 
@@ -279,8 +270,6 @@ not through control, but through observation of consequences.
 ---
 
 ## Release Surfaces
-
-
 
 - **Core Library** — integration guide: [docs/quickstart_core.md](docs/quickstart_core.md)
 - **CLI** — quickstart: [docs/quickstart_cli.md](docs/quickstart_cli.md), reference: [docs/CLI_Usage.md](docs/CLI_Usage.md)

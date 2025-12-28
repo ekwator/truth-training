@@ -1,5 +1,13 @@
 # Truth Training – Cross-Platform Spec Kit v1.0.0
 
+Use /spec as the primary decision source before reading /docs.
+**Version:** v1.1.0  
+**Spec ID:** README  
+**Updated:** 2025-12-28  
+**Status:** Approved
+
+---
+
 ## 🔐 Privacy and Confidentiality
 
 **Truth Training is built on the fundamental principle of confidentiality**: **No user actions are logged or persistently stored**. This is a core architectural requirement enforced across all platforms (Desktop UI, Android, Server, CLI).
@@ -374,10 +382,11 @@ cargo test --target aarch64-apple-ios --features mobile
 | 19 | [19-build-instructions.md](19-build-instructions.md) | Cross-Platform Build Instructions |
 | 20 | [20-cargo-configuration.md](20-cargo-configuration.md) | Cargo Configuration |
 | 21 | [21-roadmap.md](21-roadmap.md) | Roadmap (High-level) |
-| 22 | [22-function_core.md](22-function_core.md) | Functional Specification: Rust Core Modules |
+| 2 | [22-function_core.md](22-function_core.md) | Functional Specification: Rust Core Modules |
 | 23 | [23-function_desktop.md](23-function_desktop.md) | Functional Specification: Desktop UI (TypeScript/React + Tauri) |
 | 24 | [24-function_mobile_android.md](24-function_mobile_android.md) | Functional Specification: Android Mobile Client (Kotlin) |
 | 25 | [25-emoji-mapping-desktop.md](25-emoji-mapping-desktop.md) | Emoji Mapping Specification: Desktop UI |
+| 26 | [26-seed_knowledge_base_table_value.md](26-seed_knowledge_base_table_value.md) | Knowledge Base Table Values for Default Seeding - Contains default values for knowledge base tables used by seed_knowledge_base_en and seed_knowledge_base_ru functions in core/src/storage.rs to populate tables with default values |
 
 ## Integration Guides
 

@@ -1,5 +1,10 @@
 # Discovery Nodes Database Schema
 
+**Document Version:** v1.1.0  
+**Status:** Specification  
+**Updated:** 2025-12-28  
+**Status:** Approved
+
 **Database File**: `discovery_nodes.sqlite`  
 **Location**: `~/.truth-training/discovery_nodes.sqlite` (Linux/macOS) or `%USERPROFILE%\.truth-training\discovery_nodes.sqlite` (Windows)  
 **Purpose**: Stores discovered peer nodes in the Truth Training network for Desktop UI discovery worker
@@ -12,7 +17,9 @@ The `discovery_nodes.sqlite` database is a separate database file used exclusive
 
 ## Schema
 
-The database uses the canonical Truth schema from `core/src/storage.rs`, which includes the `nodes` table:
+The database uses the canonical Truth schema from `core/src/storage.rs`, which includes the `nodes` table and other network-related tables.
+
+For complete technical details about the network tables schema, including SQL definitions, indexes, views, and triggers, see [docs/model_core_network_tables.sql](model_core_network_tables.sql).
 
 ### Table: nodes
 
@@ -29,39 +36,16 @@ The `nodes` table stores discovered peer nodes in the Truth Training network.
 | source      | TEXT     | Discovery source: `local_broadcast`, `wifi_scan`, `global_registry`, `manual`, `peer_sync` (snake_case) |
 | node_id     | TEXT     | Optional Ed25519 public key (hex, 64 characters) for cryptographic node identity       |
 | created_at  | INTEGER  | Creation timestamp (UNIX epoch seconds)                                                |
-| updated_at   | INTEGER  | Last modification timestamp (UNIX epoch seconds)                                        |
-
-### SQL DDL
-
-```sql
-CREATE TABLE IF NOT EXISTS nodes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    address TEXT NOT NULL UNIQUE,
-    type TEXT NOT NULL,
-    reachable INTEGER NOT NULL,
-    last_seen INTEGER NOT NULL,
-    ttl INTEGER NOT NULL,
-    source TEXT,
-    node_id TEXT,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_nodes_address ON nodes(address);
-CREATE INDEX IF NOT EXISTS idx_nodes_last_seen ON nodes(last_seen);
-CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type);
-CREATE INDEX IF NOT EXISTS idx_nodes_reachable ON nodes(reachable);
-```
+| updated_at | INTEGER  | Last modification timestamp (UNIX epoch seconds)                                        |
 
 ### Additional Tables
 
 The database also includes the full canonical Truth schema from `core/src/storage.rs`, including:
-- Knowledge base tables (`category`, `cause`, `develop`, `effect`, `forma`, `context`, `impact_type`)
-- Truth events tables (`truth_events`, `statements`, `impact`, `progress_metrics`)
 - Node ratings and trust tables (`node_ratings`, `group_ratings`)
-- RBAC tables (`users`, `roles`)
-- Collective intelligence tables (`participants`, `events_ci`, `judgments`, `consensus_ci`, `reputation_history`)
-- Sync logs (`sync_log`, `sync_logs`)
+- Node performance metrics (`node_metrics`)
+- Authentication and session management (`active_tokens`)
+- Peer synchronization history (`peer_history`)
+- Low-level synchronization logs (`sync_log`, `sync_logs`)
 - Schema version tracking (`schema_version`)
 
 **Note**: While the full schema is created, the discovery worker primarily uses only the `nodes` table. Other tables are present for schema consistency but are not actively used by the discovery worker.
@@ -127,8 +111,8 @@ The `nodes` table schema is identical across all platforms:
 - [Data Schema](Data_Schema.md) - Main application database schema
 - [Cross-Platform Discovery Compatibility](cross_platform_discovery_compatibility.md) - Discovery protocol details
 - [Android Discovery Architecture](android_discovery_architecture.md) - Android-specific implementation
+- [Network Tables SQL Schema](model_core_network_tables.sql) - Complete SQL schema and implementation details
 
 ---
 
 _Version: v1.0.0_
-

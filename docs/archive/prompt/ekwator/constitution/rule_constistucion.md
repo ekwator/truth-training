@@ -1,10 +1,11 @@
-Constitution — Data Model & Schema Supplement
+Update Constitution — Data Model & Schema Supplement
 
 1. Authority and Canonical Sources
 
 The canonical descriptions of the model and schema are the authoritative sources for DB structure and semantics:
-[mat_model.md](../../../../../docs/mat_model.md) — canonical mathematical model and mapping to DB structures.  
+[model_core.md](../../../../../docs/model_core.md) — canonical markdown Formalized Model Core and Database Schema;  
 [04-data-model.md](../../../../../spec/04-data-model.md) — canonical SQL schema specifications for implementers.  
+[26-seed_knowledge_base_table_value.md](../../../../../spec/26-seed_knowledge_base_table_value.md) — Knowledge Base Table Values for Default Seeding.  
 [Data_Schema.md](../../../../../docs/Data_Schema.md) — canonical markdown schema specifications for implementers;  
 [SECURITY.md](../../../../../SECURITY.md) — security and verification requirements;  
 [CONTRIBUTING.md](../../../../../CONTRIBUTING.md) — quality and testing requirements;  
@@ -15,7 +16,7 @@ Rule (Authority): Any change to the runtime DB schema, table names, primary/fore
 
 2. Normative Rule — Preventing Schema Distortion
 
-Single Source of Truth: The schema described in spec/04-data-model.md and docs/Data_Schema.md is authoritative. Implementations (core, desktop, android, server, cli) must target those files as the ground truth for table names, column types, PK/FK definitions, and indexes. 
+Single Source of Truth: The schema described in docs/model_core.md is authoritative. Implementations (core, desktop, android, server, cli) must target those files as the ground truth for table names, column types, PK/FK definitions, and indexes. 
 
 constitution
 
@@ -77,17 +78,25 @@ Behavior Tests (Quality): For Judgment and Impact axes include:
 
 Blocking Policy: Failing schema/migration tests block merge and release — per constitution Rule 5. 
 
-6. Traceability, Docs & Releases
+6. Traceability, Documentation, and Releases
 
-One PR = Code + Docs + Migration: Any schema change must include the updated canonical schema doc (04-data-model.md / docs/Data_Schema.md) and notes in mat_model.md if semantics change. A single PR must contain code, migrations, docs and tests together.
+One PR = Canonical Schema
+One PR = Code + Documentation + Migration
 
-Release Checklist: Prepare release with:
-- schema review signed off by at least one database/schema steward,
-- migration smoke tests executed in staging,
-- release-info.txt updated to reference schema/migration summary,
-- Spec-Kit artifacts in .cursor reflecting the plan & approvals.
+A canonical schema change must include updated schema documentation:
+- 1 The main canonical schema file docs/model_core.md - cannot be edited and must be pre-approved. 
+- 2 semantic changes to 04-data-model.md, Data_Schema.md, 26-seed_knowledge_base_table_value.md, corresponding to the data in docs/model_core.md
+- 3 In the file 26-seed_knowledge_base_table_value.md, table field values ​​cannot be edited; only the database schema in Data_Schema.md must be reviewed and corrected.
 
-Audit Trail: Migration scripts, test outputs and Spec-Kit plan IDs must be kept in the PR and persisted in the release artifacts.
+A single PR must not contain code changes, migrations, secondary documentation, or tests along with the canonical schema update.
+
+Release Checklist: Prepare a release that includes:
+- schema validation approved by at least one database/schema maintainer. The file located in the main branch of the docs directory is considered validated,
+- migration smoke tests run in a test environment,
+- an updated release-info.txt file with a link to the schema/migration summary,
+- Spec-Kit artifacts in .cursor format reflecting the plan and approvals.
+
+Audit Log: Migration scripts, test results, and Spec-Kit plan IDs should be stored in the merge request and saved in the release artifacts.
 
 7. Enforcement & Governance
 
