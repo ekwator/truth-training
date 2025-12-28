@@ -1,5 +1,50 @@
 # Changelog
 
+## [1.1.0] — Documentation Update Release
+
+**Release Date**: 2025-12-28
+**Status**: Documentation Release
+
+This release focuses on comprehensive documentation updates for the Truth Training application v1.1.0. The changes include updated documentation files that reflect the next development phase of the application. Additionally, the project constitution has been updated through the `rule_constistucion.md` file to align with the new documentation, as processed by the /constitution command of the Spec-Kit tool from GitHub.
+
+### 📚 Documentation Updates
+
+#### Core Documentation Refinements
+- **Data Schema Documentation**: Updated [`docs/Data_Schema.md`](docs/Data_Schema.md) with latest schema changes and field definitions
+- **Discovery Nodes Schema**: Enhanced [`docs/Discovery_Nodes_Schema.md`](docs/Discovery_Nodes_Schema.md) with detailed node structure information
+- **P2P Release Documentation**: Revised [`docs/p2p_release.md`](docs/p2p_release.md) reflecting current peer-to-peer synchronization implementation
+- **README Update**: Modified main [`README.md`](README.md) to reflect current project status and documentation changes
+
+#### Model Documentation Additions
+- **Core Model Documentation**: Added comprehensive documentation in [`docs/model_core.md`](docs/model_core.md) detailing the core data model
+- **Aggregated Metrics Schema**: Created [`docs/model_core_aggregated_metrics.sql`](docs/model_core_aggregated_metrics.sql) with SQL schema for aggregated metrics
+- **Collective Assessment Schema**: Created [`docs/model_core_collective_assessment.sql`](docs/model_core_collective_assessment.sql) with SQL schema for collective assessment
+- **Network Tables Schema**: Created [`docs/model_core_network_tables.sql`](docs/model_core_network_tables.sql) with SQL schema for network-related tables
+- **Scoring System Schema**: Created [`docs/model_core_scoring.sql`](docs/model_core_scoring.sql) with SQL schema for scoring mechanisms
+
+### 🏛️ Constitutional Updates
+
+#### Project Constitution Alignment
+- **Rule Constitution**: Updated [`docs/archive/prompt/ekwator/constitution/rule_constistucion.md`](docs/archive/prompt/ekwator/constitution/rule_constistucion.md) to reflect changes in project governance and documentation standards
+- **Constitutional Compliance**: Ensured all documentation updates align with constitutional requirements and project principles
+
+### 📋 Specification Updates
+
+#### Data Model Specification
+- **Data Model Refinement**: Updated [`spec/04-data-model.md`](spec/04-data-model.md) with latest data model changes and relationships
+- **Specification README**: Updated [`spec/README.md`](spec/README.md) to reflect current specification structure and organization
+- **Knowledge Base Specification**: Added [`spec/26-seed_knowledge_base_table_value.md`](spec/26-seed_knowledge_base_table_value.md) detailing knowledge base table value seeding process
+
+### 🗑️ Documentation Cleanup
+
+Removed obsolete documentation files that were replaced by new comprehensive documentation:
+- Removed [`docs/archive/prompt/ekwator/constitution/model_constistucion.md`](docs/archive/prompt/ekwator/constitution/model_constistucion.md) (replaced by updated constitutional documentation)
+- Removed [`docs/mat_model.md`](docs/mat_model.md) (replaced by new model documentation)
+- Removed [`docs/schema-discovery_nodes.sql`](docs/schema-discovery_nodes.sql) (replaced by new schema documentation)
+- Removed [`docs/schema-truth_teraining.sql`](docs/schema-truth_teraining.sql) (replaced by new schema documentation)
+
+---
+
 ## [1.0.0-Prot] — Prototype Release for Truth Discovery and Collective Intelligence
 
 **Release Date**: 2025-01-XX  
