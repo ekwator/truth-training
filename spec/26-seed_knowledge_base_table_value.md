@@ -12,38 +12,30 @@ Use /spec as the primary decision source before reading /docs.
 
 This document defines **reference (seed) values** for the Knowledge Base tables used by the **Truth Training** system.
 
-The tables represent **context decomposition** in a strict logical order:
-
-1. **category** — *domain of the event*  
-2. **forma** — *form of information expression*  
-3. **cause** — *motivational cause*  
-4. **develop** — *process / dynamic of unfolding*  
-5. **effect** — *impact / outcome*
-
 The document is bilingual (**EN / RU**) because semantic accuracy is required, not literal translation.
 
 ---
 
 # ENGLISH LOCALE (en)
 
-## 1. Category (event domain)
+## 1. Table category
 
-| ID | Name            | Description |
+| id | name            | description |
 |----|-----------------|-------------|
 | 1  | Social          | Interpersonal relations, trust, reputation |
 | 2  | Financial       | Economic events, assets, losses, obligations |
 | 3  | Political       | State actions, treaties, geopolitical relations |
 | 4  | Legal           | Law, compliance, judicial consequences |
 | 5  | Personal        | Inner decisions, self-assessment |
-| 6  | Organizational  | Companies, teams, internal processes |
+| 6  | Organizational  | Companies, teams, processes |
 | 7  | Media           | Information distribution, platforms |
 | 8  | Technological   | IT systems, data, security |
 
 ---
 
-## 2. Forma (form of expression)
+## 2. Table forma
 
-| ID | Name            | Quality | Description |
+| id | name            | quality | description |
 |----|-----------------|---------|-------------|
 | 1  | Deception       | 0 | Intentional distortion of facts |
 | 2  | Truth           | 1 | Factual, verifiable information |
@@ -54,24 +46,28 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 
 ---
 
-## 3. Cause (motivation)
+## 3. Table cause
 
-| ID | Name        | Quality | Description |
+| id | name        | quality | description |
 |----|-------------|---------|-------------|
 | 1  | Fear        | 0 | Avoidance of punishment or loss |
-| 2  | Benefit     | 0 | Personal or material gain |
+| 2  | Greed       | 0 | Personal or material gain |
 | 3  | Mercy       | 1 | Compassion toward others |
 | 4  | Ignorance   | 0 | Lack of knowledge |
 | 5  | Duty        | 1 | Moral or contractual obligation |
 | 6  | Curiosity   | 1 | Desire to understand reality |
 | 7  | Pressure    | 0 | External coercion |
 | 8  | Care        | 1 | Protection of another’s well-being |
-
+| 9  | Hate        | 0 | Hostile Attitude |
+| 10 | Love        | 1 | Positive Attachment |
+| 11 | System      | 0 | Process Inertia |
+| 12 | Algorithm   | 1 | Deterministic Calculation |
+| 13 | Randomness  | 0 | Lack of Pattern |
 ---
 
-## 4. Develop (process)
+## 4. Table develop
 
-| ID | Name           | Quality | Description |
+| id | name           | quality | description |
 |----|----------------|---------|-------------|
 | 1  | Concealment    | 0 | Hiding relevant facts |
 | 2  | Manipulation   | 0 | Context distortion, influence |
@@ -79,12 +75,16 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 | 4  | Verification   | 1 | Cross-checking sources |
 | 5  | Exaggeration   | 0 | Artificial amplification |
 | 6  | Confession     | 1 | Admission and correction |
+| 7  | Disclosure     | 1 | Making information available |
+| 8  | Control        | 1 | Consciously managing the process |
+| 9  | Forgetting     | 0 | Losing or ignoring the event |
+| 10 | Belief         | 0 | Acceptance without verification |
 
 ---
 
-## 5. Effect (impact / outcome)
+## 5. Table effect
 
-| ID | Name                  | Quality | Description |
+| id | name                  | quality | description |
 |----|-----------------------|---------|-------------|
 | 1  | Distrust              | 0 | Loss of confidence |
 | 2  | Trust                 | 1 | Strengthened cooperation |
@@ -94,14 +94,18 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 | 6  | Learning              | 1 | Knowledge growth |
 | 7  | Reputation Loss       | 0 | Decrease in status |
 | 8  | Reputation Gain       | 1 | Increase in status |
-| 9  | Financial Loss        | 0 | Direct economic damage |
-| 10 | Financial Stability   | 1 | Preservation or recovery of assets |
+| 9  | Loss                  | 0 | Financial or material damage |
+| 10 | Profit                | 1 | Financial or material growth |
+| 11 | Destruction           | 0 | Loss of integrity |
+| 12 | Stability             | 1 | Maintenance of integrity |
+| 13 | Degradation           | 0 | Loss of ability to improve |
+| 14 | Preferences           | 1 | Incentives and benefits |
 
 ---
 
-## 6. Contexts (context table)
+## 6. Table contexts
 
-| ID | Name                                   | Category ID | Forma ID | Cause ID | Develop ID | Effect ID | Description |
+| id | name                                   | category_id | forma_id | cause_id | develop_id | effect_id | description |
 |----|----------------------------------------|-------------|----------|----------|------------|-----------|-------------|
 | 1 | Interpersonal: openness                 | 1           | 6        | 5        | 3          | 2         | Proactive full disclosure leading to trust growth |
 | 2  | Interpersonal: concealment              | 1           | 1        | 1        | 1          | 1         | Withholding facts causing trust loss |
@@ -121,9 +125,9 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 
 ---
 
-## 7. Time Axes (time_axes table)
+## 7. Table time_axes
 
-| ID | Time Type | Description                        |
+| id | time_type | description                        |
 |----|-----------|------------------------------------|
 | 1  | past      | Historical chronological time      |
 | 2  | present   | Current real-time                  |
@@ -133,9 +137,9 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 
 # RUSSIAN LOCALE (ru)
 
-## 1. Category (область события)
+## 1. Table category (категория)
 
-| ID | Name              | Description |
+| id | name              | description |
 |----|-------------------|-------------|
 | 1  | Социальное        | Межличностные отношения, доверие |
 | 2  | Финансовое        | Экономические события, потери, обязательства |
@@ -148,9 +152,9 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 
 ---
 
-## 2. Forma (форма подачи информации)
+## 2. Table forma (форма)
 
-| ID | Name            | Quality | Description |
+| id | name            | quality | description |
 |----|-----------------|---------|-------------|
 | 1  | Обман           | 0 | Сознательное искажение фактов |
 | 2  | Правда          | 1 | Проверяемая фактическая информация |
@@ -161,24 +165,28 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 
 ---
 
-## 3. Cause (причина)
+## 3. Table cause (причина)
 
-| ID | Name         | Quality | Description |
+| id | name         | quality | description |
 |----|--------------|---------|-------------|
 | 1  | Страх        | 0 | Избежание потерь или наказания |
-| 2  | Выгода       | 0 | Личный или материальный интерес |
+| 2  | Жадность     | 0 | Личный или материальный интерес |
 | 3  | Милосердие   | 1 | Сострадание |
 | 4  | Неведение    | 0 | Недостаток знаний |
 | 5  | Долг         | 1 | Моральная или формальная обязанность |
 | 6  | Любопытство  | 1 | Стремление к пониманию |
 | 7  | Давление     | 0 | Внешнее принуждение |
 | 8  | Забота       | 1 | Защита блага другого |
-
+| 9  | Ненависть    | 0 | Враждебная установка |
+| 10 | Любовь       | 1 | Позитивная привязанность |
+| 11 | Система      | 0 | Инерция процессов |
+| 12 | Алгоритм     | 1 | Детерминированный расчёт |
+| 13 | Случайность  | 0 | Отсутствие закономерности |
 ---
 
-## 4. Develop (развитие события)
+## 4. Table develop (развитие)
 
-| ID | Name           | Quality | Description |
+| id | name           | quality | description |
 |----|----------------|---------|-------------|
 | 1  | Сокрытие       | 0 | Утаивание фактов |
 | 2  | Манипуляция    | 0 | Искажение контекста |
@@ -186,12 +194,16 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 | 4  | Проверка       | 1 | Сопоставление источников |
 | 5  | Преувеличение  | 0 | Искусственное усиление |
 | 6  | Признание      | 1 | Принятие ответственности |
+| 7  | Разглашение    | 1 | Сделать информацию доступной |
+| 8  | Управление     | 1 | Осознанное управление процессом |
+| 9  | Забвение       | 0 | Утрата или игнорирование события |
+| 10 | Вера           | 0 | Принятие без проверки |
 
 ---
 
-## 5. Effect (последствие / воздействие)
+## 5. Table effect (последствие)
 
-| ID | Name                   | Quality | Description |
+| id | name                   | quality | description |
 |----|------------------------|---------|-------------|
 | 1  | Недоверие              | 0 | Потеря доверия |
 | 2  | Доверие                | 1 | Укрепление связей |
@@ -201,14 +213,18 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 | 6  | Обучение               | 1 | Рост понимания |
 | 7  | Потеря репутации       | 0 | Снижение статуса |
 | 8  | Рост репутации         | 1 | Повышение статуса |
-| 9  | Финансовая потеря      | 0 | Экономический ущерб |
-| 10 | Финансовая устойчивость| 1 | Сохранение или восстановление ресурсов |
+| 9  | Убыток                 | 0 | Финансовый или материальный ущерб |
+| 10 | Прибыль                | 1 | Финансовый или материальный рост  |
+| 11 | Разрушение             | 0 | Потеря целостности |
+| 12 | Стабильность           | 1 | Поддержание целостности |
+| 13 | Деградация             | 0 | Утрата способности к улучшению |
+| 14 | Преференции            | 1 | Поощрения и преимущества |
 
 ---
 
-## 6. Contexts (context table)
+## 6. Table сontexts (шаблон контекста)
 
-| ID | Name                                   | Category ID | Forma ID | Cause ID | Develop ID | Effect ID | Description |
+| id | name                                   | category_id | forma_id | cause_id | develop_id | effect_id | description |
 |----|----------------------------------------|-------------|----------|----------|------------|-----------|-------------|
 | 1 | Межличностные: открытость               | 1           | 6        | 5        | 3          | 2         | Добровольное раскрытие приводит к росту доверия |
 | 2  | Межличностные: сокрытие                 | 1           | 1        | 1        | 1          | 1         | Утаивание фактов вызывает потерю доверия |
@@ -228,9 +244,9 @@ The document is bilingual (**EN / RU**) because semantic accuracy is required, n
 
 ---
 
-## 6. Time Axes (time_axes table)
+## 6. Table time_axes
 
-| ID | Time Type | Description                        |
+| id | time_type | description                        |
 |----|-----------|------------------------------------|
 | 1  | past      | Историческое хронологическое время |
 | 2  | present   | Текущее реальное время             |
