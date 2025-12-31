@@ -62,7 +62,9 @@ Database** structure complies with **following principles** :
 • Data **historization**: records are **not overwritten**, but **supplemented**  
 • **Support** for **multiple** sources and evaluation **contexts**  
 
-⭐️❗⚠️ "small_constants" is **global** **small** **random** in **system** **time** "CURRENT_TIMESTAMP" value (0, 2)
+⭐️**quantum uncertainty**  
+❗This is an **advantage**, not a disadvantage  
+⚠️ "small_constants" is **global** **small** **random** in **system** **time** "CURRENT_TIMESTAMP" function value(0, 2)
 
 ```rust
 // Small random constant in system time for CURRENT_TIMESTAMP value (0, 2) - excluding 0 and 2
