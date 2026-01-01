@@ -418,15 +418,15 @@ Where:
 • **Predictable effects**
 • **Unpredictable consequences**
 
-**Notes** :
-• **Impact axis** records **objective changes** rather than **subjective opinions**
-• **Supports verification** through **observable evidence**
+**Notes** :  
+• **Impact axis** records **objective changes** rather than **subjective opinions**  
+• **Supports verification** through **observable evidence** 
 • Enables **prediction** of future **consequences**
-• Enables **identify** hidden **manipulation** of **consequences**
-• **Hidden manipulation** occurs when the **trend** of the **context elements** ("N","P") does **not align** with the **final effect** ("R"), suggesting **external interference** or **secondary event**
-• Such **discrepancies** are **flagged** for further investigation as they may represent attempts to **influence** the system **without proper alignment** between **cause**, **development** and **effect**
-• The **system uses** these **inconsistencies** to **identify potential manipulation** attempts and adjust **trust metrics accordingly**
-**Impact Axis Trend** :
+• Enables **identify** hidden **manipulation** of **consequences**  
+• **Hidden manipulation** occurs when the **trend** of the **context elements** ("N","P") does **not align** with the **final effect** ("R"), suggesting **external interference** or **secondary event**  
+• Such **discrepancies** are **flagged** for further investigation as they may represent attempts to **influence** the system **without proper alignment** between **cause**, **development** and **effect**  
+• The **system uses** these **inconsistencies** to **identify potential manipulation** attempts and adjust **trust metrics accordingly**  
+**Impact Axis Trend** :  
 • The **model** and **rules** for trend determining **impact** ("impact.trend") directly **depend** on the **context**, for more details see "Model "quality"" the section → "2.4 Context as Semantic Space reference knowledge-base"
 
 **Impact Axis Rules** :
@@ -490,21 +490,21 @@ R = (
 )
 ```
 **Rules** :
-🔒 Canonical definition of impact.trend
-impact.trend = 0 → logical_negative
-impact.trend = 1 → logical_positive
-impact.trend = 2 → illogical_negative
-impact.trend = 3 → illogical_positive
+🔒 Canonical definition of impact.trend  
+- "impact.trend" = 0 → logical_negative  
+- "impact.trend" = 1 → logical_positive  
+- "impact.trend" = 2 → illogical_negative  
+- "impact.trend" = 3 → illogical_positive  
 
-N — count of negative context qualities
+N — count of negative context qualities  
 
-P — count of positive context qualities
+P — count of positive context qualities  
 
-R — actual effect of the event (effect.quality)
+R — actual effect of the event (effect.quality)  
 
-impact.trend — expected direction of consequences (See section "Model "quality"" )
+impact.trend — expected direction of consequences (See section "Model "quality"" )  
 
-impact.value ∈ {NULL, 0, 1}
+impact.value ∈ {NULL, 0, 1}  
 
 🔸 Logical Negative outcomes (Expectation matches context. Context is negative, effect is negative)
 ```
@@ -562,17 +562,18 @@ IF N > P AND R = 0 AND impact.trend = 3
     impact.value = 0
 ```
 
-🧠 Semantic summary Impact Axis (used for calculating participants.reputation_score as )
+🧠 Semantic summary Impact Axis (used for calculating 
+participants.reputation_score as )
 
-impact.trend — expectation / direction of participant thinking
+- "impact.trend" — expectation / direction of participant thinking  
 
-impact.value — correspondence to reality
+- "impact.value" — correspondence to reality  
 
-NULL — prediction error or suspicion of manipulation
+-"NULL" — prediction error or suspicion of manipulation  
 
-"impact" ≠ "judgment" but connected by neuron function table: "event_ci"
+• **impact** ≠ **judgment** but connected by neuron function table "event_ci"
 
-impact trains the ability to predict consequences, not to "be right"
+• **impact** trains the ability to predict consequences, not to "be right"
 
 🔗 Connection with participants.reputation_score
 ```
@@ -588,24 +589,24 @@ IF impact.value (NULL)
 	
 	impact_metrics.total_magnitude -= 1
 ```
-→ prediction error
-→ decrease in trust in participant's ability to anticipate consequences
+→ prediction error  
+→ decrease in trust in participant's ability to anticipate consequences  
 
-Correction rules
-→ show participant's retrainability
-→ more important than single error
+Correction rules  
+→ show participant's retrainability  
+→ more important than single error  
 
-📌 Thus:
-Reputation grows not from "good effects", but from prediction accuracy in context.
+📌 Thus :  
+Reputation grows not from "good effects", but from prediction accuracy in context.  
 
-**Design decision** :
-• The **Impact Axis** deliberately does **NOT** use fixed **weights**
-• Any **attempt to assign static importance coefficients** would **introduce subjective value** systems into the **consequence** layer and break **axis orthogonality**
+**Design decision** :  
+• The **Impact Axis** deliberately does **NOT** use fixed **weights**  
+• Any **attempt to assign static importance coefficients** would **introduce subjective value** systems into the **consequence** layer and break **axis orthogonality**  
 
-**Significance of impact emerges only through** :
-• **temporal** accumulation
-• **collective** observation
-• **logical consistency** with **context**
+**Significance of impact emerges only through** :  
+• **temporal** accumulation  
+• **collective** observation  
+• **logical consistency** with **context**  
 
 
 #### 2.2.4 Judgment Axis (Truth Axis)
@@ -659,13 +660,13 @@ ELSE
     confidence = confidence * (1 - penalty_factor)
 ```
 
-**Judgment Classification** :
-• **Truth assessment** (true/false)
-• **Confidence level** (0-1)
-• **Reasoning** (textual justification)
-• **Source verification** (participant reputation)
+**Judgment Classification** :  
+• **Truth assessment** (true/false)  
+• **Confidence level** (0-1)  
+• **Reasoning** (textual justification)  
+• **Source verification** (participant reputation)  
 
-**Notes** :
+**Notes** :  
 • **Judgment axis** reflects **subjective assessment** of **truth**  
 • **Supports collective intelligence** through **aggregation**  
 • Enables **reputation** based **weighting** of **assessments**  
@@ -803,11 +804,11 @@ quadrant(E) =
  Q4 otherwise
 ```
 
-**Threshold Values** :
-• θ_T — **truth threshold** (typically 0.5)
-• θ_I — **impact threshold** (typically 0)
+**Threshold Values** :  
+• θ_T — **truth threshold** (typically 0.5)  
+• θ_I — **impact threshold** (typically 0)  
 
-**Classification Rules** :
+**Classification Rules** :  
 ```
 IF truth_score >= 0.5 AND impact_score >= 0
     quadrant = 'Q1'  -- Critical real event
@@ -819,26 +820,26 @@ ELSE
     quadrant = 'Q4'  -- Noise / information garbage
 ```
 
-**Quadrant Properties** :
-• Q1: High truth, High impact → **Action required**, verified information
-• Q2: High truth, Low impact → **Historical facts**, low priority
-• Q3: Low truth, High impact → **Disinformation**, potential threat
-• Q4: Low truth, Low impact → **Noise**, ignore
+**Quadrant Properties** :  
+• Q1: High truth, High impact → **Action required**, verified information  
+• Q2: High truth, Low impact → **Historical facts**, low priority  
+• Q3: Low truth, High impact → **Disinformation**, potential threat  
+• Q4: Low truth, Low impact → **Noise**, ignore  
 
-**Notes** :
-• Used for **event prioritization** and **response planning**
-• Enables targeted resource allocation
-• Supports automated **event** categorization
+**Notes** :  
+• Used for **event prioritization** and **response planning**  
+• Enables targeted resource allocation  
+• Supports automated **event** categorization  
 
-#### 2.3.2 Table: statements
+#### 2.3.2 Table: statements  
 📝 **System-level** table of the Collective Intelligence Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
 
 ###### Truthfulness as Statistical Function (global)
 
-**Purpose** :
-Aggregates local training metrics (csᵢ) for global processing in group training
-**Fields** :
+**Purpose** :  
+Aggregates local training metrics (csᵢ) for global processing in group training  
+**Fields** :  
 ```
 id          (INTEGER, PK, AUTOINCREMENT) — unique statement identifier
 event_id    (INTEGER, NOT NULL) — FK to truth_event.id — event reference
@@ -848,8 +849,8 @@ updated_at  (INTEGER, NOT NULL) — timestamp of last update
 ```
 🏠 Database: truth_training.sqlite
 
-**Model "statements"** :
-**Source relation**
+**Model "statements"** :  
+**Source relation**  
 ```
 statements.event_id = truth_event.id
 statements.truth_score = (
@@ -858,14 +859,14 @@ statements.truth_score = (
     WHERE truth_event.id = statements.event_id
 )
 ```
-**Base event mapping**
+**Base event mapping**  
 ```
 base_event_id =
 SELECT truth_event.id
 FROM truth_event
 WHERE truth_event.id = statements.event_id
 ```
-**Aggregation formulas "truth_score"**
+**Aggregation formulas "truth_score"**  
 ```
 statements.truth_score = (
     SELECT AVG(collective_score)
@@ -877,35 +878,35 @@ statements.truth_score = (
     )
 )
 ```
-**Aggregation formulas "created_at"**
+**Aggregation formulas "created_at"**  
 ```
 statements.created_at = CURRENT_TIMESTAMP
 ```
-**Aggregation formulas "updated_at"**
+**Aggregation formulas "updated_at"**  
 ```
 statements.updated_at = CURRENT_TIMESTAMP
 ```
 
-##### Model: Global Truth Aggregation
+##### Model: Global Truth Aggregation  
 
-**Global Truth Model** :
+**Global Truth Model** :  
 ```
 T_global(E) = f_local({cs_1, cs_2, ..., cs_n})
 ```
-**Where** :
-- T_global(E) — **global truth score** for **event** E
-- {cs_1, cs_2, ..., cs_n} — **local collective scores** from different **nodes**
-- f_local — aggregation function
+**Where** :  
+- T_global(E) — **global truth score** for **event** E  
+- {cs_1, cs_2, ..., cs_n} — **local collective scores** from different **nodes**  
+- f_local — aggregation function  
 
-**Aggregation Function** :
+**Aggregation Function** :  
 ```
 T_global(E) = Σ(wᵢ * csᵢ) / Σ(wᵢ)
 ```
-**Where** :
-- wᵢ — **weight** of **node** i
-- csᵢ — **collective score** from **node** i
+**Where** :  
+- wᵢ — **weight** of **node** i  
+- csᵢ — **collective score** from **node** i  
 
-**Statistical Model** :
+**Statistical Model** :  
 ```
 truth_score_global =
     IF number_of_nodes >= minimum_threshold
@@ -913,7 +914,7 @@ truth_score_global =
     ELSE NULL (insufficient data)
 ```
 
-**Update Rules** :
+**Update Rules** :  
 ```
 IF new_local_score.arrives
     recalculate_global_aggregation()
@@ -921,18 +922,18 @@ IF new_local_score.arrives
     update_event_classification()
 ```
 
-**Notes** :
-• **Aggregates scores** across distributed **nodes**
-• Maintains **statistical validity** of **truth assessments**
-• Enables **cross-node verification**
+**Notes** :  
+• **Aggregates scores** across distributed **nodes**  
+• Maintains **statistical validity** of **truth assessments**  
+• Enables **cross-node verification**  
 
-#### 2.3.3 Table: group_ratings
+#### 2.3.3 Table: group_ratings  
 📝 **System-level** table of the Collective Intelligence Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
 
-**Purpose** :
-Stores **group assessment ratings** for **collective progress metrics**
-Fields:
+**Purpose** :  
+Stores **group assessment ratings** for **collective progress metrics**  
+**Fields** :  
 ```
 group_id     (INTEGER, PK, AUTOINCREMENT) — unique group identifier
 members      (INTEGER, NOT NULL) — list of group member IDs
@@ -942,8 +943,8 @@ last_updated (INTEGER, NOT NULL) — timestamp of last update
 ```
 🏠 Database: truth_training.sqlite
 
-**Model "group_ratings"** :
-**Source relation**
+**Model "group_ratings"** :  
+**Source relation**  
 ```
 group_ratings.group_id = participants.group_membership
 group_ratings.avg_score = (
@@ -957,14 +958,14 @@ group_ratings.coherence = (
     WHERE p.group_membership = group_ratings.group_id
 )
 ```
-**Base group mapping**
+**Base group mapping**  
 ```
 base_group_id =
 SELECT group_ratings.group_id
 FROM group_ratings
 WHERE group_ratings.group_id = participants.group_membership
 ```
-**Aggregation formulas "avg_score"**
+**Aggregation formulas "avg_score"**  
 ```
 group_ratings.avg_score = (
     SELECT AVG(reputation_score)
@@ -972,7 +973,7 @@ group_ratings.avg_score = (
     WHERE group_membership = base_group_id
 )
 ```
-**Aggregation formulas "coherence"**
+**Aggregation formulas "coherence"**  
 ```
 group_ratings.coherence = (
     SELECT 1 - (SUM(ABS(reputation_score - avg_score)) / (COUNT(*) * 2))
@@ -980,32 +981,32 @@ group_ratings.coherence = (
     WHERE group_membership = base_group_id
 )
 ```
-**Aggregation formulas "last_updated"**
+**Aggregation formulas "last_updated"**  
 ```
 group_ratings.last_updated = CURRENT_TIMESTAMP
 ```
 
-##### Model: Group Assessment Dynamics
+##### Model: Group Assessment Dynamics  
 
 ```
 R_group = (Σ Rᵢ) / N
 ```
-Where:
-- R_group — **group rating**
-- Rᵢ — **rating of member** i
-- N — **number of members**
+**Where** :
+- R_group — **group rating**  
+- Rᵢ — **rating of member** i  
+- N — **number of members**  
 
-**Coherence Measurement** :
+**Coherence Measurement** :  
 ```
 C_group = 1 - (Σ |Rᵢ - R_group|) / (N * max_deviation)
 ```
 
-**Group Performance Metrics** :
+**Group Performance Metrics** :  
 ```
 Performance = f(avg_score, coherence, consistency)
 ```
 
-**Coherence Rules** :
+**Coherence Rules** :  
 ```
 IF coherence > 0.8
     group_decision_reliability = HIGH
@@ -1015,18 +1016,18 @@ ELSE
     group_decision_reliability = LOW
 ```
 
-**Notes** :
-• Measures collective intelligence effectiveness
-• Tracks group consensus quality
-• Enables group performance optimization
+**Notes** :  
+• Measures collective intelligence effectiveness  
+• Tracks group consensus quality  
+• Enables group performance optimization  
 
-#### 2.3.4 Table: progress_metrics
+#### 2.3.4 Table: progress_metrics  
 📝 **System-level** table of the Collective Intelligence Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
 
-Purpose:
-Aggregates system-wide progress metrics (event counts and reaction totals)
-Fields:
+**Purpose** :  
+Aggregates system-wide progress metrics (event counts and reaction totals)  
+**Fields** :  
 ```
 id                           (INTEGER, PK, AUTOINCREMENT) — unique metric record identifier
 total_events                 (INTEGER, NOT NULL) — total number of events processed
@@ -1041,27 +1042,27 @@ last_updated                 (INTEGER, NOT NULL) — timestamp of last update me
 ```
 🏠 Database: truth_training.sqlite  
 
-##### Model: System Progress Tracking
+##### Model: System Progress Tracking  
 
-**Progress Metrics Model** :
+**Progress Metrics Model** :  
 ```
 M_system = (M_individual, M_group, M_trend)
 ```
 
-**Trend Calculation** :
+**Trend Calculation** :  
 ```
 Trend = (Σ P - Σ N) / total_events
 ```
-Where:
-- P — positive impacts
-- N — negative impacts
+**Where** :  
+- P — positive impacts  
+- N — negative impacts  
 
-**Impact Balance** :
+**Impact Balance** :  
 ```
 Balance = total_positive_impacts - total_negative_impacts
 ```
 
-**Group vs Individual Comparison** :
+**Group vs Individual Comparison** :  
 ```
 IF total_events_group / total_events > threshold
     system_efficiency = HIGH (group collaboration effective)
@@ -1069,7 +1070,7 @@ ELSE
     system_efficiency = LOW (individual assessment dominant)
 ```
 
-**Progress Update Rules** :
+**Progress Update Rules** :  
 ```
 IF new_event_processed
     total_events = total_events + 1
@@ -1080,24 +1081,24 @@ IF new_event_processed
     last_updated = CURRENT_TIMESTAMP
 ```
 
-**Trend Interpretation** :
-• Positive trend → system improving, truth convergence
-• Negative trend → system degrading, truth divergence
-• Near-zero trend → system stable, truth stable
+**Trend Interpretation** :  
+• Positive trend → system improving, truth convergence  
+• Negative trend → system degrading, truth divergence  
+• Near-zero trend → system stable, truth stable  
 
-**Notes** :
-• Tracks overall system health and performance
-• Enables early detection of system degradation
-• Supports system optimization decisions
+**Notes** :  
+• Tracks overall system health and performance  
+• Enables early detection of system degradation  
+• Supports system optimization decisions  
 
-### 2.4 Context as Semantic Space reference knowledge-base
+### 2.4 Context as Semantic Space reference knowledge-base 
 
 📝 **System-level** table of the Collective Intelligence Layer  
 It is **not accept direct participant input**, and is **not transmitted over the network**  
-• These tables **are populated** with reference information by the **initialization function** in the application **core module** core/src/storage.rs
-• **Context** is defined by 5 tables
-• "quality" ∈ {0,1} — **semantic valence** (positive/negative). This is **not a truth metric**, used for analytics/filtering and trends. **category not include** "quality"
-• Default values for these tables are specified in: [Knowledge Base Table Values for Default Seeding](../../spec/26-seed_knowledge_base_table_value.md)
+• These tables **are populated** with reference information by the **initialization function** in the application **core module** core/src/storage.rs  
+• **Context** is defined by 5 tables  
+• "quality" ∈ {0,1} — **semantic valence** (positive/negative). This is **not a truth metric**, used for analytics/filtering and trends. **category not include** "quality"  
+• Default values for these tables are specified in: [Knowledge Base Table Values for Default Seeding](../../spec/26-seed_knowledge_base_table_value.md)  
 
 #### 2.4.1 Table: category
 
@@ -2249,48 +2250,49 @@ Notes:
 📝 **System-level** table of the Collective Intelligence Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
 
-**Purpose** :
-• Defines **weight** of **participants judgment** in specific **context**
-• **Weight** reflects system's **trust** in **participant**
+**Purpose** :  
+• Defines **weight** of **participants judgment** in specific **context**  
+• **Weight** reflects system's **trust** in **participant**  
 
 ##### Model judgment_weights:
 
-Event truth in context Ctx:
+Event truth in context Ctx :  
 ```
 T(E, Ctx) = Σ (Jᵢ × Wᵢ × Cᵢ) / Σ (|Wᵢ|)
 ```
-**Where**  :
-- Jᵢ — **judgment** value
-- Wᵢ — subject **weight**
-- Cᵢ — subject **confidence**
-- Convergence → consensus formation
-- Divergence → sign of complex or manipulable event
-- Absence of convergence ≠ falsehood
+**Where**  :  
+- Jᵢ — **judgment** value  
+- Wᵢ — subject **weight**  
+- Cᵢ — subject **confidence**  
+- Convergence → consensus formation  
+- Divergence → sign of complex or manipulable event  
+- Absence of convergence ≠ falsehood  
 
-Assessments become obsolete.
-Truth has temporal dynamics.
+• Assessments become obsolete.  
+• Truth has temporal dynamics.  
 
-Decay function is introduced:
-w(t) = w₀ * e^(-λt)
+Decay function is introduced  :  
+```
+w(t) = w₀ * e^(-λt)  
+```
+Possible states :  
+- consensus  
+- polarization  
+- uncertainty  
+- conflict  
 
-Possible states:
-- consensus
-- polarization
-- uncertainty
-- conflict
+Judgment Axis ⟂ Impact Axis  
 
-Judgment Axis ⟂ Impact Axis
+Truth and consequences are independent :  
+• True event can have catastrophic consequences  
+• False event can have no consequences  
 
-Truth and consequences are independent:
-• True event can have catastrophic consequences
-• False event can have no consequences
-
-Both axes intersect in limit of infinite observation
-- Judgment → neuron activation
-- Weight → synaptic coefficient
-- Collective Truth → layer output
-- Human → activation function
-Fields:
+Both axes intersect in limit of infinite observation  
+- Judgment → neuron activation  
+- Weight → synaptic coefficient  
+- Collective Truth → layer output  
+- Human → activation function  
+**Fields** :  
 ```
 id             (INTEGER, PK, AUTOINCREMENT) —
 participant_id (INTEGER, NOT NULL) — FK → participants.id
