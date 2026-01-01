@@ -1385,27 +1385,27 @@ Both scores are continuously updated as new impact and judgment data becomes ava
 ⭐️ **All** of the above **parameters**, **except descᵢ and crᵢ**, are used for **filtering** and **sorting** when **viewing event**  
 
 #### ⚠️ Important:  
-Fields "code" (cᵢ), "detected" (dᵢ), "corrected" (crᵢ) do **not participate** in **truth calculation directly**, **only** in **transport logic**  
-Fields "collective_score" (csᵢ), "impact" (ciᵢ), "judgment" (cjᵢ) influence **event relevance**, **training progress calculation** and **truth determination**  
+• Fields "code" (cᵢ), "detected" (dᵢ), "corrected" (crᵢ) do **not participate** in **truth calculation directly**, **only** in **transport logic**  
+• Fields "collective_score" (csᵢ), "impact" (ciᵢ), "judgment" (cjᵢ) influence **event relevance**, **training progress calculation** and **truth determination**  
 
 #####   Collective Event Assessment
 
 **Set of event impact** :  
 
-Iᵢ(Eᵢ)={Iᵢ(1),Iᵢ(2),…,Iᵢ(n)}
+Iᵢ(Eᵢ)={Iᵢ(1),Iᵢ(2),…,Iᵢ(n)}  
 
 **where** :  
-I(Eᵢ) — set of **participant impact**
+I(Eᵢ) — set of **participant impact**  
 
 **Divide by sign** :  
 
-Pᵢ=∑Iᵢ(ij)^(+), Nᵢ=∑Iᵢ(ij)^(-)
+Pᵢ=∑Iᵢ(ij)^(+), Nᵢ=∑Iᵢ(ij)^(-)  
 
 **where** :  
 
 ###### Truthfulness as Statistical Function (local)
-----------------------
-csᵢ = f-local(I(Eᵢ))
+
+csᵢ = f-local(I(Eᵢ))  
 
 **where** :  
 • **function** "f-local" depends **only on local data**  
