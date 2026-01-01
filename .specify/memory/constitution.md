@@ -2,12 +2,12 @@
 
 <!--
 Sync Impact Report
-Version: 2.2.0 → 2.3.0
-Modified Principles: None
-Added Sections: Rule 8 — UI Desktop Emoji Accessibility Requirement
+Version: 2.3.0 → 2.4.0
+Modified Principles: Rule 5 — Database & Schema Integrity (expanded with operational supplement)
+Added Sections: Rule 5 operational subsections (Authority & Canonical Sources, Schema Distortion Prevention, Dual-Database Allocation, Data Movement & History Rules, Migration & Validation Gates, Traceability & Documentation, Enforcement, PR Checklist)
 Removed Sections: None
-Templates: [.specify/templates/plan-template.md](.specify/templates/plan-template.md) ⚠ pending review, [.specify/templates/spec-template.md](.specify/templates/spec-template.md) ⚠ pending review, [.specify/templates/tasks-template.md](.specify/templates/tasks-template.md) ⚠ pending review
-Follow-ups: TODO(UI_EMOJI_IMPLEMENTATION): Update Desktop UI implementation to include emojis in all interface elements. Update spec/09-ux-guidelines.md and docs/UI_Desktop.md to reflect emoji requirements.
+Templates: [.specify/templates/plan-template.md](.specify/templates/plan-template.md) ✅ updated (Constitution Check section aligns automatically), [.specify/templates/spec-template.md](.specify/templates/spec-template.md) ✅ updated (added Rule 5 compliance note in Key Entities section), [.specify/templates/tasks-template.md](.specify/templates/tasks-template.md) ✅ updated (added Rule 5 reference to schema setup task)
+Follow-ups: None
 -->
 
 ## Summary
@@ -42,9 +42,127 @@ Truth Training orchestrates a cryptographically verifiable, anonymous truth netw
 
 ### Rule 5 — Database & Schema Integrity
 
+#### 5.1 Normalization Requirements
+
 1. Truth Training data schemas MUST satisfy 1NF, 2NF, 3NF, BCNF, 4NF, and 5NF; 6NF/DKNF may be adopted for temporal/domain-heavy modules when justified in specs.
 2. Every table requires a unique key, unused tables are removed, and each schema change ships with documented forward/backward migrations plus cleanup scripts.
-3. Release checklists include a database/schema review referencing `[spec/04-data-model.md](spec/04-data-model.md)`, `[docs/Data_Schema.md](docs/Data_Schema.md)`, and migration scripts; releases are blocked if documentation or migrations lag behind.
+
+#### 5.2 Authority and Canonical Sources
+
+The canonical descriptions of the model and schema are the authoritative sources for DB structure and semantics:
+- `[docs/model_core.md](docs/model_core.md)` — canonical markdown Formalized Model Core and Database Schema
+- `[spec/04-data-model.md](spec/04-data-model.md)` — canonical SQL schema specifications for implementers
+- `[spec/26-seed_knowledge_base_table_value.md](spec/26-seed_knowledge_base_table_value.md)` — Knowledge Base Table Values for Default Seeding
+- `[docs/Data_Schema.md](docs/Data_Schema.md)` — canonical markdown schema specifications for implementers
+- `[SECURITY.md](SECURITY.md)` — security and verification requirements
+- `[CONTRIBUTING.md](CONTRIBUTING.md)` — quality and testing requirements
+- `[spec/14-quality-gates.md](spec/14-quality-gates.md)` — minimum requirements for PR acceptance
+
+**Authority Rule**: Any change to the runtime DB schema, table names, primary/foreign key types, or semantic meaning of fields must be reconciled with — and implemented as — updates to the canonical files above. Implementations that diverge without an approved migration plan violate the constitution.
+
+#### 5.3 Preventing Schema Distortion
+
+**Single Source of Truth**: The schema described in `docs/model_core.md` is authoritative. Implementations (core, desktop, android, server, cli) must target those files as the ground truth for table names, column types, PK/FK definitions, and indexes.
+
+**No Shadow Schemas**: Implementations may not retain or ship divergent table names, key types (e.g., TEXT vs INTEGER PK for the same logical entity), or incompatible FK constraints without a formally approved migration and a side-by-side compatibility plan.
+
+**Declaration Requirement**: Every PR that alters storage code or DB DDL must include:
+- Updated canonical schema files (`spec/04-data-model.md` / `docs/Data_Schema.md`) and/or `docs/model_core.md` if the change is conceptual
+- Forward and backward migration scripts
+- Schema validation tests (see Section 5.6)
+- A Spec-Kit plan `/specify → /plan` describing the migration rollout and compatibility strategy
+
+#### 5.4 Dual-Database Allocation
+
+To keep responsibilities clearly separated and to reduce risk of cross-concern changes, the repository standardizes two local database files for embedded/local persistence:
+
+- **`truth_training.sqlite`** — primary domain DB: `truth_events`, `impact`, `judgments`, `participants`, `progress_metrics`, knowledge base tables (`category`, `forma`, etc.). This DB contains the event and assessment history and must follow the strict Quality Gates for truth/judgments and impacts.
+
+- **`discovery_nodes.sqlite`** — discovery and network metadata: nodes list, reachability, TTLs, registry snapshots, behavioral signatures, node trust limits, and ephemeral discovery caches. This DB may have shorter TTLs, separate lifecycle rules and a different backup cadence.
+
+**Requirement**: Migrations and changes affecting either DB must be explicitly targeted to the correct file and documented with which DB they affect.
+
+#### 5.5 Data Movement, Mutation & History Rules
+
+**Append-Only for Judgment History**: Judgments and their versions are historical records. Do not silently overwrite judgment rows. Use version tables (or append versions) to keep complete history. This is mandated for auditability and reproducibility.
+
+**Impact Immutability Constraints**: Impact records must remain bound to their originating event and preserve timestamps. Deletions of impact records are allowed only via an explicit cleanup script with justification logged and approved.
+
+**No Silent Deletes**: Any operation that removes historical data must be documented, batched, and reversible (via backups). Quiet or automatic deletion that is not approved by a migration/cleanup plan is forbidden.
+
+**Signed Records**: Any judgment/impact/critical append must include verifiable cryptographic metadata (signature, public key or proof) where the spec requires it. Unsigned critical updates must be rejected or downgraded in sanity checks.
+
+**TTL & Cleanup**: For discovery and ephemeral caches only (e.g., in `discovery_nodes.sqlite`) apply TTL and automated cleanup, but preserve an audit log of removals and reasons. TTL rules must be part of the migration/change plan.
+
+#### 5.6 Migration, Validation & Quality Gates
+
+Every schema change or storage-related code change must pass these gates before merging:
+
+**Spec Update Gate**: The change must be described in a Spec-Kit spec `/specify` and approved plan `/plan`. The PR must reference the spec and include the generated plan ID. Spec-Kit is mandatory per project rules.
+
+**Migration Scripts**: Provide forward and backward SQL migrations (or programmatic migrations for non-SQL changes). Each migration must include:
+- Data transformation steps
+- Verification queries
+- Rollback procedure
+- Budgeted downtime (if any)
+
+**Schema Validation Tests**: Automated tests that:
+- Assert table presence and column types
+- Validate PK/FK integrity
+- Verify indices that the performance expectations depend on
+- Run PRAGMA/schema diffs used by CI
+These are part of CI Quality Gates (see `spec/14-quality-gates.md`).
+
+**Contract Tests**: Any API or P2P message that depends on schema must include contract tests that fail fast if schema and message format drift.
+
+**Behavior Tests (Quality)**: For Judgment and Impact axes include:
+- Cryptographic signature validation tests
+- Immutability/append tests
+- Aggregation correctness tests (non-regression on aggregator functions)
+
+**Blocking Policy**: Failing schema/migration tests block merge and release — per constitution Rule 5.
+
+#### 5.7 Traceability, Documentation, and Releases
+
+**One PR = Canonical Schema**: A canonical schema change must include updated schema documentation:
+- The main canonical schema file `docs/model_core.md` cannot be edited without pre-approval
+- Semantic changes to `spec/04-data-model.md`, `docs/Data_Schema.md`, `spec/26-seed_knowledge_base_table_value.md` corresponding to the data in `docs/model_core.md`
+- In the file `spec/26-seed_knowledge_base_table_value.md`, table field values cannot be edited; only the database schema in `docs/Data_Schema.md` must be reviewed and corrected
+
+A single PR must not contain code changes, migrations, secondary documentation, or tests along with the canonical schema update.
+
+**One PR = Code + Documentation + Migration**: A single PR must not contain code changes, migrations, secondary documentation, or tests along with the canonical schema update (canonical schema updates must be separate).
+
+**Release Checklist**: Prepare a release that includes:
+- Schema validation approved by at least one database/schema maintainer. The file located in the main branch of the docs directory is considered validated
+- Migration smoke tests run in a test environment
+- An updated `release-info.txt` file with a link to the schema/migration summary
+- Spec-Kit artifacts in `.cursor` format reflecting the plan and approvals
+
+**Audit Log**: Migration scripts, test results, and Spec-Kit plan IDs should be stored in the merge request and saved in the release artifacts.
+
+#### 5.8 Enforcement & Governance
+
+**Enforcement**: Repository CI must include automated schema-validation steps that run on PRs. Human code review must enforce that checks were added and pass.
+
+**Non-compliant changes**: Any change that circumvents the rules (missing migration or docs) should be rejected by reviewers; persistent deviations must be escalated to governance and tracked in the constitution change log.
+
+**Spec-Kit Integration**: Use Spec-Kit to record the specification, plan and authorization. The Spec-Kit `/specify` artifact becomes part of the PR and is required for merges that touch schema or data lifecycle.
+
+#### 5.9 PR Author Checklist
+
+Before submitting a PR that touches schema or storage:
+- [ ] Did you update `spec/04-data-model.md` or `docs/Data_Schema.md` (if relevant)?
+- [ ] Do you provide forward and backward migrations?
+- [ ] Are schema validation tests added/updated and green in CI?
+- [ ] Do contract tests reflect any API/P2P format change?
+- [ ] Did you attach or reference a Spec-Kit `/specify` and `/plan`?
+- [ ] Did you include release notes for the migration (script location, rollback steps)?
+- [ ] If sensitive: did you include a security review step (per `SECURITY.md`)?
+
+#### 5.10 Release Checklist Integration
+
+Release checklists include a database/schema review referencing `[spec/04-data-model.md](spec/04-data-model.md)`, `[docs/Data_Schema.md](docs/Data_Schema.md)`, and migration scripts; releases are blocked if documentation or migrations lag behind.
 
 ### Rule 6 — CI, Tooling & Automation Discipline
 
@@ -236,8 +354,9 @@ This constitution supersedes other practices. Amendments require documentation, 
 
 | Date       | Version | Author     | Notes                                                                                                    | Deviations vs README/CONTRIBUTING/SECURITY/CHANGELOG |
 |------------|---------|------------|----------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| 2025-12-28 | 2.4.0   | Cursor AI  | Expanded Rule 5 — Database & Schema Integrity with operational supplement covering canonical sources, schema distortion prevention, dual-database allocation, data movement rules, migration gates, traceability, and enforcement. | None; aligned with referenced docs                   |
 | 2025-12-09 | 2.3.0   | Cursor AI  | Added Rule 8 — UI Desktop Emoji Accessibility Requirement for improved interface comprehension.        | None; aligned with referenced docs                   |
 | 2025-12-01 | 2.2.0   | Cursor AI  | Added explicit cross-platform scope, release automation, dependency/DB policies, Spec-Kit enforcement.  | None; aligned with referenced docs                   |
 | 2025-10-31 | 2.1.0   | Maintainers | Prior governance uplift aligning constitution with anonymous confession and collective intelligence.     | Not recorded                                          |
 
-**Version**: 2.3.0 | **Ratified**: 2025-10-31 | **Last Amended**: 2025-12-09
+**Version**: 2.4.0 | **Ratified**: 2025-10-31 | **Last Amended**: 2025-12-28

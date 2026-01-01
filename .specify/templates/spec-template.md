@@ -100,6 +100,8 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
+**Note**: If this feature involves schema changes or new entities, ensure compliance with Constitution Rule 5 — Database & Schema Integrity. Schema changes require updates to canonical documentation (`docs/model_core.md`, `spec/04-data-model.md`, `docs/Data_Schema.md`), forward/backward migrations, validation tests, and Spec-Kit plans.
+
 ## Success Criteria *(mandatory)*
 
 <!--
