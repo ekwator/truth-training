@@ -1995,7 +1995,7 @@ J = ⟨participant_id, event_id, assessment, confidence_level, t⟩
 Where:
 - "participant_id" → participants.id (FK)
 - "event_id" → event_ci.id (FK)
-- "assessment" ∈{NULL,-1,0,1} — (undefined/false/null/true)
+- "assessment" ∈{NULL,-1,0,1} — (undefined/false/null/true) - used for calculating local metric and aggregation into local metric: J_local = f(judgment₁, judgment₂, ..., judgmentₙ), where each judgment includes assessment, confidence_level and time
 - "confidence_level" ∈ [0,1] — confidence in the assessment
 - "t" - time of recording
 
@@ -2055,7 +2055,7 @@ Fields:
 id               (INTEGER, PK, AUTOINCREMENT) — unique judgment identifier
 participant_id   (INTEGER, NOT NULL) — FK → participants.id
 event_id         (INTEGER, NOT NULL) — FK → event_ci.id
-assessment       (TEXT) — type of assessment
+assessment       (REAL) — type of assessment ∈{NULL,-1,0,1} — (undefined/false/null/true)
 confidence_level (REAL) — confidence level of the assessment
 reasoning        (TEXT) — reasoning behind the judgment
 consensus_ci     (INTEGER, NOT NULL) — FK → consensus_ci.id
