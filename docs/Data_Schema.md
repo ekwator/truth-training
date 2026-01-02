@@ -172,7 +172,7 @@ Stores subjective assessments (judgments) of events issued by participants, repr
 | id | INTEGER | Primary key (auto-increment) |
 | participant_id | INTEGER | Foreign key to participants.id |
 | event_id | INTEGER | Foreign key to event_ci.id |
-| assessment | TEXT | Type of assessment |
+| assessment | REAL | Type of assessment |
 | confidence_level | REAL | Confidence level of the assessment |
 | reasoning | TEXT | Reasoning behind the judgment |
 | consensus_ci | INTEGER | Foreign key to consensus_ci.id |

@@ -191,7 +191,7 @@ CREATE TABLE judgment (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     participant_id   INTEGER NOT NULL,
     event_id         INTEGER NOT NULL,
-    assessment       TEXT,
+    assessment       REAL,
     confidence_level REAL,
     reasoning        TEXT,
     consensus_ci     INTEGER NOT NULL,
