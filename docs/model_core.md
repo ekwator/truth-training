@@ -689,10 +689,10 @@ Where:
 
 **On Truth × Impact plane, 4 basic classes are identified** :  
 
-• 1. High truth / High impact
-• 2. High truth / Low impact
-• 3. Low truth / High impact
-• 4. Low truth / Low impact
+• 1. High truth / High impact  
+• 2. High truth / Low impact  
+• 3. Low truth / High impact  
+• 4. Low truth / Low impact  
 | Truth | Impact | Interpretation                 |
 | ----- | ------ | ----------------------------- |
 | High  | High   | Critical real event           |
@@ -717,9 +717,9 @@ Q4: T(E) < θ_T AND I(E) < θ_I → Noise / information garbage
 📝 **System-level** table of the Collective Intelligence Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
 
-**Purpose** :
-Stores the **projection** of an **event** in **truth–impact** space for **classification**
-**Fields** :
+**Purpose** :  
+Stores the **projection** of an **event** in **truth–impact** space for **classification**  
+**Fields** :  
 ```
 event_id      (INTEGER, NOT NULL) — FK → event_ci.id — event reference
 truth_score   (REAL, NOT NULL) — aggregated truth score
@@ -744,34 +744,9 @@ event_projection.impact_score = (
     WHERE impact_metrics.event_id = event_projection.event_id
 )
 ```
-**Base event mapping**
-```
-base_event_id =
-SELECT event_ci.id
-FROM event_ci
-WHERE event_ci.id = event_projection.event_id
-```
-**Aggregation formulas "truth_score"**
-```
-event_projection.truth_score = (
-    SELECT AVG(j.confidence_level * jw.weight)
-    FROM judgment j
-    JOIN judgment_weights jw ON j.participant_id = jw.participant_id
-    WHERE j.event_id = base_event_id
-)
-```
-**Aggregation formulas "impact_score"**
-```
-event_projection.impact_score = (
-    SELECT SUM(CASE
-        WHEN impact.value = 1 THEN 1
-        WHEN impact.value = 0 THEN -1
-        ELSE 0
-    END)
-    FROM impact
-    WHERE impact.event_id = base_event_id
-)
-```
+
+**Note**: The `event_projection` table utilizes pre-calculated aggregated values from the `consensus_ci` and `impact_metrics` tables rather than performing direct computations. This approach ensures consistency and avoids redundant calculations while maintaining the integrity of the projection model.
+
 **Aggregation formulas "quadrant"**
 ```
 event_projection.quadrant = (
@@ -1549,7 +1524,7 @@ Field explanations:
 • detected, corrected, code — auxiliary transport fields (see section 6 on circulation codes).
 • collective_score (csᵢ) — local training/assessment metric (see section 7).
 • impact_score (ciᵢ) — local impact metric (see section 4.1).
-• judgment_score (cjᵢ) — local judgment metric (see section 4.2).
+• judgment_score (cjᵢ) — local judgment metric (see section 2.2.4).
 
 ##### Where structure is described:
 In data schema documentation: docs/Data_Schema.md - contains description of truth_event table as part of base block, including all main fields and their purpose
@@ -3280,7 +3255,7 @@ Decay(T, t) ∝ e^(−λt)
 • Enables efficient resource allocation by focusing on unstable events
 • Supports reactivation when new evidence emerges
 
-## 8 Node Discovery and Network Tables
+## 4 Node Discovery and Network Tables
 
 ### Table: nodes
 📝 **System-level** table of the Network Layer
@@ -3304,7 +3279,7 @@ updated_at (INTEGER, NOT NULL) — timestamp of last update
 ```
 🏠 Database: discovery_nodes.sqlite  
 
-##### Model: Node Discovery and Management
+#### Model: Node Discovery and Management
 
 **Node Discovery Model**:
 ```
@@ -3366,7 +3341,7 @@ last_updated         (INTEGER, NOT NULL) — timestamp of last update
 ```
 🏠 Database: discovery_nodes.sqlite  
 
-##### Model: Node Reputation and Trust
+#### Model: Node Reputation and Trust
 
 **Trust Score Model**:
 ```
@@ -3420,7 +3395,7 @@ propagation_priority (REAL, NOT NULL, DEFAULT 0.0) — distribution priority (0.
 ```
 🏠 Database: discovery_nodes.sqlite  
 
-##### Model: Node Performance Metrics
+#### Model: Node Performance Metrics
 
 **Performance Model**:
 ```
@@ -3468,7 +3443,7 @@ expires_at    (INTEGER, NOT NULL) — expiration timestamp
 ```
 🏠 Database: discovery_nodes.sqlite  
 
-##### Model: Authentication Token Management
+#### Model: Authentication Token Management
 
 **Token Lifecycle Model**:
 ```
@@ -3519,7 +3494,7 @@ last_trust_score   (REAL, DEFAULT 0.0) — last trust score during synchronizati
 ```
 🏠 Database: discovery_nodes.sqlite  
 
-##### Model: Peer Interaction History
+#### Model: Peer Interaction History
 
 **Interaction History Model**:
 ```
@@ -3569,7 +3544,7 @@ created_at (INTEGER, NOT NULL) — timestamp of the operation
 ```
 🏠 Database: discovery_nodes.sqlite  
 
-##### Model: Synchronization Logging
+#### Model: Synchronization Logging
 
 **Log Entry Model**:
 ```
@@ -3617,7 +3592,7 @@ details    (TEXT, NOT NULL) — additional info or error message
 ```
 🏠 Database: discovery_nodes.sqlite
 
-##### Model: Synchronization Event Logging
+#### Model: Synchronization Event Logging
 
 **Synchronization Event Model**:
 ```
@@ -3660,7 +3635,7 @@ IF sync_operation_completed
 - [model_core_scoring.sql](model_core_scoring.sql) — Impact and judgment scoring calculations
 - [model_core_aggregated_metrics.sql](model_core_aggregated_metrics.sql) — System metrics and expert functions schema
 
-## 9 Constraints, Security and Anti-Manipulation Mechanisms
+## 5 Constraints, Security and Anti-Manipulation Mechanisms
 
 **Truth Training** is designed as **system resistant** to **manipulation**, **centralization** and **substitution** of **collective truth**
 
@@ -3822,7 +3797,7 @@ Security:
 • measurable
 • reproducible
 
-## 10 Cognitive and Neural Network Analogies of Mathematical Model
+## 6 Cognitive and Neural Network Analogies of Mathematical Model
 
 Mathematical model of Truth Training is intentionally designed to be isomorphic to natural human cognitive processes and principles of neural network operation.
 
@@ -3918,7 +3893,7 @@ neural network + relational DB + human.
 Each component is necessary.
 Removing any destroys system.
 
-## 11 Connection of Mathematical Model with Quality Gates
+## 7 Connection of Mathematical Model with Quality Gates
 
 Mathematical model of Truth Training is not abstract theory — it directly determines quality criteria for code, data and system behavior.
 Quality Gates serve as formalized mechanism for checking that implementation does not violate basic model principles.
@@ -3987,7 +3962,7 @@ With Quality Gates:
 • architecture — verifiable
 • development — safe
 
-## 12 Formal Conclusion of Mathematical Model
+## 8 Formal Conclusion of Mathematical Model
 
 Truth Training — is formally defined system consisting of:
 • relational database
