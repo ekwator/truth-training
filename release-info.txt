@@ -40,3 +40,16 @@ Removed obsolete documentation files that were replaced by new comprehensive doc
 - Removed [`docs/schema-truth_teraining.sql`](docs/schema-truth_teraining.sql) (replaced by new schema documentation)
 
 ---
+
+# 🚀 Support the Future Release of Truth Training
+
+The full version of **Truth Training** can become publicly available sooner —  
+your support directly accelerates development.
+
+If you want to help the project grow, you can support it here:  
+👉 [Donate to the Project](https://github.com/ekwator)
+
+Every contribution moves us closer to completing the full application  
+and delivering a polished, open-source release for everyone.
+
+Thank you for being part of this journey.

@@ -3799,218 +3799,217 @@ Security:
 
 ## 6 Cognitive and Neural Network Analogies of Mathematical Model
 
-Mathematical model of Truth Training is intentionally designed to be isomorphic to natural human cognitive processes and principles of neural network operation.
+Model of Truth Training is intentionally designed to be isomorphic to natural human cognitive processes and principles of neural network operation.
 
-Event (event) is equivalent to external stimulus exciting cognitive system.
+**Event** (event) is equivalent to external stimulus exciting cognitive system.
 
-In neural analogy:
-• input signal
-• sensory impulse
-• feature vector
+In neural analogy :  
+• input signal  
+• sensory impulse  
+• feature vector  
 
-impact reflects
-space of possible event consequences.
+**Impact** (impact) reflects space of possible event consequences.
 
-Analogy:
-• signal propagation
-• influence on neighboring neurons
-• formation of associative connections
-• impact is not binary — it is continuous.
+Analogy :  
+• signal propagation  
+• influence on neighboring neurons  
+• formation of associative connections  
+• impact is not binary — it is continuous  
 
-judgment represent
-truth assessment of event
-through collective confirmation.
+**Judgment** (judgment) represent truth assessment of event through collective confirmation.
 
-Analogy:
-• activation function
-• neural network response
-• result of signal interpretation
+Analogy :  
+• activation function  
+• neural network response  
+• result of signal interpretation  
 
-impact and judgment —
-two independent axes,
-intersecting only in limit.
+impact and judgment — two independent axes, intersecting only in limit.
 
-This means:
-• truth is not equal to consequence
-• consequences do not prove truth
-• their consistency is manifested over time
+This means :  
+• truth is not equal to consequence  
+• consequences do not prove truth  
+• their consistency is manifested over time  
 
 Each node — is autonomous neuron controlled by human.
 
-Properties:
-• local memory
-• individual assessment function
-• limited bandwidth
-• learning through experience
+Properties :  
+• local memory  
+• individual assessment function  
+• limited bandwidth  
+• learning through experience  
 
 Unlike AI, activation function is set by human.
 
-Human:
-• interprets signal
-• applies context
-• makes decision
-• makes judgment
+Human :  
+• interprets signal  
+• applies context  
+• makes decision  
+• makes judgment  
 
 Set of nodes forms distributed neural network.
 
-Characteristics:
-• no center
-• no global weights
-• learning through correlations
-• noise resistance
+Characteristics :  
+• no center  
+• no global weights  
+• learning through correlations  
+• noise resistance  
 
 Relational database — is material form of network.
 
-Table connections correspond to:
-• synapses
-• weights
-• temporal delays
+Table connections correspond to :  
+• synapses  
+• weights  
+• temporal delays  
 
 System does not use backpropagation.
 
-Learning occurs through:
-• accumulation of judgment
-• weakening of contradictory nodes
-• strengthening of consistent patterns
+Learning occurs through :  
+• accumulation of judgment  
+• weakening of contradictory nodes  
+• strengthening of consistent patterns  
 
 Error is not deleted.
 
-It:
-• is recorded
-• is analyzed
-• affects future weights
+It :  
+• is recorded  
+• is analyzed  
+• affects future weights  
 
 Truth — is not value, but process.
 
-It:
-• is refined
-• is stabilized
-• never freezes
+It :  
+• is refined  
+• is stabilized  
+• never freezes  
 
-Truth Training — is hybrid:
+Truth Training — is hybrid :  
 neural network + relational DB + human.
 
-Each component is necessary.
-Removing any destroys system.
+Each component is necessary.  
+Removing any destroys system.  
 
-## 7 Connection of Mathematical Model with Quality Gates
+## 7 Connection of Model with Quality Gates
 
-Mathematical model of Truth Training is not abstract theory — it directly determines quality criteria for code, data and system behavior.
-Quality Gates serve as formalized mechanism for checking that implementation does not violate basic model principles.
-Each Quality Gate — is invariant of mathematical model that cannot be violated without loss of system correctness.
+For implementation details of Quality Gates, see [spec/14-quality-gates.md](../spec/14-quality-gates.md) which contains the concrete technical requirements and checks that enforce these model invariants.
 
-Examples:
-• database schema violation → destruction of cognitive connections
-• enum inconsistency → distortion of assessment axes
-• non-deterministic logic → loss of reproducibility
+Model of Truth Training is not abstract theory — it directly determines quality criteria for code, data and system behavior.  
+Quality Gates serve as formalized mechanism for checking that implementation does not violate basic model principles.  
+Each Quality Gate — is invariant of model that cannot be violated without loss of system correctness.
+
+Examples :  
+• database schema violation → destruction of cognitive connections  
+• enum inconsistency → distortion of assessment axes  
+• non-deterministic logic → loss of reproducibility 
 
 Quality Gates guarantee that database structure corresponds to formal model schema.
 
-Checked:
-• presence of all tables
-• correctness of foreign keys
-• consistency of types
-• immutability of field semantics
+Checked :  
+• presence of all tables  
+• correctness of foreign keys  
+• consistency of types  
+• immutability of field semantics  
 
 This is critical because: relational database — physical body of neural network
 
-impact axis requires:
-• impossibility of deleting consequences without reason
-• strict binding to event
-• preservation of temporal ordering
-• support for multiple consequences
+impact axis requires :  
+• impossibility of deleting consequences without reason  
+• strict binding to event  
+• preservation of temporal ordering  
+• support for multiple consequences  
 
-Quality Gate:
-• event → impact integrity tests
-• silent-delete prohibition
-• TTL and lifecycle check
+Quality Gate :  
+• event → impact integrity tests  
+• silent-delete prohibition  
+• TTL and lifecycle check  
 
 judgment — truth axis — has strictest requirements.
 
-Quality Gates check:
-• cryptographic signature
-• immutability of judgment after fixation
-• correctness of aggregation
-• absence of history overwrite
+Quality Gates check :  
+• cryptographic signature  
+• immutability of judgment after fixation  
+• correctness of aggregation  
+• absence of history overwrite  
 
-Violation of these rules is equivalent to:
+Violation of these rules is equivalent to :  
 • damage to neural network activation function
 
 Since human is part of computing circuit, his actions must be verifiable.
 
-Quality Gates ensure:
-• impossibility of automatic judgment without human involvement
-• transparency of assessment source
-• reproducibility of assessment logic
+Quality Gates ensure :  
+• impossibility of automatic judgment without human involvement  
+• transparency of assessment source  
+• reproducibility of assessment logic  
 
 System must remain distributed.
 
-Quality Gates prohibit:
-• hidden central states
-• global mutable-structures
-• implicit authorities
+Quality Gates prohibit :  
+• hidden central states  
+• global mutable-structures  
+• implicit authorities  
 
-Each node:
-• autonomous
-• verifiable
-• isolated
+Each node :  
+• autonomous  
+• verifiable  
+• isolated  
 
 Without Quality Gates model exists only on paper.
 
-With Quality Gates:
-• model becomes executable
-• architecture — verifiable
-• development — safe
+With Quality Gates :  
+• model becomes executable  
+• architecture — verifiable  
+• development — safe  
 
-## 8 Formal Conclusion of Mathematical Model
+## 8 Formal Conclusion of Model
 
-Truth Training — is formally defined system consisting of:
-• relational database
-• distributed computing nodes
-• human assessment functions
-• strict quality invariants
+Truth Training — is formally defined system consisting of :  
+• relational database   
+• distributed computing nodes  
+• human assessment functions  
+• strict quality invariants  
 
-Model states following:
-• Truth is not value — it is process
-• Consequences and truth — are orthogonal
-• Human — is part of computing graph
-• Decentralization — is not option, but requirement
-• Error — is source of information, not failure
+Model states following :  
+• Truth is not value — it is process  
+• Consequences and truth — are orthogonal  
+• Human — is part of computing graph  
+• Decentralization — is not option, but requirement  
+• Error — is source of information, not failure  
 
-Model intentionally:
-• does not seek instant truth
-• is not optimized for speed
-• does not centralize decision making
+Model intentionally :  
+• does not seek instant truth  
+• is not optimized for speed  
+• does not centralize decision making  
 
-It is optimized for:
-• resilience
-• long-term correlation
-• collective verifiability
+It is optimized for :  
+• resilience  
+• long-term correlation  
+• collective verifiability  
 
-Truth Training is not:
-• voting
-• rating
-• expert system
-• traditional neural network
+Truth Training is not :  
+• voting  
+• rating  
+• expert system  
+• traditional neural network  
 
 This: cognitive infrastructure
 
-Any implementation of Truth Training is considered correct if and only if:
-• database structure corresponds to model
-• Quality Gates are observed
-• impact and judgment axes are independent
-• human participation is not simulated
+Any implementation of Truth Training is considered correct if and only if :  
+• database structure corresponds to model  
+• Quality Gates are observed  
+• impact and judgment axes are independent  
+• human participation is not simulated  
 
-This document:
-• is normative
-• is used for architectural decisions
-• serves as reference for PR and review
-• cannot be changed without new specification
+This document :  
+• is normative  
+• is used for architectural decisions  
+• serves as reference for PR and review  
+• cannot be changed without new specification  
 
-Truth Training — is not application. This:
-• way of collective thinking
-• formalized ethical mechanism
-• distributed cognitive system
+Truth Training — is not application. 
+
+This :  
+• way of collective thinking  
+• formalized ethical mechanism  
+• distributed cognitive system  
 
 > **Truth is not what was said first.
 > Truth is what survives circulation.**
