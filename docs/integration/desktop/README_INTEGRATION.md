@@ -164,7 +164,7 @@ Response:
 
 **Node Status:**
 ```bash
-truthctl status --db truth.db
+truthctl status --db truth_training.sqlite
 ```
 
 Output:

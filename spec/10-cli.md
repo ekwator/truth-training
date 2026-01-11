@@ -172,8 +172,8 @@ details TEXT
 
 Commands:
 ```bash
-truthctl logs show --limit 100 --db truth.db
-truthctl logs clear --db truth.db
+truthctl logs show --limit 100 --db truth_training.sqlite
+truthctl logs clear --db truth_training.sqlite
 ```
 Entries are appended from `peers sync-all` after each peer attempt (success or failure).
 

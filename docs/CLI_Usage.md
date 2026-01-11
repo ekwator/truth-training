@@ -34,7 +34,7 @@ truthctl peers sync-all --mode incremental --dry-run
 ### Node Status
 
 ```bash
-truthctl status --db truth.db --identity keys/node1.json
+truthctl status --db truth_training.sqlite --identity keys/node1.json
 ```
 
 Output includes:
@@ -55,13 +55,13 @@ List all discovered nodes with optional filtering:
 
 ```bash
 # List all nodes
-truthctl nodes list --db truth.db
+truthctl nodes list --db truth_training.sqlite
 
 # List with filters
-truthctl nodes list --db truth.db --type lan --reachable true --limit 10
+truthctl nodes list --db truth_training.sqlite --type lan --reachable true --limit 10
 
 # JSON output
-truthctl nodes list --db truth.db --format json
+truthctl nodes list --db truth_training.sqlite --format json
 ```
 
 **Filters:**
@@ -76,7 +76,7 @@ Manually add or remove nodes:
 
 ```bash
 # Add a node manually
-truthctl nodes add --db truth.db \
+truthctl nodes add --db truth_training.sqlite \
   --address "http://192.168.1.100:8080/api/v1" \
   --type lan \
   --ttl 120 \
@@ -84,10 +84,10 @@ truthctl nodes add --db truth.db \
   --source manual
 
 # Remove a node by address
-truthctl nodes remove --db truth.db --address "http://192.168.1.100:8080/api/v1"
+truthctl nodes remove --db truth_training.sqlite --address "http://192.168.1.100:8080/api/v1"
 
 # Remove a node by node_id
-truthctl nodes remove --db truth.db --node-id "abc123..."
+truthctl nodes remove --db truth_training.sqlite --node-id "abc123..."
 ```
 
 ### Discover Nodes
@@ -96,14 +96,14 @@ Trigger discovery cycle for local and/or global nodes:
 
 ```bash
 # Discover all types (LAN, Wi-Fi, Global)
-truthctl nodes discover --db truth.db
+truthctl nodes discover --db truth_training.sqlite
 
 # Discover specific type
-truthctl nodes discover --db truth.db --type lan
-truthctl nodes discover --db truth.db --type global
+truthctl nodes discover --db truth_training.sqlite --type lan
+truthctl nodes discover --db truth_training.sqlite --type global
 
 # Discover with custom registry URLs
-truthctl nodes discover --db truth.db \
+truthctl nodes discover --db truth_training.sqlite \
   --registry "https://registry.example.com/nodes" \
   --registry "https://registry2.example.com/nodes"
 ```
@@ -119,7 +119,7 @@ Synchronize node lists with a peer server:
 
 ```bash
 # Sync with peer server
-truthctl nodes sync --db truth.db --server "http://192.168.1.100:8080/api/v1"
+truthctl nodes sync --db truth_training.sqlite --server "http://192.168.1.100:8080/api/v1"
 ```
 
 The sync command:
@@ -136,7 +136,7 @@ The sync command:
 Force immediate TTL cleanup:
 
 ```bash
-truthctl nodes cleanup --db truth.db
+truthctl nodes cleanup --db truth_training.sqlite
 ```
 
 Removes:
@@ -149,10 +149,10 @@ Check reachability of discovered nodes:
 
 ```bash
 # Check all nodes
-truthctl nodes health-check --db truth.db
+truthctl nodes health-check --db truth_training.sqlite
 
 # Check specific node by address
-truthctl nodes health-check --db truth.db --address "http://192.168.1.100:8080/api/v1"
+truthctl nodes health-check --db truth_training.sqlite --address "http://192.168.1.100:8080/api/v1"
 ```
 
 Health checks:
@@ -166,7 +166,7 @@ Health checks:
 Verify database schema parity and migration status:
 
 ```bash
-truthctl nodes validate --db truth.db
+truthctl nodes validate --db truth_training.sqlite
 ```
 
 Validates:
@@ -218,7 +218,7 @@ truthctl keys list
 
 Creating node configuration:
 ```bash
-truthctl init-node <node_name> --port 8080 --db truth.db --auto-peer
+truthctl init-node <node_name> --port 8080 --db truth_training.sqlite --auto-peer
 ```
 
 Created files:
@@ -227,7 +227,7 @@ Created files:
 {
   "node_name": "mynode",
   "port": 8080,
-  "db_path": "truth.db",
+  "db_path": "truth_training.sqlite",
   "public_key": "<hex>",
   "private_key": "<hex>"
 }
@@ -261,7 +261,7 @@ truthctl peers stats --server http://127.0.0.1:8080 --format json
 History from local DB (`peer_history`):
 
 ```bash
-truthctl peers history --limit 50 --db truth.db
+truthctl peers history --limit 50 --db truth_training.sqlite
 ```
 
 Example table:
@@ -388,8 +388,8 @@ Trust propagation mechanics (executed transparently during `/sync` and `/increme
 
 View and clear sync log:
 ```bash
-truthctl logs show --limit 100 --db truth.db
-truthctl logs clear --db truth.db
+truthctl logs show --limit 100 --db truth_training.sqlite
+truthctl logs clear --db truth_training.sqlite
 ```
 
 Columns: id, timestamp, peer_url, mode, status, details. Records created automatically after each `peers sync-all` attempt.

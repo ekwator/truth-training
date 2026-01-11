@@ -63,13 +63,13 @@ Invoke-WebRequest -Uri "https://github.com/ekwator/truth-training/releases/downl
 
 ### Step 1: Initialize Database
 ```bash
-truthctl --db truth.db init
+truthctl --db truth_training.sqlite init
 # Expected: Database schema created
 ```
 
 ### Step 2: Generate Identity
 ```bash
-truthctl --db truth.db --identity keys/node1.json init-node
+truthctl --db truth_training.sqlite --identity keys/node1.json init-node
 # Expected: Identity file created with Ed25519 key pair
 ```
 
@@ -81,9 +81,9 @@ truthctl config set --node-name "my-node" --port 8080
 
 ### Step 4: Seed Knowledge Base (Optional)
 ```bash
-truthctl --db truth.db seed --locale ru
+truthctl --db truth_training.sqlite seed --locale ru
 # Or
-truthctl --db truth.db seed --locale en
+truthctl --db truth_training.sqlite seed --locale en
 # Expected: Knowledge base seeded with reference data
 ```
 
@@ -91,7 +91,7 @@ truthctl --db truth.db seed --locale en
 
 ### Node Status
 ```bash
-truthctl --db truth.db --identity keys/node1.json status
+truthctl --db truth_training.sqlite --identity keys/node1.json status
 ```
 
 **Output includes:**
@@ -125,13 +125,13 @@ truthctl sync --peer http://127.0.0.1:8080 --identity keys/node1.json --mode inc
 ### Node Discovery
 ```bash
 # List discovered nodes
-truthctl nodes list --db truth.db
+truthctl nodes list --db truth_training.sqlite
 
 # Discover nodes
-truthctl nodes discover --db truth.db
+truthctl nodes discover --db truth_training.sqlite
 
 # Add node manually
-truthctl nodes add --db truth.db \
+truthctl nodes add --db truth_training.sqlite \
   --address "http://192.168.1.100:8080/api/v1" \
   --type lan \
   --ttl 120
@@ -139,26 +139,26 @@ truthctl nodes add --db truth.db \
 
 ### View Sync Logs
 ```bash
-truthctl logs show --db truth.db
+truthctl logs show --db truth_training.sqlite
 # Expected: Recent sync operation logs
 
-truthctl logs clear --db truth.db
+truthctl logs clear --db truth_training.sqlite
 # Expected: All sync logs cleared
 ```
 
 ### Network Graph
 ```bash
 # ASCII graph
-truthctl graph show --db truth.db --format ascii
+truthctl graph show --db truth_training.sqlite --format ascii
 
 # JSON graph
-truthctl graph show --db truth.db --format json
+truthctl graph show --db truth_training.sqlite --format json
 ```
 
 ### Diagnostics
 ```bash
 # Run diagnostics
-truthctl diagnose --db truth.db --server
+truthctl diagnose --db truth_training.sqlite --server
 
 # Expected: Health checks for API, database, and P2P
 ```
@@ -180,19 +180,19 @@ truthctl config reset
 ### Peer Statistics
 ```bash
 # Show peer statistics
-truthctl peers stats --db truth.db
+truthctl peers stats --db truth_training.sqlite
 
 # Show peer history
-truthctl peers history --db truth.db --peer "http://192.168.1.100:8080"
+truthctl peers history --db truth_training.sqlite --peer "http://192.168.1.100:8080"
 ```
 
 ### Data Management
 ```bash
 # Reset local data
-truthctl reset-data --db truth.db
+truthctl reset-data --db truth_training.sqlite
 
 # Reset and reinitialize
-truthctl reset-data --db truth.db --reinit
+truthctl reset-data --db truth_training.sqlite --reinit
 ```
 
 ## Uninstallation
@@ -285,7 +285,7 @@ lsof truth.db
 ### Identity File Not Found
 ```bash
 # Generate new identity
-truthctl --db truth.db --identity keys/node1.json init-node
+truthctl --db truth_training.sqlite --identity keys/node1.json init-node
 ```
 
 ### Peer Connection Failed
@@ -300,10 +300,10 @@ curl http://192.168.1.100:8080/api/v1/info
 ### Sync Errors
 ```bash
 # Check sync logs
-truthctl logs show --db truth.db
+truthctl logs show --db truth_training.sqlite
 
 # Run diagnostics
-truthctl diagnose --db truth.db
+truthctl diagnose --db truth_training.sqlite
 ```
 
 ## Working with Events and Context Templates
