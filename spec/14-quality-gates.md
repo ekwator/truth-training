@@ -90,4 +90,11 @@ _Version: v1.1.0_
 
 - See [spec/README.md](README.md) for detailed explanations.
 
+## Implementation References
+
+- **Cross-Platform Build & Test Workflows**: [docs/CI_Workflows_Artifacts.md](../docs/CI_Workflows_Artifacts.md) - GitHub Actions workflows for Desktop UI (Linux, Windows, macOS) and Android client (APK, AAB) builds, including unit, integration, and E2E testing pipelines
+- **Android Client Testing**: Implemented via Gradle-based unit and instrumentation tests in `truth-android-client/app/src/test/` and `truth-android-client/app/src/androidTest/`, covering contract tests, integration tests, and performance validation as described in various spec documents
+- **Desktop UI Testing**: Includes unit, component, and integration tests using React Testing Library and Jest in `ui/desktop/tests/`, with contract tests validating API compliance
+- **CLI & Server Testing**: Cross-device E2E tests implemented in the Rust test suite in `tests/`, covering CLI-server synchronization, database compatibility across platforms, and network discovery protocols
+
 - Aligned with [.specify/memory/constitution.md](../.specify/memory/constitution.md) Rule 5 — Database & Schema Integrity (version 2.4.0).
