@@ -193,32 +193,43 @@ fpm -s dir -t deb -n truth-core-server -v 1.0.0 [files...]
 fpm -s dir -t rpm -n truth-core-server -v 1.0.0 [files...]
 
 # Windows installer (via NSIS)
-# Requires NSIS and WinSW
-# 1. Install NSIS (e.g., via Chocolatey: choco install nsis)
-# 2. Download WinSW from https://github.com/winsw/winsw/releases/
-# 3. Create installer.nsi with the NSIS script
-# 4. Run makensis installer.nsi to create the installer
+# 1. Install prerequisites:
+#    - Install NSIS (e.g., via Chocolatey: choco install nsis)
+#    - Download WinSW from https://github.com/winsw/winsw/releases/download/v3.0.3/WinSW-x64.exe
 
-# Example PowerShell script to create Windows installer:
-# $nsisScript = @'
+# 2. Build the server:
+cargo build --release --bin truth_core_server --features desktop
+
+# 3. Create Windows service configuration file (truth_core_server.xml):
+# <?xml version="1.0" encoding="UTF-8"?>
+# <service>
+#   <id>TruthCoreServer</id>
+#   <name>Truth Core Server</name>
+#   <description>Runs Truth Training backend service.</description>
+#   <executable>%BASE%\truth_core_server.exe</executable>
+#   <logpath>%BASE%\logs</logpath>
+#   <log mode="roll"></log>
+# </service>
+
+# 4. Create NSIS installer script (installer.nsi):
 # !include "MUI2.nsh"
 # Name "Truth Core Server"
 # OutFile "truth-core-server-windows.exe"
-# InstallDir "$PROGRAMFILES\\TruthCoreServer"
+# InstallDir "$PROGRAMFILES\TruthCoreServer"
 # Page directory
 # Page instfiles
 # Section "Install"
 #   SetOutPath "$INSTDIR"
-#   File "target\\release\\truth_core_server.exe"
+#   File "target\release\truth_core_server.exe"
 #   File "winsw.exe"
 #   File "truth_core_server.xml"
-#   Rename "$INSTDIR\\winsw.exe" "$INSTDIR\\TruthCoreServer.exe"
-#   nsExec::ExecToStack '"$INSTDIR\\TruthCoreServer.exe" install'
-#   nsExec::ExecToStack '"$INSTDIR\\TruthCoreServer.exe" start'
+#   Rename "$INSTDIR\winsw.exe" "$INSTDIR\TruthCoreServer.exe"
+#   nsExec::ExecToStack '"$INSTDIR\TruthCoreServer.exe" install'
+#   nsExec::ExecToStack '"$INSTDIR\TruthCoreServer.exe" start'
 # SectionEnd
-# '@
-# Set-Content -Path installer.nsi -Value $nsisScript
-# & "makensis" "installer.nsi"
+
+# 5. Build the installer:
+makensis installer.nsi
 
 # macOS package (.pkg)
 pkgbuild --root ./payload --install-location / truth-core-server-macos.pkg
