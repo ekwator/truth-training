@@ -193,7 +193,32 @@ fpm -s dir -t deb -n truth-core-server -v 1.0.0 [files...]
 fpm -s dir -t rpm -n truth-core-server -v 1.0.0 [files...]
 
 # Windows installer (via NSIS)
-# Build with NSIS and WinSW
+# Requires NSIS and WinSW
+# 1. Install NSIS (e.g., via Chocolatey: choco install nsis)
+# 2. Download WinSW from https://github.com/winsw/winsw/releases/
+# 3. Create installer.nsi with the NSIS script
+# 4. Run makensis installer.nsi to create the installer
+
+# Example PowerShell script to create Windows installer:
+# $nsisScript = @'
+# !include "MUI2.nsh"
+# Name "Truth Core Server"
+# OutFile "truth-core-server-windows.exe"
+# InstallDir "$PROGRAMFILES\\TruthCoreServer"
+# Page directory
+# Page instfiles
+# Section "Install"
+#   SetOutPath "$INSTDIR"
+#   File "target\\release\\truth_core_server.exe"
+#   File "winsw.exe"
+#   File "truth_core_server.xml"
+#   Rename "$INSTDIR\\winsw.exe" "$INSTDIR\\TruthCoreServer.exe"
+#   nsExec::ExecToStack '"$INSTDIR\\TruthCoreServer.exe" install'
+#   nsExec::ExecToStack '"$INSTDIR\\TruthCoreServer.exe" start'
+# SectionEnd
+# '@
+# Set-Content -Path installer.nsi -Value $nsisScript
+# & "makensis" "installer.nsi"
 
 # macOS package (.pkg)
 pkgbuild --root ./payload --install-location / truth-core-server-macos.pkg
