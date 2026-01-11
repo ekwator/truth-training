@@ -39,26 +39,28 @@ UI shells for different platforms integrate with the core through FFI or HTTP AP
 ## 🔋 Repository Structure
 
 ```
-truth-training/             # Core: Rust + Actix-web + Sync Engine
-truth-training-unix/        # UI for Linux (GTK or Tauri)
-truth-training-windows/     # UI for Windows (WinUI or Tauri)
-truth-training-android/     # UI for Android (Kotlin + JNI)
-truth-training-apple/       # UI for macOS and iOS (SwiftUI + FFI)
+core/                       # Core & Server: Rust + Actix-web + Sync Engine
+app/                        # CLI Application
+ui/desktop/                 # Desktop UI (Tauri)
+truth-android-client/       # Android Client (Kotlin + JNI)
+truth-ios-client/           # iOS Client (SwiftUI + FFI)
 ```
 
 ---
 
-## 🔧 Core (Rust)
+## 🔧 Core & Server (Rust)
 
 * **Language:** Rust
 * **Frameworks:** Actix-web, Tokio
 * **Database:** SQLite (via `rusqlite`)
+* **Location:** `core/` and main `src/` directories
 * **Functions:**
 
   * Knowledge base management.
   * Event creation and processing (`truth_events`).
   * Expert system (lie detector).
   * Data synchronization via P2P.
+  * HTTP API server functionality
   * **Node discovery and address exchange** (v1.0.0):
     - UDP multicast LAN/Wi-Fi discovery (`239.255.0.1:52525`)
     - Global registry polling (HTTPS)
@@ -68,58 +70,53 @@ truth-training-apple/       # UI for macOS and iOS (SwiftUI + FFI)
 
 ---
 
+## 🏗️ Architecture Pattern: Core-Server Separation
+
+The Truth Training architecture implements a clear separation between the core library and server application:
+
+**Core Library (`core/` directory):**
+* Implemented as a Rust library crate (`core_lib`)
+* Contains domain logic, data models, storage operations, and business rules
+* Provides APIs for data processing, trust computation, and synchronization
+* Used by multiple consumers (server, CLI, mobile via FFI)
+* Independent of transport protocols or network communication
+
+**Server Application (`src/` directory):**
+* Implemented as a binary crate that depends on the core library
+* Provides HTTP API using Actix-web framework
+* Manages network communications, P2P discovery, and external integrations
+* Handles authentication, request routing, and response formatting
+* Runs as a standalone service with background tasks
+
+This separation allows the core logic to be reused across different platforms and interfaces while keeping the server focused on network and API concerns.
+
+---
+
 ## 🌐 UI Platforms
+### **Desktop UI (ui/desktop)**
 
-### **Linux (truth-training-unix)**
-
-* **Options:** GTK (via `gtk-rs`) or Tauri (HTML + Rust backend).
+* **Technology:** Tauri (HTML + Rust backend).
 * **Core connection:**
 
   * Via HTTP API (Actix).
   * Or direct function calls via crate (if installed locally).
 
-### **Windows (truth-training-windows)**
-
-* **Options:**
-
-  * **WinUI 3** (C# + Rust DLL via FFI).
-  * **Tauri** (universal approach).
-* **Connection:**
-
-  * Via HTTP API.
-  * Or via DLL + FFI.
 
 ### **Android (truth-android-client)**
 
-* **Language:** Kotlin + Room Database + WorkManager.
+**Language:** Kotlin + Room Database + WorkManager.
 * **Core connection:**
 
   * Rust compiled to `.so` (via cargo-ndk) for cryptographic operations.
   * Room database with canonical SQLite schema matching Desktop/CLI.
-  * **Node Discovery** (v1.0.0):
-    - UDP multicast listener (`LanDiscoveryClient`)
-    - Global registry polling via HTTP
-    - Background sync via WorkManager (15-minute intervals)
-    - UI integration via Jetpack Compose (`NodesScreen`)
-    - Full feature parity with Desktop/CLI discovery
 
-### **Apple (macOS/iOS) (truth-training-apple)**
+### **Apple (iOS) (truth-ios-client)**
 
-* **Options:**
-
-  * SwiftUI + Rust via FFI (`dylib`).
-  * Or Tauri for macOS.
-* **Connection:**
+* **Language:** SwiftUI + Rust via FFI (`dylib`).
+* **Core connection:**
 
   * Via FFI (calling Rust functions from Swift).
   * For iOS need Rust cross-compilation.
-
----
-
-## 📂 Integration and Updates
-
-* All UI projects connect core as **Git submodule** or as **crate from crates.io**.
-* Common documents (`docs/`) stored in `truth-training`.
 
 ---
 
@@ -127,49 +124,37 @@ truth-training-apple/       # UI for macOS and iOS (SwiftUI + FFI)
 
 ```mermaid
 flowchart TB
-    subgraph Core ["Core (Rust)"]
+    subgraph Core ["Core & Server (Rust)"]
         DB[("SQLite")]
         API["REST API (Actix-web)"]
         Sync["P2P Sync Engine"]
         Discovery["Node Discovery<br/>(UDP Multicast + Registry)"]
     end
 
-    subgraph LinuxUI ["Linux UI"]
-        GTK["GTK / Tauri"]
-        TauriWorker["Tauri Background Worker"]
-    end
-
-    subgraph WindowsUI ["Windows UI"]
-        WIN["WinUI 3 / Tauri"]
+    subgraph LinuxUI ["(Linux, Windows, macOS) UI"]
+        UI["Tauri"]
     end
 
     subgraph AndroidUI ["Android UI"]
-        AND["Kotlin + Room + WorkManager"]
-        DiscoveryClient["LanDiscoveryClient"]
-        SyncWorker["NodeSyncWorker"]
+        AND["Kotlin + JNI"]
     end
 
-    subgraph AppleUI ["macOS / iOS"]
-        APP["SwiftUI + FFI"]
+    subgraph AppleUI ["iOS"]
+        IOS["SwiftUI + FFI"]
     end
 
-    API <--> GTK
-    API <--> WIN
+    API <--> UI
     API <--> AND
-    API <--> APP
-    Discovery <--> TauriWorker
-    Discovery <--> DiscoveryClient
-    SyncWorker --> DiscoveryClient
-    SyncWorker --> DB
+    API <--> IOS
 ```
 
 ---
 
-## Node Discovery Architecture (v1.0.0)
+## Node Discovery and P2P Architecture (v1.0.0)
 
 ### Cross-Platform Discovery System
 
-All platforms (Desktop, CLI, Server, Android) share a unified node discovery system:
+All platforms (Desktop, CLI, Server, Android, iOS) share a unified node discovery system:
 
 **Discovery Channels:**
 1. **UDP Multicast (LAN/Wi-Fi)**: Broadcasts on `239.255.0.1:52525`
@@ -194,22 +179,34 @@ All platforms (Desktop, CLI, Server, Android) share a unified node discovery sys
   - Tokio interval-based discovery
   - Settings persistence
   - React UI integration (`NodesPanel.tsx`)
+  - P2P functionality via HTTP API and UDP multicast
+  - Direct database access through Rust core
 
 - **CLI (truthctl)**: Commands in `app/src/bin/truthctl.rs`
   - `nodes list/add/remove/discover/sync/cleanup/health-check/validate`
   - Direct database access via `rusqlite`
   - Full command-line interface
 
-- **Server**: HTTP API in `src/api.rs`
+- **Server**: HTTP API in `core/src/api.rs`
   - REST endpoints for node management
   - Background discovery workers
   - TTL cleanup scheduler
+  - P2P synchronization via HTTP endpoints
 
 - **Android**: Room + WorkManager in `truth-android-client/`
-  - `LanDiscoveryClient` for UDP multicast
+  - `LanDiscoveryClient` for UDP multicast (compatible with Rust implementation)
   - `DiscoveryRepository` for high-level operations
-  - `NodeSyncWorker` for periodic sync (15-minute intervals)
+  - `NodeSyncWorker` for periodic sync via WorkManager (15-minute intervals)
+  - `P2PDiscoveryService` for NSD-based peer discovery
+  - Native core integration via `TruthCore.kt` (JNI bridge to Rust library)
+  - P2P functionality via direct UDP multicast and HTTP sync
   - Compose UI (`NodesScreen.kt`)
+
+- **iOS**: Swift + Core Data in `truth-ios-client/`
+  - Bonjour/NSNetService for peer discovery
+  - Core Data for local storage with SQLite backend
+  - Native FFI integration with Rust core library
+  - P2P functionality via Bonjour and HTTP sync
 
 **Data Flow:**
 ```
@@ -217,6 +214,31 @@ UDP Multicast → Parse JSON → Verify Signature → Upsert to DB
 Global Registry → HTTP GET → Parse JSON → Upsert to DB
 Peer Sync → HTTP POST → Merge (Local > Global) → Return Merged List
 ```
+
+### P2P Communication Patterns
+
+The architecture supports multiple P2P communication patterns:
+
+**Server-Mediated Communication:**
+- Desktop and mobile applications can communicate indirectly through the server
+- All nodes sync their data via HTTP endpoints exposed by the server
+- Server acts as a relay and coordinator for network operations
+
+**Direct P2P Communication:**
+- Applications can communicate directly without server involvement
+- Uses UDP multicast for node discovery on local networks
+- Uses direct HTTP connections for data synchronization
+- More resilient and reduces server dependency
+
+**Hybrid Approach:**
+- Applications use direct P2P when possible (local networks)
+- Fall back to server-mediated communication when direct connection isn't feasible
+- Provides both efficiency and reliability
+
+**Reference Documentation:**
+- [docs/cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md) - Format specifications
+- [docs/android_discovery_architecture.md](android_discovery_architecture.md) - Android implementation details
+- [specs/008-specify-md/contracts/README.md](https://github.com/ekwator/truth-training/blob/main/specs/008-specify-md/contracts/README.md) - Sync handshake contract
 
 **Reference Documentation:**
 - [docs/cross_platform_discovery_compatibility.md](cross_platform_discovery_compatibility.md) - Format specifications
