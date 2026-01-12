@@ -59,10 +59,10 @@ Database** structure complies with **following principles** :
 • **Relational model** with explicit **primary** and **foreign** keys  
 • **Absence** of **stored** calculated **truth values**  
 • All aggregates are **calculated** at **Core** logic level  
-• Data **historization**: records are **not overwritten**, but **supplemented**  
+• Data **historization**: records are **not overwritten** or **deleted**, but **supplemented**  
 • **Support** for **multiple** sources and evaluation **contexts**  
 
-⭐️**quantum uncertainty**  
+### ⭐️**quantum uncertainty**  
 ❗This is an **advantage**, not a disadvantage  
 ⚠️ "small_constants" is **global** **small** **random** in **system** **time** "CURRENT_TIMESTAMP" function value(0, 2)
 
@@ -85,6 +85,73 @@ pub fn small_constants() -> f64 {
     }
 }
 ```
+
+### triggers
+
+This section describes the trigger system for data recalculation and aggregation that occurs when new information is added to the system. The triggers are activated when data is added through various pathways:
+
+•  By participants through the core system (core/) by entering data using desktop, mobile (android, iOS) applications when creating:
+ ◦ Events (event)
+ ◦ Impacts (impact)
+ ◦ Judgments (judgment)
+
+•  By the system server (src/) during node synchronization:
+ ◦ P2P discovery
+ ◦ Node Discovery
+
+•  By client applications (desktop, mobile android, iOS) during node synchronization:
+ ◦ P2P discovery
+ ◦ Node Discovery
+
+Below is a comprehensive list of all triggers in the system, grouped by their respective SQL files:
+
+**Triggers from docs/model_core_scoring.sql:**
+
+•  `update_impact_score_after_impact_change` - activates when a new entry is added to the `impact` table and automatically recalculates the `impact_score` for the associated `truth_event`.
+
+•  `update_judgment_score_after_judgment_change` - activates when a new entry is added to the `judgment` table and automatically recalculates the `judgment_score` for the associated event.
+
+**Triggers from docs/model_core_network_tables.sql:**
+
+•  `update_trust_score_after_rating_change` - automatically recalculates trust score and propagation priority based on new event counts when node ratings are updated.
+
+•  `cleanup_expired_tokens` - removes tokens that have exceeded their expiration time.
+
+•  `update_peer_history_after_sync` - automatically updates peer history with new synchronization information when sync logs are created.
+
+•  `update_node_metrics_after_sync` - updates performance metrics when synchronization events are logged.
+
+**Triggers from docs/model_core_collective_assessment.sql:**
+
+•  `update_participant_reputation_on_impact` - updates participant's reputation based on the accuracy of their impact assessments, comparing against the collective_score as a reference value.
+
+•  `update_participant_reputation_on_judgment` - updates participant's reputation based on the accuracy of their judgment assessments, comparing against the collective_score as a reference value.
+
+•  `aggregate_local_scores_for_global` - populates the statements table with local assessments for global calculation when truth_event is updated.
+
+**Triggers from docs/model_core_aggregated_metrics.sql:**
+
+•  `update_heuristic_weight` - updates the weight of expert heuristics based on their proven accuracy when the accuracy changes.
+
+•  `update_progress_metrics_after_event` - updates progress metrics when a new event is processed, recalculating total counts and trends.
+
+•  `update_progress_metrics_after_impact` - updates progress metrics when a new impact is recorded, recalculating impact totals and trends.
+
+These triggers ensure that all data aggregations and recalculations happen automatically in response to data changes, maintaining data consistency and system efficiency across all nodes in the network.
+
+Conceptually, the trigger system operates on the principle that any new information entering the system will automatically trigger the appropriate recalculation and aggregation processes. This ensures that the system's collective intelligence functions operate continuously and consistently, without requiring manual intervention to update scores and metrics.
+
+The trigger system represents a shift from the previous implementation where recalculation functions were called manually in Rust code. In the new v1.1.0 model, SQL triggers provide a more efficient and reliable mechanism for maintaining data consistency and ensuring that all nodes have up-to-date assessment scores.
+
+This SQL-trigger-based approach offers several advantages:
+
+• Automatic execution without requiring explicit function calls in application code
+• Atomic execution within the same transaction as the data modification
+• Consistent behavior across all nodes in the distributed system
+• Reduced complexity in the application logic layer
+• Improved performance through database-level optimizations
+
+The triggers are designed to work seamlessly with the existing data model and maintain the same computational logic as the previous Rust-based implementation, but with improved reliability and consistency.
 
 ### 2.1 Participants
 
