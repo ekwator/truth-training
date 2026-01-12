@@ -1900,11 +1900,27 @@ SELECT event_ci.created_by
 FROM event_ci
 WHERE event_ci.id = impact_predictions.event_id
 ```
+
+**Aggregation formulas "calculated_at"**
+```
+impact_predictions.created_at = CURRENT_TIMESTAMP
+```
+
+**Aggregation formulas "horizon"**
+```
+impact_predictions.horizon = (
+    SELECT (event_timeline.t_end - impact_predictions.created_at) /
+           (event_timeline.t_end - event_timeline.t_start + small_constants())
+    FROM truth_event
+    JOIN event_timeline ON truth_event.timeline_id = event_timeline.id
+    JOIN event_ci ON truth_event.id = event_ci.created_by
+    WHERE event_ci.id = impact_predictions.event_id
+)
+```
 **Aggregation formulas "expected_strength"**
 ```
 impact_predictions.expected_strength = (
-    SELECT SUM(truth_event.collective_score /
-        (truth_event.timeline_id - (SELECT event_timeline.t_start FROM event_timeline WHERE event_timeline.id = truth_event.timeline_id)))
+    SELECT SUM(truth_event.collective_score / (impact_predictions.horizon + small_constants()))
     FROM truth_event
     JOIN event_ci ON truth_event.id = event_ci.created_by
     WHERE event_ci.id = impact_predictions.event_id
@@ -1933,21 +1949,6 @@ impact_predictions.probability = (
         ) - impact_predictions.expected_strength
     ) / GREATEST(ABS(impact_predictions.expected_strength), 1)
 )
-```
-**Aggregation formulas "horizon"**
-```
-impact_predictions.horizon = (
-    SELECT (event_timeline.t_end - impact_predictions.created_at) /
-           (event_timeline.t_end - event_timeline.t_start)
-    FROM truth_event
-    JOIN event_timeline ON truth_event.timeline_id = event_timeline.id
-    JOIN event_ci ON truth_event.id = event_ci.created_by
-    WHERE event_ci.id = impact_predictions.event_id
-)
-```
-**Aggregation formulas "calculated_at"**
-```
-impact_predictions.created_at = CURRENT_TIMESTAMP
 ```
 
 **Notes** :
