@@ -1909,8 +1909,16 @@ impact_predictions.created_at = CURRENT_TIMESTAMP
 **Aggregation formulas "horizon"**
 ```
 impact_predictions.horizon = (
-    SELECT (event_timeline.t_end - impact_predictions.created_at) /
-           (event_timeline.t_end - event_timeline.t_start + small_constants())
+    SELECT (CASE
+               WHEN event_timeline.t_end IS NULL
+               THEN GREATEST(0, (event_timeline.t_start - impact_predictions.created_at))
+               ELSE (event_timeline.t_end - impact_predictions.created_at)
+            END) /
+           (CASE
+               WHEN event_timeline.t_end IS NULL
+               THEN small_constants()
+               ELSE (event_timeline.t_end - event_timeline.t_start + small_constants())
+            END)
     FROM truth_event
     JOIN event_timeline ON truth_event.timeline_id = event_timeline.id
     JOIN event_ci ON truth_event.id = event_ci.created_by
