@@ -369,8 +369,11 @@ rustup target add x86_64-apple-darwin
 
 * All UIs communicate with the core via **HTTP API** or **Direct FFI/JNI**.
 * For testing UI independently, you can run the core as a **local HTTP service** and point UI to `http://127.0.0.1:8080`.
-* **Database files**: The system uses `truth_training.sqlite` for main data and `discovery_nodes.sqlite` for the Discovery System by default.
-* **Icon files are required** for Tauri builds - ensure `ui/desktop/src-tauri/icons/` contains proper PNG/ICO files.
+* **Database files**: The system uses different database configurations depending on the application:
+  - **CLI (`truthctl`)**: Uses `truth_db.sqlite` by default in the current working directory, or specified via `--db` parameter
+  - **Desktop UI**: Uses `truth_training.sqlite` for main data and `discovery_nodes.sqlite` for the Discovery System, stored in platform-specific application data directories
+  - **Mobile (Android/iOS)**: Uses embedded databases within the application sandbox, with specific paths managed by the platform
+* **Icon files are required** for different platform builds - see [docs/ICONS.md](ICONS.md) for complete details on icon design, locations, and generation procedures for all platforms.
 * **Cross-compilation requires platform-specific tools** - install MinGW for Windows, NDK for Android, Xcode for iOS.
 * **Feature flags** are essential: use `desktop` for desktop builds, `mobile` for mobile builds, and `p2p-client-sync` for CLI.
 
