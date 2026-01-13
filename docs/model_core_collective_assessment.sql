@@ -252,16 +252,17 @@ BEGIN
         SELECT participant_id FROM truth_event WHERE id = NEW.event_id
     );
     
-    -- Update reputation score based on accuracy
-    UPDATE participants 
-    SET reputation_score = CASE 
-        WHEN total_impact > 0 THEN accurate_impact * 1.0 / total_impact
-        ELSE 0.5
-    END
-    WHERE public_key = (
-        SELECT participant_id FROM truth_event WHERE id = NEW.event_id
-    );
-END;
+    -- Update reputation score based on combined accuracy of both impact and judgment assessments
+        UPDATE participants
+        SET reputation_score = CASE
+            WHEN (total_impact + total_judgment) > 0 THEN
+                (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
+            ELSE 0.5
+        END
+        WHERE public_key = (
+            SELECT participant_id FROM truth_event WHERE id = NEW.event_id
+        );
+    END;
 
 -- Function to update participant reputation based on judgment accuracy
 -- Uses collective_score as a reference/anchor value for system state
@@ -285,18 +286,19 @@ BEGIN
         )
     );
     
-    -- Update reputation score based on accuracy
-    UPDATE participants 
-    SET reputation_score = CASE 
-        WHEN total_judgment > 0 THEN accurate_judgment * 1.0 / total_judgment
-        ELSE 0.5
-    END
-    WHERE public_key = (
-        SELECT participant_id FROM truth_event WHERE id = (
-            SELECT created_by FROM event_ci WHERE id = NEW.event_id
-        )
-    );
-END;
+    -- Update reputation score based on combined accuracy of both impact and judgment assessments
+        UPDATE participants
+        SET reputation_score = CASE
+            WHEN (total_impact + total_judgment) > 0 THEN
+                (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
+            ELSE 0.5
+        END
+        WHERE public_key = (
+            SELECT participant_id FROM truth_event WHERE id = (
+                SELECT created_by FROM event_ci WHERE id = NEW.event_id
+            )
+        );
+    END;
 
 -- Function to aggregate local collective scores for global processing
 -- This populates the statements table with local assessments for global calculation
