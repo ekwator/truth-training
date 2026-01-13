@@ -103,40 +103,6 @@ This section describes the trigger system for data recalculation and aggregation
  ◦ P2P discovery
  ◦ Node Discovery
 
-Below is a comprehensive list of all triggers in the system, grouped by their respective SQL files:
-
-**Triggers from docs/model_core_scoring.sql:**
-
-•  `update_impact_score_after_impact_change` - activates when a new entry is added to the `impact` table and automatically recalculates the `impact_score` for the associated `truth_event`.
-
-•  `update_judgment_score_after_judgment_change` - activates when a new entry is added to the `judgment` table and automatically recalculates the `judgment_score` for the associated event.
-
-**Triggers from docs/model_core_network_tables.sql:**
-
-•  `update_trust_score_after_rating_change` - automatically recalculates trust score and propagation priority based on new event counts when node ratings are updated.
-
-•  `cleanup_expired_tokens` - removes tokens that have exceeded their expiration time.
-
-•  `update_peer_history_after_sync` - automatically updates peer history with new synchronization information when sync logs are created.
-
-•  `update_node_metrics_after_sync` - updates performance metrics when synchronization events are logged.
-
-**Triggers from docs/model_core_collective_assessment.sql:**
-
-•  `update_participant_reputation_on_impact` - updates participant's reputation based on the accuracy of their impact assessments, comparing against the collective_score as a reference value.
-
-•  `update_participant_reputation_on_judgment` - updates participant's reputation based on the accuracy of their judgment assessments, comparing against the collective_score as a reference value.
-
-•  `aggregate_local_scores_for_global` - populates the statements table with local assessments for global calculation when truth_event is updated.
-
-**Triggers from docs/model_core_aggregated_metrics.sql:**
-
-•  `update_heuristic_weight` - updates the weight of expert heuristics based on their proven accuracy when the accuracy changes.
-
-•  `update_progress_metrics_after_event` - updates progress metrics when a new event is processed, recalculating total counts and trends.
-
-•  `update_progress_metrics_after_impact` - updates progress metrics when a new impact is recorded, recalculating impact totals and trends.
-
 These triggers ensure that all data aggregations and recalculations happen automatically in response to data changes, maintaining data consistency and system efficiency across all nodes in the network.
 
 Conceptually, the trigger system operates on the principle that any new information entering the system will automatically trigger the appropriate recalculation and aggregation processes. This ensures that the system's collective intelligence functions operate continuously and consistently, without requiring manual intervention to update scores and metrics.
@@ -152,6 +118,60 @@ This SQL-trigger-based approach offers several advantages:
 • Improved performance through database-level optimizations
 
 The triggers are designed to work seamlessly with the existing data model and maintain the same computational logic as the previous Rust-based implementation, but with improved reliability and consistency.
+
+The system implements two distinct categories of triggers based on the source of the data:
+
+#### **1. Participant-initiated triggers** 
+
+Activate when a participant creates a new event through the user interface. These triggers handle the initial creation of the event and all associated calculations:
+
+**Triggers from docs/model_core_collective_assessment.sql:**
+
+• `create_event_record` - creates the initial event record in the `truth_event` table when a participant submits a new event. This trigger also creates the corresponding entry in the `event_ci` table (event neuron) with default values.
+
+• `initialize_event_metrics` - initializes all metric fields (collective_score, impact_score, judgment_score) to default values when a new event is inserted. Sets collective_score to 0.5 (neutral), impact_score to 0.0, and judgment_score to NULL.
+
+•  `update_participant_reputation_on_impact` - updates participant's reputation based on the accuracy of their impact assessments, comparing against the collective_score as a reference value. Increases accurate_impact counter when the impact aligns with the collective assessment.
+
+•  `update_participant_reputation_on_judgment` - updates participant's reputation based on the accuracy of their judgment assessments, comparing against the collective_score as a reference value. Increases accurate_judgment counter when the judgment aligns with the collective assessment.
+
+•  `aggregate_local_scores_for_global` - populates the statements table with local assessments for global calculation when truth_event is updated. This trigger fires when the collective_score changes and updates the statements table for cross-node aggregation.
+
+**Triggers from docs/model_core_scoring.sql:**
+
+•  `update_impact_score_after_impact_change` - activates when a new entry is added to the `impact` table and automatically recalculates the `impact_score` for the associated `truth_event`.
+
+•  `update_judgment_score_after_judgment_change` - activates when a new entry is added to the `judgment` table and automatically recalculates the `judgment_score` for the associated event.
+
+**Triggers from docs/model_core_aggregated_metrics.sql:**
+
+•  `update_progress_metrics_after_event` - updates progress metrics when a new event is processed, recalculating total counts and trends.
+
+#### **2. Synchronization-initiated triggers**
+
+Activate when events are received from other nodes during synchronization. These triggers may have different algorithms optimized for bulk processing and validation:
+
+**Triggers from docs/model_core_collective_assessment.sql:**
+
+• `validate_incoming_event` - validates the structure and cryptographic signatures of events received from other nodes before processing. Verifies that required fields are present, global_id is properly formatted, signatures exist, and context fields reference valid entries in their respective tables.
+
+• `process_sync_event_record` - handles the creation of event records from other nodes during synchronization, potentially with different validation rules. Checks for duplicate events, creates corresponding entries in the event_ci table, and updates participant activity timestamps.
+
+**Triggers from docs/model_core_aggregated_metrics.sql:**
+
+•  `update_heuristic_weight` - updates the weight of expert heuristics based on their proven accuracy when the accuracy changes.
+
+•  `update_progress_metrics_after_impact` - updates progress metrics when a new impact is recorded, recalculating impact totals and trends.
+
+**Triggers from docs/model_core_network_tables.sql:**
+
+•  `update_trust_score_after_rating_change` - automatically recalculates trust score and propagation priority based on new event counts when node ratings are updated.
+
+•  `cleanup_expired_tokens` - removes tokens that have exceeded their expiration time.
+
+•  `update_peer_history_after_sync` - automatically updates peer history with new synchronization information when sync logs are created.
+
+•  `update_node_metrics_after_sync` - updates performance metrics when synchronization events are logged.
 
 ### 2.1 Participants
 

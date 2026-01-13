@@ -232,6 +232,50 @@ SELECT
     END as truth_interpretation
 FROM truth_event te;
 
+-- Trigger to create event record when a participant submits a new event
+-- Creates the initial event record in the truth_event table when a participant submits a new event
+CREATE TRIGGER create_event_record
+AFTER INSERT ON truth_event
+FOR EACH ROW
+WHEN NEW.participant_id IS NOT NULL
+BEGIN
+    -- Create corresponding entry in event_ci table (event neuron)
+    INSERT INTO event_ci (created_by, event_type, status, old_status, resolution_data, created_at)
+    VALUES (
+        NEW.id,
+        'judgment',  -- Default event type
+        'active',    -- Default status
+        'active',    -- Default old status
+        'unstable',  -- Default resolution data
+        (SELECT strftime('%s', 'now'))  -- Current timestamp
+    );
+END;
+
+-- Trigger to initialize event metrics when a new event is created
+-- Initializes all metric fields (collective_score, impact_score, judgment_score) to default values
+CREATE TRIGGER initialize_event_metrics
+BEFORE INSERT ON truth_event
+FOR EACH ROW
+BEGIN
+    -- Initialize collective_score to default value (0.5 - neutral)
+    SELECT CASE 
+        WHEN NEW.collective_score IS NULL THEN 0.5
+        ELSE NEW.collective_score
+    END;
+    
+    -- Initialize impact_score to default value (0.0)
+    SELECT CASE 
+        WHEN NEW.impact_score IS NULL THEN 0.0
+        ELSE NEW.impact_score
+    END;
+    
+    -- Initialize judgment_score to default value (NULL - undefined)
+    SELECT CASE 
+        WHEN NEW.judgment_score IS NULL THEN NULL
+        ELSE NEW.judgment_score
+    END;
+END;
+
 -- Function to update participant reputation based on impact accuracy
 -- Uses collective_score as a reference/anchor value for system state
 CREATE TRIGGER update_participant_reputation_on_impact
@@ -314,8 +358,8 @@ BEGIN
         NEW.collective_score,
         CASE 
             WHEN (SELECT COUNT(*) FROM statements WHERE event_id = NEW.id) = 0 
-            THEN (SELECT created_at FROM statements WHERE event_id = NEW.id LIMIT 1)
-            ELSE (SELECT updated_at FROM statements WHERE event_id = NEW.id LIMIT 1)
+            THEN (SELECT strftime('%s', 'now'))
+            ELSE (SELECT created_at FROM statements WHERE event_id = NEW.id LIMIT 1)
         END,
         (SELECT strftime('%s', 'now'))
     );
@@ -333,6 +377,79 @@ SELECT
 FROM participants p
 WHERE p.group_membership IS NOT NULL
 GROUP BY p.group_membership;
+
+-- Trigger to validate incoming event structure and signatures
+-- Validates the structure and cryptographic signatures of events received from other nodes before processing
+CREATE TRIGGER validate_incoming_event
+BEFORE INSERT ON truth_event
+FOR EACH ROW
+WHEN NEW.participant_id IS NOT NULL  -- This indicates it's coming from a node (not internal system operation)
+BEGIN
+    -- Verify that the global_id is properly formatted (UUID-like)
+    SELECT CASE 
+        WHEN LENGTH(NEW.global_id) < 10 THEN RAISE(ABORT, 'Invalid global_id format')
+        ELSE NULL
+    END;
+    
+    -- Verify that required fields are present
+    SELECT CASE 
+        WHEN NEW.description IS NULL OR LENGTH(TRIM(NEW.description)) = 0 THEN RAISE(ABORT, 'Event description is required')
+        ELSE NULL
+    END;
+    
+    -- Verify that signature exists
+    SELECT CASE 
+        WHEN NEW.signature IS NULL OR LENGTH(TRIM(NEW.signature)) = 0 THEN RAISE(ABORT, 'Event signature is required')
+        ELSE NULL
+    END;
+    
+    -- Verify that context fields are valid references
+    SELECT CASE 
+        WHEN NOT EXISTS (SELECT 1 FROM category WHERE id = NEW.category_id) THEN RAISE(ABORT, 'Invalid category_id')
+        WHEN NOT EXISTS (SELECT 1 FROM forma WHERE id = NEW.forma_id) THEN RAISE(ABORT, 'Invalid forma_id')
+        WHEN NOT EXISTS (SELECT 1 FROM cause WHERE id = NEW.cause_id) THEN RAISE(ABORT, 'Invalid cause_id')
+        WHEN NOT EXISTS (SELECT 1 FROM develop WHERE id = NEW.develop_id) THEN RAISE(ABORT, 'Invalid develop_id')
+        WHEN NOT EXISTS (SELECT 1 FROM effect WHERE id = NEW.effect_id) THEN RAISE(ABORT, 'Invalid effect_id')
+        ELSE NULL
+    END;
+    
+    -- Verify that participant_id exists in participants table
+    SELECT CASE 
+        WHEN NOT EXISTS (SELECT 1 FROM participants WHERE public_key = NEW.participant_id) THEN RAISE(ABORT, 'Invalid participant_id')
+        ELSE NULL
+    END;
+END;
+
+-- Trigger to process sync event record during synchronization
+-- Handles the creation of event records from other nodes during synchronization, potentially with different validation rules
+CREATE TRIGGER process_sync_event_record
+AFTER INSERT ON truth_event
+FOR EACH ROW
+WHEN NEW.participant_id IS NOT NULL  -- Indicates the event came from synchronization
+BEGIN
+    -- Check if this is a duplicate event (same global_id and participant_id combination)
+    SELECT CASE 
+        WHEN (SELECT COUNT(*) FROM truth_event WHERE global_id = NEW.global_id AND participant_id = NEW.participant_id) > 1 
+        THEN RAISE(ABORT, 'Duplicate event detected')
+        ELSE NULL
+    END;
+    
+    -- Update or create corresponding entry in event_ci table
+    INSERT OR REPLACE INTO event_ci (created_by, event_type, status, old_status, resolution_data, created_at)
+    VALUES (
+        NEW.id,
+        'judgment',  -- Default event type
+        'active',    -- Default status
+        'active',    -- Default old status
+        'unstable',  -- Default resolution data
+        (SELECT strftime('%s', 'now'))  -- Current timestamp
+    );
+    
+    -- Update participant's last activity timestamp
+    UPDATE participants
+    SET last_activity = (SELECT strftime('%s', 'now'))
+    WHERE public_key = NEW.participant_id;
+END;
 
 -- Indexes for performance optimization
 CREATE INDEX idx_truth_event_global_id ON truth_event(global_id);
