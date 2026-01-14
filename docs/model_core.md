@@ -1406,11 +1406,19 @@ Eᵢ=⟨gidᵢ,authorᵢ,descᵢ,ctxᵢ,vᵢ,dᵢ,cᵢ,csᵢ,ciᵢ,cjᵢ⟩
 • When a participant sets this flag, it indicates that in their opinion the event and its judgments/impacts align with the truth and are relevant from their perspective  
 • This flag should be characterized as "I Confirm" in the application interface  
 ```
-	truth_event.detected  
+	truth_event.detected
 ```
+
 - cᵢ ∈ [0,255] — **circulation code**  
+• **Circulation code**, used by the transport system to control event propagation through the P2P network  
+• This field operates as an 8-bit value where upper 2 bits represent service codes (00/01/10/11) and lower 6 bits serve as counter/metadata (0..63)  
+• Code `01` indicates a "permanent" event that gets relayed through the network, originally assigned by the author on creation  
+• The code controls distribution protocol but does not participate directly in truth calculation - it affects only transport logic  
+• Code transitions (00↔01, 01→11, etc.) are determined automatically based on event evaluation scores (S_e) and threshold rules (T_up, T_down)  
+• When forwarding events, nodes may decrement counter bits to control propagation scope, or temporarily change codes to manage network traffic  
+• For detailed algorithm see [docs/event_rating_protocol.md](event_rating_protocol.md) and [spec/07-event-rating-protocol.md](../spec/07-event-rating-protocol.md)  
 ```
-	truth_event.code  
+	truth_event.code
 ```
 - csᵢ - learning **progress metric**  
 ```
