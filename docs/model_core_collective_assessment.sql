@@ -451,64 +451,53 @@ BEGIN
         WHERE event_id = ec.id
         AND DATE(created_at, 'unixepoch') = DATE('now', 'unixepoch')  -- Same day check to avoid duplicates
     );
-    
-    -- Update participant reputation based on prediction accuracy when event is resolved
-    -- This connects to the reputation system by comparing predictions with actual outcomes
+END;
+
+-- Trigger to update participant reputation based on impact_predictions accuracy
+-- This trigger aggregates prediction accuracy across all events where the participant is the event creator
+-- Connection: impact_predictions.event_id -> event_ci.id -> event_ci.created_by -> truth_event.id -> truth_event.participant_id
+-- Updates reputation considering horizon (predictions made earlier have more weight)
+-- Reputation is calculated by aggregating all predictions for all events created by the participant
+CREATE TRIGGER update_participant_reputation_on_prediction_accuracy
+AFTER UPDATE ON event_ci
+FOR EACH ROW
+WHEN NEW.status IN ('resolved', 'archived') AND OLD.status NOT IN ('resolved', 'archived')
+BEGIN
+    -- Update reputation for the participant who created the event (identified via truth_event.participant_id)
+    -- Aggregate all predictions across all events and calculate weighted accuracy
     UPDATE participants
     SET
-        total_impact = total_impact + 1,
-        accurate_impact = accurate_impact + CASE
-            -- Determine if the prediction was accurate based on comparison with actual impact
-            WHEN NEW.status IN ('resolved', 'archived') THEN
-                (SELECT CASE
-                    WHEN ABS(
-                        (SELECT COALESCE(AVG(i.value), 0.5)
-                         FROM impact i
-                         WHERE i.event_id = te.id) -
-                        (ip.expected_strength / 10.0)
-                    ) < 0.2 THEN 1  -- Consider prediction accurate if difference is less than 0.2
-                    ELSE 0
-                END
-                FROM truth_event te
-                JOIN impact_predictions ip ON ip.event_id = ec.id
-                WHERE te.id = ec.created_by AND ip.id = (
-                    SELECT id FROM impact_predictions
-                    WHERE event_id = ec.id
-                    ORDER BY created_at DESC LIMIT 1  -- Get the latest prediction record
-                )
-                LIMIT 1)
-            ELSE 0
-        END,
-        -- Recalculate reputation score based on accuracy
-        reputation_score = CASE
-            WHEN (total_impact + 1) > 0 THEN
-                (accurate_impact + CASE
-                    WHEN NEW.status IN ('resolved', 'archived') THEN
-                        (SELECT CASE
-                            WHEN ABS(
-                                (SELECT COALESCE(AVG(i.value), 0.5)
-                                 FROM impact i
-                                 WHERE i.event_id = te.id) -
-                                (ip.expected_strength / 10.0)
-                            ) < 0.2 THEN 1
-                            ELSE 0
-                        END
-                        FROM truth_event te
-                        JOIN impact_predictions ip ON ip.event_id = ec.id
-                        WHERE te.id = ec.created_by AND ip.id = (
-                            SELECT id FROM impact_predictions
-                            WHERE event_id = ec.id
-                            ORDER BY created_at DESC LIMIT 1  -- Get the latest prediction record
-                        )
-                        LIMIT 1)
-                    ELSE 0
-                END) * 1.0 / (total_impact + 1)
-            ELSE 0.5
-        END
-    FROM event_ci ec
-    JOIN truth_event te ON te.id = ec.created_by
-    WHERE ec.id = NEW.id
-    AND te.participant_id = participants.public_key;
+        -- Recalculate reputation score considering horizon (predictions made earlier have more weight)
+        -- Aggregate all predictions for all events where participant created impact records
+        reputation_score = (
+            SELECT COALESCE(
+                -- Weighted accuracy: predictions with larger horizon (made earlier) have more weight
+                SUM(
+                    CASE 
+                        -- Calculate accuracy: compare expected_strength with actual collective_score
+                        -- Prediction is accurate if the difference is small relative to expected_strength
+                        WHEN ABS(ip.expected_strength - COALESCE(te.collective_score, 0.5)) <= 
+                            GREATEST(ABS(ip.expected_strength) * 0.2, 0.1)
+                        THEN (ip.horizon + 1.0)  -- Weight by horizon: larger horizon = more weight
+                        ELSE 0.0
+                    END
+                ) * 1.0 / NULLIF(
+                    SUM(ip.horizon + 1.0), 0
+                ),
+                0.5  -- Default reputation if no predictions
+            )
+            FROM impact_predictions ip
+            JOIN event_ci ec ON ip.event_id = ec.id
+            JOIN truth_event te ON ec.created_by = te.id
+            WHERE te.participant_id = participants.public_key
+            AND ec.status IN ('resolved', 'archived')
+        )
+    WHERE public_key = (
+        SELECT te.participant_id
+        FROM truth_event te
+        JOIN event_ci ec ON te.id = ec.created_by
+        WHERE ec.id = NEW.id
+    );
 END;
 
 -- Function to update participant reputation based on impact accuracy

@@ -137,7 +137,9 @@ Activate when a participant creates a new event through the user interface. Thes
 
 •  `create_impact_prediction_on_impact_creation` - creates a new record in the `impact_predictions` table when a participant creates an impact record that relates to a future predicted factual consequence. This trigger calculates prediction values based on the event's impact data and collective score when a new impact is recorded.
 
-•  `create_impact_predictions_on_status_change` - updates records in the `impact_predictions` table when an event's status changes in `event_ci.status` (e.g. from "active"/"resolved" to "archived"). This trigger adjusts prediction probabilities based on the actual outcomes compared to expected values when the event reaches a resolution state.
+•  `create_impact_predictions_on_status_change` - creates new records in the `impact_predictions` table when an event's status changes in `event_ci.status` (e.g. from "active"/"resolved" to "archived"). This trigger preserves historical prediction data and adjusts prediction probabilities based on the actual outcomes compared to expected values when the event reaches a resolution state.
+
+•  `update_participant_reputation_on_prediction_accuracy` - updates participant reputation based on the accuracy of impact predictions. This trigger aggregates prediction accuracy across all events where the participant created impact records, comparing `impact_predictions.expected_strength` against actual `truth_event.collective_score`. The calculation considers the `horizon` value: predictions made earlier (with larger horizon values) receive greater weight in reputation calculations. Reputation is updated when events transition to "resolved" or "archived" status.
 
 •  `aggregate_local_scores_for_global` - populates the statements table with local assessments for global calculation when truth_event is updated. This trigger fires when the collective_score changes and updates the statements table for cross-node aggregation.
 
@@ -1897,6 +1899,14 @@ impact_metrics.calculated_at = CURRENT_TIMESTAMP
 
 **Aggregation and Updates** :  
 • **Comparison** and subsequent **reputation** adjustments occur as data is received for an **event**  
+• **Participant reputation** is calculated by **aggregating** all **prediction records** from the "impact_predictions" table across all events created by the participant  
+• **Participant identification**: The connection is established through `impact_predictions.event_id` → `event_ci.id` → `event_ci.created_by` → `truth_event.id` → `truth_event.participant_id`  
+• **Reputation calculation** considers the **horizon** value: predictions made earlier (with larger horizon values) have more weight in the reputation calculation  
+• When an event status changes to "resolved" or "archived", the system evaluates the accuracy of all predictions for that event by comparing "impact_predictions.expected_strength" and "impact_predictions.probability" against the actual realized impact data ("truth_event.collective_score")  
+• **Prediction accuracy** is determined by comparing the difference between "expected_strength" and the actual "collective_score": a prediction is considered accurate if the absolute difference is within 20% of the expected_strength (with a minimum threshold of 0.1)  
+• **Horizon-based weighting**: Predictions with larger horizon values (made before the event occurred, when t_end was NULL) receive greater weight in reputation calculations, as they demonstrate predictive ability  
+• After the event end date (t_end) is determined, all calculations use concrete values based on the event status in the "event_ci" table  
+• The **weighted accuracy** for reputation is calculated as: SUM(accurate_predictions * (horizon + 1.0)) / SUM(all_predictions * (horizon + 1.0)), where accurate predictions have horizon-weighted contributions  
   
 **See also** :  
 • **Participant Reputation Model** (Table: "participants", Table: "reputation_history"): Defines how "accurate_impact" and "total_impact" contribute to "reputation_score"  
