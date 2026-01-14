@@ -137,6 +137,8 @@ Activate when a participant creates a new event through the user interface. Thes
 
 •  `aggregate_local_scores_for_global` - populates the statements table with local assessments for global calculation when truth_event is updated. This trigger fires when the collective_score changes and updates the statements table for cross-node aggregation.
 
+•  `create_impact_prediction_on_correction` - creates a new record in the `impact_predictions` table when the `corrected` flag in `truth_event` is set to 1. This trigger calculates prediction values based on the event's impact data and collective score, then resets the `corrected` flag to 0 after processing.
+
 **Triggers from docs/model_core_scoring.sql:**
 
 •  `update_impact_score_after_impact_change` - activates when a new entry is added to the `impact` table and automatically recalculates the `impact_score` for the associated `truth_event`.
@@ -1439,7 +1441,7 @@ The `judgment_score` field represents the cumulative truth assessment of the eve
 
 Both scores are continuously updated as new impact and judgment data becomes available at the local node. They reflect the local node's current understanding of the event's impact and truth value based on available information, but are not the final global truth values.
 
-- crᵢ - **correction flag**, used locally to review the **impact**, **judgment** and **training progress**  
+- crᵢ - **correction flag**, used locally to review the **impact** for **training progress**  
 📝 Not transmitted over the network  
 ```
 	truth_event.corrected

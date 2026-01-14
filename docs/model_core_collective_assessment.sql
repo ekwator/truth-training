@@ -1,9 +1,42 @@
--- **Document Version:** v1.1.0  
+ocs/model_core_collective_assessment.sql</path>
+<content lines="1-461">-- **Document Version:** v1.1.0  
 -- **Status:** Specification  
 -- **Updated:** 2025-12-28  
 -- **Status:** Approved
 -- SQL Model for Collective Event Assessment Logic
 -- Based on docs/model_core.md:1377-1429 Collective Event Assessment
+
+-- Table for storing participant impact assessments
+CREATE TABLE impact (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    type_id INTEGER NOT NULL,
+    trend INTEGER NOT NULL,  -- impact trend 0/1/2/3 (logical_negative/logical_positive/illogical_negative/illogical_positive)
+    value INTEGER,           -- impact value (NULL/0/1 for measurable/negative/positive)
+    notes TEXT,
+    impact_metrics INTEGER NOT NULL,
+    impact_predictions INTEGER NOT NULL,
+    timeline_id INTEGER NOT NULL,
+    FOREIGN KEY (event_id) REFERENCES truth_event(id),
+    FOREIGN KEY (type_id) REFERENCES effect(id),
+    FOREIGN KEY (impact_metrics) REFERENCES impact_metrics(id),
+    FOREIGN KEY (impact_predictions) REFERENCES impact_predictions(id),
+    FOREIGN KEY (timeline_id) REFERENCES impact_timeline(id),
+    UNIQUE(participant_id, event_id)
+);
+
+-- Table for impact predictions
+CREATE TABLE impact_predictions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,              -- FK → event_ci.id
+    predicted_impact_type INTEGER NOT NULL, -- FK → effect.id
+    expected_strength REAL NOT NULL,        -- Expected expression, signal strength
+    probability REAL NOT NULL,              -- Participant confidence that the predicted effect occurred
+    horizon REAL NOT NULL,                  -- Time interval, predicted time lag
+    created_at INTEGER NOT NULL,            -- Timestamp of creation
+    FOREIGN KEY (event_id) REFERENCES event_ci(id),
+    FOREIGN KEY (predicted_impact_type) REFERENCES effect(id)
+);
 
 -- Core table for truth events with collective assessment metrics
 CREATE TABLE truth_event (
@@ -32,25 +65,6 @@ CREATE TABLE truth_event (
     FOREIGN KEY (develop_id) REFERENCES develop(id),
     FOREIGN KEY (effect_id) REFERENCES effect(id),
     FOREIGN KEY (timeline_id) REFERENCES event_timeline(id)
-);
-
--- Table for storing participant impact assessments
-CREATE TABLE impact (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL,
-    type_id INTEGER NOT NULL,
-    trend INTEGER NOT NULL,  -- impact trend 0/1/2/3 (logical_negative/logical_positive/illogical_negative/illogical_positive)
-    value INTEGER,           -- impact value (NULL/0/1 for measurable/negative/positive)
-    notes TEXT,
-    impact_metrics INTEGER NOT NULL,
-    impact_predictions INTEGER NOT NULL,
-    timeline_id INTEGER NOT NULL,
-    FOREIGN KEY (event_id) REFERENCES truth_event(id),
-    FOREIGN KEY (type_id) REFERENCES effect(id),
-    FOREIGN KEY (impact_metrics) REFERENCES impact_metrics(id),
-    FOREIGN KEY (impact_predictions) REFERENCES impact_predictions(id),
-    FOREIGN KEY (timeline_id) REFERENCES impact_timeline(id),
-    UNIQUE(participant_id, event_id)
 );
 
 -- Table for storing participant judgment assessments
@@ -82,6 +96,19 @@ CREATE TABLE impact_metrics (
     uncertainty INTEGER,      -- Undefined rating
     calculated_at INTEGER NOT NULL,
     FOREIGN KEY (event_id) REFERENCES event_ci(id)
+);
+
+-- Table for impact predictions
+CREATE TABLE impact_predictions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,              -- FK → event_ci.id
+    predicted_impact_type INTEGER NOT NULL, -- FK → effect.id
+    expected_strength REAL NOT NULL,        -- Expected expression, signal strength
+    probability REAL NOT NULL,              -- Participant confidence that the predicted effect occurred
+    horizon REAL NOT NULL,                  -- Time interval, predicted time lag
+    created_at INTEGER NOT NULL,            -- Timestamp of creation
+    FOREIGN KEY (event_id) REFERENCES event_ci(id),
+    FOREIGN KEY (predicted_impact_type) REFERENCES effect(id)
 );
 
 -- Table for tracking participant reputation and trust
@@ -274,6 +301,57 @@ BEGIN
         WHEN NEW.judgment_score IS NULL THEN NULL
         ELSE NEW.judgment_score
     END;
+END;
+
+-- Trigger to create impact predictions when corrected flag is set
+-- When the corrected flag is set during impact assessment, creates a new impact prediction record
+CREATE TRIGGER create_impact_prediction_on_correction
+AFTER UPDATE ON truth_event
+FOR EACH ROW
+WHEN NEW.corrected = 1 AND OLD.corrected = 0  -- Only when corrected flag changes from 0 to 1
+BEGIN
+    -- Insert a new record into impact_predictions based on the event's impact data
+    INSERT INTO impact_predictions (
+        event_id,
+        predicted_impact_type,
+        expected_strength,
+        probability,
+        horizon,
+        created_at
+    )
+    SELECT
+        ec.id,                                    -- event_id from event_ci
+        NEW.effect_id,                           -- predicted_impact_type from truth_event.effect_id
+        -- Calculate expected_strength based on collective_score and impact horizon
+        (SELECT SUM(te.collective_score / (COALESCE(ipt.horizon, 1) + 0.001))
+         FROM truth_event te
+         JOIN event_ci ec2 ON te.id = ec2.created_by
+         LEFT JOIN impact_predictions ipt ON ec2.id = ipt.event_id
+         WHERE ec2.id = ec.id),                  -- expected_strength using formula from documentation
+        -- Calculate probability based on impact accuracy
+        (SELECT 1 - ABS(COALESCE(AVG(i.value), 0) - te.collective_score) / (COALESCE(te.collective_score, 0.5) + 0.001)
+         FROM impact i
+         JOIN truth_event te ON i.event_id = te.id
+         WHERE te.id = NEW.id),                  -- probability based on comparison of impact and collective score
+        -- Calculate horizon as (t_end - created_at) / (t_end - t_start) as specified in documentation
+        (SELECT (et.t_end - (SELECT created_at FROM event_ci WHERE created_by = NEW.id)) /
+                (et.t_end - et.t_start + 0.001)  -- Adding small constant to avoid division by zero
+         FROM event_timeline et
+         WHERE et.id = NEW.timeline_id),         -- horizon from event timeline
+        (SELECT strftime('%s', 'now'))           -- created_at timestamp
+    FROM event_ci ec
+    WHERE ec.created_by = NEW.id
+    AND NOT EXISTS (                              -- Make sure we don't create duplicate predictions
+        SELECT 1 FROM impact_predictions
+        WHERE event_id = ec.id
+        AND predicted_impact_type = NEW.effect_id
+        AND DATE(created_at, 'unixepoch') = DATE('now', 'unixepoch')  -- Same day check to avoid duplicates
+    );
+    
+    -- Reset the corrected flag to 0 after processing
+    UPDATE truth_event
+    SET corrected = 0
+    WHERE id = NEW.id;
 END;
 
 -- Function to update participant reputation based on impact accuracy
