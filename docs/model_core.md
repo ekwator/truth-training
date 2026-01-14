@@ -1408,7 +1408,6 @@ Eᵢ=⟨gidᵢ,authorᵢ,descᵢ,ctxᵢ,vᵢ,dᵢ,cᵢ,csᵢ,ciᵢ,cjᵢ⟩
 ```
 	truth_event.detected
 ```
-
 - cᵢ ∈ [0,255] — **circulation code**  
 • **Circulation code**, used by the transport system to control event propagation through the P2P network  
 • This field operates as an 8-bit value where upper 2 bits represent service codes (00/01/10/11) and lower 6 bits serve as counter/metadata (0..63)  
