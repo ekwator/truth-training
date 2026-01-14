@@ -354,6 +354,163 @@ BEGIN
     WHERE id = NEW.id;
 END;
 
+-- Trigger to create impact prediction when a participant creates an impact record
+-- This trigger creates a new record in the impact_predictions table when a participant creates an impact record
+-- that relates to a future predicted factual consequence.
+CREATE TRIGGER create_impact_prediction_on_impact_creation
+AFTER INSERT ON impact
+FOR EACH ROW
+WHEN NEW.value IS NOT NULL  -- Only when the impact has a factual value (not NULL)
+BEGIN
+    -- Insert a new record into impact_predictions based on the newly created impact
+    INSERT INTO impact_predictions (
+        event_id,
+        predicted_impact_type,
+        expected_strength,
+        probability,
+        horizon,
+        created_at
+    )
+    SELECT
+        ec.id,                                    -- event_id from event_ci
+        NEW.type_id,                             -- predicted_impact_type from the new impact record
+        -- Calculate expected_strength based on collective_score and impact horizon
+        (SELECT COALESCE(te.collective_score, 0.5) 
+         FROM truth_event te
+         WHERE te.id = NEW.event_id),            -- Use the collective score of the event
+        -- Set probability to a moderate value when creating prediction from impact
+        0.6,                                     -- Default probability for new predictions
+        -- Calculate horizon as a default value (could be adjusted based on event timeline)
+        30.0,                                    -- Default horizon of 30 days
+        (SELECT strftime('%s', 'now'))           -- created_at timestamp
+    FROM event_ci ec
+    WHERE ec.created_by = NEW.event_id
+    AND NOT EXISTS (                             -- Make sure we don't create duplicate predictions
+        SELECT 1 FROM impact_predictions
+        WHERE event_id = ec.id
+        AND predicted_impact_type = NEW.type_id
+        AND DATE(created_at, 'unixepoch') = DATE('now', 'unixepoch')  -- Same day check to avoid duplicates
+    );
+END;
+
+-- Trigger to create impact predictions when event status changes
+-- This trigger creates new records in the impact_predictions table when an event's status changes in event_ci.status
+-- (e.g. from "active"/"resolved" to "archived"), preserving historical prediction data for aggregation
+CREATE TRIGGER create_impact_predictions_on_status_change
+AFTER UPDATE ON event_ci
+FOR EACH ROW
+WHEN OLD.status != NEW.status
+BEGIN
+    -- Insert new prediction records based on the status change, preserving historical data
+    INSERT INTO impact_predictions (
+        event_id,
+        predicted_impact_type,
+        expected_strength,
+        probability,
+        horizon,
+        created_at
+    )
+    SELECT
+        ec.id,                                    -- event_id from event_ci
+        te.effect_id,                            -- predicted_impact_type from truth_event.effect_id
+        -- Calculate expected_strength based on collective_score
+        COALESCE(te.collective_score, 0.5) as expected_strength,
+        -- Calculate probability based on status change and impact accuracy
+        CASE
+            -- When an event moves to resolved or archived status, calculate probability based on actual outcomes
+            WHEN NEW.status IN ('resolved', 'archived') THEN
+                -- Calculate probability based on comparison between expected and actual impact
+                (SELECT
+                    1.0 - ABS(
+                        (SELECT COALESCE(AVG(i.value), 0.5)
+                         FROM impact i
+                         WHERE i.event_id = te.id) -
+                        (te.collective_score / 10.0)
+                    )
+                 FROM truth_event te2
+                 WHERE te2.id = te.id)
+            ELSE
+                -- Default probability for non-resolved statuses
+                0.6
+        END as probability,
+        -- Calculate horizon based on status
+        CASE
+            WHEN NEW.status = 'archived' THEN
+                -- If archived, set horizon to 0 as the prediction period has ended
+                0.0
+            ELSE
+                -- Default horizon for other statuses
+                30.0
+        END as horizon,
+        (SELECT strftime('%s', 'now')) as created_at  -- Current timestamp
+    FROM event_ci ec
+    JOIN truth_event te ON te.id = ec.created_by
+    WHERE ec.id = NEW.id
+    AND NOT EXISTS (                              -- Make sure we don't create duplicate predictions for the same status change on the same day
+        SELECT 1 FROM impact_predictions
+        WHERE event_id = ec.id
+        AND DATE(created_at, 'unixepoch') = DATE('now', 'unixepoch')  -- Same day check to avoid duplicates
+    );
+    
+    -- Update participant reputation based on prediction accuracy when event is resolved
+    -- This connects to the reputation system by comparing predictions with actual outcomes
+    UPDATE participants
+    SET
+        total_impact = total_impact + 1,
+        accurate_impact = accurate_impact + CASE
+            -- Determine if the prediction was accurate based on comparison with actual impact
+            WHEN NEW.status IN ('resolved', 'archived') THEN
+                (SELECT CASE
+                    WHEN ABS(
+                        (SELECT COALESCE(AVG(i.value), 0.5)
+                         FROM impact i
+                         WHERE i.event_id = te.id) -
+                        (ip.expected_strength / 10.0)
+                    ) < 0.2 THEN 1  -- Consider prediction accurate if difference is less than 0.2
+                    ELSE 0
+                END
+                FROM truth_event te
+                JOIN impact_predictions ip ON ip.event_id = ec.id
+                WHERE te.id = ec.created_by AND ip.id = (
+                    SELECT id FROM impact_predictions
+                    WHERE event_id = ec.id
+                    ORDER BY created_at DESC LIMIT 1  -- Get the latest prediction record
+                )
+                LIMIT 1)
+            ELSE 0
+        END,
+        -- Recalculate reputation score based on accuracy
+        reputation_score = CASE
+            WHEN (total_impact + 1) > 0 THEN
+                (accurate_impact + CASE
+                    WHEN NEW.status IN ('resolved', 'archived') THEN
+                        (SELECT CASE
+                            WHEN ABS(
+                                (SELECT COALESCE(AVG(i.value), 0.5)
+                                 FROM impact i
+                                 WHERE i.event_id = te.id) -
+                                (ip.expected_strength / 10.0)
+                            ) < 0.2 THEN 1
+                            ELSE 0
+                        END
+                        FROM truth_event te
+                        JOIN impact_predictions ip ON ip.event_id = ec.id
+                        WHERE te.id = ec.created_by AND ip.id = (
+                            SELECT id FROM impact_predictions
+                            WHERE event_id = ec.id
+                            ORDER BY created_at DESC LIMIT 1  -- Get the latest prediction record
+                        )
+                        LIMIT 1)
+                    ELSE 0
+                END) * 1.0 / (total_impact + 1)
+            ELSE 0.5
+        END
+    FROM event_ci ec
+    JOIN truth_event te ON te.id = ec.created_by
+    WHERE ec.id = NEW.id
+    AND te.participant_id = participants.public_key;
+END;
+
 -- Function to update participant reputation based on impact accuracy
 -- Uses collective_score as a reference/anchor value for system state
 CREATE TRIGGER update_participant_reputation_on_impact

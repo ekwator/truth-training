@@ -135,9 +135,11 @@ Activate when a participant creates a new event through the user interface. Thes
 
 •  `update_participant_reputation_on_judgment` - updates participant's reputation based on the accuracy of their judgment assessments, comparing against the collective_score as a reference value. Increases accurate_judgment counter when the judgment aligns with the collective assessment.
 
-•  `aggregate_local_scores_for_global` - populates the statements table with local assessments for global calculation when truth_event is updated. This trigger fires when the collective_score changes and updates the statements table for cross-node aggregation.
+•  `create_impact_prediction_on_impact_creation` - creates a new record in the `impact_predictions` table when a participant creates an impact record that relates to a future predicted factual consequence. This trigger calculates prediction values based on the event's impact data and collective score when a new impact is recorded.
 
-•  `create_impact_prediction_on_correction` - creates a new record in the `impact_predictions` table when the `corrected` flag in `truth_event` is set to 1. This trigger calculates prediction values based on the event's impact data and collective score, then resets the `corrected` flag to 0 after processing.
+•  `create_impact_predictions_on_status_change` - updates records in the `impact_predictions` table when an event's status changes in `event_ci.status` (e.g. from "active"/"resolved" to "archived"). This trigger adjusts prediction probabilities based on the actual outcomes compared to expected values when the event reaches a resolution state.
+
+•  `aggregate_local_scores_for_global` - populates the statements table with local assessments for global calculation when truth_event is updated. This trigger fires when the collective_score changes and updates the statements table for cross-node aggregation.
 
 **Triggers from docs/model_core_scoring.sql:**
 
@@ -1872,9 +1874,36 @@ impact_metrics.calculated_at = CURRENT_TIMESTAMP
 
 ##### Table: impact_predictions
 
-**Purpose**:
-• **Storage** record **predicted consequences** of **event**
-• **Part** of the **event evaluation as part** of **participant training**
+**Purpose** :  
+• **Storage** record **predicted consequences** of **event**  
+• **Part** of the **event evaluation as part** of **participant training**  
+• To provide a **mechanism** for **participants** to demonstrate their **predictive** abilities regarding **consequences**  
+• To integrate **predictive accuracy** into the **collective intelligence's** trust and weighting mechanisms by adjusting **participant reputation** based on the **historical** correctness of their **impact** forecasts  
+
+**Historical Preservation** :  
+• The "impact_predictions" table maintains **historical** records of **predictions** over **time**  
+• **Multiple records** can exist for the **same event**, capturing the **evolution of predictions**  
+• This **enables aggregation** and analysis of **prediction accuracy** over **time**  
+• Records in "impact_predictions" are **created** when a participant creates an "impact" record that relates to a **future**. **predicted**,  **factual** consequence and **changes** state **event** (e.g. from "active"/"resolved" to "archived" in "event_ci.status", **change** the **end date** of an **event**)  
+• The **accuracy** of these **predictions**, measured by comparing "impact_predictions.expected_strength" and "impact_predictions.probability" against the actual realized **impact** data stored in the "impact" and "truth_event" tables, influences the **participant's reputation**  
+
+**Accuracy Assessment** :  
+• During the **impact** assessment of an **event**, the system evaluates the **accuracy** of past **predictions** ("impact_predictions") against the **aggregated** factual **impact** data ("truth_event.collective_score", "impact.value", "impact.type_id")  
+• **Predictions** that closely match the actual outcomes increase the **participant's reputation**; inaccurate **predictions** decrease it  
+
+**Reputation Fields Affected** :  
+• "participants.accurate_impact" (see Table: participants, Table: reputation_history): **Incremented** when a **participant's impact prediction** proves **accurate**  
+• "participants.total_impact" (see Table: "participants", Table: "reputation_history"): **Incremented** for each **impact prediction** made by the **participant** (regardless of accuracy)  
+
+**Aggregation and Updates** :  
+• **Comparison** and subsequent **reputation** adjustments occur as data is received for an **event**  
+  
+**See also** :  
+• **Participant Reputation Model** (Table: "participants", Table: "reputation_history"): Defines how "accurate_impact" and "total_impact" contribute to "reputation_score"  
+• **Tables: participants** (Table: participants): Contains the "accurate_impact" and "total_impact" counters  
+• **Tables: truth_event** (Table: "truth_event"): Source of "collective_score" used for comparison with "expected_strength"  
+• **Tables: impact** (Table: "impact"): Source of individual **impact** assessments used for comparison and aggregation into "truth_event"  
+• **Tables: event_ci** (Table: "event_ci"): Defines **event** lifecycle ("status" field) which likely triggers the final accuracy assessment and reputation update  
 
 - "impact" — **fact** / **observation** / **consequence**
 - "impact_predictions" — **predict** of **consequences**
@@ -1884,33 +1913,9 @@ impact_metrics.calculated_at = CURRENT_TIMESTAMP
 ```
 Impact(E) ⟂ Truth(E)
 ```
+
 ##### Model: impact_predictions
 
-...
-
-**Reputation Integration** :
-
-• Records in "impact_predictions" are **created** when a participant creates an "impact" record that relates to a **future**. **predicted**,  **factual** consequence.
-• The accuracy of these predictions, measured by comparing "impact_predictions.expected_strength" and "impact_predictions.probability" against the actual realized impact data stored in the "impact" and "truth_event" tables, influences the participant's reputation.
-• **Accuracy Assessment**:
-  - During the impact assessment of an event, the system evaluates the accuracy of past predictions (`impact_predictions`) against the aggregated factual impact data (`truth_event.collective_score`, `impact.value`, `impact.type_id`).
-  - Predictions that closely match the actual outcomes increase the participant's reputation; inaccurate predictions decrease it.
-• **Reputation Fields Affected**:
-  - `participants.accurate_impact` (see Table: participants, Table: reputation_history): Incremented when a participant's impact prediction proves accurate.
-  - `participants.total_impact` (see Table: participants, Table: reputation_history): Incremented for each impact prediction made by the participant (regardless of accuracy).
-• **Aggregation and Updates**:
-- Comparison and subsequent reputation adjustments occur as data is received for an event and its state changes (e.g. from "active"/"resolved" to "archived" in `event_ci.status`).
-  - See also:
-    - **Participant Reputation Model** (Table: participants, Table: reputation_history): Defines how `accurate_impact` and `total_impact` contribute to `reputation_score`.
-    - **Tables: participants** (Table: participants): Contains the `accurate_impact` and `total_impact` counters.
-    - **Tables: truth_event** (Table: truth_event): Source of `collective_score` used for comparison with `expected_strength`.
-    - **Tables: impact** (Table: impact): Source of individual impact assessments used for comparison and aggregation into `truth_event`.
-    - **Tables: event_ci** (Table: event_ci): Defines event lifecycle (`status` field) which likely triggers the final accuracy assessment and reputation update.
-• **Purpose**:
-  - To provide a mechanism for participants to demonstrate their predictive abilities regarding consequences.
-  - To integrate predictive accuracy into the collective intelligence's trust and weighting mechanisms by adjusting participant reputation based on the historical correctness of their impact forecasts.
-
-```
 I_= ⟨event_id, type_id, value, event_ci, t⟩
 
 ```
