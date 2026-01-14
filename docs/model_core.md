@@ -1401,6 +1401,10 @@ Eᵢ=⟨gidᵢ,authorᵢ,descᵢ,ctxᵢ,vᵢ,dᵢ,cᵢ,csᵢ,ciᵢ,cjᵢ⟩
 	truth_event.vector  
 ```
 - dᵢ ∈ {∅,0,1} — **detection flag**  
+• **detection flag**, used by participants to indicate that they recognize and affirm the **event** as significant and truthful according to their understanding  
+• This flag is used by the transport system to determine the relevance and priority of further event propagation through the network  
+• When a participant sets this flag, it indicates that in their opinion the event and its judgments/impacts align with the truth and are relevant from their perspective  
+• This flag should be characterized as "I Confirm" in the application interface  
 ```
 	truth_event.detected  
 ```
@@ -1441,8 +1445,8 @@ The `judgment_score` field represents the cumulative truth assessment of the eve
 
 Both scores are continuously updated as new impact and judgment data becomes available at the local node. They reflect the local node's current understanding of the event's impact and truth value based on available information, but are not the final global truth values.
 
-- crᵢ - **correction flag**, used locally to review the **impact** for **training progress**  
-📝 Not transmitted over the network  
+- crᵢ - **correction flag**, used locally to review the **impact** for **training progress**
+📝 Not transmitted over the network
 ```
 	truth_event.corrected
 ```
