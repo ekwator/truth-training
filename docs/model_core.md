@@ -121,11 +121,11 @@ The triggers are designed to work seamlessly with the existing data model and ma
 
 The system implements two distinct categories of triggers based on the source of the data:
 
-#### **1. Participant-initiated triggers** 
+#### **1. Participant-initiated triggers**
 
 Activate when a participant creates a new event through the user interface. These triggers handle the initial creation of the event and all associated calculations:
 
-**Triggers from docs/model_core_collective_assessment.sql:**
+**Triggers from [docs/model_core_collective_assessment.md](model_core_collective_assessment.md):**
 
 • `create_event_record` - creates the initial event record in the `truth_event` table when a participant submits a new event. This trigger also creates the corresponding entry in the `event_ci` table (event neuron) with default values.
 
@@ -143,13 +143,13 @@ Activate when a participant creates a new event through the user interface. Thes
 
 •  `aggregate_local_scores_for_global` - populates the statements table with local assessments for global calculation when truth_event is updated. This trigger fires when the collective_score changes and updates the statements table for cross-node aggregation.
 
-**Triggers from docs/model_core_scoring.sql:**
+**Triggers from [docs/model_core_scoring.md](model_core_scoring.md):**
 
 •  `update_impact_score_after_impact_change` - activates when a new entry is added to the `impact` table and automatically recalculates the `impact_score` for the associated `truth_event`.
 
 •  `update_judgment_score_after_judgment_change` - activates when a new entry is added to the `judgment` table and automatically recalculates the `judgment_score` for the associated event.
 
-**Triggers from docs/model_core_aggregated_metrics.sql:**
+**Triggers from [docs/model_core_aggregated_metrics.md](model_core_aggregated_metrics.md):**
 
 •  `update_progress_metrics_after_event` - updates progress metrics when a new event is processed, recalculating total counts and trends.
 
@@ -157,19 +157,19 @@ Activate when a participant creates a new event through the user interface. Thes
 
 Activate when events are received from other nodes during synchronization. These triggers may have different algorithms optimized for bulk processing and validation:
 
-**Triggers from docs/model_core_collective_assessment.sql:**
+**Triggers from [docs/model_core_collective_assessment.md](model_core_collective_assessment.md):**
 
 • `validate_incoming_event` - validates the structure and cryptographic signatures of events received from other nodes before processing. Verifies that required fields are present, global_id is properly formatted, signatures exist, and context fields reference valid entries in their respective tables.
 
 • `process_sync_event_record` - handles the creation of event records from other nodes during synchronization, potentially with different validation rules. Checks for duplicate events, creates corresponding entries in the event_ci table, and updates participant activity timestamps.
 
-**Triggers from docs/model_core_aggregated_metrics.sql:**
+**Triggers from [docs/model_core_aggregated_metrics.md](model_core_aggregated_metrics.md):**
 
 •  `update_heuristic_weight` - updates the weight of expert heuristics based on their proven accuracy when the accuracy changes.
 
 •  `update_progress_metrics_after_impact` - updates progress metrics when a new impact is recorded, recalculating impact totals and trends.
 
-**Triggers from docs/model_core_network_tables.sql:**
+**Triggers from [docs/model_core_network_tables.md](model_core_network_tables.md):**
 
 •  `update_trust_score_after_rating_change` - automatically recalculates trust score and propagation priority based on new event counts when node ratings are updated.
 
@@ -1521,9 +1521,19 @@ Interpretation:
 → −1 : stably refuted
 ≈ 0 : conflict / lack of data
 
-**Model Collective Event Assessment** :  
+**Model Collective Event Assessment** :
+ 
+##### ⚠️ for more details see 👇 [model_core_collective_assessment.md](model_core_collective_assessment.md)
 
-##### ⚠️ for more details see 👇 [model_core_collective_assessment.sql](model_core_collective_assessment.sql)
+**For detailed SQL implementation see** 👇:
+- [model_core_views_collective_assessment.md](model_core_views_collective_assessment.md) — Views for collective assessment calculations
+- [model_core_collective_assessment.md](model_core_collective_assessment.md) — Collective assessment logic implementation
+- [model_core_views_scoring.md](model_core_views_scoring.md) — Impact and judgment scoring calculations
+- [model_core_scoring.md](model_core_scoring.md) — Trigger implementation for scoring calculations
+- [model_core_aggregated_metrics.md](model_core_aggregated_metrics.md) — System metrics and expert functions schema
+- [model_core_views_aggregated_metrics.md](model_core_views_aggregated_metrics.md) — Views for aggregated metrics
+- [model_core_network_tables.md](model_core_network_tables.md) — Node discovery and network tables schema
+- [model_core_views_network_tables.md](model_core_views_network_tables.md) — Views for network operations
 
 #### Table: truth_event
 
@@ -1702,7 +1712,7 @@ Is = summarize_impact(I(Eᵢ))
   See also:
   • [Concept_Collective_Intelligence.md](Concept_Collective_Intelligence.md) for algorithm "Wisdom of the Crowd" (S_e)
   • [event_rating_protocol.md](event_rating_protocol.md) for algorithm description for calculating assessments based on data from impact table
-  • [model_core_scoring.sql](model_core_scoring.sql) for detailed SQL implementation of impact_score calculation
+  • [model_core_scoring.md](model_core_scoring.md) for detailed SQL implementation of impact_score calculation
 
 #### Impact Score Calculation Logic
 
@@ -1727,7 +1737,7 @@ Where:
 - The score is normalized by the total number of assessments to maintain consistency
 
 **SQL Implementation:**
-The calculation is implemented through the `impact_score_calculation` view and update triggers in [model_core_scoring.sql](model_core_scoring.sql).
+The calculation is implemented through the `impact_score_calculation` view and update triggers in [model_core_scoring.md](model_core_scoring.md).
 
 ##### Table: impact  
 📝 **User-level** table of the Collective Intelligence Layer  
@@ -1925,7 +1935,7 @@ Impact(E) ⟂ Truth(E)
 ```
 
 ##### Model: impact_predictions
-
+```
 I_= ⟨event_id, type_id, value, event_ci, t⟩
 
 ```
@@ -2139,7 +2149,7 @@ J_local = f(judgment₁, judgment₂, ..., judgmentₙ)
   See also:
   • [Concept_Collective_Intelligence.md](Concept_Collective_Intelligence.md) for algorithm "Wisdom of the Crowd"
   • [event_rating_protocol.md](event_rating_protocol.md) for algorithm description for calculating assessments based on data from judgment table
-  • [model_core_scoring.sql](model_core_scoring.sql) for detailed SQL implementation of judgment_score calculation
+  • [model_core_scoring.md](model_core_scoring.md) for detailed SQL implementation of judgment_score calculation
 
 #### Judgment Score Calculation Logic
 
@@ -2165,7 +2175,7 @@ Where:
 - The score is normalized by the total number of assessments to maintain consistency
 
 **SQL Implementation:**
-The calculation is implemented through the `judgment_score_calculation` view and update triggers in [model_core_scoring.sql](model_core_scoring.sql).
+The calculation is implemented through the `judgment_score_calculation` view and update triggers in [model_core_scoring.md](model_core_scoring.md).
 
 ##### Table: judgment
 
@@ -2958,7 +2968,7 @@ ELSE
 • Heuristic is not applied directly to event, but through judgment
 
 **Model Aggregated System Metrics and Expert Functions** :
-**For detailed SQL implementation see** 👇 [model_core_aggregated_metrics.sql](model_core_aggregated_metrics.sql)
+**For detailed SQL implementation see** 👇 [model_core_aggregated_metrics.md](model_core_aggregated_metrics.md)
 
 ## 3 Temporal Dynamics and Truth Evolution
 
@@ -3779,10 +3789,14 @@ IF sync_operation_completed
 
 ### Model Implementation References
 **For detailed SQL implementation see** 👇:
-- [model_core_network_tables.sql](model_core_network_tables.sql) — Node discovery and network tables schema
-- [model_core_collective_assessment.sql](model_core_collective_assessment.sql) — Collective assessment logic implementation
-- [model_core_scoring.sql](model_core_scoring.sql) — Impact and judgment scoring calculations
-- [model_core_aggregated_metrics.sql](model_core_aggregated_metrics.sql) — System metrics and expert functions schema
+- [model_core_network_tables.md](model_core_network_tables.md) — Node discovery and network tables schema
+- [model_core_views_network_tables.md](model_core_views_network_tables.md) — Views for node discovery and network operations
+- [model_core_collective_assessment.md](model_core_collective_assessment.md) — Collective assessment logic implementation
+- [model_core_views_collective_assessment.md](model_core_views_collective_assessment.md) — Views for collective assessment calculations
+- [model_core_scoring.md](model_core_scoring.md) — Impact and judgment scoring calculations
+- [model_core_views_scoring.md](model_core_views_scoring.md) — Views for impact and judgment score calculations
+- [model_core_aggregated_metrics.md](model_core_aggregated_metrics.md) — System metrics and expert functions schema
+- [model_core_views_aggregated_metrics.md](model_core_views_aggregated_metrics.md) — Views for system metrics and expert functions
 
 ## 5 Constraints, Security and Anti-Manipulation Mechanisms
 

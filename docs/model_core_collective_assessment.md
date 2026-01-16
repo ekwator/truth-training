@@ -1,263 +1,8 @@
-ocs/model_core_collective_assessment.sql</path>
-<content lines="1-461">-- **Document Version:** v1.1.0  
--- **Status:** Specification  
--- **Updated:** 2025-12-28  
+-- **Document Version:** v1.1.0
+-- **Status:** Specification
+-- **Updated:** 2025-12-28
 -- **Status:** Approved
--- SQL Model for Collective Event Assessment Logic
--- Based on docs/model_core.md:1377-1429 Collective Event Assessment
-
--- Table for storing participant impact assessments
-CREATE TABLE impact (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL,
-    type_id INTEGER NOT NULL,
-    trend INTEGER NOT NULL,  -- impact trend 0/1/2/3 (logical_negative/logical_positive/illogical_negative/illogical_positive)
-    value INTEGER,           -- impact value (NULL/0/1 for measurable/negative/positive)
-    notes TEXT,
-    impact_metrics INTEGER NOT NULL,
-    impact_predictions INTEGER NOT NULL,
-    timeline_id INTEGER NOT NULL,
-    FOREIGN KEY (event_id) REFERENCES truth_event(id),
-    FOREIGN KEY (type_id) REFERENCES effect(id),
-    FOREIGN KEY (impact_metrics) REFERENCES impact_metrics(id),
-    FOREIGN KEY (impact_predictions) REFERENCES impact_predictions(id),
-    FOREIGN KEY (timeline_id) REFERENCES impact_timeline(id),
-    UNIQUE(participant_id, event_id)
-);
-
--- Table for impact predictions
-CREATE TABLE impact_predictions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL,              -- FK → event_ci.id
-    predicted_impact_type INTEGER NOT NULL, -- FK → effect.id
-    expected_strength REAL NOT NULL,        -- Expected expression, signal strength
-    probability REAL NOT NULL,              -- Participant confidence that the predicted effect occurred
-    horizon REAL NOT NULL,                  -- Time interval, predicted time lag
-    created_at INTEGER NOT NULL,            -- Timestamp of creation
-    FOREIGN KEY (event_id) REFERENCES event_ci(id),
-    FOREIGN KEY (predicted_impact_type) REFERENCES effect(id)
-);
-
--- Core table for truth events with collective assessment metrics
-CREATE TABLE truth_event (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    description TEXT NOT NULL,
-    global_id TEXT NOT NULL UNIQUE,
-    participant_id TEXT NOT NULL,
-    signature TEXT NOT NULL,
-    category_id INTEGER NOT NULL,
-    forma_id INTEGER NOT NULL,
-    cause_id INTEGER NOT NULL,
-    develop_id INTEGER NOT NULL,
-    effect_id INTEGER NOT NULL,
-    vector INTEGER NOT NULL,
-    detected INTEGER,
-    corrected INTEGER NOT NULL DEFAULT 0,
-    timeline_id INTEGER NOT NULL,
-    code INTEGER NOT NULL DEFAULT 1,
-    collective_score REAL NOT NULL,  -- cs_i - local training/assessment metric
-    impact_score REAL NOT NULL,      -- ci_i - local impact metric
-    judgment_score REAL,             -- cj_i - local judgment metric
-    FOREIGN KEY (participant_id) REFERENCES participants(public_key),
-    FOREIGN KEY (category_id) REFERENCES category(id),
-    FOREIGN KEY (forma_id) REFERENCES forma(id),
-    FOREIGN KEY (cause_id) REFERENCES cause(id),
-    FOREIGN KEY (develop_id) REFERENCES develop(id),
-    FOREIGN KEY (effect_id) REFERENCES effect(id),
-    FOREIGN KEY (timeline_id) REFERENCES event_timeline(id)
-);
-
--- Table for storing participant judgment assessments
-CREATE TABLE judgment (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    participant_id INTEGER NOT NULL,
-    event_id INTEGER NOT NULL,
-    assessment TEXT,         -- type of assessment
-    confidence_level REAL,   -- confidence level of the assessment
-    reasoning TEXT,          -- reasoning behind the judgment
-    consensus_ci INTEGER NOT NULL,
-    judgment_weights INTEGER NOT NULL,
-    timeline_id INTEGER NOT NULL,
-    FOREIGN KEY (participant_id) REFERENCES participants(id),
-    FOREIGN KEY (event_id) REFERENCES event_ci(id),
-    FOREIGN KEY (consensus_ci) REFERENCES consensus_ci(id),
-    FOREIGN KEY (judgment_weights) REFERENCES judgment_weights(id),
-    FOREIGN KEY (timeline_id) REFERENCES judgment_timeline(id),
-    UNIQUE(participant_id, event_id)
-);
-
--- Table for aggregated impact metrics
-CREATE TABLE impact_metrics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL,
-    total_magnitude INTEGER,  -- Overall impact significance
-    positive_ratio INTEGER,   -- Positive rating
-    negative_ratio INTEGER,   -- Negative rating
-    uncertainty INTEGER,      -- Undefined rating
-    calculated_at INTEGER NOT NULL,
-    FOREIGN KEY (event_id) REFERENCES event_ci(id)
-);
-
--- Table for impact predictions
-CREATE TABLE impact_predictions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL,              -- FK → event_ci.id
-    predicted_impact_type INTEGER NOT NULL, -- FK → effect.id
-    expected_strength REAL NOT NULL,        -- Expected expression, signal strength
-    probability REAL NOT NULL,              -- Participant confidence that the predicted effect occurred
-    horizon REAL NOT NULL,                  -- Time interval, predicted time lag
-    created_at INTEGER NOT NULL,            -- Timestamp of creation
-    FOREIGN KEY (event_id) REFERENCES event_ci(id),
-    FOREIGN KEY (predicted_impact_type) REFERENCES effect(id)
-);
-
--- Table for tracking participant reputation and trust
-CREATE TABLE participants (
-    public_key TEXT PRIMARY KEY,
-    signature TEXT NOT NULL,
-    reputation_score REAL NOT NULL DEFAULT 0.5,
-    reputation_history INTEGER NOT NULL,
-    total_judgment INTEGER NOT NULL DEFAULT 0,
-    accurate_judgment INTEGER NOT NULL DEFAULT 0,
-    total_impact INTEGER NOT NULL DEFAULT 0,
-    accurate_impact INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL,
-    last_activity INTEGER,
-    FOREIGN KEY (reputation_history) REFERENCES reputation_history(id)
-);
-
--- Table for reputation history tracking
-CREATE TABLE reputation_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    old_reputation REAL NOT NULL,
-    new_reputation REAL NOT NULL,
-    change_reason TEXT NOT NULL,
-    updated_at INTEGER NOT NULL
-);
-
--- Table for collective intelligence event aggregation (event neuron)
-CREATE TABLE event_ci (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_by INTEGER NOT NULL,      -- FK to truth_event.id
-    event_type TEXT NOT NULL DEFAULT 'judgment',  -- ENUM ("impact", "judgment", "both")
-    status TEXT NOT NULL DEFAULT 'active',        -- ENUM ("active", "resolved", "archived")
-    old_status TEXT NOT NULL DEFAULT 'active',
-    resolution_data TEXT NOT NULL DEFAULT 'unstable',  -- ENUM ("unstable", "suppose", "consent")
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (created_by) REFERENCES truth_event(id)
-);
-
--- Table for consensus calculations
-CREATE TABLE consensus_ci (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL,
-    consensus_value INTEGER NOT NULL,
-    confidence_score REAL NOT NULL,
-    participant_count INTEGER NOT NULL,
-    calculated_at INTEGER NOT NULL,
-    algorithm_version INTEGER NOT NULL,
-    FOREIGN KEY (event_id) REFERENCES event_ci(id)
-);
-
--- Table for judgment weights (trust metrics)
-CREATE TABLE judgment_weights (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    participant_id INTEGER NOT NULL,
-    event_id INTEGER NOT NULL,
-    weight REAL,
-    calculated_at INTEGER NOT NULL,
-    FOREIGN KEY (participant_id) REFERENCES participants(id),
-    FOREIGN KEY (event_id) REFERENCES event_ci(id)
-);
-
--- Table for aggregated statements for global processing
-CREATE TABLE statements (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL,
-    truth_score REAL, -- aggregated truth score from local nodes
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (event_id) REFERENCES truth_event(id)
-);
-
--- Table for tracking system progress metrics
-CREATE TABLE progress_metrics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    total_events INTEGER NOT NULL,
-    total_events_group INTEGER NOT NULL,
-    total_positive_impacts REAL NOT NULL,
-    total_positive_impacts_group REAL NOT NULL,
-    total_negative_impacts REAL NOT NULL,
-    total_negative_impact_group REAL NOT NULL,
-    trend REAL NOT NULL,
-    trend_group REAL NOT NULL,
-    last_updated INTEGER NOT NULL
-);
-
--- Function to calculate event truthfulness as statistical function (local)
--- cs_i = f-local(I(E_i))
--- I_i(E_i) = {I_i(1), I_i(2), ..., I_i(n)} - set of participant impact
--- Divide by sign: P_i = ΣI_i(ij)^(+), N_i = ΣI_i(ij)^(-)
-CREATE VIEW local_collective_score_calculation AS
-SELECT 
-    te.id as event_id,
-    te.collective_score as cs_i,
-    -- Calculate positive and negative impact sums
-    (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 1) as P_i,
-    (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 0) as N_i,
-    -- Calculate total impact count
-    (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) as total_impact_count
-FROM truth_event te;
-
--- Function to calculate event truthfulness globally
--- truth_score_i-global = f-global({ cs_i-local_j })
--- {cs_i-local_j} - local assessments of different nodes
-CREATE VIEW global_truth_score_calculation AS
-SELECT 
-    s.event_id,
-    AVG(s.truth_score) as global_truth_score,
-    COUNT(s.truth_score) as node_count,
-    -- Calculate the global truth score based on local collective scores
-    (SELECT AVG(collective_score) FROM truth_event WHERE global_id = (
-        SELECT global_id FROM truth_event WHERE id = s.event_id
-    )) as aggregated_local_collective_score
-FROM statements s
-GROUP BY s.event_id;
-
--- Function to calculate event truthfulness (not stored but calculated)
--- Truth(E_i) = (P_i - N_i) / (|I(E_i)| + ε)
--- ε - protection from division by zero
--- result ∈ (-1, +1)
-CREATE VIEW event_truthfulness_calculation AS
-SELECT 
-    te.id as event_id,
-    te.description,
-    -- Calculate P_i (positive impacts) and N_i (negative impacts)
-    (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 1) as P_i,
-    (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 0) as N_i,
-    -- Total impact count (|I(E_i)|)
-    (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) as total_impact_count,
-    -- Calculate truth with epsilon for division by zero protection
-    CASE 
-        WHEN (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) = 0 
-        THEN 0.0
-        ELSE ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 1) - 
-              (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 0)) * 1.0 / 
-             ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) + 0.001)
-    END as calculated_truth,
-    -- Interpretation: +1: stably confirmed, -1: stably refuted, ≈0: conflict/lack of data
-    CASE 
-        WHEN ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 1) - 
-              (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 0)) * 1.0 / 
-             ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) + 0.0001) > 0.7 
-        THEN 'stably_confirmed'
-        WHEN ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 1) - 
-              (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 0)) * 1.0 / 
-             ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) + 0.0001) < -0.7 
-        THEN 'stably_refuted'
-        ELSE 'conflict_or_lack_of_data'
-    END as truth_interpretation
-FROM truth_event te;
+-- SQL Triggers for Collective Event Assessment Logic
 
 -- Trigger to create event record when a participant submits a new event
 -- Creates the initial event record in the truth_event table when a participant submits a new event
@@ -285,19 +30,19 @@ BEFORE INSERT ON truth_event
 FOR EACH ROW
 BEGIN
     -- Initialize collective_score to default value (0.5 - neutral)
-    SELECT CASE 
+    SELECT CASE
         WHEN NEW.collective_score IS NULL THEN 0.5
         ELSE NEW.collective_score
     END;
     
     -- Initialize impact_score to default value (0.0)
-    SELECT CASE 
+    SELECT CASE
         WHEN NEW.impact_score IS NULL THEN 0.0
         ELSE NEW.impact_score
     END;
     
     -- Initialize judgment_score to default value (NULL - undefined)
-    SELECT CASE 
+    SELECT CASE
         WHEN NEW.judgment_score IS NULL THEN NULL
         ELSE NEW.judgment_score
     END;
@@ -375,7 +120,7 @@ BEGIN
         ec.id,                                    -- event_id from event_ci
         NEW.type_id,                             -- predicted_impact_type from the new impact record
         -- Calculate expected_strength based on collective_score and impact horizon
-        (SELECT COALESCE(te.collective_score, 0.5) 
+        (SELECT COALESCE(te.collective_score, 0.5)
          FROM truth_event te
          WHERE te.id = NEW.event_id),            -- Use the collective score of the event
         -- Set probability to a moderate value when creating prediction from impact
@@ -473,10 +218,10 @@ BEGIN
             SELECT COALESCE(
                 -- Weighted accuracy: predictions with larger horizon (made earlier) have more weight
                 SUM(
-                    CASE 
+                    CASE
                         -- Calculate accuracy: compare expected_strength with actual collective_score
                         -- Prediction is accurate if the difference is small relative to expected_strength
-                        WHEN ABS(ip.expected_strength - COALESCE(te.collective_score, 0.5)) <= 
+                        WHEN ABS(ip.expected_strength - COALESCE(te.collective_score, 0.5)) <=
                             GREATEST(ABS(ip.expected_strength) * 0.2, 0.1)
                         THEN (ip.horizon + 1.0)  -- Weight by horizon: larger horizon = more weight
                         ELSE 0.0
@@ -507,11 +252,11 @@ AFTER INSERT ON impact
 FOR EACH ROW
 BEGIN
     -- Update participant's impact metrics based on new impact
-    UPDATE participants 
-    SET 
+    UPDATE participants
+    SET
         total_impact = total_impact + 1,
         -- Check if the impact aligns with the collective_score (as a measure of accuracy)
-        accurate_impact = accurate_impact + CASE 
+        accurate_impact = accurate_impact + CASE
             WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) > 0.5 AND NEW.value = 1 THEN 1
             WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) < 0.5 AND NEW.value = 0 THEN 1
             ELSE 0
@@ -539,11 +284,11 @@ AFTER INSERT ON judgment
 FOR EACH ROW
 BEGIN
     -- Update participant's judgment metrics based on new judgment
-    UPDATE participants 
-    SET 
+    UPDATE participants
+    SET
         total_judgment = total_judgment + 1,
         -- Check if the judgment aligns with the collective_score (as a measure of accuracy)
-        accurate_judgment = accurate_judgment + CASE 
+        accurate_judgment = accurate_judgment + CASE
             WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) > 0.5 AND NEW.assessment = 'true' THEN 1
             WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) < 0.5 AND NEW.assessment = 'false' THEN 1
             ELSE 0
@@ -580,27 +325,14 @@ BEGIN
     VALUES (
         NEW.id,
         NEW.collective_score,
-        CASE 
-            WHEN (SELECT COUNT(*) FROM statements WHERE event_id = NEW.id) = 0 
+        CASE
+            WHEN (SELECT COUNT(*) FROM statements WHERE event_id = NEW.id) = 0
             THEN (SELECT strftime('%s', 'now'))
             ELSE (SELECT created_at FROM statements WHERE event_id = NEW.id LIMIT 1)
         END,
         (SELECT strftime('%s', 'now'))
     );
 END;
-
--- Function to calculate group ratings based on collective scores
-CREATE VIEW group_ratings_calculation AS
-SELECT 
-    p.group_membership as group_id,
-    COUNT(p.public_key) as members,
-    AVG(p.reputation_score) as avg_score,
-    -- Calculate coherence as 1 - (sum of absolute deviations from mean / max possible deviation)
-    1 - (SUM(ABS(p.reputation_score - AVG(p.reputation_score))) OVER (PARTITION BY p.group_membership) / (COUNT(*) OVER (PARTITION BY p.group_membership) * 2)) as coherence,
-    (SELECT strftime('%s', 'now')) as last_updated
-FROM participants p
-WHERE p.group_membership IS NOT NULL
-GROUP BY p.group_membership;
 
 -- Trigger to validate incoming event structure and signatures
 -- Validates the structure and cryptographic signatures of events received from other nodes before processing
@@ -610,25 +342,25 @@ FOR EACH ROW
 WHEN NEW.participant_id IS NOT NULL  -- This indicates it's coming from a node (not internal system operation)
 BEGIN
     -- Verify that the global_id is properly formatted (UUID-like)
-    SELECT CASE 
+    SELECT CASE
         WHEN LENGTH(NEW.global_id) < 10 THEN RAISE(ABORT, 'Invalid global_id format')
         ELSE NULL
     END;
     
     -- Verify that required fields are present
-    SELECT CASE 
+    SELECT CASE
         WHEN NEW.description IS NULL OR LENGTH(TRIM(NEW.description)) = 0 THEN RAISE(ABORT, 'Event description is required')
         ELSE NULL
     END;
     
     -- Verify that signature exists
-    SELECT CASE 
+    SELECT CASE
         WHEN NEW.signature IS NULL OR LENGTH(TRIM(NEW.signature)) = 0 THEN RAISE(ABORT, 'Event signature is required')
         ELSE NULL
     END;
     
     -- Verify that context fields are valid references
-    SELECT CASE 
+    SELECT CASE
         WHEN NOT EXISTS (SELECT 1 FROM category WHERE id = NEW.category_id) THEN RAISE(ABORT, 'Invalid category_id')
         WHEN NOT EXISTS (SELECT 1 FROM forma WHERE id = NEW.forma_id) THEN RAISE(ABORT, 'Invalid forma_id')
         WHEN NOT EXISTS (SELECT 1 FROM cause WHERE id = NEW.cause_id) THEN RAISE(ABORT, 'Invalid cause_id')
@@ -638,7 +370,7 @@ BEGIN
     END;
     
     -- Verify that participant_id exists in participants table
-    SELECT CASE 
+    SELECT CASE
         WHEN NOT EXISTS (SELECT 1 FROM participants WHERE public_key = NEW.participant_id) THEN RAISE(ABORT, 'Invalid participant_id')
         ELSE NULL
     END;
@@ -652,8 +384,8 @@ FOR EACH ROW
 WHEN NEW.participant_id IS NOT NULL  -- Indicates the event came from synchronization
 BEGIN
     -- Check if this is a duplicate event (same global_id and participant_id combination)
-    SELECT CASE 
-        WHEN (SELECT COUNT(*) FROM truth_event WHERE global_id = NEW.global_id AND participant_id = NEW.participant_id) > 1 
+    SELECT CASE
+        WHEN (SELECT COUNT(*) FROM truth_event WHERE global_id = NEW.global_id AND participant_id = NEW.participant_id) > 1
         THEN RAISE(ABORT, 'Duplicate event detected')
         ELSE NULL
     END;
@@ -674,12 +406,3 @@ BEGIN
     SET last_activity = (SELECT strftime('%s', 'now'))
     WHERE public_key = NEW.participant_id;
 END;
-
--- Indexes for performance optimization
-CREATE INDEX idx_truth_event_global_id ON truth_event(global_id);
-CREATE INDEX idx_truth_event_participant_id ON truth_event(participant_id);
-CREATE INDEX idx_impact_event_id ON impact(event_id);
-CREATE INDEX idx_judgment_event_id ON judgment(event_id);
-CREATE INDEX idx_judgment_participant_id ON judgment(participant_id);
-CREATE INDEX idx_statements_event_id ON statements(event_id);
-CREATE INDEX idx_event_ci_created_by ON event_ci(created_by);
