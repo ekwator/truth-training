@@ -1,14 +1,14 @@
 -- **Document Version:** v1.1.0  
 -- **Status:** Specification  
 -- **Updated:** 2025-12-28  
--- **Status:** Approved
--- SQL Views for Collective Event Assessment Logic
+-- **Status:** Approved  
+-- SQL Views for Collective Event Assessment Logic  
 
--- Function to calculate event truthfulness as statistical function (local)
--- cs_i = f-local(I(E_i))
--- I_i(E_i) = {I_i(1), I_i(2), ..., I_i(n)} - set of participant impact
--- Divide by sign: P_i = ΣI_i(ij)^(+), N_i = ΣI_i(ij)^(-)
-
+-- Function to calculate event truthfulness as statistical function (local)  
+-- cs_i = f-local(I(E_i))  
+-- I_i(E_i) = {I_i(1), I_i(2), ..., I_i(n)} - set of participant impact  
+-- Divide by sign: P_i = ΣI_i(ij)^(+), N_i = ΣI_i(ij)^(-)  
+```
 CREATE VIEW local_collective_score_calculation AS
 SELECT 
     te.id as event_id,
@@ -19,11 +19,11 @@ SELECT
     -- Calculate total impact count
     (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) as total_impact_count
 FROM truth_event te;
-
--- Function to calculate event truthfulness globally
--- truth_score_i-global = f-global({ cs_i-local_j })
--- {cs_i-local_j} - local assessments of different nodes
-
+```
+-- Function to calculate event truthfulness globally  
+-- truth_score_i-global = f-global({ cs_i-local_j })  
+-- {cs_i-local_j} - local assessments of different nodes  
+```
 CREATE VIEW global_truth_score_calculation AS
 SELECT 
     s.event_id,
@@ -35,12 +35,12 @@ SELECT
     )) as aggregated_local_collective_score
 FROM statements s
 GROUP BY s.event_id;
-
--- Function to calculate event truthfulness (not stored but calculated)
--- Truth(E_i) = (P_i - N_i) / (|I(E_i)| + ε)
--- ε - protection from division by zero
--- result ∈ (-1, +1)
-
+```
+-- Function to calculate event truthfulness (not stored but calculated)  
+-- Truth(E_i) = (P_i - N_i) / (|I(E_i)| + ε)  
+-- ε - protection from division by zero  
+-- result ∈ (-1, +1)  
+```
 CREATE VIEW event_truthfulness_calculation AS
 SELECT 
     te.id as event_id,
@@ -71,9 +71,9 @@ SELECT
         ELSE 'conflict_or_lack_of_data'
     END as truth_interpretation
 FROM truth_event te;
-
--- Function to calculate group ratings based on collective scores
-
+```
+-- Function to calculate group ratings based on collective scores  
+```
 CREATE VIEW group_ratings_calculation AS
 SELECT 
     p.group_membership as group_id,
@@ -85,3 +85,4 @@ SELECT
 FROM participants p
 WHERE p.group_membership IS NOT NULL
 GROUP BY p.group_membership;
+```

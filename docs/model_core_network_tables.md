@@ -1,11 +1,12 @@
--- **Document Version:** v1.1.0
--- **Status:** Specification
--- **Updated:** 2025-12-28
--- **Status:** Approved
--- SQL Triggers for Node Discovery and Network Tables
+-- **Document Version:** v1.1.0  
+-- **Status:** Specification  
+-- **Updated:** 2025-12-28  
+-- **Status:** Approved  
+-- SQL Triggers for Node Discovery and Network Tables  
 
--- Trigger to update trust score and propagation priority when node ratings are updated
--- Automatically recalculates trust score and propagation priority based on new event counts
+-- Trigger to update trust score and propagation priority when node ratings are updated  
+-- Automatically recalculates trust score and propagation priority based on new event counts  
+```
 CREATE TRIGGER update_trust_score_after_rating_change
 AFTER UPDATE ON node_ratings
 BEGIN
@@ -36,18 +37,20 @@ BEGIN
         last_updated = (SELECT strftime('%s', 'now'))
     WHERE node_id = NEW.node_id;
 END;
-
--- Trigger to clean up expired tokens automatically
--- Removes tokens that have exceeded their expiration time
+```
+-- Trigger to clean up expired tokens automatically  
+-- Removes tokens that have exceeded their expiration time  
+```
 CREATE TRIGGER cleanup_expired_tokens
 AFTER SELECT ON expired_tokens
 BEGIN
     DELETE FROM active_tokens
     WHERE expires_at < (SELECT strftime('%s', 'now'));
 END;
-
--- Trigger to update peer history when sync occurs
--- Automatically updates peer history with new synchronization information
+```
+-- Trigger to update peer history when sync occurs  
+-- Automatically updates peer history with new synchronization information  
+```
 CREATE TRIGGER update_peer_synchronization_after_sync
 AFTER INSERT ON sync_attempts
 BEGIN
@@ -112,9 +115,10 @@ BEGIN
         )), 0.0)
     WHERE peer_url = NEW.peer_url;
 END;
-
--- Trigger to update node metrics when sync occurs
--- Updates performance metrics when synchronization events are logged
+```
+-- Trigger to update node metrics when sync occurs  
+-- Updates performance metrics when synchronization events are logged  
+```
 CREATE TRIGGER update_node_performance_after_sync
 AFTER INSERT ON sync_attempts
 BEGIN
@@ -150,3 +154,4 @@ BEGIN
         SELECT node_id FROM discovery_nodes WHERE address = NEW.peer_url
     );
 END;
+```

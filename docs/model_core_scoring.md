@@ -1,10 +1,11 @@
--- **Document Version:** v1.1.0
--- **Status:** Specification
--- **Updated:** 2025-12-28
--- **Status:** Approved
--- SQL Triggers for Impact and Judgment Score Calculations
+-- **Document Version:** v1.1.0  
+-- **Status:** Specification  
+-- **Updated:** 2025-12-28  
+-- **Status:** Approved  
+-- SQL Triggers for Impact and Judgment Score Calculations  
 
--- Trigger to update impact_score when new impact is added or modified
+-- Trigger to update impact_score when new impact is added or modified  
+```
 CREATE TRIGGER update_impact_score_after_impact_change
 AFTER INSERT ON impact
 BEGIN
@@ -30,8 +31,9 @@ BEGIN
     )
     WHERE id = NEW.event_id;
 END;
-
--- Trigger to update judgment_score when new judgment is added or modified
+```
+-- Trigger to update judgment_score when new judgment is added or modified  
+```
 CREATE TRIGGER update_judgment_score_after_judgment_change
 AFTER INSERT ON judgment
 BEGIN
@@ -63,3 +65,4 @@ BEGIN
         SELECT created_by FROM event_ci WHERE id = NEW.event_id
     );
 END;
+```

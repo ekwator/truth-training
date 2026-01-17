@@ -1,11 +1,12 @@
--- **Document Version:** v1.1.0
--- **Status:** Specification
--- **Updated:** 2025-12-28
--- **Status:** Approved
--- SQL Triggers for Aggregated System Metrics and Expert Functions
+-- **Document Version:** v1.1.0  
+-- **Status:** Specification  
+-- **Updated:** 2025-12-28  
+-- **Status:** Approved  
+-- SQL Triggers for Aggregated System Metrics and Expert Functions  
 
--- Function to calculate heuristic weight based on accuracy
--- w_i = f(accuracy_i, reliability_i, domain_relevance_i)
+-- Function to calculate heuristic weight based on accuracy  
+-- w_i = f(accuracy_i, reliability_i, domain_relevance_i)  
+```
 CREATE TRIGGER update_heuristic_weight
 AFTER UPDATE ON expert_heuristics
 FOR EACH ROW
@@ -21,8 +22,9 @@ BEGIN
         updated_at = (SELECT strftime('%s', 'now'))
     WHERE id = NEW.id;
 END;
-
--- Function to update progress metrics when new event is processed
+```
+-- Function to update progress metrics when new event is processed  
+```
 CREATE TRIGGER update_progress_metrics_after_event
 AFTER INSERT ON truth_event
 BEGIN
@@ -88,8 +90,9 @@ BEGIN
         (SELECT strftime('%s', 'now')) as last_updated
     WHERE NOT EXISTS (SELECT 1 FROM progress_metrics WHERE id = 1);
 END;
-
--- Function to update progress metrics when new impact is recorded
+```
+-- Function to update progress metrics when new impact is recorded  
+```
 CREATE TRIGGER update_progress_metrics_after_impact
 AFTER INSERT ON impact
 BEGIN
@@ -107,3 +110,4 @@ BEGIN
         last_updated = (SELECT strftime('%s', 'now'))
     WHERE id = 1;
 END;
+```

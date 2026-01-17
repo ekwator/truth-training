@@ -46,11 +46,11 @@ Application **model** includes the following **main entity classes** :
 • **Consensus** / **Aggregation**  
 
 Document is coordinated and should be used jointly with :
-• **Canonical SQL schema specifications for implementers [../../spec/04-data-model.md](04-data-model.md)**
-• **Canonical markdown schema specifications for implementers [Data_Schema.md](Data_Schema.md)**
-• **Security and verification requirements [../SECURITY.md](SECURITY.md)**
-• **Quality and testing requirements [../CONTRIBUTING.md](CONTRIBUTING.md)**
-• **Minimum requirements for PR acceptance [../../spec/14-quality-gates.md](14-quality-gates.md)**
+• **Canonical SQL schema specifications for implementers [spec/04-data-model.md](../spec/04-data-model.md)**  
+• **Canonical markdown schema specifications for implementers [doc/Data_Schema.md](Data_Schema.md)**  
+• **Security and verification requirements [SECURITY.md](../SECURITY.md)**  
+• **Quality and testing requirements [CONTRIBUTING.md](../CONTRIBUTING.md)**  
+• **Minimum requirements for PR acceptance [spec/14-quality-gates.md](../spec/14-quality-gates.md)**  
 
 ## 2 Basic Model Entities and Service Tables
 
@@ -85,6 +85,7 @@ pub fn small_constants() -> f64 {
     }
 }
 ```
+**Schema Version Tracking**: Both databases "truth_training.sqlite" and "discovery_nodes.sqlite" for desktop application include "schema_version" tables for migration tracking (described in [spec/04-data-model.md](../spec/04-data-model.md)). These tables are not part of the functional model and are not described in detail here. Android uses a single Room database called truth_database, located at /data/data/com.truth.training.client/databases/truth_database , so it contains one table, "schema_version"
 
 ### triggers
 
@@ -1166,7 +1167,7 @@ It is **not accept direct participant input**, and is **not transmitted over the
 • These tables **are populated** with reference information by the **initialization function** in the application **core module** core/src/storage.rs  
 • **Context** is defined by 5 tables  
 • "quality" ∈ {0,1} — **semantic valence** (positive/negative). This is **not a truth metric**, used for analytics/filtering and trends. **category not include** "quality"  
-• Default values for these tables are specified in: [Knowledge Base Table Values for Default Seeding](../../spec/26-seed_knowledge_base_table_value.md)  
+• Default values for these tables are specified in: [Knowledge Base Table Values for Default Seeding](../spec/26-seed_knowledge_base_table_value.md)  
 
 #### 2.4.1 Table: category
 
@@ -1332,7 +1333,7 @@ IF "N" > "P" AND "R" = 1
 📝 **User-level** table of the Collective Intelligence Layer
 • It is **direct editing for participant input**, and is **not transmitted over the network**
 • This table is **populated** with **context template** examples by the **initialization function** in the application **core module** core/src/storage.rs
-• Default values for context templates are specified in: [Knowledge Base Table Values for Default Seeding](../../spec/26-seed_knowledge_base_table_value.md)
+• Default values for context templates are specified in: [Knowledge Base Table Values for Default Seeding](../spec/26-seed_knowledge_base_table_value.md)
 
 **Purpose** :  
 • Defines **contexts** (logical, temporal, thematic) within which **event** and **impact** are assessed and **judgment** are formed  
@@ -2981,7 +2982,7 @@ ELSE
 It is **not accept direct participant input**, and is **not transmitted over the network**
 • This **table** are **populated** with reference information by the **initialization function** in the application **core module** core/src/storage.rs
 • Consists of three records.
-• Default values for time axes are specified in: [Knowledge Base Table Values for Default Seeding](../../spec/26-seed_knowledge_base_table_value.md)
+• Default values for time axes are specified in: [Knowledge Base Table Values for Default Seeding](../spec/26-seed_knowledge_base_table_value.md)
 
 **Purpose** :  
 **Defines** independent time **scales** ('past','present','future') for **analysis**  
@@ -3422,8 +3423,6 @@ Decay(T, t) ∝ e^(−λt)
 - `sync_log` → `sync_operations`
 - `sync_logs` → `sync_attempts`
 - `peer_history` → `peer_synchronization`
-
-**Schema Version Tracking**: Both databases include `schema_version` tables for migration tracking (described in [../../spec/04-data-model.md](04-data-model.md)). These tables are not part of the functional model and are not described in detail here.
 
 ### Table: discovery_nodes
 📝 **System-level** table of the Network Layer
