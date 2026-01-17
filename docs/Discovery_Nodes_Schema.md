@@ -38,15 +38,28 @@ The `nodes` table stores discovered peer nodes in the Truth Training network.
 | created_at  | INTEGER  | Creation timestamp (UNIX epoch seconds)                                                |
 | updated_at | INTEGER  | Last modification timestamp (UNIX epoch seconds)                                        |
 
+### Schema Management Tables
+
+#### schema_version Table
+
+Tracks database schema versions for version control and migration tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| version | TEXT | Schema version (primary key) |
+| applied_at | INTEGER | Time when version was applied (UNIX epoch seconds) |
+| description | TEXT | Description of the version |
+
+**Note**: This table is used for database migration management and is not part of the functional data model.
+
 ### Additional Tables
 
 The database also includes the full canonical Truth schema from `core/src/storage.rs`, including:
 - Node ratings and trust tables (`node_ratings`, `group_ratings`)
-- Node performance metrics (`node_metrics`)
+- Node performance metrics (`node_performance`)
 - Authentication and session management (`active_tokens`)
-- Peer synchronization history (`peer_history`)
-- Low-level synchronization logs (`sync_log`, `sync_logs`)
-- Schema version tracking (`schema_version`)
+- Peer synchronization history (`peer_synchronization`)
+- Low-level synchronization logs (`sync_operations`, `sync_attempts`)
 
 **Note**: While the full schema is created, the discovery worker primarily uses only the `nodes` table. Other tables are present for schema consistency but are not actively used by the discovery worker.
 

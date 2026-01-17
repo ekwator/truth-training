@@ -26,7 +26,7 @@ truthctl status [--db PATH] [--identity FILE]
 Behavior:
 - Reads `~/.truthctl/config.json` (node_name, port, db_path)
 - Reads `~/.truthctl/peers.json` (known peers)
-- Opens SQLite DB and fetches last 5 rows from `sync_logs` (if present)
+- Opens SQLite DB and fetches last 5 rows from `sync_attempts` (if present)
 
 Output example:
 ```
@@ -41,7 +41,7 @@ Last sync events:
 ```
 
 Notes:
-- If DB or `sync_logs` is missing, print: `Sync: No sync history yet.` (yellow)
+- If DB or `sync_attempts` is missing, print: `Sync: No sync history yet.` (yellow)
 - Use colors: green for success, red for errors, yellow for warnings.
 - keys — key management
 - init-node — initialize node config and optional auto-peer registration
@@ -160,7 +160,7 @@ Behavior:
 - Trust propagation is applied transparently during `/sync` and `/incremental_sync`.
 
 ## Sync Logs
-Schema (SQLite table `sync_logs`):
+Schema (SQLite table `sync_attempts`):
 ```
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 timestamp INTEGER,

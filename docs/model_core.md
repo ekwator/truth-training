@@ -45,12 +45,12 @@ Application **model** includes the following **main entity classes** :
 • **Participant** 
 • **Consensus** / **Aggregation**  
 
-Document is coordinated and should be used jointly with :  
-• **04-data-model.md** — canonical SQL schema specifications for implementers  
-• **Data_Schema.md** — canonical markdown schema specifications for implementers  
-• **SECURITY.md** — security and verification requirements  
-• **CONTRIBUTING.md** — quality and testing requirements  
-• **14-quality-gates.md** — minimum requirements for PR acceptance  
+Document is coordinated and should be used jointly with :
+• **Canonical SQL schema specifications for implementers [../../spec/04-data-model.md](04-data-model.md)**
+• **Canonical markdown schema specifications for implementers [Data_Schema.md](Data_Schema.md)**
+• **Security and verification requirements [../SECURITY.md](SECURITY.md)**
+• **Quality and testing requirements [../CONTRIBUTING.md](CONTRIBUTING.md)**
+• **Minimum requirements for PR acceptance [../../spec/14-quality-gates.md](14-quality-gates.md)**
 
 ## 2 Basic Model Entities and Service Tables
 
@@ -175,9 +175,9 @@ Activate when events are received from other nodes during synchronization. These
 
 •  `cleanup_expired_tokens` - removes tokens that have exceeded their expiration time.
 
-•  `update_peer_history_after_sync` - automatically updates peer history with new synchronization information when sync logs are created.
+•  `update_peer_synchronization_after_sync` - automatically updates peer history with new synchronization information when sync logs are created.
 
-•  `update_node_metrics_after_sync` - updates performance metrics when synchronization events are logged.
+•  `update_node_performance_after_sync` - updates performance metrics when synchronization events are logged.
 
 ### 2.1 Participants
 
@@ -3416,7 +3416,16 @@ Decay(T, t) ∝ e^(−λt)
 
 ## 4 Node Discovery and Network Tables
 
-### Table: nodes
+**Note on table naming**: In version v1.1.0, the tables were renamed for clarity:
+- `nodes` → `discovery_nodes`
+- `node_metrics` → `node_performance`
+- `sync_log` → `sync_operations`
+- `sync_logs` → `sync_attempts`
+- `peer_history` → `peer_synchronization`
+
+**Schema Version Tracking**: Both databases include `schema_version` tables for migration tracking (described in [../../spec/04-data-model.md](04-data-model.md)). These tables are not part of the functional model and are not described in detail here.
+
+### Table: discovery_nodes
 📝 **System-level** table of the Network Layer
 It is **not accept direct participant input**, and is **transmitted over the network**
 
@@ -3436,7 +3445,7 @@ node_id    (TEXT, NOT NULL) — FK → participants.public_key  — node's publi
 created_at (INTEGER, NOT NULL) — timestamp of record creation
 updated_at (INTEGER, NOT NULL) — timestamp of last update
 ```
-🏠 Database: discovery_nodes.sqlite  
+🏠 Database: discovery_nodes.sqlite
 
 #### Model: Node Discovery and Management
 
@@ -3489,7 +3498,7 @@ Storing node reputation and trust for evaluating node reliability based on their
 
 **Fields**:
 ```
-node_id              (INTEGER, NOT NULL) — FK → nodes.id  → nodes.node_id — unique node identifier (public key)
+node_id              (TEXT, NOT NULL) — FK → discovery_nodes.node_id — unique node identifier (public key)
 events_true          (INTEGER, NOT NULL, DEFAULT 0) — number of true event
 events_false         (INTEGER, NOT NULL, DEFAULT 0) — number of false event
 validations          (INTEGER, NOT NULL, DEFAULT 0) — number of confirmations
@@ -3498,7 +3507,7 @@ trust_score          (REAL, NOT NULL, DEFAULT 0.0) — overall trust rating (-1.
 propagation_priority (REAL, NOT NULL, DEFAULT 0.0) — distribution priority (0.0 .. 1.0)
 last_updated         (INTEGER, NOT NULL) — timestamp of last update
 ```
-🏠 Database: discovery_nodes.sqlite  
+🏠 Database: discovery_nodes.sqlite
 
 #### Model: Node Reputation and Trust
 
@@ -3536,7 +3545,7 @@ IF new_validation_received
 • Neutral trust is represented by 0.0
 • Propagation priority is derived from trust and activity metrics
 
-### Table: node_metrics
+### Table: node_performance
 
 📝 **System-level** table of the Network Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
@@ -3546,13 +3555,13 @@ Monitoring node performance and status for tracking node performance metrics for
 
 **Fields**:
 ```
-pubkey               (INTEGER, NOT NULL) — FK → nodes.id  → nodes.node_id — unique node identifier (public key)
+pubkey               (TEXT, NOT NULL) — FK → discovery_nodes.node_id — unique node identifier (public key)
 last_seen            (INTEGER, NOT NULL) — time of last contact
 relay_success_rate   (REAL, NOT NULL, DEFAULT 0.0) — percentage of successful transfers
 quality_index        (REAL, NOT NULL, DEFAULT 0.0) — quality index (0.0 .. 1.0) - continuity of trust indicator
 propagation_priority (REAL, NOT NULL, DEFAULT 0.0) — distribution priority (0.0 .. 1.0)
 ```
-🏠 Database: discovery_nodes.sqlite  
+🏠 Database: discovery_nodes.sqlite
 
 #### Model: Node Performance Metrics
 
@@ -3596,11 +3605,11 @@ Managing authentication sessions based on JWT tokens for storing active refresh 
 
 **Fields**:
 ```
-public_key    (INTEGER, NOT NULL) — FK → nodes.id  → nodes.node_id
+public_key    (TEXT, NOT NULL) — FK → discovery_nodes.node_id
 refresh_token (TEXT, NOT NULL, UNIQUE) — refresh token value
 expires_at    (INTEGER, NOT NULL) — expiration timestamp
 ```
-🏠 Database: discovery_nodes.sqlite  
+🏠 Database: discovery_nodes.sqlite
 
 #### Model: Authentication Token Management
 
@@ -3621,7 +3630,7 @@ IF CURRENT_TIMESTAMP > expires_at
 IF refresh_token NOT valid_jwt_format
     ERROR "Invalid token format"
     
-IF public_key NOT IN nodes.node_id
+IF public_key NOT IN discovery_nodes.node_id
     ERROR "Token public key not associated with known node"
 ```
 
@@ -3630,7 +3639,7 @@ IF public_key NOT IN nodes.node_id
 • Expired tokens are automatically cleaned up
 • Tokens are tied to specific node public keys for security
 
-### Table: peer_history
+### Table: peer_synchronization
 
 📝 **System-level** table of the Network Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
@@ -3641,7 +3650,7 @@ Storing peer synchronization history for tracking interaction history with each 
 **Fields**:
 ```
 id                 (INTEGER, PK, AUTOINCREMENT) — unique history record identifier
-peer_url           (INTEGER, NOT NULL) — FK → nodes.id → nodes.address
+peer_url           (TEXT, NOT NULL) — FK → discovery_nodes.address
 mode               (TEXT, NOT NULL) — synchronization mode
 status             (TEXT, NOT NULL) — status of the synchronization
 details            (TEXT, NOT NULL) — details of the synchronization process
@@ -3651,7 +3660,7 @@ fail_count         (INTEGER, DEFAULT 0) — counter of failed attempts
 last_quality_index (REAL, DEFAULT 0.0) — last quality index during synchronization
 last_trust_score   (REAL, DEFAULT 0.0) — last trust score during synchronization
 ```
-🏠 Database: discovery_nodes.sqlite  
+🏠 Database: discovery_nodes.sqlite
 
 #### Model: Peer Interaction History
 
@@ -3683,7 +3692,7 @@ IF synchronization_attempt
 • Supports diagnostic analysis of network issues
 • Quality and trust metrics are captured at time of synchronization
 
-### Table: sync_log
+### Table: sync_operations
 
 📝 **System-level** table of the Network Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
@@ -3698,10 +3707,10 @@ op         (TEXT, NOT NULL) — operation type (insert, update, delete)
 table_name (TEXT, NOT NULL) — name of the table affected
 record_id  (TEXT, NOT NULL) — identifier of the record affected
 signature  (TEXT, NOT NULL) — signature of the synchronization participant
-public_key (INTEGER, NOT NULL) — FK → nodes.id  → nodes.node_id — public key of the synchronization participant
+public_key (TEXT, NOT NULL) — FK → discovery_nodes.node_id — public key of the synchronization participant
 created_at (INTEGER, NOT NULL) — timestamp of the operation
 ```
-🏠 Database: discovery_nodes.sqlite  
+🏠 Database: discovery_nodes.sqlite
 
 #### Model: Synchronization Logging
 
@@ -3732,7 +3741,7 @@ IF created_at < (CURRENT_TIMESTAMP - retention_period)
 • Enables audit trail for synchronization operations
 • Supports integrity verification of synchronized data
 
-### Table: sync_logs
+### Table: sync_attempts
 
 📝 **System-level** table of the Network Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
@@ -3770,7 +3779,7 @@ IF sync_operation_initiated
     )
 
 IF sync_operation_completed
-    update_sync_log(
+    update_sync_operation(
         status = final_status,
         details = completion_details
     )
@@ -3827,18 +3836,18 @@ IF sync_operation_completed
 
 #### Table: node_trust_limits
 
-**Purpose** :  
-Limiting maximum influence of nodes  
+**Purpose** :
+Limiting maximum influence of nodes
 
-**Fields**:  
+**Fields**:
 ```
-node_id          (TEXT, NOT NULL) — FK → nodes.node_id — node’s public key
+node_id          (TEXT, NOT NULL) — FK → discovery_nodes.node_id — node's public key
 max_weight       (REAL, NOT NULL) — maximum allowable trust weight for this node
 decay_factor     (REAL, NOT NULL) — per-period decay factor for that node's weight
 small_constants  (REAL, NOT NULL) — small random constant in system time
 last_adjusted_at (INTEGER, NOT NULL) — timestamp when these limits were last updated
 ```
-🏠 Database: discovery_nodes.sqlite  
+🏠 Database: discovery_nodes.sqlite
 
 Used:
 • behavioral signatures
@@ -3862,13 +3871,13 @@ SET
 WHERE (CAST(CURRENT_TIMESTAMP AS REAL) - CAST(last_adjusted_at AS REAL)) > 0;
 ```
 
-**Parameters** :  
-• "node_trust_limits.decay_factor" ∈ (0,1) **controls temporal decay** of **weight**  
-• **Older trust** evidence **weakens** over **time** by **multiplication** with **decay factor**  
-• "node_trust_limits.max_weight" — **caps** the **maximum allowed weight** for a **node**  
-• "CURRENT_TIMESTAMP" - "last_adjusted_at" — **time elapsed** since **last update** in seconds  
+**Parameters** :
+• "node_trust_limits.decay_factor" ∈ (0,1) **controls temporal decay** of **weight**
+• **Older trust** evidence **weakens** over **time** by **multiplication** with **decay factor**
+• "node_trust_limits.max_weight" — **caps** the **maximum allowed weight** for a **node**
+• "CURRENT_TIMESTAMP" - "last_adjusted_at" — **time elapsed** since **last update** in seconds
 
-**Trust Limit Mechanism** :  
+**Trust Limit Mechanism** :
 ```
 UPDATE node_trust_limits
 SET decay_factor = CASE
@@ -3880,35 +3889,35 @@ SET decay_factor = CASE
         decay_factor  -- No change if decay_factor is out of range
 END,
 last_adjusted_at = CURRENT_TIMESTAMP
-WHERE node_id IN (SELECT node_id FROM nodes)
+WHERE node_id IN (SELECT node_id FROM discovery_nodes)
   AND (CAST(CURRENT_TIMESTAMP AS REAL) - CAST(last_adjusted_at AS REAL)) > 0;
 ```
 
-**Model Constraints** :  
+**Model Constraints** :
 • Each node's influence cannot exceed its allotted maximum
 • Influence naturally fades if not reinforced
 • Parameters are stored per-node in ""node_trust_limits"" table
 • Prevents Sybil attacks and disproportionate influence
 
-**Notes** :  
+**Notes** :
 • Ensures **resistance** to **manipulation** attempts
 • Maintains **balanced distribution** of influence
 • **Supports** system **stability** over **time**
 
-#### Table: node_behavior_signatures
+#### Table: node_behavior_patterns
 
-**Purpose** :  
-Storing behavioral characteristics of nodes  
+**Purpose** :
+Storing behavioral characteristics of nodes
 
-**Fields** :  
+**Fields** :
 ```
-node_id         (INTEGER, NOT NULL) — FK → nodes.id
-signature       (TEXT, NOT NULL) — cryptographic signature
-stability_score (REAL, NOT NULL) — 
-anomaly_score   (REAL, NOT NULL) — 
-updated_at      (INTEGER, NOT NULL) — 
+node_id         (TEXT, NOT NULL) — FK → discovery_nodes.node_id
+pattern_signature (TEXT, NOT NULL) — cryptographic signature
+stability_score (REAL, NOT NULL) —
+anomaly_score   (REAL, NOT NULL) —
+updated_at      (INTEGER, NOT NULL) —
 ```
-🏠 Database: discovery_nodes.sqlite  
+🏠 Database: discovery_nodes.sqlite
 
 Manipulation is determined not by content, but by behavior structure.
 
@@ -3918,20 +3927,20 @@ Examples:
 • sharp weight jumps
 • unnatural consistency
 
-#### Table: manipulation_flags
+#### Table: manipulation_indicators
 
-**Purpose** :  
-Recording suspicious patterns  
+**Purpose** :
+Tracking suspicious patterns
 
-**Fields** :  
+**Fields** :
 ```
-id          (INTEGER, PK, AUTOINCREMENT) — 
-node_id     (INTEGER, NOT NULL) — FK → nodes.id
-flag_type   (TEXT) — ENUM
-severity    (INTEGER, NOT NULL) — 
-detected_at (INTEGER, NOT NULL) — 
+id             (INTEGER, PK, AUTOINCREMENT) —
+node_id        (TEXT, NOT NULL) — FK → discovery_nodes.node_id
+indicator_type (TEXT) — ENUM
+severity       (INTEGER, NOT NULL) —
+detected_at    (INTEGER, NOT NULL) —
 ```
-🏠 Database: discovery_nodes.sqlite  
+🏠 Database: discovery_nodes.sqlite
 
 **Important** :  
 System does **NOT block participants**.
@@ -4176,4 +4185,5 @@ This :
 
 > **Truth is not what was said first.
 > Truth is what survives circulation.**
+
 

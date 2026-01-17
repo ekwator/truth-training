@@ -61,14 +61,14 @@ Spec ID: 08
 - **latency_ms**: Average response time between nodes
 
 **Metrics Update Process:**
-- After each sync operation, `upsert_node_metrics()` updates node performance data
+- After each sync operation, `upsert_node_performance()` updates node performance data
 - `merge_ratings()` automatically calls metrics update for incoming nodes
 - Graph visualization includes real-time propagation and relay metrics
 - CLI `truthctl status` shows network health with priority and success rates
 
 ### Local Peer Tracking
 
-- A local SQLite table `peer_history` is maintained to record per-peer sync attempts:
+- A local SQLite table `peer_synchronization` is maintained to record per-peer sync attempts:
   - Columns: `peer_url`, `last_sync`, `success_count`, `fail_count`, `last_quality_index`, `last_trust_score`.
   - Updated automatically after each sync attempt (success or failure).
 - API: `GET /api/v1/network/local` returns JSON with `peers` array and `summary` object:
@@ -106,7 +106,7 @@ flowchart LR
 - **Timestamp-based**: Latest timestamp wins for conflicting data
 - **Trust-weighted**: Higher trust scores influence resolution
 - **Idempotent operations**: Safe to retry failed syncs
-- **Audit logging**: All sync operations logged to `sync_logs` table
+- **Audit logging**: All sync operations logged to `sync_attempts` table
 
 ### Request/Response Formats
 
@@ -121,7 +121,7 @@ flowchart LR
   "metrics": [ProgressMetrics...],
   "node_ratings": [NodeRating...],
   "group_ratings": [GroupRating...],
-  "node_metrics": [NodeMetrics...],
+  "node_performance": [NodeMetrics...],
   "last_sync": 1710000000
 }
 ```
@@ -135,7 +135,7 @@ The system tracks relay success rates dynamically during sync operations:
 
 1. **Metrics Collection**: Each sync operation calls `record_relay_result(peer_url, success)` to track success/failure rates.
 
-2. **Storage**: Relay metrics are stored in the `node_metrics` table with `relay_success_rate` (0.0–1.0).
+2. **Storage**: Relay metrics are stored in the `node_performance` table with `relay_success_rate` (0.0–1.0).
 
 3. **Propagation**: Metrics are flushed to the database periodically via `flush_relay_metrics_to_db()`.
 
@@ -158,12 +158,12 @@ The system tracks relay success rates dynamically during sync operations:
 - Local calculation with EMA: p_raw = 0.4·trust_norm + 0.3·quality_index + 0.3·relay_success_rate,
   where trust_norm = ((trust_score+1)/2) and p = α·p_raw + (1-α)·prev, α=0.3.
 - Network exchange and merging: blend_priority(local, remote) = clamp(0.8·local + 0.2·remote, 0..1).
-- Value stored in `node_ratings.propagation_priority` and duplicated in `node_metrics.propagation_priority` for visualization.
+- Value stored in `node_ratings.propagation_priority` and duplicated in `node_performance.propagation_priority` for visualization.
 
 ## Quality Index Exchange
 
 - quality_index — trust continuity indicator (0.0–1.0), not a penalty for offline status.
-- Transmitted as part of `node_metrics` along with `relay_success_rate`.
+- Transmitted as part of `node_performance` along with `relay_success_rate`.
 - Local calculation: adaptive blend with EMA smoothing:
   - q_raw = 0.5·relay_success_rate + 0.3·conflict_free_ratio + 0.2·trust_score_stability
   - q = α·q_raw + (1-α)·prev, α=0.3

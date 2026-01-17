@@ -29,7 +29,7 @@ Base URL: http://<host>:<port>/
 - POST /sync (signed) → SyncResult
   - Headers: X-Public-Key, X-Signature, X-Timestamp
   - Message signed: `sync_push:{ts}`
-  - Body: SyncData { events, statements, impacts, metrics, node_ratings, group_ratings, node_metrics, last_sync }
+  - Body: SyncData { events, statements, impacts, metrics, node_ratings, group_ratings, node_performance, last_sync }
 - POST /incremental_sync (signed) → SyncResult
   - Headers: X-Public-Key, X-Signature, X-Timestamp
   - Message signed: `incremental_sync:{ts}`
@@ -193,7 +193,7 @@ SyncData
   "metrics": [/* ProgressMetrics[] */],
   "node_ratings": [/* NodeRating[] */],
   "group_ratings": [/* GroupRating[] */],
-  "node_metrics": [/* NodeMetrics[]; includes relay_success_rate, quality_index, propagation_priority */],
+  "node_performance": [/* NodeMetrics[]; includes relay_success_rate, quality_index, propagation_priority */],
   "last_sync": 1710000000
 }
 ```

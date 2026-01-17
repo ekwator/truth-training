@@ -9,7 +9,7 @@ Truth Training uses different logging mechanisms depending on the platform:
 - **Desktop UI**: Console logging (browser dev tools), Rust backend logging (env_logger), no persistent log storage in database
 - **Android**: System Logcat
 - **Server**: Structured logging via `env_logger` (Rust) with `RUST_LOG` environment variable
-- **CLI**: Logs stored in SQLite database (`sync_logs` table), accessible via `truthctl logs` commands
+- **CLI**: Logs stored in SQLite database (`sync_attempts` table), accessible via `truthctl logs` commands
 
 ## Desktop UI Logging
 

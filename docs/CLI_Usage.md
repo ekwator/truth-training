@@ -41,7 +41,7 @@ Output includes:
 - Node name and port (from `~/.truthctl/config.json`)
 - Database path
 - Number of peers (from `~/.truthctl/peers.json`)
-- Last 5 sync records from `sync_logs` table
+- Last 5 sync records from `sync_attempts` table
 - For fresh database shows warning: "No sync history yet."
 - Network metrics: average `propagation_priority`, average `relay_success_rate`, average `quality_index` with color coding (quality: 🔵 high, 🟡 medium, 🔴 low)
 
@@ -258,7 +258,7 @@ truthctl peers stats --server http://127.0.0.1:8080 --format table
 truthctl peers stats --server http://127.0.0.1:8080 --format json
 ```
 
-History from local DB (`peer_history`):
+History from local DB (`peer_synchronization`):
 
 ```bash
 truthctl peers history --limit 50 --db truth_training.sqlite

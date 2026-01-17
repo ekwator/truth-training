@@ -118,8 +118,8 @@ updated_at (INTEGER, NOT NULL) — timestamp of last update
 ```
 nodes.node_id = participants.public_key
 nodes.id = node_ratings.node_id
-nodes.id = node_metrics.pubkey
-nodes.id = peer_history.peer_url
+nodes.id = node_performance.pubkey
+nodes.id = peer_synchronization.peer_url
 ```
 **Base node mapping**
 ```
@@ -143,8 +143,8 @@ nodes.reachable = (
 ```
 nodes.last_seen = (
     SELECT MAX(timestamp)
-    FROM sync_logs
-    WHERE sync_logs.peer_url = nodes.address
+    FROM sync_attempts
+    WHERE sync_attempts.peer_url = nodes.address
 )
 ```
 **Aggregation formulas "ttl"**
@@ -415,7 +415,7 @@ IF manual_addition
 
 ### 2.3 Synchronization
 
-#### Table: sync_logs
+#### Table: sync_attempts
 
 📝 **System-level** table of the Network Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
@@ -434,25 +434,25 @@ details    (TEXT, NOT NULL) — additional info or error message
 ```
 🏠 Database: discovery_nodes.sqlite
 
-**Model "sync_logs"** :
+**Model "sync_attempts"** :
 **Source relation**
 ```
-sync_logs.peer_url = nodes.address
+sync_attempts.peer_url = nodes.address
 ```
 **Base sync mapping**
 ```
 base_sync_id =
-SELECT sync_logs.id
-FROM sync_logs
-WHERE sync_logs.id = sync_logs.id
+SELECT sync_attempts.id
+FROM sync_attempts
+WHERE sync_attempts.id = sync_attempts.id
 ```
 **Aggregation formulas "timestamp"**
 ```
-sync_logs.timestamp = CURRENT_TIMESTAMP
+sync_attempts.timestamp = CURRENT_TIMESTAMP
 ```
 **Aggregation formulas "status"**
 ```
-sync_logs.status = (
+sync_attempts.status = (
     SELECT CASE
         WHEN details LIKE '%success%' THEN 'success'
         WHEN details LIKE '%error%' THEN 'error'
@@ -462,15 +462,15 @@ sync_logs.status = (
 ```
 **Aggregation formulas "mode"**
 ```
-sync_logs.mode = (
+sync_attempts.mode = (
     SELECT 'delta'  -- Default to delta sync
 )
 ```
 
 **SQL Implementation Example**:
 ```sql
--- Create sync_logs table
-CREATE TABLE sync_logs (
+-- Create sync_attempts table
+CREATE TABLE sync_attempts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp INTEGER NOT NULL,
     peer_url TEXT NOT NULL,
@@ -479,12 +479,12 @@ CREATE TABLE sync_logs (
     details TEXT NOT NULL
 );
 
--- Insert sync log entry
-INSERT INTO sync_logs (timestamp, peer_url, mode, status, details)
+-- Insert sync attempt entry
+INSERT INTO sync_attempts (timestamp, peer_url, mode, status, details)
 VALUES (strftime('%s', 'now'), ?, ?, ?, ?);
 
--- Get recent sync logs for a peer
-SELECT * FROM sync_logs
+-- Get recent sync attempts for a peer
+SELECT * FROM sync_attempts
 WHERE peer_url = ?
 ORDER BY timestamp DESC
 LIMIT 10;
@@ -495,13 +495,13 @@ SELECT
     COUNT(*) as total_syncs,
     SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful_syncs,
     (SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as success_rate
-FROM sync_logs
+FROM sync_attempts
 WHERE peer_url = ?
 GROUP BY peer_url;
 
--- Clean up old sync logs
-DELETE FROM sync_logs
-WHERE timestamp < (strftime('%s', 'now') - 86400 * 7); -- Delete logs older than 7 days
+-- Clean up old sync attempts
+DELETE FROM sync_attempts
+WHERE timestamp < (strftime('%s', 'now') - 86400 * 7); -- Delete attempts older than 7 days
 ```
 
 ##### Model: Synchronization Event Logging
@@ -523,7 +523,7 @@ IF sync_operation_initiated
     )
 
 IF sync_operation_completed
-    update_sync_log(
+    update_sync_operation(
         status = final_status,
         details = completion_details
     )
@@ -540,7 +540,7 @@ IF sync_operation_completed
 • Enables analysis of synchronization patterns
 • Supports network diagnostics and optimization
 
-#### Table: sync_log
+#### Table: sync_operations
 
 📝 **System-level** table of the Network Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
@@ -560,33 +560,33 @@ created_at (INTEGER, NOT NULL) — timestamp of the operation
 ```
 🏠 Database: discovery_nodes.sqlite
 
-**Model "sync_log"** :
+**Model "sync_operations"** :
 **Source relation**
 ```
-sync_log.public_key = nodes.node_id
+sync_operations.public_key = nodes.node_id
 ```
 **Base sync mapping**
 ```
 base_sync_id =
-SELECT sync_log.id
-FROM sync_log
-WHERE sync_log.id = sync_log.id
+SELECT sync_operations.id
+FROM sync_operations
+WHERE sync_operations.id = sync_operations.id
 ```
 **Aggregation formulas "op"**
 ```
-sync_log.op = (
-    SELECT 'insert'  -- Default operation type
+sync_operations.op = (
+     SELECT 'insert'  -- Default operation type
 )
 ```
 **Aggregation formulas "created_at"**
 ```
-sync_log.created_at = CURRENT_TIMESTAMP
+sync_operations.created_at = CURRENT_TIMESTAMP
 ```
 
 **SQL Implementation Example**:
 ```sql
--- Create sync_log table
-CREATE TABLE sync_log (
+-- Create sync_operations table
+CREATE TABLE sync_operations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     op TEXT NOT NULL,
     table_name TEXT NOT NULL,
@@ -598,17 +598,17 @@ CREATE TABLE sync_log (
 );
 
 -- Insert sync operation
-INSERT INTO sync_log (op, table_name, record_id, signature, public_key, created_at)
+INSERT INTO sync_operations (op, table_name, record_id, signature, public_key, created_at)
 VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'));
 
 -- Get all operations for a specific node
-SELECT * FROM sync_log
+SELECT * FROM sync_operations
 WHERE public_key = ?
 ORDER BY created_at DESC;
 
 -- Verify signature for a specific operation
 SELECT s.*, n.address as node_address
-FROM sync_log s
+FROM sync_operations s
 JOIN nodes n ON s.public_key = n.node_id
 WHERE s.id = ?;
 
@@ -617,7 +617,7 @@ SELECT table_name, COUNT(*) as operation_count,
        SUM(CASE WHEN op = 'insert' THEN 1 ELSE 0 END) as inserts,
        SUM(CASE WHEN op = 'update' THEN 1 ELSE 0 END) as updates,
        SUM(CASE WHEN op = 'delete' THEN 1 ELSE 0 END) as deletes
-FROM sync_log
+FROM sync_operations
 WHERE created_at > (strftime('%s', 'now') - 3600) -- Last hour
 GROUP BY table_name;
 ```
@@ -701,17 +701,17 @@ node_ratings.trust_score = (
 ```
 node_ratings.events_true = (
     SELECT COUNT(*)
-    FROM sync_log
-    WHERE sync_log.public_key = base_node_id
-    AND sync_log.op = 'insert'
+    FROM sync_operations
+    WHERE sync_operations.public_key = base_node_id
+    AND sync_operations.op = 'insert'
 )
 ```
 **Aggregation formulas "validations"**
 ```
 node_ratings.validations = (
     SELECT COUNT(*)
-    FROM sync_log
-    WHERE sync_log.public_key = base_node_id
+    FROM sync_operations
+    WHERE sync_operations.public_key = base_node_id
 )
 ```
 **Aggregation formulas "propagation_priority"**
@@ -813,7 +813,7 @@ IF new_validation_received
 • Neutral trust is represented by 0.0
 • Propagation priority is derived from trust and activity metrics
 
-#### Table: node_metrics
+#### Table: node_performance
 
 📝 **System-level** table of the Network Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
@@ -831,33 +831,33 @@ propagation_priority (REAL, NOT NULL, DEFAULT 0.0) — distribution priority (0.
 ```
 🏠 Database: discovery_nodes.sqlite
 
-**Model "node_metrics"** :
+**Model "node_performance"** :
 **Source relation**
 ```
-node_metrics.pubkey = nodes.id
+node_performance.pubkey = nodes.id
 ```
 **Base node mapping**
 ```
 base_node_id =
 SELECT nodes.id
 FROM nodes
-WHERE nodes.id = node_metrics.pubkey
+WHERE nodes.id = node_performance.pubkey
 ```
 **Aggregation formulas "relay_success_rate"**
 ```
-node_metrics.relay_success_rate = (
+node_performance.relay_success_rate = (
     SELECT
         CASE
             WHEN COUNT(*) = 0 THEN 0.0
             ELSE SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) * 1.0 / COUNT(*)
         END
-    FROM sync_logs
-    WHERE sync_logs.peer_url = (SELECT address FROM nodes WHERE id = base_node_id)
+    FROM sync_attempts
+    WHERE sync_attempts.peer_url = (SELECT address FROM nodes WHERE id = base_node_id)
 )
 ```
 **Aggregation formulas "quality_index"**
 ```
-node_metrics.quality_index = (
+node_performance.quality_index = (
     SELECT
         (relay_success_rate * 0.5) +
         (CASE
@@ -865,23 +865,23 @@ node_metrics.quality_index = (
             THEN 0.5
             ELSE 0.1
         END)
-    FROM node_metrics
+    FROM node_performance
     WHERE pubkey = base_node_id
 )
 ```
 **Aggregation formulas "propagation_priority"**
 ```
-node_metrics.propagation_priority = (
+node_performance.propagation_priority = (
     SELECT quality_index * (SELECT trust_score FROM node_ratings WHERE node_id = base_node_id)
-    FROM node_metrics
+    FROM node_performance
     WHERE pubkey = base_node_id
 )
 ```
 
 **SQL Implementation Example**:
 ```sql
--- Create node_metrics table
-CREATE TABLE node_metrics (
+-- Create node_performance table
+CREATE TABLE node_performance (
     pubkey INTEGER NOT NULL,
     last_seen INTEGER NOT NULL,
     relay_success_rate REAL NOT NULL DEFAULT 0.0,
@@ -890,14 +890,14 @@ CREATE TABLE node_metrics (
     FOREIGN KEY (pubkey) REFERENCES nodes(id)
 );
 
--- Insert or update node metrics
-INSERT INTO node_metrics (pubkey, last_seen, relay_success_rate, quality_index, propagation_priority)
+-- Insert or update node performance
+INSERT INTO node_performance (pubkey, last_seen, relay_success_rate, quality_index, propagation_priority)
 VALUES (?, ?, 0.0, 0.0, 0.0)
 ON CONFLICT(pubkey) DO UPDATE SET
     last_seen = excluded.last_seen;
 
 -- Update relay success rate
-UPDATE node_metrics
+UPDATE node_performance
 SET
     relay_success_rate = (
         SELECT
@@ -905,8 +905,8 @@ SET
                 WHEN COUNT(*) = 0 THEN 0.0
                 ELSE SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) * 1.0 / COUNT(*)
             END
-        FROM sync_logs
-        WHERE sync_logs.peer_url = (SELECT address FROM nodes WHERE id = node_metrics.pubkey)
+        FROM sync_attempts
+        WHERE sync_attempts.peer_url = (SELECT address FROM nodes WHERE id = node_performance.pubkey)
     ),
     quality_index = (
         SELECT
@@ -919,8 +919,8 @@ SET
                 THEN 0.5
                 ELSE 0.1
             END)
-        FROM sync_logs
-        WHERE sync_logs.peer_url = (SELECT address FROM nodes WHERE id = node_metrics.pubkey)
+        FROM sync_attempts
+        WHERE sync_attempts.peer_url = (SELECT address FROM nodes WHERE id = node_performance.pubkey)
     ),
     propagation_priority = (
         SELECT
@@ -934,21 +934,21 @@ SET
                 ELSE 0.1
             END)) * trust_score
         FROM node_ratings
-        WHERE node_id = node_metrics.pubkey
+        WHERE node_id = node_performance.pubkey
     )
 WHERE pubkey = ?;
 
--- Get node metrics with ratings
+-- Get node performance with ratings
 SELECT
     n.address,
-    nm.relay_success_rate,
-    nm.quality_index,
-    nm.propagation_priority,
+    np.relay_success_rate,
+    np.quality_index,
+    np.propagation_priority,
     nr.trust_score
-FROM node_metrics nm
-JOIN nodes n ON nm.pubkey = n.id
+FROM node_performance np
+JOIN nodes n ON np.pubkey = n.id
 LEFT JOIN node_ratings nr ON n.id = nr.node_id
-ORDER BY nm.propagation_priority DESC;
+ORDER BY np.propagation_priority DESC;
 ```
 
 ##### Model: Node Performance Metrics
@@ -1080,7 +1080,7 @@ IF public_key NOT IN nodes.node_id
 
 ### 2.6 Peer History and Analysis
 
-#### Table: peer_history
+#### Table: peer_synchronization
 
 📝 **System-level** table of the Network Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
@@ -1103,49 +1103,49 @@ last_trust_score   (REAL, DEFAULT 0.0) — last trust score during synchronizati
 ```
 🏠 Database: discovery_nodes.sqlite
 
-**Model "peer_history"** :
+**Model "peer_synchronization"** :
 **Source relation**
 ```
-peer_history.peer_url = nodes.id
+peer_synchronization.peer_url = nodes.id
 ```
 **Base peer mapping**
 ```
 base_peer_id =
 SELECT nodes.id
 FROM nodes
-WHERE nodes.id = peer_history.peer_url
+WHERE nodes.id = peer_synchronization.peer_url
 ```
 **Aggregation formulas "success_count"**
 ```
-peer_history.success_count = (
+peer_synchronization.success_count = (
     SELECT COUNT(*)
-    FROM sync_logs
-    WHERE sync_logs.peer_url = (SELECT address FROM nodes WHERE id = base_peer_id)
-    AND sync_logs.status = 'success'
+    FROM sync_attempts
+    WHERE sync_attempts.peer_url = (SELECT address FROM nodes WHERE id = base_peer_id)
+    AND sync_attempts.status = 'success'
 )
 ```
 **Aggregation formulas "fail_count"**
 ```
-peer_history.fail_count = (
+peer_synchronization.fail_count = (
     SELECT COUNT(*)
-    FROM sync_logs
-    WHERE sync_logs.peer_url = (SELECT address FROM nodes WHERE id = base_peer_id)
-    AND sync_logs.status != 'success'
+    FROM sync_attempts
+    WHERE sync_attempts.peer_url = (SELECT address FROM nodes WHERE id = base_peer_id)
+    AND sync_attempts.status != 'success'
 )
 ```
 **Aggregation formulas "last_sync"**
 ```
-peer_history.last_sync = (
+peer_synchronization.last_sync = (
     SELECT MAX(timestamp)
-    FROM sync_logs
-    WHERE sync_logs.peer_url = (SELECT address FROM nodes WHERE id = base_peer_id)
+    FROM sync_attempts
+    WHERE sync_attempts.peer_url = (SELECT address FROM nodes WHERE id = base_peer_id)
 )
 ```
 
 **SQL Implementation Example**:
 ```sql
--- Create peer_history table
-CREATE TABLE peer_history (
+-- Create peer_synchronization table
+CREATE TABLE peer_synchronization (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     peer_url INTEGER NOT NULL,
     mode TEXT NOT NULL,
@@ -1159,12 +1159,12 @@ CREATE TABLE peer_history (
     FOREIGN KEY (peer_url) REFERENCES nodes(id)
 );
 
--- Insert new peer history record
-INSERT INTO peer_history (peer_url, mode, status, details, last_sync, success_count, fail_count)
+-- Insert new peer synchronization record
+INSERT INTO peer_synchronization (peer_url, mode, status, details, last_sync, success_count, fail_count)
 VALUES ((SELECT id FROM nodes WHERE address = ?), ?, ?, ?, strftime('%s', 'now'), 0, 0);
 
 -- Update peer sync stats
-UPDATE peer_history
+UPDATE peer_synchronization
 SET
     last_sync = strftime('%s', 'now'),
     success_count = success_count + CASE WHEN ? = 'success' THEN 1 ELSE 0 END,
@@ -1176,32 +1176,32 @@ WHERE peer_url = (SELECT id FROM nodes WHERE address = ?);
 -- Get peer sync statistics
 SELECT
     n.address,
-    ph.mode,
-    ph.success_count,
-    ph.fail_count,
+    ps.mode,
+    ps.success_count,
+    ps.fail_count,
     CASE
-        WHEN (ph.success_count + ph.fail_count) > 0
-        THEN ph.success_count * 100.0 / (ph.success_count + ph.fail_count)
+        WHEN (ps.success_count + ps.fail_count) > 0
+        THEN ps.success_count * 100.0 / (ps.success_count + ps.fail_count)
         ELSE 0.0
     END as success_rate,
-    ph.last_sync,
-    ph.last_quality_index,
-    ph.last_trust_score
-FROM peer_history ph
-JOIN nodes n ON ph.peer_url = n.id
-ORDER BY ph.last_sync DESC;
+    ps.last_sync,
+    ps.last_quality_index,
+    ps.last_trust_score
+FROM peer_synchronization ps
+JOIN nodes n ON ps.peer_url = n.id
+ORDER BY ps.last_sync DESC;
 
 -- Get peer with highest success rate
 SELECT
     n.address,
     CASE
-        WHEN (ph.success_count + ph.fail_count) > 0
-        THEN ph.success_count * 100.0 / (ph.success_count + ph.fail_count)
+        WHEN (ps.success_count + ps.fail_count) > 0
+        THEN ps.success_count * 100.0 / (ps.success_count + ps.fail_count)
         ELSE 0.0
     END as success_rate
-FROM peer_history ph
-JOIN nodes n ON ph.peer_url = n.id
-WHERE ph.success_count + ph.fail_count > 0
+FROM peer_synchronization ps
+JOIN nodes n ON ps.peer_url = n.id
+WHERE ps.success_count + ps.fail_count > 0
 ORDER BY success_rate DESC
 LIMIT 5;
 ```

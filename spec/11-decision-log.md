@@ -144,7 +144,7 @@ Spec ID: 11
 
 ### v0.2.8-pre - Adaptive Propagation Priority
 - Introduced `propagation_priority` EMA logic combining trust, quality_index, relay_success_rate
-- Stored in `node_ratings` and duplicated in `node_metrics` for visualization
+- Stored in `node_ratings` and duplicated in `node_performance` for visualization
 - P2P sync exchanges and blends priority; API/CLI expose averages and per-node values
 - Docs updated across README, CLI usage, architecture, sync spec
 

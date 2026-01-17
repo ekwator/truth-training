@@ -98,7 +98,7 @@ truthctl --db truth_training.sqlite --identity keys/node1.json status
 - Node name and port (from `~/.truthctl/config.json`)
 - Database path
 - Number of peers (from `~/.truthctl/peers.json`)
-- Last 5 sync records from `sync_logs` table
+- Last 5 sync records from `sync_attempts` table
 - Network metrics: average `propagation_priority`, average `relay_success_rate`, average `quality_index`
 
 ### Add Peer

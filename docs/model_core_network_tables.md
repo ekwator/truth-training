@@ -48,10 +48,10 @@ END;
 
 -- Trigger to update peer history when sync occurs
 -- Automatically updates peer history with new synchronization information
-CREATE TRIGGER update_peer_history_after_sync
-AFTER INSERT ON sync_logs
+CREATE TRIGGER update_peer_synchronization_after_sync
+AFTER INSERT ON sync_attempts
 BEGIN
-    INSERT OR REPLACE INTO peer_history (
+    INSERT OR REPLACE INTO peer_synchronization (
         peer_url,
         mode,
         status,
@@ -70,27 +70,27 @@ BEGIN
         NEW.timestamp,
         CASE
             WHEN NEW.status = 'success' THEN
-                COALESCE((SELECT success_count FROM peer_history WHERE peer_url = NEW.peer_url), 0) + 1
+                COALESCE((SELECT success_count FROM peer_synchronization WHERE peer_url = NEW.peer_url), 0) + 1
             ELSE
-                COALESCE((SELECT success_count FROM peer_history WHERE peer_url = NEW.peer_url), 0)
+                COALESCE((SELECT success_count FROM peer_synchronization WHERE peer_url = NEW.peer_url), 0)
         END,
         CASE
             WHEN NEW.status != 'success' THEN
-                COALESCE((SELECT fail_count FROM peer_history WHERE peer_url = NEW.peer_url), 0) + 1
+                COALESCE((SELECT fail_count FROM peer_synchronization WHERE peer_url = NEW.peer_url), 0) + 1
             ELSE
-                COALESCE((SELECT fail_count FROM peer_history WHERE peer_url = NEW.peer_url), 0)
+                COALESCE((SELECT fail_count FROM peer_synchronization WHERE peer_url = NEW.peer_url), 0)
         END,
-        COALESCE((SELECT quality_index FROM node_metrics WHERE pubkey = (
-            SELECT node_id FROM nodes WHERE address = NEW.peer_url
+        COALESCE((SELECT quality_index FROM node_performance WHERE pubkey = (
+            SELECT node_id FROM discovery_nodes WHERE address = NEW.peer_url
         )), 0.0),
         COALESCE((SELECT trust_score FROM node_ratings WHERE node_id = (
-            SELECT node_id FROM nodes WHERE address = NEW.peer_url
+            SELECT node_id FROM discovery_nodes WHERE address = NEW.peer_url
         )), 0.0)
     WHERE NOT EXISTS (
-        SELECT 1 FROM peer_history WHERE peer_url = NEW.peer_url
+        SELECT 1 FROM peer_synchronization WHERE peer_url = NEW.peer_url
     );
     
-    UPDATE peer_history
+    UPDATE peer_synchronization
     SET
         mode = NEW.mode,
         status = NEW.status,
@@ -104,21 +104,21 @@ BEGIN
             WHEN NEW.status != 'success' THEN fail_count + 1
             ELSE fail_count
         END,
-        last_quality_index = COALESCE((SELECT quality_index FROM node_metrics WHERE pubkey = (
-            SELECT node_id FROM nodes WHERE address = NEW.peer_url
+        last_quality_index = COALESCE((SELECT quality_index FROM node_performance WHERE pubkey = (
+            SELECT node_id FROM discovery_nodes WHERE address = NEW.peer_url
         )), 0.0),
         last_trust_score = COALESCE((SELECT trust_score FROM node_ratings WHERE node_id = (
-            SELECT node_id FROM nodes WHERE address = NEW.peer_url
+            SELECT node_id FROM discovery_nodes WHERE address = NEW.peer_url
         )), 0.0)
     WHERE peer_url = NEW.peer_url;
 END;
 
 -- Trigger to update node metrics when sync occurs
 -- Updates performance metrics when synchronization events are logged
-CREATE TRIGGER update_node_metrics_after_sync
-AFTER INSERT ON sync_logs
+CREATE TRIGGER update_node_performance_after_sync
+AFTER INSERT ON sync_attempts
 BEGIN
-    INSERT OR REPLACE INTO node_metrics (
+    INSERT OR REPLACE INTO node_performance (
         pubkey,
         last_seen,
         relay_success_rate,
@@ -131,22 +131,22 @@ BEGIN
         COALESCE(nm.relay_success_rate, 0.0),
         COALESCE(nm.quality_index, 0.0),
         COALESCE(nr.propagation_priority, 0.0)
-    FROM nodes n
-    LEFT JOIN node_metrics nm ON n.node_id = nm.pubkey
+    FROM discovery_nodes n
+    LEFT JOIN node_performance nm ON n.node_id = nm.pubkey
     LEFT JOIN node_ratings nr ON n.node_id = nr.node_id
     WHERE n.address = NEW.peer_url
-    AND NOT EXISTS (SELECT 1 FROM node_metrics WHERE pubkey = n.node_id);
+    AND NOT EXISTS (SELECT 1 FROM node_performance WHERE pubkey = n.node_id);
     
-    UPDATE node_metrics
+    UPDATE node_performance
     SET
         last_seen = NEW.timestamp,
         relay_success_rate = (
             SELECT AVG(CASE WHEN sl.status = 'success' THEN 1.0 ELSE 0.0 END)
-            FROM sync_logs sl
-            JOIN nodes n2 ON sl.peer_url = n2.address
-            WHERE n2.node_id = node_metrics.pubkey
+            FROM sync_attempts sl
+            JOIN discovery_nodes n2 ON sl.peer_url = n2.address
+            WHERE n2.node_id = node_performance.pubkey
         )
     WHERE pubkey = (
-        SELECT node_id FROM nodes WHERE address = NEW.peer_url
+        SELECT node_id FROM discovery_nodes WHERE address = NEW.peer_url
     );
 END;

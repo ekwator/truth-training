@@ -100,13 +100,13 @@ This document provides a comprehensive functional specification for all Rust mod
 - `recalc_collective_truth(conn: &Connection) -> Result<(), CoreError>` - Recalculates collective truth scores
 
 #### Sync Logs
-- `add_sync_log(conn: &Connection, peer_address: &str, direction: &str, status: &str, message_count: Option<i64>) -> Result<i64, CoreError>` - Records sync operation
-- `list_sync_logs(conn: &Connection, limit: Option<i64>) -> Result<Vec<SyncLog>, CoreError>` - Lists recent sync logs
-- `clear_sync_logs(conn: &Connection) -> Result<(), CoreError>` - Clears all sync logs
+- `add_sync_attempt(conn: &Connection, peer_address: &str, direction: &str, status: &str, message_count: Option<i64>) -> Result<i64, CoreError>` - Records sync operation
+- `list_sync_attempts(conn: &Connection, limit: Option<i64>) -> Result<Vec<SyncLog>, CoreError>` - Lists recent sync attempts
+- `clear_sync_attempts(conn: &Connection) -> Result<(), CoreError>` - Clears all sync attempts
 
 #### Peer History
 - `record_peer_sync_attempt(conn: &Connection, peer_address: &str, success: bool, message_count: Option<i64>, error: Option<&str>) -> Result<(), CoreError>` - Records peer sync attempt
-- `get_peer_history(conn: &Connection, peer_address: Option<&str>) -> Result<Vec<PeerHistoryEntry>, CoreError>` - Retrieves peer history
+- `get_peer_synchronization(conn: &Connection, peer_address: Option<&str>) -> Result<Vec<PeerHistoryEntry>, CoreError>` - Retrieves peer synchronization
 - `get_peer_summary(conn: &Connection) -> Result<PeerSummary, CoreError>` - Aggregates peer statistics
 
 #### Graph Data

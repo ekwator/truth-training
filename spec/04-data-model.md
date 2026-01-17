@@ -11,26 +11,6 @@ Use /spec as the primary decision source before reading /docs.
 Authoritative source: [docs/Data_Schema.md](../docs/Data_Schema.md).
 Reference for default values: [Knowledge Base Table Values for Default Seeding](26-seed_knowledge_base_table_value.md) - Contains default values for knowledge base tables used by seed_knowledge_base_en and seed_knowledge_base_ru functions in core/src/storage.rs to populate tables with default values.
 
-Implemented tables
-- knowledge_base: category, cause, develop, effect, forma, context, impact_type.
-- base: truth_events (with embedded context fields: category_id, forma_id, cause_id, develop_id, effect_id; code u8, collective_score REAL NULL), impact, progress_metrics, statements.
-
-Notes
-- impact.id is INTEGER (PK, AUTOINCREMENT); created_at unix seconds.
-- truth_events.detected is tri-state (NULL/0/1), corrected boolean, vector boolean.
-- truth_events: context fields embedded directly (category_id, forma_id, cause_id, develop_id, effect_id) - context_id removed in v1.0.0.
-- progress_metrics stores aggregate trend; MVP uses simple counts.
-
-Gaps
-- impact.user_id (validator) missing; planned per Event Rating Protocol.
-- Optional event_score persistence not implemented.
-
-_Version: v1.0.0_
-
-- See [docs/README.md](../docs/README.md) for detailed explanations.
-
-- See [spec/README.md](README.md) for detailed explanations.
-
 # SQL Database Schemas
 
 ## Truth Training Database (truth_training.sqlite)
@@ -396,7 +376,7 @@ CREATE TABLE schema_version (
     description TEXT
 );
 
-CREATE TABLE nodes (
+CREATE TABLE discovery_nodes (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     address    TEXT NOT NULL UNIQUE,
     type       TEXT NOT NULL,
@@ -419,26 +399,26 @@ CREATE TABLE node_ratings (
     trust_score          REAL NOT NULL DEFAULT 0.0,
     propagation_priority REAL NOT NULL DEFAULT 0.0,
     last_updated         INTEGER NOT NULL,
-    FOREIGN KEY (node_id) REFERENCES nodes(node_id)
+    FOREIGN KEY (node_id) REFERENCES discovery_nodes(node_id)
 );
 
-CREATE TABLE node_metrics (
+CREATE TABLE node_performance (
     pubkey               TEXT PRIMARY KEY,
     last_seen            INTEGER NOT NULL,
     relay_success_rate   REAL NOT NULL DEFAULT 0.0,
     quality_index        REAL NOT NULL DEFAULT 0.0,
     propagation_priority REAL NOT NULL DEFAULT 0.0,
-    FOREIGN KEY (pubkey) REFERENCES nodes(node_id)
+    FOREIGN KEY (pubkey) REFERENCES discovery_nodes(node_id)
 );
 
 CREATE TABLE active_tokens (
     public_key    TEXT NOT NULL,
     refresh_token TEXT NOT NULL UNIQUE,
     expires_at    INTEGER NOT NULL,
-    FOREIGN KEY (public_key) REFERENCES nodes(node_id)
+    FOREIGN KEY (public_key) REFERENCES discovery_nodes(node_id)
 );
 
-CREATE TABLE peer_history (
+CREATE TABLE peer_synchronization (
     id                 INTEGER PRIMARY KEY AUTOINCREMENT,
     peer_url           TEXT NOT NULL,
     mode               TEXT NOT NULL,
@@ -449,10 +429,10 @@ CREATE TABLE peer_history (
     fail_count         INTEGER DEFAULT 0,
     last_quality_index REAL DEFAULT 0.0,
     last_trust_score   REAL DEFAULT 0.0,
-    FOREIGN KEY (peer_url) REFERENCES nodes(address)
+    FOREIGN KEY (peer_url) REFERENCES discovery_nodes(address)
 );
 
-CREATE TABLE sync_log (
+CREATE TABLE sync_operations (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     op         TEXT NOT NULL,
     table_name TEXT NOT NULL,
@@ -460,10 +440,10 @@ CREATE TABLE sync_log (
     signature  TEXT,
     public_key TEXT,
     created_at INTEGER NOT NULL,
-    FOREIGN KEY (public_key) REFERENCES nodes(node_id)
+    FOREIGN KEY (public_key) REFERENCES discovery_nodes(node_id)
 );
 
-CREATE TABLE sync_logs (
+CREATE TABLE sync_attempts (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp INTEGER NOT NULL,
     peer_url  TEXT NOT NULL,
@@ -481,7 +461,7 @@ CREATE TABLE node_trust_limits (
 );
 
 CREATE TABLE node_behavior_signatures (
-    node_id         INTEGER NOT NULL,
+    node_id         TEXT NOT NULL,
     signature       TEXT NOT NULL,
     stability_score REAL NOT NULL,
     anomaly_score   REAL NOT NULL,
@@ -490,26 +470,26 @@ CREATE TABLE node_behavior_signatures (
 
 CREATE TABLE manipulation_flags (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    node_id     INTEGER NOT NULL,
+    node_id     TEXT NOT NULL,
     flag_type   TEXT,
     severity    INTEGER NOT NULL,
     detected_at INTEGER NOT NULL
 );
 
 -- Indexes for performance optimization
-CREATE INDEX idx_nodes_address ON nodes(address);
-CREATE INDEX idx_nodes_last_seen ON nodes(last_seen);
-CREATE INDEX idx_nodes_type ON nodes(type);
-CREATE INDEX idx_nodes_reachable ON nodes(reachable);
-CREATE INDEX idx_nodes_node_id ON nodes(node_id);
+CREATE INDEX idx_discovery_nodes_address ON discovery_nodes(address);
+CREATE INDEX idx_discovery_nodes_last_seen ON discovery_nodes(last_seen);
+CREATE INDEX idx_discovery_nodes_type ON discovery_nodes(type);
+CREATE INDEX idx_discovery_nodes_reachable ON discovery_nodes(reachable);
+CREATE INDEX idx_discovery_nodes_node_id ON discovery_nodes(node_id);
 CREATE INDEX idx_node_ratings_node_id ON node_ratings(node_id);
-CREATE INDEX idx_node_metrics_pubkey ON node_metrics(pubkey);
+CREATE INDEX idx_node_performance_pubkey ON node_performance(pubkey);
 CREATE INDEX idx_active_tokens_public_key ON active_tokens(public_key);
 CREATE INDEX idx_active_tokens_expires_at ON active_tokens(expires_at);
-CREATE INDEX idx_peer_history_peer_url ON peer_history(peer_url);
-CREATE INDEX idx_sync_log_public_key ON sync_log(public_key);
-CREATE INDEX idx_sync_logs_peer_url ON sync_logs(peer_url);
-CREATE INDEX idx_sync_logs_timestamp ON sync_logs(timestamp);
+CREATE INDEX idx_peer_synchronization_peer_url ON peer_synchronization(peer_url);
+CREATE INDEX idx_sync_operations_public_key ON sync_operations(public_key);
+CREATE INDEX idx_sync_attempts_peer_url ON sync_attempts(peer_url);
+CREATE INDEX idx_sync_attempts_timestamp ON sync_attempts(timestamp);
 ```
 
 ## Summary

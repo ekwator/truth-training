@@ -12,7 +12,18 @@ This document describes the database schema for the Truth Training platform, det
 
 ## 1. Core Application Database (truth_training.sqlite)
 
-### 1.1 Knowledge Base Tables
+### 1.1 Schema Management Tables
+
+#### schema_version Table
+Tracks database schema versions for version control and migration tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| version | TEXT | Schema version (primary key) |
+| applied_at | INTEGER | Time when version was applied |
+| description | TEXT | Description of the version |
+
+### 1.2 Knowledge Base Tables
 
 #### category Table
 Stores event category classifications.
@@ -87,7 +98,7 @@ Stores interpretation context templates with embedded knowledge base references.
 | effect_id | INTEGER | Foreign key to effect.id |
 | description | TEXT | Context description |
 
-### 1.2 Core Event Tables
+### 1.3 Core Event Tables
 
 #### truth_event Table
 Main table storing events in the Truth Training system with embedded context fields.
@@ -133,7 +144,7 @@ Describes logical and causal relationships between events.
 | relation_type | TEXT | ENUM (basic / equal / foreign) |
 | created_at | INTEGER | Timestamp of creation |
 
-### 1.3 Collective Intelligence Tables
+### 1.4 Collective Intelligence Tables
 
 #### participants Table
 Stores information about collective intelligence system participants.
@@ -333,7 +344,7 @@ Records when an event has become stable in truth and/or impact. This helps flag 
 | impact_stable | INTEGER | BOOLEAN 0/1 - true if impact is stabilized |
 | stabilized_at | INTEGER | When stabilization was detected |
 
-### 1.4 Collective Intelligence System Tables
+### 1.5 Collective Intelligence System Tables
 
 #### event_projection Table
 Stores the projection of an event in truth–impact space for classification.
@@ -410,9 +421,24 @@ Storing descriptions of heuristics and expert rules for consistent application a
 | created_at | INTEGER | Timestamp of creation |
 | updated_at | INTEGER | Timestamp of last update |
 
-### 1.5 Network and Synchronization Tables
+---
 
-#### nodes Table
+## 2. Network Discovery Database (discovery_nodes.sqlite)
+
+### 2.1 Schema Management Tables
+
+#### schema_version Table
+Tracks database schema versions for version control and migration tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| version | TEXT | Schema version (primary key) |
+| applied_at | INTEGER | Time when version was applied |
+| description | TEXT | Description of the version |
+
+### 2.2 Network and Synchronization Tables
+
+#### discovery_nodes Table
 Stores information about discovered nodes in Truth Training network.
 
 | Column | Type | Description |
@@ -433,7 +459,7 @@ Stores node reputation and trust for evaluating node reliability based on their 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| node_id | INTEGER | Foreign key to nodes.id (nodes.node_id) |
+| node_id | TEXT | Foreign key to discovery_nodes.node_id (public key of the node) |
 | events_true | INTEGER | Number of true events (default 0) |
 | events_false | INTEGER | Number of false events (default 0) |
 | validations | INTEGER | Number of confirmations (default 0) |
@@ -442,12 +468,12 @@ Stores node reputation and trust for evaluating node reliability based on their 
 | propagation_priority | REAL | Distribution priority (0.0 .. 1.0, default 0.0) |
 | last_updated | INTEGER | Timestamp of last update |
 
-#### node_metrics Table
+#### node_performance Table
 Monitors node performance and status for tracking node performance metrics for synchronization optimization.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| pubkey | INTEGER | Foreign key to nodes.id (nodes.node_id) |
+| pubkey | TEXT | Foreign key to discovery_nodes.node_id (public key of the node) |
 | last_seen | INTEGER | Time of last contact |
 | relay_success_rate | REAL | Percentage of successful transfers (default 0.0) |
 | quality_index | REAL | Quality index (0.0 .. 1.0) - continuity of trust indicator (default 0.0) |
@@ -458,7 +484,7 @@ Limiting maximum influence of nodes.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| node_id | TEXT | Foreign key to nodes.node_id |
+| node_id | TEXT | Foreign key to discovery_nodes.node_id |
 | max_weight | REAL | Maximum allowable trust weight for this node |
 | decay_factor | REAL | Per-period decay factor for that node's weight |
 | small_constants | REAL | Small random constant in system time |
@@ -469,7 +495,7 @@ Storing behavioral characteristics of nodes.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| node_id | INTEGER | Foreign key to nodes.id |
+| node_id | TEXT | Foreign key to discovery_nodes.node_id |
 | signature | TEXT | Cryptographic signature |
 | stability_score | REAL | Stability score |
 | anomaly_score | REAL | Anomaly score |
@@ -481,12 +507,12 @@ Recording suspicious patterns.
 | Column | Type | Description |
 |--------|------|-------------|
 | id | INTEGER | Primary key (auto-increment) |
-| node_id | INTEGER | Foreign key to nodes.id |
+| node_id | TEXT | Foreign key to discovery_nodes.node_id |
 | flag_type | TEXT | Flag type |
 | severity | INTEGER | Severity level |
 | detected_at | INTEGER | Timestamp of detection |
 
-#### sync_log Table
+#### sync_operations Table
 Tracking low-level synchronization operations for tracking changes at individual record level, auditing and debugging synchronization, checking data integrity during exchange between nodes, tracking authenticity of changes via digital signatures.
 
 | Column | Type | Description |
@@ -496,10 +522,10 @@ Tracking low-level synchronization operations for tracking changes at individual
 | table_name | TEXT | Name of the table affected |
 | record_id | TEXT | Identifier of the record affected |
 | signature | TEXT | Signature of the synchronization participant |
-| public_key | INTEGER | Foreign key to nodes.id (nodes.node_id) |
+| public_key | TEXT | Foreign key to discovery_nodes.node_id |
 | created_at | INTEGER | Timestamp of the operation |
 
-#### sync_logs Table
+#### sync_attempts Table
 Records high-level synchronization events between nodes for monitoring network-wide operations and catching failures.
 
 | Column | Type | Description |
@@ -511,24 +537,24 @@ Records high-level synchronization events between nodes for monitoring network-w
 | status | TEXT | Result status (e.g. "success" or error code) |
 | details | TEXT | Additional info or error message |
 
-### 1.6 Authentication and Session Management Tables
+### 2.3 Authentication and Session Management Tables
 
 #### active_tokens Table
 Managing authentication sessions based on JWT tokens for storing active refresh tokens allowing access token renewal without re-authentication.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| public_key | INTEGER | Foreign key to nodes.id (nodes.node_id) |
+| public_key | TEXT | Foreign key to discovery_nodes.node_id |
 | refresh_token | TEXT | Refresh token value |
 | expires_at | INTEGER | Expiration timestamp |
 
-#### peer_history Table
+#### peer_synchronization Table
 Storing peer synchronization history for tracking interaction history with each node for diagnostics and reliability analysis.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | INTEGER | Primary key (auto-increment) |
-| peer_url | INTEGER | Foreign key to nodes.id (nodes.address) |
+| peer_url | TEXT | Foreign key to discovery_nodes.address |
 | mode | TEXT | Synchronization mode |
 | status | TEXT | Status of the synchronization |
 | details | TEXT | Details of the synchronization process |
@@ -537,92 +563,6 @@ Storing peer synchronization history for tracking interaction history with each 
 | fail_count | INTEGER | Counter of failed attempts (default 0) |
 | last_quality_index | REAL | Last quality index during synchronization (default 0.0) |
 | last_trust_score | REAL | Last trust score during synchronization (default 0.0) |
-
----
-
-## 9. Network Discovery Database (discovery_nodes.sqlite)
-
-### 9.1 Schema Management Tables
-
-#### schema_version Table
-Tracks database schema versions for version control and migration tracking.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| version | TEXT | Schema version (primary key) |
-| applied_at | INTEGER | Time when version was applied |
-| description | TEXT | Description of the version |
-
-### 9.2 Node Discovery and Management Tables
-
-#### discovery_nodes Table
-Stores information about discovered nodes in the Truth Training network for tracking peer nodes, their addresses, types, availability and other discovery metadata.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INTEGER | Primary key (auto-increment) |
-| address | TEXT | Node address (URL or ip:port) |
-| type | TEXT | Node type (LAN, WIFI, GLOBAL, RELAY, CLIENT) |
-| reachable | INTEGER | Availability flag (0/1) |
-| last_seen | INTEGER | Time of last successful contact |
-| ttl | INTEGER | Record lifetime before automatic deletion |
-| source | TEXT | Source of node discovery |
-| node_id | TEXT | Node public key (optional) |
-| created_at | INTEGER | Timestamp of creation |
-| updated_at | INTEGER | Timestamp of last update |
-
-### 9.3 Network Performance and Monitoring Tables
-
-#### node_performance Table
-Monitoring node performance and status for tracking node performance metrics for synchronization optimization.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| pubkey | TEXT | Primary key (node's public key) |
-| last_seen | INTEGER | Time of last contact |
-| relay_success_rate | REAL | Percentage of successful transfers (default 0.0) |
-| quality_index | REAL | Quality index (0.0 .. 1.0) - continuity of trust indicator (default 0.0) |
-| propagation_priority | REAL | Distribution priority (0.0 .. 1.0) (default 0.0) |
-
-#### peer_synchronization Table
-Storing peer synchronization history for tracking interaction history with each node for diagnostics and reliability analysis.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INTEGER | Primary key (auto-increment) |
-| peer_url | TEXT | URL of the peer node |
-| last_sync | INTEGER | Time of last synchronization |
-| success_count | INTEGER | Counter of successful synchronization attempts (default 0) |
-| fail_count | INTEGER | Counter of failed synchronization attempts (default 0) |
-| last_quality_index | REAL | Last quality index during synchronization (default 0.0) |
-| last_trust_score | REAL | Last trust score during synchronization (default 0.0) |
-
-### 9.4 Network Synchronization Logs
-
-#### sync_operations Table
-Log of low-level synchronization operations for tracking changes at individual record level, auditing and debugging synchronization, checking data integrity during exchange between nodes, tracking authenticity of changes via digital signatures.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INTEGER | Primary key (auto-increment) |
-| operation | TEXT | Operation type (insert, update, delete) |
-| table_name | TEXT | Name of the table affected |
-| record_identifier | TEXT | Identifier of the record affected |
-| signature | TEXT | Signature of the synchronization participant |
-| public_key | TEXT | Public key of the synchronization participant |
-| created_at | INTEGER | Timestamp of the operation |
-
-#### sync_attempts Table
-Log of high-level synchronization attempts between nodes for network operation monitoring, analysis of synchronization success between nodes, diagnosis of connection and performance problems.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INTEGER | Primary key (auto-increment) |
-| timestamp | INTEGER | Timestamp of the synchronization event |
-| peer_url | TEXT | URL of the peer node |
-| mode | TEXT | Synchronization mode |
-| status | TEXT | Status of the synchronization |
-| details | TEXT | Details of the synchronization process |
 
 ## Privacy and Security Notes
 

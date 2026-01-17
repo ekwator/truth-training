@@ -49,7 +49,7 @@ FROM (
         nm.pubkey,
         nm.successful_operations,
         nm.total_operations
-    FROM node_metrics nm
+    FROM node_performance nm
     -- This would require additional tracking tables for successful/total operations
 );
 
@@ -63,7 +63,7 @@ SELECT
     (0.4 * COALESCE(recent_performance, 0.0)) +
     (0.4 * COALESCE(historical_consistency, 0.0)) +
     (0.2 * COALESCE(nr.trust_score, 0.0)) as calculated_quality_index
-FROM node_metrics nm
+FROM node_performance nm
 LEFT JOIN node_ratings nr ON nm.pubkey = nr.node_id;
 
 -- Function to check token expiration status
@@ -88,7 +88,7 @@ SELECT
             success_count * 1.0 / (success_count + fail_count)
         ELSE 0.0
     END as calculated_success_rate
-FROM peer_history;
+FROM peer_synchronization;
 
 -- Function to verify signature integrity
 -- Checks if the signature matches the public key and operation data
@@ -108,7 +108,7 @@ SELECT
         THEN 'VALID'
         ELSE 'INVALID'
     END as integrity_status
-FROM sync_log sl;
+FROM sync_operations sl;
 
 -- Function to calculate synchronization statistics
 -- Provides aggregated statistics on synchronization attempts by peer
@@ -120,7 +120,7 @@ SELECT
     SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful_syncs,
     SUM(CASE WHEN status != 'success' THEN 1 ELSE 0 END) as failed_syncs,
     AVG(CASE WHEN status = 'success' THEN 1.0 ELSE 0.0 END) as success_rate
-FROM sync_logs
+FROM sync_attempts
 GROUP BY peer_url;
 
 -- Function to identify stale nodes based on TTL
@@ -134,7 +134,7 @@ SELECT
     last_seen,
     ttl,
     (SELECT strftime('%s', 'now')) - last_seen as time_since_last_seen
-FROM nodes
+FROM discovery_nodes
 WHERE ((SELECT strftime('%s', 'now')) - last_seen) > ttl;
 
 -- Function to identify unreachable nodes that exceed TTL/2
@@ -149,6 +149,6 @@ SELECT
     ttl,
     reachable,
     (SELECT strftime('%s', 'now')) - last_seen as time_since_last_seen
-FROM nodes
+FROM discovery_nodes
 WHERE reachable = 0
   AND ((SELECT strftime('%s', 'now')) - last_seen) > (ttl / 2);
