@@ -87,6 +87,19 @@ pub fn small_constants() -> f64 {
 ```
 **Schema Version Tracking**: Both databases "truth_training.sqlite" and "discovery_nodes.sqlite" for desktop application include "schema_version" tables for migration tracking (described in [spec/04-data-model.md](../spec/04-data-model.md)). These tables are not part of the functional model and are not described in detail here. Android uses a single Room database called truth_database, located at /data/data/com.truth.training.client/databases/truth_database , so it contains one table, "schema_version"
 
+##### ⚠️ Attention:
+The truth_event table may be subject to migrations that add additional fields beyond the base schema. As can be seen from the run_migrations function in core/src/storage.rs, during database migration these fields may be added. For detailed information about the migration process and schema version tracking, please refer to the [Migration Documentation](migration_documentation.md) which provides comprehensive details about the database evolution process, including:
+
+- Schema version tracking mechanisms
+- Migration procedures for adding new fields
+- Table renaming procedures (such as nodes → discovery_nodes in v1.1.0)
+- Compatibility considerations between versions
+- Rollback strategies
+
+The migration process ensures that the database schema evolves properly while maintaining backward compatibility. The fields that may be added through migrations include global_id, signature, participant_id, and collective_score, among others. These fields are the result of migrations and not part of the initial schema, but may be present in working databases after migration execution.
+
+This explains why in some code parts (e.g. get_truth_event function) these fields are already partially accounted for.
+
 ### triggers
 
 This section describes the trigger system for data recalculation and aggregation that occurs when new information is added to the system. The triggers are activated when data is added through various pathways:
@@ -1656,37 +1669,7 @@ Field explanations:
 ##### Where structure is described:
 In data schema documentation: docs/Data_Schema.md - contains description of truth_event table as part of base block, including all main fields and their purpose
 In implementation code: core/src/storage.rs - contains SQL definition of table in SCHEMA_SQL constant
-In event rating protocol documentation: docs/event_rating_protocol.md - describes use of code field and score calculation based on data from this table
-
-##### ⚠️ Attention:
-The truth_event table may be subject to migrations that add additional fields beyond the base schema. As can be seen from run_migrations function in same file core/src/storage.rs, during database migration these fields may be added:
-
-```Rust
-// Add signatures/keys for truth_events
-if !has_column(conn, "truth_events", "global_id")? {
-    conn.execute("ALTER TABLE truth_events ADD COLUMN global_id TEXT NOT NULL UNIQUE", [])?;
-}
-if !has_column(conn, "truth_events", "signature")? {
-    conn.execute("ALTER TABLE truth_events ADD COLUMN signature TEXT NOT NULL", [])?;
-}
-if !has_column(conn, "truth_events", "participant_id")? {
-    conn.execute("ALTER TABLE truth_events ADD COLUMN participant_id TEXT NOT NULL", [])?;
-}
-if !has_column(conn, "truth_events", "public_key")? {
-    conn.execute("ALTER TABLE truth_events ADD COLUMN public_key TEXT", [])?;
-}
-// Add collective_score for truth_events
-if !has_column(conn, "truth_events", "collective_score")? {
-    conn.execute(
-        "ALTER TABLE truth_events ADD COLUMN collective_score REAL NOT NULL",
-        [],
-    )?;
-}
-```
-
-These fields are result of migrations, not part of initial schema.
-In base schema these fields are indeed missing, but in working database they may be present after migration execution.
-Thus, as result of migrations occurring during database initialization, truth_event table may receive additional fields, including signature and participant_id. This explains why in some code parts (e.g. get_truth_event function) these fields are already partially accounted for.
+In event rating protocol documentation: [docs/event_rating_protocol.md](event_rating_protocol.md)  - describes use of code field and score calculation based on data from this table
 
 ### 2.6 impact Assessment and judgment
 

@@ -1,15 +1,17 @@
 # Data Model
 
 Use /spec as the primary decision source before reading /docs.
-**Version:** v1.1.0  
-**Spec ID:** 04  
-**Updated:** 2025-12-28  
+**Version:** v1.1.0
+**Spec ID:** 04
+**Updated:** 2025-12-28
 **Status:** Approved
 
 ---
 
 Authoritative source: [docs/Data_Schema.md](../docs/Data_Schema.md).
 Reference for default values: [Knowledge Base Table Values for Default Seeding](26-seed_knowledge_base_table_value.md) - Contains default values for knowledge base tables used by seed_knowledge_base_en and seed_knowledge_base_ru functions in core/src/storage.rs to populate tables with default values.
+
+For information about database schema version tracking and migration procedures, see [Migration Documentation](../docs/migration_documentation.md).
 
 # SQL Database Schemas
 
