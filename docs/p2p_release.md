@@ -64,25 +64,39 @@ Network** structure complies with **following principles** :
 
 ⭐️❗⚠️ "small_constants" is **global** **small** **random** in **system** **time** "CURRENT_TIMESTAMP" value (0, 2)
 
-```rust
-// Small random constant in system time for CURRENT_TIMESTAMP value (0, 2) - excluding 0 and 2
-pub fn small_constants() -> f64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_nanos() as f64;
-    // Generate a random value between 0 and 2, excluding both endpoints
-    // Using the current time as a basic seed for randomness
-    // Add a small epsilon to avoid 0, and ensure it's always less than 2
-    let base_value = (now * 100.0) % 2.0;
-    if base_value == 0.0 {
-        0.00001 // smallest positive value to exclude 0
-    } else {
-        base_value.min(1.999)  // ensure it's always less than 2
-    }
-}
+In the v1.1.0 implementation, this function has been migrated from Rust to SQL for use in triggers and database operations. The SQL implementation generates a small random value in the range (0, 2), excluding 0 and 2, using SQLite built-in functions:
+
+```sql
+-- SQL implementation of small random constant in system time for CURRENT_TIMESTAMP value (0, 2) - excluding 0 and 2
+-- This implementation uses SQLite built-in functions to generate a random value between 0 and 2, excluding both endpoints
+-- Using the current time as a basic seed for randomness
+-- The expression combines Unix epoch time with fractional seconds to create a pseudo-random value
+-- Add a small epsilon to avoid 0, and ensure it's always less than 2
+
+-- For use in triggers and queries, we define the following expression:
+-- ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 )
+
+-- To avoid 0 and ensure less than 2, we use CASE logic:
+CASE
+    WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+    THEN 0.000001  -- smallest positive value to exclude 0
+    ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )  -- ensure it's always less than 2
+END
+
+-- For convenience in complex queries, this can be defined as a view:
+CREATE VIEW IF NOT EXISTS small_constants_view AS
+SELECT
+    CASE
+        WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+        THEN 0.000001
+        ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+    END AS small_constant;
+
+-- Or for direct use in expressions without creating a view:
+-- Replace calls to small_constants() with the CASE expression above
 ```
+
+This SQL implementation replaces the Rust function to maintain the same quantum uncertainty behavior while enabling use in SQL triggers and stored procedures across desktop and mobile platforms. The implementation uses SQLite's built-in time functions to generate a time-based pseudo-random value in the range (0, 2), maintaining the quantum uncertainty property essential to the model.
 
 ### 2.1 Nodes
 

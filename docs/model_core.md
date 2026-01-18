@@ -62,29 +62,67 @@ Database** structure complies with **following principles** :
 • Data **historization**: records are **not overwritten** or **deleted**, but **supplemented**  
 • **Support** for **multiple** sources and evaluation **contexts**  
 
-### ⭐️**quantum uncertainty**  
-❗This is an **advantage**, not a disadvantage  
+### ⭐️**quantum uncertainty**
+❗This is an **advantage**, not a disadvantage
 ⚠️ "small_constants" is **global** **small** **random** in **system** **time** "CURRENT_TIMESTAMP" function value(0, 2)
 
-```rust
-// Small random constant in system time for CURRENT_TIMESTAMP value (0, 2) - excluding 0 and 2
-pub fn small_constants() -> f64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_nanos() as f64;
-    // Generate a random value between 0 and 2, excluding both endpoints
-    // Using the current time as a basic seed for randomness
-    // Add a small epsilon to avoid 0, and ensure it's always less than 2
-    let base_value = (now * 100.0) % 2.0;
-    if base_value == 0.0 {
-        0.000001  // smallest positive value to exclude 0
-    } else {
-        base_value.min(1.99999)  // ensure it's always less than 2
-    }
-}
+**Understanding CURRENT_TIMESTAMP in Truth Training System:**
+
+The `CURRENT_TIMESTAMP` in Truth Training system refers to SQLite's built-in function that returns the current date and time in the format 'YYYY-MM-DD HH:MM:SS'. This is used throughout the system as a fundamental time reference for:
+
+• Recording when events, impacts, and judgments are created or modified
+• Calculating temporal relationships between different assessments
+• Implementing time-based decay functions for trust weights and influence
+• Establishing chronological ordering of system activities
+• Supporting the temporal dynamics of truth evolution
+
+In SQLite, `CURRENT_TIMESTAMP` is equivalent to `datetime('now')` and represents the current time in UTC. The system uses this timestamp for:
+
+• Creating time-stamped records in all major tables (truth_event, impact, judgment, etc.)
+• Calculating time intervals needed for decay functions
+• Determining staleness of node records using TTL mechanisms
+• Synchronizing temporal aspects of event assessment
+
+**Temporal Dynamics:**
+
+The system implements time-based decay using expressions like:
 ```
+w(t) = w₀ * e^(-λt)
+```
+where t is calculated as `(CAST(CURRENT_TIMESTAMP AS REAL) - CAST(previous_time AS REAL))` to determine how much time has elapsed since a previous event.
+
+```sql
+-- SQL implementation of small random constant in system time for CURRENT_TIMESTAMP value (0, 2) - excluding 0 and 2
+-- This implementation uses SQLite built-in functions to generate a random value between 0 and 2, excluding both endpoints
+-- Using the current time as a basic seed for randomness
+-- The expression combines Unix epoch time with fractional seconds to create a pseudo-random value
+-- Add a small epsilon to avoid 0, and ensure it's always less than 2
+
+-- For use in triggers and queries, we define the following expression:
+-- ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 )
+
+-- To avoid 0 and ensure less than 2, we use CASE logic:
+CASE
+    WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+    THEN 0.000001  -- smallest positive value to exclude 0
+    ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )  -- ensure it's always less than 2
+END
+
+-- For convenience in complex queries, this can be defined as a view:
+CREATE VIEW IF NOT EXISTS small_constants_view AS
+SELECT
+    CASE
+        WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+        THEN 0.000001
+        ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+    END AS small_constant;
+
+-- Or for direct use in expressions without creating a view:
+-- Replace calls to small_constants() with the CASE expression above
+```
+
+This SQL implementation replaces the Rust function to maintain the same quantum uncertainty behavior while enabling use in SQL triggers and stored procedures across desktop and mobile platforms. The implementation uses SQLite's built-in time functions to generate a time-based pseudo-random value in the range (0, 2), maintaining the quantum uncertainty property essential to the model.
+
 **Schema Version Tracking**: Both databases "truth_training.sqlite" and "discovery_nodes.sqlite" for desktop application include "schema_version" tables for migration tracking (described in [spec/04-data-model.md](../spec/04-data-model.md)). These tables are not part of the functional model and are not described in detail here. Android uses a single Room database called truth_database, located at /data/data/com.truth.training.client/databases/truth_database , so it contains one table, "schema_version"
 
 ##### ⚠️ Attention:
@@ -2062,8 +2100,8 @@ impact_predictions.horizon = (
             END) /
            (CASE
                WHEN event_timeline.t_end IS NULL
-               THEN small_constants()
-               ELSE (event_timeline.t_end - event_timeline.t_start + small_constants())
+               THEN ( -- SQL implementation of small_constants(): CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END )
+               ELSE (event_timeline.t_end - event_timeline.t_start + ( -- SQL implementation of small_constants(): CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END ))
             END)
     FROM truth_event
     JOIN event_timeline ON truth_event.timeline_id = event_timeline.id
@@ -2074,7 +2112,7 @@ impact_predictions.horizon = (
 **Aggregation formulas "expected_strength"**
 ```sql
 impact_predictions.expected_strength = (
-    SELECT SUM(truth_event.collective_score / (impact_predictions.horizon + small_constants()))
+    SELECT SUM(truth_event.collective_score / (impact_predictions.horizon + ( -- SQL implementation of small_constants(): CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END )))
     FROM truth_event
     JOIN event_ci ON truth_event.id = event_ci.created_by
     WHERE event_ci.id = impact_predictions.event_id
@@ -3262,7 +3300,7 @@ Use this to **trace** how an **event judgment** and **impact metrics** evolve.
 ❗ Truth has a temporal dynamic.
 • **Over long periods** of **inactivity** (without new **judgments** or **impacts**), confidence in the event fades, and estimates become outdated. A **decay function** is introduced:
 
-IF "λT" and "λI" fall below small_constants() threshold, specifically "εT" and "εI", the **event** is **stable** in terms of **truth or impact**.
+IF "λT" and "λI" fall below the small_constants threshold, specifically "εT" and "εI" (where small_constants is implemented as the SQL expression: CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END), the **event** is **stable** in terms of **truth or impact**.
 ```
 w(t) = w₀ * e^(-λt)
 ```
@@ -3337,7 +3375,7 @@ Event is considered stabilized if:
 |∂I/∂t| < ε_I
 ```
 Where:
-ε_T, ε_I — stabilization thresholds derived from small_constants()
+ε_T, ε_I — stabilization thresholds derived from small_constants (using SQL implementation: CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END)
 |∂T/∂t| — absolute value of rate of change of truth assessment over time
 |∂I/∂t| — absolute value of rate of change of impact assessment over time
 
@@ -3383,8 +3421,8 @@ IF |∂I/∂t| < ε_I AND impact_significance > min_significance
     impact_stable = TRUE
 
 Where:
-ε_T = small_constants() — truth stability threshold
-ε_I = small_constants() — impact stability threshold
+ε_T = small_constants (using SQL implementation: CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END) — truth stability threshold
+ε_I = small_constants (using SQL implementation: CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END) — impact stability threshold
 |∂T/∂t| — absolute value of rate of change of truth assessment over time
 |∂I/∂t| — absolute value of rate of change of impact assessment over time
 ```
@@ -3838,7 +3876,7 @@ Limiting maximum influence of nodes
 node_id          (TEXT, NOT NULL) — FK → discovery_nodes.node_id — node's public key
 max_weight       (REAL, NOT NULL) — maximum allowable trust weight for this node
 decay_factor     (REAL, NOT NULL) — per-period decay factor for that node's weight
-small_constants  (REAL, NOT NULL) — small random constant in system time
+small_constants  (REAL, NOT NULL) — small random constant in system time (using SQL implementation: CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END)
 last_adjusted_at (INTEGER, NOT NULL) — timestamp when these limits were last updated
 ```
 🏠 Database: discovery_nodes.sqlite
@@ -3853,7 +3891,7 @@ Used:
 ```sql
 UPDATE node_trust_limits
 SET
-    decay_factor = decay_factor * EXP(-small_constants * (CAST(CURRENT_TIMESTAMP AS REAL) - CAST(last_adjusted_at AS REAL))),
+    decay_factor = decay_factor * EXP(- (CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END) * (CAST(CURRENT_TIMESTAMP AS REAL) - CAST(last_adjusted_at AS REAL))),
     max_weight = GREATEST(max_weight, (
         SELECT MIN(node_trust_limits.max_weight, p.reputation_score * node_trust_limits.decay_factor)
         FROM impact_metrics im
@@ -3876,7 +3914,7 @@ WHERE (CAST(CURRENT_TIMESTAMP AS REAL) - CAST(last_adjusted_at AS REAL)) > 0;
 UPDATE node_trust_limits
 SET decay_factor = CASE
     WHEN decay_factor > 0 AND decay_factor <= 1 AND max_weight > 0
-        THEN decay_factor * EXP(-small_constants * (CAST(CURRENT_TIMESTAMP AS REAL) - CAST(last_adjusted_at AS REAL)))
+        THEN decay_factor * EXP(- (CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END) * (CAST(CURRENT_TIMESTAMP AS REAL) - CAST(last_adjusted_at AS REAL)))
     WHEN max_weight <= 0
         THEN decay_factor  -- No change if max_weight is invalid
     ELSE
