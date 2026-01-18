@@ -56,17 +56,29 @@ SELECT
         THEN 0.0
         ELSE ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 1) - 
               (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 0)) * 1.0 / 
-             ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) + 0.001)
+             ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) + (CASE
+   WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+   THEN 0.000001
+   ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+END))
     END as calculated_truth,
     -- Interpretation: +1: stably confirmed, -1: stably refuted, ≈0: conflict/lack of data
-    CASE 
-        WHEN ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 1) - 
-              (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 0)) * 1.0 / 
-             ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) + 0.0001) > 0.7 
+    CASE
+        WHEN ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 1) -
+              (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 0)) * 1.0 /
+             ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) + (CASE
+   WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+   THEN 0.000001
+   ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+END)) > 0.7
         THEN 'stably_confirmed'
-        WHEN ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 1) - 
-              (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 0)) * 1.0 / 
-             ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) + 0.0001) < -0.7 
+        WHEN ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 1) -
+              (SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value = 0)) * 1.0 /
+             ((SELECT COUNT(*) FROM impact WHERE event_id = te.id AND value IS NOT NULL) + (CASE
+   WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+   THEN 0.000001
+   ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+END)) < -0.7
         THEN 'stably_refuted'
         ELSE 'conflict_or_lack_of_data'
     END as truth_interpretation

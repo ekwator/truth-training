@@ -71,19 +71,31 @@ BEGIN
         ec.id,                                    -- event_id from event_ci
         NEW.effect_id,                           -- predicted_impact_type from truth_event.effect_id
         -- Calculate expected_strength based on collective_score and impact horizon
-        (SELECT SUM(te.collective_score / (COALESCE(ipt.horizon, 1) + 0.001))
+        (SELECT SUM(te.collective_score / (COALESCE(ipt.horizon, 1) + (CASE
+   WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+   THEN 0.000001
+   ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+END)))
          FROM truth_event te
          JOIN event_ci ec2 ON te.id = ec2.created_by
          LEFT JOIN impact_predictions ipt ON ec2.id = ipt.event_id
          WHERE ec2.id = ec.id),                  -- expected_strength using formula from documentation
         -- Calculate probability based on impact accuracy
-        (SELECT 1 - ABS(COALESCE(AVG(i.value), 0) - te.collective_score) / (COALESCE(te.collective_score, 0.5) + 0.001)
+        (SELECT 1 - ABS(COALESCE(AVG(i.value), 0) - te.collective_score) / (COALESCE(te.collective_score, 0.5) + (CASE
+   WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+   THEN 0.000001
+   ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+END))
          FROM impact i
          JOIN truth_event te ON i.event_id = te.id
          WHERE te.id = NEW.id),                  -- probability based on comparison of impact and collective score
         -- Calculate horizon as (t_end - created_at) / (t_end - t_start) as specified in documentation
         (SELECT (et.t_end - (SELECT created_at FROM event_ci WHERE created_by = NEW.id)) /
-                (et.t_end - et.t_start + 0.001)  -- Adding small constant to avoid division by zero
+                (et.t_end - et.t_start + (CASE
+   WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+   THEN 0.000001
+   ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+END))  -- Adding small constant to avoid division by zero
          FROM event_timeline et
          WHERE et.id = NEW.timeline_id),         -- horizon from event timeline
         (SELECT strftime('%s', 'now'))           -- created_at timestamp
