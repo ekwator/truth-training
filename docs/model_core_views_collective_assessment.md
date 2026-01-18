@@ -8,7 +8,7 @@
 -- cs_i = f-local(I(E_i))  
 -- I_i(E_i) = {I_i(1), I_i(2), ..., I_i(n)} - set of participant impact  
 -- Divide by sign: P_i = ΣI_i(ij)^(+), N_i = ΣI_i(ij)^(-)  
-```
+```sql
 CREATE VIEW local_collective_score_calculation AS
 SELECT 
     te.id as event_id,
@@ -23,7 +23,7 @@ FROM truth_event te;
 -- Function to calculate event truthfulness globally  
 -- truth_score_i-global = f-global({ cs_i-local_j })  
 -- {cs_i-local_j} - local assessments of different nodes  
-```
+```sql
 CREATE VIEW global_truth_score_calculation AS
 SELECT 
     s.event_id,
@@ -40,7 +40,7 @@ GROUP BY s.event_id;
 -- Truth(E_i) = (P_i - N_i) / (|I(E_i)| + ε)  
 -- ε - protection from division by zero  
 -- result ∈ (-1, +1)  
-```
+```sql
 CREATE VIEW event_truthfulness_calculation AS
 SELECT 
     te.id as event_id,
@@ -73,7 +73,7 @@ SELECT
 FROM truth_event te;
 ```
 -- Function to calculate group ratings based on collective scores  
-```
+```sql
 CREATE VIEW group_ratings_calculation AS
 SELECT 
     p.group_membership as group_id,

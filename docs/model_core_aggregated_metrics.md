@@ -6,7 +6,7 @@
 
 -- Function to calculate heuristic weight based on accuracy  
 -- w_i = f(accuracy_i, reliability_i, domain_relevance_i)  
-```
+```sql
 CREATE TRIGGER update_heuristic_weight
 AFTER UPDATE ON expert_heuristics
 FOR EACH ROW
@@ -24,7 +24,7 @@ BEGIN
 END;
 ```
 -- Function to update progress metrics when new event is processed  
-```
+```sql
 CREATE TRIGGER update_progress_metrics_after_event
 AFTER INSERT ON truth_event
 BEGIN
@@ -92,7 +92,7 @@ BEGIN
 END;
 ```
 -- Function to update progress metrics when new impact is recorded  
-```
+```sql
 CREATE TRIGGER update_progress_metrics_after_impact
 AFTER INSERT ON impact
 BEGIN

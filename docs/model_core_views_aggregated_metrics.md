@@ -7,7 +7,7 @@
 -- Function to calculate system trend  
 -- Trend = (Σ P - Σ N) / total_events  
 -- Where P — positive impacts, N — negative impacts  
-```
+```sql
 CREATE VIEW system_trend_calculation AS
 SELECT 
     total_events,
@@ -22,7 +22,7 @@ SELECT
 FROM progress_metrics;
 ```
 -- Function to calculate group vs individual comparison  
-```
+```sql
 CREATE VIEW group_efficiency_calculation AS
 SELECT 
     total_events,
@@ -36,7 +36,7 @@ SELECT
 FROM progress_metrics;
 ```
 -- Function to calculate heuristic influence on judgments  
-```
+```sql
 CREATE VIEW heuristic_influence_calculation AS
 SELECT 
     jh.judgment_id,
@@ -50,7 +50,7 @@ FROM judgment_heuristics jh
 JOIN expert_heuristics eh ON jh.heuristic_id = eh.id;
 ```
 -- Function to apply heuristics based on confidence threshold  
-```
+```sql
 CREATE VIEW applicable_heuristics AS
 SELECT 
     eh.id,
@@ -66,7 +66,7 @@ SELECT
 FROM expert_heuristics eh;
 ```
 -- Function to detect conflicting heuristics  
-```
+```sql
 CREATE VIEW conflicting_heuristics AS
 SELECT 
     jh1.judgment_id,
@@ -85,7 +85,7 @@ WHERE jh1.heuristic_id != jh2.heuristic_id
 ```
 -- Function to calculate final event assessment as aggregated function  
 -- Final event assessment is aggregated function of all applied heuristics and judgment  
-```
+```sql
 CREATE VIEW final_event_assessment AS
 SELECT 
     ec.id as event_id,
@@ -105,7 +105,7 @@ GROUP BY ec.id, cc.confidence_score;
 -- "empirical" — experience-based rules  
 -- "contextual" — context-sensitive rules  
 -- "domain_specific" — specialized knowledge rules  
-```
+```sql
 CREATE VIEW domain_classification_stats AS
 SELECT 
     domain,
@@ -118,7 +118,7 @@ GROUP BY domain;
 ```
 -- Function to calculate relay success rate  
 -- Success rate = successful_operations / total_operations  
-```
+```sql
 CREATE VIEW relay_success_rate_calculation AS
 SELECT
     pubkey,
@@ -138,7 +138,7 @@ FROM (
 -- Function to calculate quality index based on multiple factors  
 -- Q(n) = α * recent_performance + β * historical_consistency + γ * trust_factor  
 -- Where α=0.4, β=0.4, γ=0.2 (these weights can be adjusted as needed)  
-```
+```sql
 CREATE VIEW quality_index_calculation AS
 SELECT
     nm.pubkey,
@@ -150,7 +150,7 @@ LEFT JOIN node_ratings nr ON nm.pubkey = nr.node_id;
 ```
 -- Function to calculate success rate from peer history  
 -- Success rate = success_count / (success_count + fail_count)  
-```
+```sql
 CREATE VIEW peer_success_rate_calculation AS
 SELECT
     peer_url,
@@ -163,7 +163,7 @@ FROM peer_synchronization;
 ```
 -- Function to calculate synchronization statistics  
 -- Provides aggregated statistics on synchronization attempts by peer  
-```
+```sql
 CREATE VIEW sync_statistics AS
 SELECT
     peer_url,

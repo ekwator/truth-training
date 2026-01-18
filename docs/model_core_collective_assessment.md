@@ -6,7 +6,7 @@
 
 -- Trigger to create event record when a participant submits a new event  
 -- Creates the initial event record in the truth_event table when a participant submits a new event  
-```
+```sql
 CREATE TRIGGER create_event_record
 AFTER INSERT ON truth_event
 FOR EACH ROW
@@ -26,7 +26,7 @@ END;
 ```
 -- Trigger to initialize event metrics when a new event is created  
 -- Initializes all metric fields (collective_score, impact_score, judgment_score) to default values  
-```
+```sql
 CREATE TRIGGER initialize_event_metrics
 BEFORE INSERT ON truth_event
 FOR EACH ROW
@@ -52,7 +52,7 @@ END;
 ```
 -- Trigger to create impact predictions when corrected flag is set  
 -- When the corrected flag is set during impact assessment, creates a new impact prediction record  
-```
+```sql
 CREATE TRIGGER create_impact_prediction_on_correction
 AFTER UPDATE ON truth_event
 FOR EACH ROW
@@ -105,7 +105,7 @@ END;
 -- Trigger to create impact prediction when a participant creates an impact record  
 -- This trigger creates a new record in the impact_predictions table when a participant creates an impact record  
 -- that relates to a future predicted factual consequence.  
-```
+```sql
 CREATE TRIGGER create_impact_prediction_on_impact_creation
 AFTER INSERT ON impact
 FOR EACH ROW
@@ -145,7 +145,7 @@ END;
 -- Trigger to create impact predictions when event status changes  
 -- This trigger creates new records in the impact_predictions table when an event's status changes in event_ci.status  
 -- (e.g. from "active"/"resolved" to "archived"), preserving historical prediction data for aggregation  
-```
+```sql
 CREATE TRIGGER create_impact_predictions_on_status_change
 AFTER UPDATE ON event_ci
 FOR EACH ROW
@@ -208,7 +208,7 @@ END;
 -- Connection: impact_predictions.event_id -> event_ci.id -> event_ci.created_by -> truth_event.id -> truth_event.participant_id  
 -- Updates reputation considering horizon (predictions made earlier have more weight)  
 -- Reputation is calculated by aggregating all predictions for all events created by the participant  
-```
+```sql
 CREATE TRIGGER update_participant_reputation_on_prediction_accuracy
 AFTER UPDATE ON event_ci
 FOR EACH ROW
@@ -253,7 +253,7 @@ END;
 ```
 -- Function to update participant reputation based on impact accuracy  
 -- Uses collective_score as a reference/anchor value for system state  
-```
+```sql
 CREATE TRIGGER update_participant_reputation_on_impact
 AFTER INSERT ON impact
 FOR EACH ROW
@@ -286,7 +286,7 @@ BEGIN
 ```
 -- Function to update participant reputation based on judgment accuracy  
 -- Uses collective_score as a reference/anchor value for system state  
-```
+```sql
 CREATE TRIGGER update_participant_reputation_on_judgment
 AFTER INSERT ON judgment
 FOR EACH ROW
@@ -323,7 +323,7 @@ BEGIN
 ```
 -- Function to aggregate local collective scores for global processing  
 -- This populates the statements table with local assessments for global calculation  
-```
+```sql
 CREATE TRIGGER aggregate_local_scores_for_global
 AFTER UPDATE ON truth_event
 FOR EACH ROW
@@ -345,7 +345,7 @@ END;
 ```
 -- Trigger to validate incoming event structure and signatures  
 -- Validates the structure and cryptographic signatures of events received from other nodes before processing  
-```
+```sql
 CREATE TRIGGER validate_incoming_event
 BEFORE INSERT ON truth_event
 FOR EACH ROW
@@ -388,7 +388,7 @@ END;
 ```
 -- Trigger to process sync event record during synchronization  
 -- Handles the creation of event records from other nodes during synchronization, potentially with different validation rules  
-```
+```sql
 CREATE TRIGGER process_sync_event_record
 AFTER INSERT ON truth_event
 FOR EACH ROW

@@ -6,7 +6,7 @@
 
 -- Trigger to update trust score and propagation priority when node ratings are updated  
 -- Automatically recalculates trust score and propagation priority based on new event counts  
-```
+```sql
 CREATE TRIGGER update_trust_score_after_rating_change
 AFTER UPDATE ON node_ratings
 BEGIN
@@ -40,7 +40,7 @@ END;
 ```
 -- Trigger to clean up expired tokens automatically  
 -- Removes tokens that have exceeded their expiration time  
-```
+```sql
 CREATE TRIGGER cleanup_expired_tokens
 AFTER SELECT ON expired_tokens
 BEGIN
@@ -50,7 +50,7 @@ END;
 ```
 -- Trigger to update peer history when sync occurs  
 -- Automatically updates peer history with new synchronization information  
-```
+```sql
 CREATE TRIGGER update_peer_synchronization_after_sync
 AFTER INSERT ON sync_attempts
 BEGIN
@@ -118,7 +118,7 @@ END;
 ```
 -- Trigger to update node metrics when sync occurs  
 -- Updates performance metrics when synchronization events are logged  
-```
+```sql
 CREATE TRIGGER update_node_performance_after_sync
 AFTER INSERT ON sync_attempts
 BEGIN

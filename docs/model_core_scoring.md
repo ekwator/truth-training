@@ -5,7 +5,7 @@
 -- SQL Triggers for Impact and Judgment Score Calculations  
 
 -- Trigger to update impact_score when new impact is added or modified  
-```
+```sql
 CREATE TRIGGER update_impact_score_after_impact_change
 AFTER INSERT ON impact
 BEGIN
@@ -33,7 +33,7 @@ BEGIN
 END;
 ```
 -- Trigger to update judgment_score when new judgment is added or modified  
-```
+```sql
 CREATE TRIGGER update_judgment_score_after_judgment_change
 AFTER INSERT ON judgment
 BEGIN

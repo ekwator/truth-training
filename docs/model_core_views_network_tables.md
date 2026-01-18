@@ -7,7 +7,7 @@
 -- Function to calculate trust score based on events and validations  
 -- Trust(n) = (events_true - events_false) / (events_true + events_false + ε)  
 -- When no events have been processed, trust score defaults to 0.0 (neutral trust)  
-```
+```sql
 CREATE VIEW trust_score_calculation AS
 SELECT
     node_id,
@@ -20,7 +20,7 @@ FROM node_ratings;
 -- Function to calculate propagation priority based on trust and activity metrics  
 -- Priority(n) = f(trust_score, validation_count, reuse_frequency)  
 -- Combines trust score (50%), validation frequency (30%), and reuse frequency (20%)  
-```
+```sql
 CREATE VIEW propagation_priority_calculation AS
 SELECT
     nr.node_id,
@@ -36,7 +36,7 @@ FROM node_ratings nr;
 -- Function to calculate relay success rate  
 -- Success rate = successful_operations / total_operations  
 -- This would require additional tracking tables for successful/total operations  
-```
+```sql
 CREATE VIEW relay_success_rate_calculation AS
 SELECT
     pubkey,
@@ -56,7 +56,7 @@ FROM (
 -- Function to calculate quality index based on multiple factors  
 -- Q(n) = α * recent_performance + β * historical_consistency + γ * trust_factor  
 -- Where α=0.4, β=0.4, γ=0.2 (these weights can be adjusted as needed)  
-```
+```sql
 CREATE VIEW quality_index_calculation AS
 SELECT
     nm.pubkey,
@@ -68,7 +68,7 @@ LEFT JOIN node_ratings nr ON nm.pubkey = nr.node_id;
 ```
 -- Function to check token expiration status  
 -- Returns tokens that have expired based on current timestamp  
-```
+```sql
 CREATE VIEW expired_tokens AS
 SELECT
     public_key,
@@ -79,7 +79,7 @@ WHERE expires_at < (SELECT strftime('%s', 'now'));
 ```
 -- Function to calculate success rate from peer history  
 -- Success rate = success_count / (success_count + fail_count)  
-```
+```sql
 CREATE VIEW peer_success_rate_calculation AS
 SELECT
     peer_url,
@@ -93,7 +93,7 @@ FROM peer_synchronization;
 -- Function to verify signature integrity  
 -- Checks if the signature matches the public key and operation data  
 -- Note: signature_verification function would need to be implemented separately  
-```
+```sql
 CREATE VIEW sync_integrity_check AS
 SELECT
     sl.id,
@@ -112,7 +112,7 @@ FROM sync_operations sl;
 ```
 -- Function to calculate synchronization statistics  
 -- Provides aggregated statistics on synchronization attempts by peer  
-```
+```sql
 CREATE VIEW sync_statistics AS
 SELECT
     peer_url,
@@ -125,7 +125,7 @@ GROUP BY peer_url;
 ```
 -- Function to identify stale nodes based on TTL  
 -- Nodes where time since last contact exceeds the TTL value  
-```
+```sql
 CREATE VIEW stale_nodes AS
 SELECT
     id,
@@ -139,7 +139,7 @@ WHERE ((SELECT strftime('%s', 'now')) - last_seen) > ttl;
 ```
 -- Function to identify unreachable nodes that exceed TTL/2  
 -- Nodes that are marked as unreachable and have exceeded half their TTL  
-```
+```sql
 CREATE VIEW unreachable_nodes AS
 SELECT
     id,

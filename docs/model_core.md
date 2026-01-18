@@ -211,20 +211,20 @@ last_activity      (INTEGER) — timestamp of last activity
 
 **Model "participants"** :
 **Source relation**
-```
+```sql
 participants.public_key = judgment.participant_id
 participants.public_key = impact.participant_id
 participants.reputation_history = reputation_history.id
 ```
 **Base participant mapping**
-```
+```sql
 base_participant_id =
 SELECT participants.public_key
 FROM participants
 WHERE participants.public_key = judgment.participant_id
 ```
 **Aggregation formulas "reputation_score"**
-```
+```sql
 participants.reputation_score = (
     SELECT CASE
         WHEN total_judgment > 0 THEN accurate_judgment * 1.0 / total_judgment
@@ -235,7 +235,7 @@ participants.reputation_score = (
 )
 ```
 **Aggregation formulas "total_judgment"**
-```
+```sql
 participants.total_judgment = (
     SELECT COUNT(*)
     FROM judgment
@@ -243,7 +243,7 @@ participants.total_judgment = (
 )
 ```
 **Aggregation formulas "accurate_judgment"**
-```
+```sql
 participants.accurate_judgment = (
     SELECT COUNT(*)
     FROM judgment j
@@ -253,7 +253,7 @@ participants.accurate_judgment = (
 )
 ```
 **Aggregation formulas "total_impact"**
-```
+```sql
 participants.total_impact = (
     SELECT COUNT(*)
     FROM impact
@@ -263,7 +263,7 @@ participants.total_impact = (
 )
 ```
 **Aggregation formulas "accurate_impact"**
-```
+```sql
 participants.accurate_impact = (
     SELECT COUNT(*)
     FROM impact i
@@ -281,7 +281,7 @@ participants.accurate_impact = (
 )
 ```
 **Aggregation formulas "created_at"**
-```
+```sql
 participants.created_at = CURRENT_TIMESTAMP
 ```
 
@@ -307,7 +307,7 @@ R_new = (R_old * N_old + accuracy_contribution) / (N_old + 1)
 • "impact"
 
 **Accuracy calculation** :
-```
+```sql
 IF judgment.accuracy_confirmed = TRUE
     accurate_judgment = accurate_judgment + 1
     total_judgment = total_judgment + 1
@@ -373,18 +373,18 @@ updated_at     (INTEGER, NOT NULL) — timestamp of update
 
 **Model "reputation_history"** :
 **Source relation**
-```
+```sql
 reputation_history.id = participants.reputation_history
 ```
 **Base participant mapping**
-```
+```sql
 base_participant_id =
 SELECT participants.public_key
 FROM participants
 WHERE participants.reputation_history = reputation_history.id
 ```
 **Aggregation formulas "old_reputation"**
-```
+```sql
 reputation_history.old_reputation = (
     SELECT reputation_score
     FROM participants
@@ -392,7 +392,7 @@ reputation_history.old_reputation = (
 )
 ```
 **Aggregation formulas "new_reputation"**
-```
+```sql
 reputation_history.new_reputation = (
     SELECT CASE
         WHEN total_judgment > 0 THEN accurate_judgment * 1.0 / total_judgment
@@ -403,7 +403,7 @@ reputation_history.new_reputation = (
 )
 ```
 **Aggregation formulas "change_reason"**
-```
+```sql
 reputation_history.change_reason = (
     SELECT CASE
         WHEN (SELECT reputation_score FROM participants WHERE public_key = base_participant_id) >
@@ -419,7 +419,7 @@ reputation_history.change_reason = (
 )
 ```
 **Aggregation formulas "updated_at"**
-```
+```sql
 reputation_history.updated_at = CURRENT_TIMESTAMP
 ```
 
@@ -437,7 +437,7 @@ reputation_history.updated_at = CURRENT_TIMESTAMP
 • "penalty_application" — reputation reduced due to detected manipulation
 
 **Reputation History Rules** :
-```
+```sql
 IF judgment.confirmed_accuracy = TRUE
     change_reason = "accuracy_confirmation"
     old_reputation = participant.reputation_score
@@ -524,7 +524,7 @@ Where:
 • The **model** and **rules** for trend determining **impact** ("impact.trend") directly **depend** on the **context**, for more details see "Model "quality"" the section → "2.4 Context as Semantic Space reference knowledge-base"
 
 **Impact Axis Rules** :
-```
+```sql
 N = (
     SELECT COUNT(*)
     FROM forma
@@ -601,21 +601,21 @@ impact.trend — expected direction of consequences (See section "Model "quality
 impact.value ∈ {NULL, 0, 1}  
 
 🔸 Logical Negative outcomes (Expectation matches context. Context is negative, effect is negative)
-```
+```sql
 IF N > P AND R = 0 AND impact.trend = 0
     impact.value = 0
 ```
 ✔ correct prediction of negative consequences
 
 🔸 Logical Positive outcomes (expectation matches context. Context is positive, effect is positive)
-```
+```sql
 IF N < P AND R = 1 AND impact.trend = 1
     impact.value = 1
 ```
 ✔ correct prediction of positive consequences
 
 🔸 Illogical Negative outcomes (Discrepancy between expectations and results. Context is positive, effect is negative)
-```
+```sql
 IF N < P AND R = 0 AND impact.trend = 2
     impact.value = NULL
 ```
@@ -623,7 +623,7 @@ IF N < P AND R = 0 AND impact.trend = 2
 → potential manipulation or sabotage
 
 🔸 Illogical Positive outcomes (Discrepancy between expectations and results. Context is negative, effect is positive)
-```
+```sql
 IF N > P AND R = 1 AND impact.trend = 3
     impact.value = NULL
 ```
@@ -636,22 +636,22 @@ These rules do not create new knowledge, but detect inconsistencies
 between the stated impact.trend and reality.
 
 False logical_positive (expected plus, got minus)
-```
+```sql
 IF N > P AND R = 0 AND impact.trend = 1
     impact.value = NULL
 ```
 False logical_negative (expected minus, got plus)
-```
+```sql
 IF N < P AND R = 1 AND impact.trend = 0
     impact.value = NULL
 ```
 Illogical trend Negative, corrected by reality to positive
-```
+```sql
 IF N < P AND R = 1 AND impact.trend = 2
     impact.value = 1
 ```
 Illogical trend Positive, corrected by reality to negative
-```
+```sql
 IF N > P AND R = 0 AND impact.trend = 3
     impact.value = 0
 ```
@@ -825,7 +825,7 @@ calculated_at (INTEGER, NOT NULL) — timestamp of calculation
 
 **Model "event_projection"** :
 **Source relation**
-```
+```sql
 event_projection.event_id = event_ci.id
 event_projection.truth_score = (
     SELECT consensus_ci.confidence_score
@@ -842,7 +842,7 @@ event_projection.impact_score = (
 **Note**: The `event_projection` table utilizes pre-calculated aggregated values from the `consensus_ci` and `impact_metrics` tables rather than performing direct computations. This approach ensures consistency and avoids redundant calculations while maintaining the integrity of the projection model.
 
 **Aggregation formulas "quadrant"**
-```
+```sql
 event_projection.quadrant = (
     SELECT CASE
         WHEN truth_score >= 0.5 AND impact_score >= 0 THEN 'Q1'
@@ -853,7 +853,7 @@ event_projection.quadrant = (
 )
 ```
 **Aggregation formulas "calculated_at"**
-```
+```sql
 event_projection.calculated_at = CURRENT_TIMESTAMP
 ```
 
@@ -920,7 +920,7 @@ updated_at  (INTEGER, NOT NULL) — timestamp of last update
 
 **Model "statements"** :  
 **Source relation**  
-```
+```sql
 statements.event_id = truth_event.id
 statements.truth_score = (
     SELECT AVG(truth_event.collective_score)
@@ -929,14 +929,14 @@ statements.truth_score = (
 )
 ```
 **Base event mapping**  
-```
+```sql
 base_event_id =
 SELECT truth_event.id
 FROM truth_event
 WHERE truth_event.id = statements.event_id
 ```
 **Aggregation formulas "truth_score"**  
-```
+```sql
 statements.truth_score = (
     SELECT AVG(collective_score)
     FROM truth_event
@@ -948,11 +948,11 @@ statements.truth_score = (
 )
 ```
 **Aggregation formulas "created_at"**  
-```
+```sql
 statements.created_at = CURRENT_TIMESTAMP
 ```
 **Aggregation formulas "updated_at"**  
-```
+```sql
 statements.updated_at = CURRENT_TIMESTAMP
 ```
 
@@ -975,7 +975,7 @@ T_global(E) = Σ(wᵢ * csᵢ) / Σ(wᵢ)
 - wᵢ — **weight** of **node** i  
 - csᵢ — **collective score** from **node** i  
 
-**Statistical Model** :  
+**Statistical Model** :
 ```
 truth_score_global =
     IF number_of_nodes >= minimum_threshold
@@ -983,13 +983,25 @@ truth_score_global =
     ELSE NULL (insufficient data)
 ```
 
-**Update Rules** :  
+**Update Rules** :
 ```
 IF new_local_score.arrives
     recalculate_global_aggregation()
     update_participant_reputations()
     update_event_classification()
 ```
+
+**Note on Implementation**: The above code represents pseudocode rather than actual SQL syntax. The actual implementation uses documented triggers and views that achieve similar functionality:
+
+- The `aggregate_local_scores_for_global` trigger populates the statements table with local assessments for global calculation when truth_event is updated. This trigger fires when the collective_score changes and updates the statements table for cross-node aggregation.
+
+- The `update_participant_reputation_on_prediction_accuracy` trigger updates participant reputations based on the accuracy of impact predictions by aggregating prediction accuracy across all events.
+
+- The `global_truth_score_calculation` view performs the actual global aggregation by calculating truth_score_global as the average of local collective scores from different nodes.
+
+- Event classification updates are handled by the `event_classification_calculation` view and related triggers that update the event_ci table's resolution_data field based on the convergence of impact and judgment axes.
+
+The pseudocode represents the conceptual model for how global truth aggregation should work, but the actual implementation uses different trigger names and follows a more complex architecture involving the `statements` table for cross-node aggregation.
 
 **Notes** :  
 • **Aggregates scores** across distributed **nodes**  
@@ -1014,7 +1026,7 @@ last_updated (INTEGER, NOT NULL) — timestamp of last update
 
 **Model "group_ratings"** :  
 **Source relation**  
-```
+```sql
 group_ratings.group_id = participants.group_membership
 group_ratings.avg_score = (
     SELECT AVG(participants.reputation_score)
@@ -1028,14 +1040,14 @@ group_ratings.coherence = (
 )
 ```
 **Base group mapping**  
-```
+```sql
 base_group_id =
 SELECT group_ratings.group_id
 FROM group_ratings
 WHERE group_ratings.group_id = participants.group_membership
 ```
 **Aggregation formulas "avg_score"**  
-```
+```sql
 group_ratings.avg_score = (
     SELECT AVG(reputation_score)
     FROM participants
@@ -1043,7 +1055,7 @@ group_ratings.avg_score = (
 )
 ```
 **Aggregation formulas "coherence"**  
-```
+```sql
 group_ratings.coherence = (
     SELECT 1 - (SUM(ABS(reputation_score - avg_score)) / (COUNT(*) * 2))
     FROM participants
@@ -1051,7 +1063,7 @@ group_ratings.coherence = (
 )
 ```
 **Aggregation formulas "last_updated"**  
-```
+```sql
 group_ratings.last_updated = CURRENT_TIMESTAMP
 ```
 
@@ -1076,7 +1088,7 @@ Performance = f(avg_score, coherence, consistency)
 ```
 
 **Coherence Rules** :  
-```
+```sql
 IF coherence > 0.8
     group_decision_reliability = HIGH
 ELSE IF coherence > 0.6
@@ -1140,7 +1152,7 @@ ELSE
 ```
 
 **Progress Update Rules** :  
-```
+```sql
 IF new_event_processed
     total_events = total_events + 1
     IF event.is_group_event
@@ -1248,7 +1260,7 @@ description (TEXT, NOT NULL) — effect type description
 **Impact Axis Rules** :
 
 **Quality calculation model** :
-```
+```sql
 N = (
     SELECT COUNT(*)
     FROM forma
@@ -1295,23 +1307,23 @@ R = (
 The **context** defined by these **rules** can have **4 possible outcomes** of the **event**, **two** of which are **logical** and **two** of which are **illogical**  
 
 • The **first logical** result **contains more negative** "quality" and has a **negative effect (impact)**  
-```
+```sql
 IF "N" > "P" AND "R" = 0
     impact.trend = 0
 
 ```
 • The **second logical** result **contains more positive** "quality" and has a **positive effect (impact)**  
-```
+```sql
 IF "N" < "P" AND "R" = 1
     impact.trend = 1
 ```
 • The **fourth illogical** result **contains more positive** "quality" and has a **negative effect (impact)**  
-```
+```sql
 IF "N" < "P" AND "R" = 0
     impact.trend = 2
 ```
 • The **third illogical** result **contains more negative** "quality" and has a **positive effect (impact)**  
-```
+```sql
 IF "N" > "P" AND "R" = 1
     impact.trend = 3
 ```
@@ -1822,20 +1834,20 @@ calculated_at   (INTEGER, NOT NULL) — timestamp of calculated
 
 **Model impact_metrics** :  
 **Source relation**
-```
+```sql
 impact.event_id = truth_event.id
 truth_event.id = event_ci.created_by
 impact_metrics.event_id = event_ci.id
 ```
 **Base event mapping**
-```
+```sql
 base_event_id =
 SELECT event_ci.created_by
 FROM event_ci
 WHERE event_ci.id = impact_metrics.event_id
 ```
 **Aggregation formulas "total_magnitude"**
-```
+```sql
 impact_metrics.total_magnitude = (
     SELECT COUNT(*)
     FROM impact
@@ -1857,7 +1869,7 @@ ENDIF
 
 ```
 **Aggregation formulas "positive_ratio"**
-```
+```sql
 impact_metrics.positive_ratio =
 SELECT COUNT(*)
 FROM impact
@@ -1865,7 +1877,7 @@ WHERE impact.event_id = base_event_id
 AND impact.value = 1
 ```
 **Aggregation formulas "negative_ratio"**
-```
+```sql
 impact_metrics.negative_ratio =
 SELECT COUNT(*)
 FROM impact
@@ -1873,7 +1885,7 @@ WHERE impact.event_id = base_event_id
 AND impact.value = 0
 ```
 **Aggregation formulas "uncertainty"**
-```
+```sql
 impact_metrics.uncertainty =
 SELECT COUNT(*)
 FROM impact
@@ -1881,7 +1893,7 @@ WHERE impact.event_id = base_event_id
 AND impact.value IS NULL
 ```
 **Aggregation formulas "calculated_at"**
-```
+```sql
 impact_metrics.calculated_at = CURRENT_TIMESTAMP
 ```
 
@@ -2006,7 +2018,7 @@ d(i) — **impact** depth **from root**
 
 
 **Model "impact_predictions"** :
-```
+```sql
 CREATE TABLE impact_predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -2039,13 +2051,13 @@ CREATE TABLE impact_predictions (
 );
 ```
 **Source relation**
-```
+```sql
 impact_predictions.event_id = event_ci.id
 truth_event.id = event_ci.created_by
 impact_predictions.predicted_impact_type = effect.id
 ```
 **Base event mapping**
-```
+```sql
 base_event_id =
 SELECT event_ci.created_by
 FROM event_ci
@@ -2053,12 +2065,12 @@ WHERE event_ci.id = impact_predictions.event_id
 ```
 
 **Aggregation formulas "calculated_at"**
-```
+```sql
 impact_predictions.created_at = CURRENT_TIMESTAMP
 ```
 
 **Aggregation formulas "horizon"**
-```
+```sql
 impact_predictions.horizon = (
     SELECT (CASE
                WHEN event_timeline.t_end IS NULL
@@ -2077,7 +2089,7 @@ impact_predictions.horizon = (
 )
 ```
 **Aggregation formulas "expected_strength"**
-```
+```sql
 impact_predictions.expected_strength = (
     SELECT SUM(truth_event.collective_score / (impact_predictions.horizon + small_constants()))
     FROM truth_event
@@ -2086,7 +2098,7 @@ impact_predictions.expected_strength = (
 )
 ```
 **Aggregation formulas "probability"**
-```
+```sql
 impact_predictions.probability = (
     1 - ABS(
         (SELECT COALESCE(SUM(weight * post_fact_impact), 0)
@@ -2209,21 +2221,21 @@ Notes:
 
 **Model "judgment"** :
 **Source relation**
-```
+```sql
 judgment.participant_id = participants.id
 judgment.event_id = event_ci.id
 judgment_weights.judgment_id = judgment.id
 consensus_ci.judgment_id = judgment.id
 ```
 **Base event mapping**
-```
+```sql
 base_event_id =
 SELECT event_ci.id
 FROM event_ci
 WHERE event_ci.id = judgment.event_id
 ```
 **Aggregation formulas "assessment"**
-```
+```sql
 judgment.assessment = (
     SELECT CASE
         WHEN AVG(confidence_level) > 0.7 AND AVG(assessment_value) > 0.5 THEN 'true'
@@ -2245,7 +2257,7 @@ judgment.assessment = (
 )
 ```
 **Aggregation formulas "confidence_level"**
-```
+```sql
 judgment.confidence_level = (
     SELECT AVG(confidence_level)
     FROM judgment
@@ -2253,7 +2265,7 @@ judgment.confidence_level = (
 )
 ```
 **Aggregation formulas "calculated_at"**
-```
+```sql
 judgment.timeline_id = CURRENT_TIMESTAMP
 ```
 
@@ -2271,19 +2283,19 @@ created_at         (INTEGER, NOT NULL) — timestamp of creation
 
 **Model "judgment_links"** :
 **Source relation**
-```
+```sql
 judgment_links.source_judgment_id = judgment.id
 judgment_links.target_judgment_id = judgment.id
 ```
 **Base judgment mapping**
-```
+```sql
 base_judgment_id =
 SELECT judgment.id
 FROM judgment
 WHERE judgment.id = judgment_links.source_judgment_id
 ```
 **Aggregation formulas "relation_type"**
-```
+```sql
 judgment_links.relation_type = (
     SELECT CASE
         WHEN EXISTS (
@@ -2303,7 +2315,7 @@ judgment_links.relation_type = (
 )
 ```
 **Aggregation formulas "created_at"**
-```
+```sql
 judgment_links.created_at = CURRENT_TIMESTAMP
 ```
 
@@ -2333,20 +2345,20 @@ algorithm_version (INTEGER, NOT NULL) — version of algorithm used
 
 **Model "consensus_ci"** :
 **Source relation**
-```
+```sql
 consensus_ci.event_id = event_ci.id
 judgment.event_id = consensus_ci.event_id
 judgment_weights.event_id = consensus_ci.event_id
 ```
 **Base event mapping**
-```
+```sql
 base_event_id =
 SELECT event_ci.id
 FROM event_ci
 WHERE event_ci.id = consensus_ci.event_id
 ```
 **Aggregation formulas "consensus_value"**
-```
+```sql
 consensus_ci.consensus_value = (
     SELECT ROUND(AVG(j.assessment_value * jw.weight))
     FROM judgment j
@@ -2355,7 +2367,7 @@ consensus_ci.consensus_value = (
 )
 ```
 **Aggregation formulas "confidence_score"**
-```
+```sql
 consensus_ci.confidence_score = (
     SELECT AVG(j.confidence_level * jw.weight)
     FROM judgment j
@@ -2364,7 +2376,7 @@ consensus_ci.confidence_score = (
 )
 ```
 **Aggregation formulas "participant_count"**
-```
+```sql
 consensus_ci.participant_count = (
     SELECT COUNT(DISTINCT participant_id)
     FROM judgment
@@ -2372,7 +2384,7 @@ consensus_ci.participant_count = (
 )
 ```
 **Aggregation formulas "calculated_at"**
-```
+```sql
 consensus_ci.calculated_at = CURRENT_TIMESTAMP
 ```
 
@@ -2439,20 +2451,20 @@ calculated_at  (INTEGER, NOT NULL) — timestamp of creation
 
 **Model "judgment_weights"** :
 **Source relation**
-```
+```sql
 judgment_weights.participant_id = participants.id
 judgment_weights.event_id = event_ci.id
 judgment.participant_id = judgment_weights.participant_id
 ```
 **Base participant mapping**
-```
+```sql
 base_participant_id =
 SELECT participants.id
 FROM participants
 WHERE participants.id = judgment_weights.participant_id
 ```
 **Aggregation formulas "weight"**
-```
+```sql
 judgment_weights.weight = (
     SELECT reputation_score
     FROM participants
@@ -2460,7 +2472,7 @@ judgment_weights.weight = (
 )
 ```
 **Aggregation formulas "calculated_at"**
-```
+```sql
 judgment_weights.calculated_at = CURRENT_TIMESTAMP
 ```
 
@@ -2501,7 +2513,7 @@ created_at      (INTEGER, NOT NULL) — timestamp of creation
 ##### Model : Collective Intelligence Event Aggregation
  • "event_ci" is created **automatically** when an **event** is created in the "truth_event" table   
 ###### **Default values** :  
-```
+```sql
 event_ci.created_by = truth_event.id
 event_ci.created_at = CURRENT_TIMESTAMP
 event_ci.event_type = DEFAULT "judgment"
@@ -2519,7 +2531,7 @@ event_ci.resolution_data = DEFAULT 'unstable'
  • "judgment_weights"  
 
 **Axis presence model** :  
-```
+```sql
 impact_present =
 EXISTS (
 SELECT 1 FROM impact_metrics
@@ -2535,7 +2547,7 @@ AND judgment_weights.weight IS NOT NULL
 )
 ```
 **Rules** :  
-```
+```sql
 IF impact_present AND judgment_present
 event_ci.event_type = 'both'
 
@@ -2554,7 +2566,7 @@ event_ci.event_type = 'judgment'
  • status represents the temporal phase of the **event neuron** and is evaluated based on the associated **timeline** of the source **event**  
 
 **Time source** :  
-```
+```sql
 time_start =
 SELECT event_timeline.time_start
 FROM truth_event
@@ -2568,7 +2580,7 @@ JOIN event_timeline ON event_timeline.id = truth_event.timeline_id
 WHERE truth_event.id = event_ci.created_by
 ```
 **Rules** :  
-```
+```sql
 IF time_end IS NULL
 event_ci.status = 'active'
 ELSE
@@ -2588,7 +2600,7 @@ ENDIF
  • resolution_data reflects the degree of convergence between active axes and is evaluated only when "event_ci.event_type" and "event_ci.status" are known  
 
 **Preconditions** :  
-```
+```sql
 event_ci.event_type IN ('impact','judgment','both')
 event_ci.status IN ('active','resolved','archived')
 ```
@@ -2598,7 +2610,7 @@ event_ci.status IN ('active','resolved','archived')
  • "judgment_weights"  
 
 **Axis convergence model** :  
-```
+```sql
 impact_converged =
 event_ci.event_type IN ('impact','both')
 AND EXISTS (
@@ -2618,7 +2630,7 @@ AND judgment_weights.weight IS NOT NULL
 )
 ```
 **Rules** :  
-```
+```sql
 IF NOT impact_converged AND NOT judgment_converged
 event_ci.resolution_data = 'unstable'
 
@@ -2744,7 +2756,7 @@ Balance = total_positive_impacts - total_negative_impacts
 ```
 
 **Group vs Individual Comparison** :
-```
+```sql
 IF total_events_group / total_events > threshold
     system_efficiency = HIGH (group collaboration effective)
 ELSE
@@ -2752,7 +2764,7 @@ ELSE
 ```
 
 **Progress Update Rules** :
-```
+```sql
 IF new_event_processed
     total_events = total_events + 1
     IF event.is_group_event
@@ -2889,7 +2901,7 @@ Where:
 • Domain: specialized knowledge rules
 
 **Heuristic Application Rules** :
-```
+```sql
 IF expert_heuristics.confidence > threshold
     THEN apply_heuristic()
 ELSE
@@ -2897,7 +2909,7 @@ ELSE
 ```
 
 **Conflict Resolution** :
-```
+```sql
 IF conflicting_heuristics_detected
     THEN uncertainty = TRUE
     ELSE uncertainty = FALSE
@@ -2953,7 +2965,7 @@ wᵢ = f(accuracyᵢ, reliabilityᵢ, domain_relevanceᵢ)
 • "domain_specific" — specialized knowledge rules
 
 **Weight Calculation Rules** :
-```
+```sql
 IF expert_heuristics.proven_accuracy > 0.8
     weight = HIGH
 ELSE IF expert_heuristics.proven_accuracy > 0.6
@@ -3012,7 +3024,7 @@ Past time ≠ Present time ≠ Future time
 ```
 
 **Time Type Rules** :
-```
+```sql
 IF time_type = 'past'
     time_scale = historical record
     time_flow = fixed
@@ -3075,7 +3087,7 @@ Timeline(E) = {t_start, t_end}
 ```
 
 **Timeline Constraints** :
-```
+```sql
 IF t_end IS NULL
     event_status = 'active'
 ELSE
@@ -3086,7 +3098,7 @@ ELSE
 ```
 
 **Timeline Validation Rules** :
-```
+```sql
 IF t_start > t_end AND t_end IS NOT NULL
     ERROR "Timeline start cannot be after end"
     
@@ -3130,7 +3142,7 @@ Duration = CURRENT_TIMESTAMP - t_start (if t_end IS NULL)
 ```
 
 **Timeline Validation Rules** :
-```
+```sql
 IF t_start > t_end AND t_end IS NOT NULL
     ERROR "Impact timeline start cannot be after end"
 ```
@@ -3169,7 +3181,7 @@ Duration = CURRENT_TIMESTAMP - t_start (if t_end IS NULL)
 ```
 
 **Timeline Validation Rules** :
-```
+```sql
 IF t_start > t_end AND t_end IS NOT NULL
     ERROR "Judgment timeline start cannot be after end"
 ```
@@ -3238,7 +3250,7 @@ depending on:
 • applied heuristics
 
 **State Transition Rules** :
-```
+```sql
 IF confidence > threshold AND |dispersion| < dispersion_limit
     truth_state = 'resolved'
 ELSE IF calculated_at < (CURRENT_TIMESTAMP - stability_period)
@@ -3308,7 +3320,7 @@ Where:
 - ε_T and ε_I are threshold values for stability determination
 
 **History Aggregation Rules** :
-```
+```sql
 IF new_judgment_recorded
     judgment_count = judgment_count + 1
     recalculate_truth_score()
@@ -3395,7 +3407,7 @@ Where:
 ```
 
 **Reactivation Rules** :
-```
+```sql
 IF new_judgment_arrives AND truth_stable = TRUE
     truth_stable = FALSE
     stabilized_at = NULL
@@ -3454,7 +3466,7 @@ N = {address, type, public_key, availability}
 ```
 
 **Node Lifecycle**:
-```
+```sql
 IF last_seen < (CURRENT_TIMESTAMP - ttl)
     node_status = 'expired'
     eligible_for_cleanup = TRUE
@@ -3471,7 +3483,7 @@ IF reachable = 0 AND consecutive_failures > threshold
 • CLIENT — End-user client nodes
 
 **Node Validation Rules**:
-```
+```sql
 IF address NOT valid_url_format
     ERROR "Invalid address format"
     
@@ -3516,7 +3528,7 @@ Trust(n) = (events_true - events_false) / (events_true + events_false + ε)
 ```
 
 **Trust Calculation**:
-```
+```sql
 IF events_true + events_false = 0
     trust_score = 0.0  (neutral trust)
 ELSE
@@ -3529,7 +3541,7 @@ Priority(n) = f(trust_score, validation_count, reuse_frequency)
 ```
 
 **Rating Update Rules**:
-```
+```sql
 IF new_validation_received
     IF validation_correct
         events_true = events_true + 1
@@ -3580,7 +3592,7 @@ Q(n) = α * recent_performance + β * historical_consistency + γ * trust_factor
 ```
 
 **Metrics Update Rules**:
-```
+```sql
 IF synchronization_attempt
     IF successful
         relay_success_rate = (previous_successes + 1) / total_attempts
@@ -3618,14 +3630,14 @@ Token = {public_key, refresh_token, expires_at}
 ```
 
 **Expiration Rules**:
-```
+```sql
 IF CURRENT_TIMESTAMP > expires_at
     token_status = 'expired'
     eligible_for_cleanup = TRUE
 ```
 
 **Token Validation**:
-```
+```sql
 IF refresh_token NOT valid_jwt_format
     ERROR "Invalid token format"
     
@@ -3674,7 +3686,7 @@ success_rate = success_count / (success_count + fail_count)
 ```
 
 **History Update Rules**:
-```
+```sql
 IF synchronization_attempt
     IF successful
         success_count = success_count + 1
@@ -3724,13 +3736,13 @@ Log(entry) = {operation, table, record_id, signature, public_key, timestamp}
 • DELETE — Record removed during sync
 
 **Integrity Verification**:
-```
+```sql
 IF signature_verification(public_key, signature, operation_data) = FALSE
     log_integrity_error()
 ```
 
 **Log Management Rules**:
-```
+```sql
 IF created_at < (CURRENT_TIMESTAMP - retention_period)
     eligible_for_cleanup = TRUE
 ```
@@ -3767,7 +3779,7 @@ SyncLog = {timestamp, peer_url, mode, status, details}
 ```
 
 **Synchronization Monitoring Rules**:
-```
+```sql
 IF sync_operation_initiated
     log_sync_event(
         timestamp = CURRENT_TIMESTAMP,
@@ -3855,7 +3867,7 @@ Used:
 • cross-checking impact ↔ judgment
 
 **Decay Function**:
-```
+```sql
 UPDATE node_trust_limits
 SET
     decay_factor = decay_factor * EXP(-small_constants * (CAST(CURRENT_TIMESTAMP AS REAL) - CAST(last_adjusted_at AS REAL))),
@@ -3877,7 +3889,7 @@ WHERE (CAST(CURRENT_TIMESTAMP AS REAL) - CAST(last_adjusted_at AS REAL)) > 0;
 • "CURRENT_TIMESTAMP" - "last_adjusted_at" — **time elapsed** since **last update** in seconds
 
 **Trust Limit Mechanism** :
-```
+```sql
 UPDATE node_trust_limits
 SET decay_factor = CASE
     WHEN decay_factor > 0 AND decay_factor <= 1 AND max_weight > 0

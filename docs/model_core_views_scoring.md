@@ -8,7 +8,7 @@
 -- The impact_score field represents the cumulative impact assessment of the event at the local node level  
 -- It is calculated based on the impact records stored in the impact table that are associated with this event  
 -- The calculation algorithm aggregates the individual impact values taking into account their types, timestamps, and the reputation of the participants who made the impact assessments  
-```
+```sql
 CREATE VIEW impact_score_calculation AS
 SELECT 
     te.id as event_id,
@@ -36,7 +36,7 @@ GROUP BY te.id;
 -- The judgment_score field represents the cumulative truth assessment of the event at the local node level  
 -- It is calculated based on the judgment records stored in the judgment table that are associated with the corresponding event in the event_ci table  
 -- The calculation algorithm aggregates the individual judgments taking into account their confidence levels, assessment types, and the reputation of the participants who made the judgments  
-```
+```sql
 CREATE VIEW judgment_score_calculation AS
 SELECT 
     te.id as event_id,
@@ -63,7 +63,7 @@ LEFT JOIN participants p ON j.participant_id = p.public_key
 GROUP BY te.id;
 ```
 -- Function to recalculate all impact scores (for maintenance)  
-```
+```sql
 CREATE VIEW recalculate_all_impact_scores AS
 SELECT 
     te.id as event_id,
@@ -86,7 +86,7 @@ LEFT JOIN participants p ON te_part.participant_id = p.public_key
 GROUP BY te.id;
 ```
 -- Function to recalculate all judgment scores (for maintenance)  
-```
+```sql
 CREATE VIEW recalculate_all_judgment_scores AS
 SELECT 
     te.id as event_id,
