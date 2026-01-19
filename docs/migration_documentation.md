@@ -27,10 +27,11 @@ Database migrations in Truth Training follow a structured approach to ensure dat
 ### Migration Types
 The system handles several types of migrations:
 
-#### Column Additions
-Migrations may add new columns to existing tables to support new features or improve data consistency. Examples include:
+#### Column Modifications
+Migrations may add, remove, or modify columns in existing tables to support new features, improve data consistency, or restructure data. Examples include:
 - Adding `global_id`, `signature`, `participant_id`, and `collective_score` to the `truth_events` table
 - Adding `signature` and `public_key` fields to various tables for cryptographic verification
+- Removing deprecated columns and transferring or aggregating their information to new columns
 
 #### Table Creations
 New tables may be created to support additional functionality.
