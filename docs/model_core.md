@@ -3450,8 +3450,11 @@ Decay(T, t) ∝ e^(−λt)
 
 ## 4 Node Discovery and Network Tables
 
+**Note:** The "Node Discovery" tables participate indirectly in P2P information exchange. For details on the relationship between these tables and P2P exchange implementation, see [docs/p2p_release.md](docs/p2p_release.md) which describes how these tables are used in the implementation of P2P information exchange.
+
 **Note on table naming**: In version v1.1.0, the tables were renamed for clarity:
 - `nodes` → `discovery_nodes`
+- `node_discovery` → `discovery_history`
 - `node_metrics` → `node_performance`
 - `sync_log` → `sync_operations`
 - `sync_logs` → `sync_attempts`
@@ -3514,11 +3517,193 @@ IF type NOT IN (LAN, WIFI, GLOBAL, RELAY, CLIENT)
 IF node_id NOT IN participants.public_key
     ERROR "Node ID not registered as participant"
 ```
-
 **Notes**:
 • Node addresses are validated for proper URL format
 • TTL ensures stale node records are cleaned up
 • Node discovery supports multiple network types
+
+**SQL Implementation Example**:
+```sql
+-- Create discovery_nodes table
+CREATE TABLE discovery_nodes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT NOT NULL UNIQUE,
+    type TEXT NOT NULL,
+    reachable INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL,
+    ttl INTEGER NOT NULL,
+    source TEXT,
+    node_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (node_id) REFERENCES participants(public_key)
+);
+
+-- Insert new node
+INSERT INTO discovery_nodes (address, type, reachable, last_seen, ttl, source, node_id, created_at, updated_at)
+VALUES (?, ?, 1, ?, 3600, ?, ?, ?, ?);
+
+-- Update node reachability
+UPDATE discovery_nodes
+SET reachable = CASE
+    WHEN last_seen > (strftime('%s', 'now') - 300) THEN 1 -- 5 minutes
+    ELSE 0
+END,
+last_seen = strftime('%s', 'now')
+WHERE id = ?;
+
+-- Get active nodes
+SELECT * FROM discovery_nodes
+WHERE last_seen > (strftime('%s', 'now') - ttl)
+AND reachable = 1;
+```
+
+### Table: discovery_history
+
+📝 **System-level** table of the Network Layer
+It is **not accept direct participant input**, and is **not transmitted over the network**
+
+**Purpose**:
+**Tracking changes** in network **node discovery** for **auditing and analyzing** changes in **node discovery**, understanding reasons for **discovery changes**, analyzing **node behavior** and **availability effectiveness**, and **ensuring transparency** of **discovery system**
+
+**Fields** :
+```
+id             (INTEGER, PK, AUTOINCREMENT) — unique discovery record identifier
+node_id        (INTEGER, NOT NULL) — FK → discovery_nodes.id
+discovery_type (TEXT, NOT NULL) — type of discovery (beacon, manual, api)
+discovered_at  (INTEGER, NOT NULL) — timestamp of discovery
+ttl            (INTEGER, NOT NULL) — time to live for discovery record
+status         (TEXT, NOT NULL) — discovery status (active, expired, unreachable)
+source         (TEXT, NOT NULL) — source of discovery information
+```
+🏠 Database: discovery_nodes.sqlite
+
+**Model "discovery_history"** :
+**Source relation**
+```
+discovery_history.node_id = discovery_nodes.id
+```
+**Base node mapping**
+```
+base_node_id =
+SELECT discovery_nodes.id
+FROM discovery_nodes
+WHERE discovery_nodes.id = discovery_history.node_id
+```
+**Aggregation formulas "discovered_at"**
+```
+discovery_history.discovered_at = (
+    SELECT discovery_nodes.created_at
+    FROM discovery_nodes
+    WHERE discovery_nodes.id = base_node_id
+)
+```
+**Aggregation formulas "ttl"**
+```
+discovery_history.ttl = (
+    SELECT 3600  -- Default 1 hour
+    FROM discovery_nodes
+    WHERE discovery_nodes.id = base_node_id
+)
+```
+**Aggregation formulas "status"**
+```
+discovery_history.status = (
+    SELECT CASE
+        WHEN discovered_at > (CURRENT_TIMESTAMP - ttl) THEN 'active'
+        ELSE 'expired'
+    END
+)
+```
+**Aggregation formulas "source"**
+```
+discovery_history.source = (
+    SELECT discovery_nodes.source
+    FROM discovery_nodes
+    WHERE discovery_nodes.id = base_node_id
+)
+```
+
+**SQL Implementation Example**:
+```sql
+-- Create discovery_history table
+CREATE TABLE discovery_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_id INTEGER NOT NULL,
+    discovery_type TEXT NOT NULL,
+    discovered_at INTEGER NOT NULL,
+    ttl INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    source TEXT NOT NULL,
+    FOREIGN KEY (node_id) REFERENCES discovery_nodes(id)
+);
+
+-- Insert new discovery record
+INSERT INTO discovery_history (node_id, discovery_type, discovered_at, ttl, status, source)
+VALUES (?, ?, ?, 3600, 'active', ?);
+
+-- Update discovery status based on TTL
+UPDATE discovery_history
+SET status = CASE
+    WHEN discovered_at > (strftime('%s', 'now') - ttl) THEN 'active'
+    ELSE 'expired'
+END
+WHERE id = ?;
+
+-- Get active discoveries
+SELECT dh.*, dn.address, dn.type
+FROM discovery_history dh
+JOIN discovery_nodes dn ON dh.node_id = dn.id
+WHERE dh.status = 'active'
+AND dh.discovered_at > (strftime('%s', 'now') - dh.ttl);
+
+-- Clean up expired discoveries
+DELETE FROM discovery_history
+WHERE discovered_at < (strftime('%s', 'now') - ttl);
+```
+
+##### Model: Node Discovery Tracking
+
+**Discovery Change Model** :
+```
+ΔD = D_new - D_old
+```
+
+**Discovery Types** :
+• "beacon" — discovery through UDP beacons
+• "manual" — manually added nodes
+• "api" — discovery through API calls
+
+**Discovery Rules** :
+```
+IF beacon_received
+    discovery_type = "beacon"
+    discovered_at = CURRENT_TIMESTAMP
+    ttl = 3600  -- 1 hour
+
+IF manual_addition
+    discovery_type = "manual"
+    discovered_at = CURRENT_TIMESTAMP
+    ttl = 86400  -- 24 hours
+```
+
+**Discovery Analysis** :
+• Trend analysis for node discovery
+• Detection of discovery manipulation attempts
+• Verification of discovery evolution consistency
+• Audit trail for discovery changes
+
+**Key constraints** :
+• discovered_at and ttl must be valid timestamps
+• discovery_type must be one of predefined values
+• status must be current based on ttl
+
+**Notes** :
+• Used for auditing and transparency of discovery changes
+• Tracks historical changes for analysis
+• Enables detection of discovery manipulation
+• Supports discovery trend analysis
+
 
 ### Table: node_ratings
 
@@ -3571,11 +3756,61 @@ IF new_validation_received
     recalculate_trust_score()
     last_updated = CURRENT_TIMESTAMP
 ```
-
 **Notes**:
 • Trust scores range from -1.0 (completely untrustworthy) to +1.0 (completely trustworthy)
 • Neutral trust is represented by 0.0
 • Propagation priority is derived from trust and activity metrics
+
+**SQL Implementation Example**:
+```sql
+-- Create node_ratings table
+CREATE TABLE node_ratings (
+    node_id TEXT NOT NULL,
+    events_true INTEGER NOT NULL DEFAULT 0,
+    events_false INTEGER NOT NULL DEFAULT 0,
+    validations INTEGER NOT NULL DEFAULT 0,
+    reused_events INTEGER NOT NULL DEFAULT 0,
+    trust_score REAL NOT NULL DEFAULT 0.0,
+    propagation_priority REAL NOT NULL DEFAULT 0.0,
+    last_updated INTEGER NOT NULL,
+    FOREIGN KEY (node_id) REFERENCES discovery_nodes(node_id)
+);
+
+-- Insert or update node rating
+INSERT INTO node_ratings (node_id, events_true, events_false, validations, reused_events, trust_score, propagation_priority, last_updated)
+VALUES (?, 0, 0, 0, 0, 0.0, 0.0, strftime('%s', 'now'))
+ON CONFLICT(node_id) DO UPDATE SET
+    last_updated = strftime('%s', 'now');
+
+-- Update trust score based on events
+UPDATE node_ratings
+SET
+    trust_score = CASE
+        WHEN events_true + events_false > 0 THEN (events_true - events_false) * 1.0 / (events_true + events_false)
+        ELSE 0.0
+    END,
+    propagation_priority = (CASE
+        WHEN events_true + events_false > 0 THEN (events_true - events_false) * 1.0 / (events_true + events_false)
+        ELSE 0.0
+    END) * 0.7 + (validations * 0.3 / (SELECT MAX(validations + 1) FROM node_ratings)),
+    last_updated = strftime('%s', 'now')
+WHERE node_id = ?;
+
+-- Get top rated nodes
+SELECT n.address, nr.trust_score, nr.propagation_priority, nr.events_true, nr.events_false
+FROM node_ratings nr
+JOIN discovery_nodes n ON nr.node_id = n.node_id
+ORDER BY nr.trust_score DESC
+LIMIT 10;
+
+-- Update validation count
+UPDATE node_ratings
+SET
+    validations = validations + 1,
+    last_updated = strftime('%s', 'now')
+WHERE node_id = ?;
+```
+
 
 ### Table: node_performance
 
@@ -3621,11 +3856,84 @@ IF synchronization_attempt
         relay_success_rate = previous_successes / total_attempts
     last_seen = CURRENT_TIMESTAMP
 ```
-
 **Notes**:
 • Quality index represents a weighted combination of performance metrics
 • Metrics are updated during synchronization operations
 • Lower quality nodes may be deprioritized for critical operations
+
+**SQL Implementation Example**:
+```sql
+-- Create node_performance table
+CREATE TABLE node_performance (
+    pubkey TEXT NOT NULL,
+    last_seen INTEGER NOT NULL,
+    relay_success_rate REAL NOT NULL DEFAULT 0.0,
+    quality_index REAL NOT NULL DEFAULT 0.0,
+    propagation_priority REAL NOT NULL DEFAULT 0.0,
+    FOREIGN KEY (pubkey) REFERENCES discovery_nodes(node_id)
+);
+
+-- Insert or update node performance
+INSERT INTO node_performance (pubkey, last_seen, relay_success_rate, quality_index, propagation_priority)
+VALUES (?, ?, 0.0, 0.0, 0.0)
+ON CONFLICT(pubkey) DO UPDATE SET
+    last_seen = excluded.last_seen;
+
+-- Update relay success rate
+UPDATE node_performance
+SET
+    relay_success_rate = (
+        SELECT
+            CASE
+                WHEN COUNT(*) = 0 THEN 0.0
+                ELSE SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) * 1.0 / COUNT(*)
+            END
+        FROM sync_attempts
+        WHERE sync_attempts.peer_url = (SELECT address FROM discovery_nodes WHERE node_id = node_performance.pubkey)
+    ),
+    quality_index = (
+        SELECT
+            (CASE
+                WHEN COUNT(*) = 0 THEN 0.0
+                ELSE SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) * 1.0 / COUNT(*)
+            END) * 0.5 +
+            (CASE
+                WHEN (julianday('now') - julianday(last_seen, 'unixepoch')) < 1
+                THEN 0.5
+                ELSE 0.1
+            END)
+        FROM sync_attempts
+        WHERE sync_attempts.peer_url = (SELECT address FROM discovery_nodes WHERE node_id = node_performance.pubkey)
+    ),
+    propagation_priority = (
+        SELECT
+            ((CASE
+                WHEN COUNT(*) = 0 THEN 0.0
+                ELSE SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) * 1.0 / COUNT(*)
+            END) * 0.5 +
+            (CASE
+                WHEN (julianday('now') - julianday(last_seen, 'unixepoch')) < 1
+                THEN 0.5
+                ELSE 0.1
+            END)) * trust_score
+        FROM node_ratings
+        WHERE node_id = node_performance.pubkey
+    )
+WHERE pubkey = ?;
+
+-- Get node performance with ratings
+SELECT
+    n.address,
+    np.relay_success_rate,
+    np.quality_index,
+    np.propagation_priority,
+    nr.trust_score
+FROM node_performance np
+JOIN discovery_nodes n ON np.pubkey = n.node_id
+LEFT JOIN node_ratings nr ON n.node_id = nr.node_id
+ORDER BY np.propagation_priority DESC;
+```
+
 
 ### Table: active_tokens
 
@@ -3665,11 +3973,41 @@ IF refresh_token NOT valid_jwt_format
 IF public_key NOT IN discovery_nodes.node_id
     ERROR "Token public key not associated with known node"
 ```
-
 **Notes**:
 • Refresh tokens are stored securely and uniquely
 • Expired tokens are automatically cleaned up
 • Tokens are tied to specific node public keys for security
+
+**SQL Implementation Example**:
+```sql
+-- Create active_tokens table
+CREATE TABLE active_tokens (
+    public_key TEXT NOT NULL,
+    refresh_token TEXT NOT NULL UNIQUE,
+    expires_at INTEGER NOT NULL,
+    FOREIGN KEY (public_key) REFERENCES discovery_nodes(node_id)
+);
+
+-- Insert new refresh token
+INSERT INTO active_tokens (public_key, refresh_token, expires_at)
+VALUES (?, ?, (strftime('%s', 'now') + 86400)); -- Token expires in 24 hours
+
+-- Validate token
+SELECT COUNT(*) > 0 as is_valid
+FROM active_tokens
+WHERE refresh_token = ?
+AND expires_at > strftime('%s', 'now');
+
+-- Clean up expired tokens
+DELETE FROM active_tokens
+WHERE expires_at < strftime('%s', 'now');
+
+-- Refresh token
+UPDATE active_tokens
+SET expires_at = (strftime('%s', 'now') + 86400) -- New expiry in 24 hours
+WHERE refresh_token = ?;
+```
+
 
 ### Table: peer_synchronization
 
@@ -3718,11 +4056,75 @@ IF synchronization_attempt
     last_sync = CURRENT_TIMESTAMP
     mode = current_synchronization_mode
 ```
-
 **Notes**:
 • Tracks historical performance of peer interactions
 • Supports diagnostic analysis of network issues
 • Quality and trust metrics are captured at time of synchronization
+
+**SQL Implementation Example**:
+```sql
+-- Create peer_synchronization table
+CREATE TABLE peer_synchronization (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    peer_url TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    status TEXT NOT NULL,
+    details TEXT NOT NULL,
+    last_sync INTEGER,
+    success_count INTEGER DEFAULT 0,
+    fail_count INTEGER DEFAULT 0,
+    last_quality_index REAL DEFAULT 0.0,
+    last_trust_score REAL DEFAULT 0.0,
+    FOREIGN KEY (peer_url) REFERENCES discovery_nodes(address)
+);
+
+-- Insert new peer synchronization record
+INSERT INTO peer_synchronization (peer_url, mode, status, details, last_sync, success_count, fail_count)
+VALUES ((SELECT node_id FROM discovery_nodes WHERE address = ?), ?, ?, ?, strftime('%s', 'now'), 0, 0);
+
+-- Update peer sync stats
+UPDATE peer_synchronization
+SET
+    last_sync = strftime('%s', 'now'),
+    success_count = success_count + CASE WHEN ? = 'success' THEN 1 ELSE 0 END,
+    fail_count = fail_count + CASE WHEN ? != 'success' THEN 1 ELSE 0 END,
+    last_quality_index = ?,
+    last_trust_score = ?
+WHERE peer_url = (SELECT node_id FROM discovery_nodes WHERE address = ?);
+
+-- Get peer sync statistics
+SELECT
+    n.address,
+    ps.mode,
+    ps.success_count,
+    ps.fail_count,
+    CASE
+        WHEN (ps.success_count + ps.fail_count) > 0
+        THEN ps.success_count * 100.0 / (ps.success_count + ps.fail_count)
+        ELSE 0.0
+    END as success_rate,
+    ps.last_sync,
+    ps.last_quality_index,
+    ps.last_trust_score
+FROM peer_synchronization ps
+JOIN discovery_nodes n ON ps.peer_url = n.node_id
+ORDER BY ps.last_sync DESC;
+
+-- Get peer with highest success rate
+SELECT
+    n.address,
+    CASE
+        WHEN (ps.success_count + ps.fail_count) > 0
+        THEN ps.success_count * 100.0 / (ps.success_count + ps.fail_count)
+        ELSE 0.0
+    END as success_rate
+FROM peer_synchronization ps
+JOIN discovery_nodes n ON ps.peer_url = n.node_id
+WHERE ps.success_count + ps.fail_count > 0
+ORDER BY success_rate DESC
+LIMIT 5;
+```
+
 
 ### Table: sync_operations
 
@@ -3767,11 +4169,50 @@ IF signature_verification(public_key, signature, operation_data) = FALSE
 IF created_at < (CURRENT_TIMESTAMP - retention_period)
     eligible_for_cleanup = TRUE
 ```
-
 **Notes**:
 • Helps monitor network-wide operation and catch failures
 • Enables audit trail for synchronization operations
 • Supports integrity verification of synchronized data
+
+**SQL Implementation Example**:
+```sql
+-- Create sync_operations table
+CREATE TABLE sync_operations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    op TEXT NOT NULL,
+    table_name TEXT NOT NULL,
+    record_id TEXT NOT NULL,
+    signature TEXT NOT NULL,
+    public_key TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (public_key) REFERENCES discovery_nodes(node_id)
+);
+
+-- Insert sync operation
+INSERT INTO sync_operations (op, table_name, record_id, signature, public_key, created_at)
+VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'));
+
+-- Get all operations for a specific node
+SELECT * FROM sync_operations
+WHERE public_key = ?
+ORDER BY created_at DESC;
+
+-- Verify signature for a specific operation
+SELECT s.*, n.address as node_address
+FROM sync_operations s
+JOIN discovery_nodes n ON s.public_key = n.node_id
+WHERE s.id = ?;
+
+-- Get sync operations by table
+SELECT table_name, COUNT(*) as operation_count,
+       SUM(CASE WHEN op = 'insert' THEN 1 ELSE 0 END) as inserts,
+       SUM(CASE WHEN op = 'update' THEN 1 ELSE 0 END) as updates,
+       SUM(CASE WHEN op = 'delete' THEN 1 ELSE 0 END) as deletes
+FROM sync_operations
+WHERE created_at > (strftime('%s', 'now') - 3600) -- Last hour
+GROUP BY table_name;
+```
+
 
 ### Table: sync_attempts
 
@@ -3822,11 +4263,49 @@ IF sync_operation_completed
 • Monitors peer node connectivity
 • Records synchronization mode effectiveness
 • Captures error details for debugging
-
 **Notes**:
 • Helps monitor network-wide operation and catch failures
 • Enables analysis of synchronization patterns
 • Supports network diagnostics and optimization
+
+**SQL Implementation Example**:
+```sql
+-- Create sync_attempts table
+CREATE TABLE sync_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER NOT NULL,
+    peer_url TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    status TEXT NOT NULL,
+    details TEXT NOT NULL,
+    FOREIGN KEY (peer_url) REFERENCES discovery_nodes(address)
+);
+
+-- Insert sync attempt entry
+INSERT INTO sync_attempts (timestamp, peer_url, mode, status, details)
+VALUES (strftime('%s', 'now'), ?, ?, ?, ?);
+
+-- Get recent sync attempts for a peer
+SELECT * FROM sync_attempts
+WHERE peer_url = ?
+ORDER BY timestamp DESC
+LIMIT 10;
+
+-- Get sync success rate for a peer
+SELECT
+    peer_url,
+    COUNT(*) as total_syncs,
+    SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful_syncs,
+    (SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as success_rate
+FROM sync_attempts
+WHERE peer_url = ?
+GROUP BY peer_url;
+
+-- Clean up old sync attempts
+DELETE FROM sync_attempts
+WHERE timestamp < (strftime('%s', 'now') - 86400 * 7); -- Delete attempts older than 7 days
+```
+
 
 ### Model Implementation References
 **For detailed SQL implementation see** 👇:

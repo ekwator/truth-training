@@ -41,12 +41,14 @@ Tables can be renamed to provide additional functionality for clarity.
 
 Before:
 - Nodes management (`nodes`)
+- Node discovery (`node_discovery`)
 - Synchronization logs (`sync_log`, `sync_logs`)
 - Node metrics (`node_metrics`)
 - Peer history (`peer_history`)
 
 After:
 - `nodes` → `discovery_nodes` - Contains information about network discovery nodes for peer-to-peer connectivity
+- `node_discovery` → `discovery_history` - Tracks changes in network node discovery for auditing and analyzing
 - `sync_log` → `sync_operations` - Records details of synchronization operations between nodes
 - `sync_logs` → `sync_attempts` - Logs all synchronization attempts including success/failure status
 - `node_metrics` → `node_performance` - Tracks performance and health metrics of individual nodes in the network
@@ -109,6 +111,7 @@ The v1.0.0 migration introduced several key changes:
 ### v1.1.0 Migration - Table Renaming
 The v1.1.0 migration included renaming several tables for clarity and better organization:
 - `nodes` → `discovery_nodes`
+- `node_discovery` → `discovery_history`
 - `node_metrics` → `node_performance`
 - `sync_log` → `sync_operations`
 - `sync_logs` → `sync_attempts`
