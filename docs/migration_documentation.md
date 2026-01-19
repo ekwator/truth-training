@@ -33,11 +33,23 @@ Migrations may add new columns to existing tables to support new features or imp
 - Adding `signature` and `public_key` fields to various tables for cryptographic verification
 
 #### Table Creations
-New tables may be created to support additional functionality:
+New tables may be created to support additional functionality.
+
+#### Table Renaming
+Tables can be renamed to provide additional functionality for clarity.
+
+Before:
+- Nodes management (`nodes`)
 - Synchronization logs (`sync_log`, `sync_logs`)
 - Node metrics (`node_metrics`)
-- User management (`users`, `roles`)
 - Peer history (`peer_history`)
+
+After:
+- `nodes` → `discovery_nodes` - Contains information about network discovery nodes for peer-to-peer connectivity
+- `sync_log` → `sync_operations` - Records details of synchronization operations between nodes
+- `sync_logs` → `sync_attempts` - Logs all synchronization attempts including success/failure status
+- `node_metrics` → `node_performance` - Tracks performance and health metrics of individual nodes in the network
+- `peer_history` → `peer_synchronization` - Maintains historical record of peer synchronization activities
 
 #### Index Updates
 Performance-related migrations may add indexes to optimize query performance.
@@ -59,10 +71,11 @@ Each migration follows safety protocols:
 ## Compatibility Considerations
 
 ### Backward Compatibility
-Migrations maintain backward compatibility by:
-- Only adding new fields/columns (never removing existing ones)
-- Providing default values for new fields
-- Maintaining existing foreign key relationships
+Backward compatibility is not automatically maintained as tables and fields may be removed during migrations. To ensure data preservation:
+- Users must create manual backups of their databases before migrations
+- Migration procedures may involve removal of deprecated tables and fields
+- Database reservation copies should be created following the backup procedures described in the documentation ([see backup instructions in Deployment guide](Deployment.md) and [Android-specific backup procedures](quickstart_android.md))
+- In case of issues, restore from the latest backup and consult the migration documentation
 
 ### Forward Compatibility
 The system prepares for future migrations by:
@@ -149,5 +162,4 @@ Most migration errors are recoverable by restoring from backup and addressing th
 
 The migration system is designed to accommodate future schema changes while maintaining the core principles of the Truth Training application. Planned enhancements include:
 - More sophisticated migration dependency management
-- Enhanced rollback capabilities
 - Improved monitoring and alerting for migration processes
