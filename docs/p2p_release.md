@@ -168,7 +168,6 @@ mod tests {
     }
 }
 ```
-```
 
 **Implementation Details** :
 • Uses Ed25519 for cryptographic operations
@@ -273,7 +272,6 @@ mod tests {
         assert!(true); // Placeholder assertion
     }
 }
-```
 ```
 
 **Implementation Details** :
