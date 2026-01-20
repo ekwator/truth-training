@@ -2127,15 +2127,22 @@ impact_predictions.created_at = CURRENT_TIMESTAMP
 ```sql
 impact_predictions.horizon = (
     SELECT (CASE
-               WHEN event_timeline.t_end IS NULL
-               THEN GREATEST(0, (event_timeline.t_start - impact_predictions.created_at))
-               ELSE GREATEST(0, (event_timeline.t_end - impact_predictions.created_at))
-            END) /
-           (CASE
-               WHEN event_timeline.t_end IS NULL
-               THEN ( -- SQL implementation of small_constants(): CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END )
-               ELSE (event_timeline.t_end - event_timeline.t_start + ( -- SQL implementation of small_constants(): CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END ))
-            END)
+              WHEN event_timeline.t_end IS NULL
+              THEN GREATEST(0, (event_timeline.t_start - (SELECT created_at FROM event_ci WHERE id = impact_predictions.event_id)))
+              ELSE GREATEST(0, (event_timeline.t_end - (SELECT created_at FROM event_ci WHERE id = impact_predictions.event_id)))
+            END) / (CASE
+                      WHEN event_timeline.t_end IS NULL
+                      THEN (CASE
+                              WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+                              THEN 0.000001
+                              ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+                            END)
+                      ELSE (event_timeline.t_end - event_timeline.t_start + (CASE
+                        WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+                        THEN 0.000001
+                        ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+                      END))
+                    END)
     FROM truth_event
     JOIN event_timeline ON truth_event.timeline_id = event_timeline.id
     JOIN event_ci ON truth_event.id = event_ci.created_by
@@ -2145,7 +2152,12 @@ impact_predictions.horizon = (
 **Aggregation formulas "expected_strength"**
 ```sql
 impact_predictions.expected_strength = (
-    SELECT SUM(truth_event.collective_score / (impact_predictions.horizon + ( -- SQL implementation of small_constants(): CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END )))
+    SELECT SUM(truth_event.collective_score / (impact_predictions.horizon + (
+        CASE
+          WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+          THEN 0.000001
+          ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+        END)))
     FROM truth_event
     JOIN event_ci ON truth_event.id = event_ci.created_by
     WHERE event_ci.id = impact_predictions.event_id
@@ -2154,25 +2166,17 @@ impact_predictions.expected_strength = (
 **Aggregation formulas "probability"**
 ```sql
 impact_predictions.probability = (
-    1 - ABS(
-        (SELECT COALESCE(SUM(weight * post_fact_impact), 0)
-         FROM (
-             SELECT 1.0 * EXP(-d) as weight,
-                    impact.value as post_fact_impact,
-                    CASE
-                        WHEN impact.event_id = base_event_id THEN 0
-                        WHEN impact_links.source_impact_id = impact.id THEN 1
-                        WHEN impact_links.source_impact_id IN (
-                            SELECT source_impact_id FROM impact_links WHERE target_impact_id = impact.id
-                        ) THEN 2
-                        ELSE 3
-                    END as d
-             FROM impact
-             LEFT JOIN impact_links ON impact.id = impact_links.target_impact_id
-             WHERE impact.event_id = base_event_id
-         ) weighted_impacts
-        ) - impact_predictions.expected_strength
-    ) / GREATEST(ABS(impact_predictions.expected_strength), 1)
+    SELECT 1 - ABS(COALESCE(AVG(i.value), 0) - te.collective_score) / (COALESCE(te.collective_score, 0.5) + (
+        CASE
+          WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+          THEN 0.000001
+          ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+        END))
+    FROM impact i
+    JOIN truth_event te ON i.event_id = te.id
+    WHERE te.id = (
+        SELECT created_by FROM event_ci WHERE id = impact_predictions.event_id
+    )
 )
 ```
 
