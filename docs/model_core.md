@@ -3450,7 +3450,7 @@ Decay(T, t) ∝ e^(−λt)
 
 ## 4 Node Discovery and Network Tables
 
-**Note:** The "Node Discovery" tables participate indirectly in P2P information exchange. For details on the relationship between these tables and P2P exchange implementation, see [docs/p2p_release.md](docs/p2p_release.md) which describes how these tables are used in the implementation of P2P information exchange.
+**Note:** The "Node Discovery" tables participate indirectly in P2P information exchange. For details on the relationship between these tables and P2P exchange implementation, see [docs/p2p_release.md](docs/p2p_release.md) which describes how these tables are used in the implementation of P2P information exchange. Additionally, for Android-specific implementation details of the Node Discovery system, see [docs/android_discovery_architecture.md](docs/android_discovery_architecture.md) which describes the architecture of the Node Discovery system for the Android mobile application.
 
 **Note on table naming**: In version v1.1.0, the tables were renamed for clarity:
 - `nodes` → `discovery_nodes`

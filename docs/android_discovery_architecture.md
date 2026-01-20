@@ -1,8 +1,10 @@
 # Android Discovery Architecture
 
-**Date**: 2025-01-XX  
+**Document Version:** v1.1.0  
+**Status:** Specification  
 **Feature**: Unified Node Discovery & Address Exchange - Android Implementation  
-**Status**: ✅ **COMPLETE**
+**Updated:** 2026-01-20  
+**Status:** Approved
 
 ## Overview
 
@@ -291,4 +293,4 @@ For cross-device discovery tests:
 - **Desktop Implementation**: `ui/desktop/src-tauri/src/discovery.rs`
 - **CLI Implementation**: `app/src/bin/truthctl.rs`
 
-_Version: v1.0.0_
+

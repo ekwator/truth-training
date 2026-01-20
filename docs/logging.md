@@ -1,65 +1,202 @@
 # Logging Guide
 
-This document describes how logging works in Truth Training, where log files are located, how to read them, and how to clear them.
+This document describes how logging works in Truth Training, specifically for the Node Discovery system, where log files are located, how to read them, and how to clear them.
 
 ## Overview
 
-Truth Training uses different logging mechanisms depending on the platform:
+Truth Training uses structured logging for the Node Discovery system, storing logs in SQLite database tables. Unlike traditional logging approaches, there are no UI screens for viewing logs. All log access is performed through the CLI application `truthctl`.
 
-- **Desktop UI**: Console logging (browser dev tools), Rust backend logging (env_logger), no persistent log storage in database
-- **Android**: System Logcat
-- **Server**: Structured logging via `env_logger` (Rust) with `RUST_LOG` environment variable
-- **CLI**: Logs stored in SQLite database (`sync_attempts` table), accessible via `truthctl logs` commands
+The Node Discovery system maintains the following log tables in the SQLite database:
 
-## Desktop UI Logging
+- `discovery_nodes` - Contains information about network discovery nodes for peer-to-peer connectivity
+- `discovery_history` - Tracks changes in network node discovery for auditing and analyzing
+- `sync_operations` - Records details of synchronization operations between nodes
+- `sync_attempts` - Logs all synchronization attempts including success/failure status
+- `node_performance` - Tracks performance and health metrics of individual nodes in the network
+- `peer_synchronization` - Maintains historical record of peer synchronization activities
+
+**Important**: There are no graphical user interface screens for viewing these logs. All log viewing and management must be done using the `truthctl` CLI application.
+
+## CLI Logging Access
 
 ### Location
 
-Desktop UI does not store logs in the database. Logging is handled via:
-
-- **Browser Console**: Frontend logs (React/TypeScript) visible in browser DevTools
-- **Rust Backend**: Backend logs via `env_logger` (Rust), visible in terminal/console where the app is launched
-- **No Persistent Storage**: Desktop UI does not maintain a `logs` table in the database
-
-**Note**: Desktop UI does not maintain a Logs screen or persistent log storage. The application follows the confidentiality principle: no user actions are logged or stored.
+All Node Discovery logs are stored in the SQLite database specified via `--db` flag (default: `truth.db` in current directory).
 
 ### Reading Logs
 
-#### Via Browser DevTools (Frontend)
-
-1. Open the Desktop application
-2. Open browser DevTools (F12 or right-click → Inspect)
-3. Navigate to **Console** tab
-4. View frontend logs (React components, API calls, errors)
-
-#### Via Terminal/Console (Backend)
-
-**Note**: When launching the application from the console, no log messages appear in it. Rust backend logs may not be displayed in the console when running through Tauri. To view logs, use browser DevTools (see "Via Browser DevTools" section above).
-
-When running the Desktop UI from terminal, Rust backend logs may not be displayed directly. To view logs:
+#### Via CLI Command
 
 ```bash
-# Use RUST_LOG environment variable to control log levels (may not display in console):
-RUST_LOG=info ./target/release/truth-ui-desktop
-# or
-RUST_LOG=debug ./target/release/truth-ui-desktop
+# Show recent logs (default: 50 entries)
+truthctl logs show
+
+# Show specific number of entries
+truthctl logs show --limit 100
+
+# Show logs with verbose output
+truthctl logs show --verbose
 ```
 
-**Alternative**: Open browser DevTools (F12) to view frontend logs and any backend logs forwarded to the console.
+#### View Specific Log Types
+
+```bash
+# View node discovery logs
+truthctl logs show --table discovery_nodes
+
+# View discovery history
+truthctl logs show --table discovery_history
+
+# View sync operations
+truthctl logs show --table sync_operations
+
+# View sync attempts
+truthctl logs show --table sync_attempts
+
+# View node performance logs
+truthctl logs show --table node_performance
+
+# View peer synchronization logs
+truthctl logs show --table peer_synchronization
+```
+
+#### Via SQLite (Direct Access)
+
+```bash
+# If using default database
+sqlite3 truth.db "SELECT * FROM discovery_nodes ORDER BY timestamp DESC LIMIT 50;"
+
+# If using custom database
+sqlite3 /path/to/custom.db "SELECT * FROM discovery_nodes ORDER BY timestamp DESC LIMIT 50;"
+
+# Query specific tables
+sqlite3 truth.db "SELECT * FROM discovery_history ORDER BY timestamp DESC LIMIT 50;"
+sqlite3 truth.db "SELECT * FROM sync_operations ORDER BY timestamp DESC LIMIT 50;"
+sqlite3 truth.db "SELECT * FROM sync_attempts ORDER BY timestamp DESC LIMIT 50;"
+sqlite3 truth.db "SELECT * FROM node_performance ORDER BY timestamp DESC LIMIT 50;"
+sqlite3 truth.db "SELECT * FROM peer_synchronization ORDER BY timestamp DESC LIMIT 50;"
+```
 
 ### Clearing Logs
 
-**Note**: Since logs are not stored in the database, there is no persistent log data to clear. Console logs are ephemeral and cleared when the application is restarted. Desktop UI follows the confidentiality principle: no user actions are logged or stored.
+#### Via CLI Command
 
-## Android Logging
+```bash
+# Clear all logs
+truthctl logs clear
 
-**Note**: This logging should work based on Android system capabilities. The described methods are based on standard Android Logcat features and should work on physical devices and emulators.
+# Clear specific log tables
+truthctl logs clear --table discovery_nodes
+truthctl logs clear --table discovery_history
+truthctl logs clear --table sync_operations
+truthctl logs clear --table sync_attempts
+truthctl logs clear --table node_performance
+truthctl logs clear --table peer_synchronization
+```
 
-### Location
+#### Via SQLite (Direct Access)
 
-Android uses the system Logcat for all logging. Logs are not stored in files by default but can be captured via `adb`.
+```bash
+# Clear all logs
+sqlite3 truth.db "DELETE FROM discovery_nodes;"
+sqlite3 truth.db "DELETE FROM discovery_history;"
+sqlite3 truth.db "DELETE FROM sync_operations;"
+sqlite3 truth.db "DELETE FROM sync_attempts;"
+sqlite3 truth.db "DELETE FROM node_performance;"
+sqlite3 truth.db "DELETE FROM peer_synchronization;"
 
-### Reading Logs
+# Or clear specific tables
+sqlite3 truth.db "DELETE FROM discovery_nodes WHERE datetime(timestamp) < datetime('now', '-7 days');"
+```
+
+## System Information
+
+In addition to log data, system information can be accessed through:
+
+```bash
+# View system status
+truthctl status
+
+# View node information
+truthctl nodes list
+
+# View peer connections
+truthctl peers list
+```
+
+## Log Rotation and Management
+
+Since logs are stored in SQLite, implement rotation strategies to prevent database growth:
+
+1. Regularly clear old logs via CLI commands
+2. Set up periodic cleanup (manual or scripted)
+
+Example cleanup script:
+
+```bash
+#!/bin/bash
+# Clear logs older than 30 days
+sqlite3 ~/.local/share/TruthTraining/truth_training.sqlite \
+  "DELETE FROM discovery_nodes WHERE datetime(timestamp) < datetime('now', '-30 days');"
+sqlite3 ~/.local/share/TruthTraining/truth_training.sqlite \
+  "DELETE FROM discovery_history WHERE datetime(timestamp) < datetime('now', '-30 days');"
+sqlite3 ~/.local/share/TruthTraining/truth_training.sqlite \
+  "DELETE FROM sync_operations WHERE datetime(timestamp) < datetime('now', '-30 days');"
+sqlite3 ~/.local/share/TruthTraining/truth_training.sqlite \
+  "DELETE FROM sync_attempts WHERE datetime(timestamp) < datetime('now', '-30 days');"
+sqlite3 ~/.local/share/TruthTraining/truth_training.sqlite \
+  "DELETE FROM node_performance WHERE datetime(timestamp) < datetime('now', '-30 days');"
+sqlite3 ~/.local/share/TruthTraining/truth_training.sqlite \
+  "DELETE FROM peer_synchronization WHERE datetime(timestamp) < datetime('now', '-30 days');"
+```
+
+## Troubleshooting
+
+### CLI: Logs Command Fails
+
+1. Verify database file exists and is accessible
+2. Check database exists and contains expected tables: `sqlite3 <db_path> ".tables"`
+3. Ensure database is not locked by another process
+4. Confirm `truthctl` is installed and in PATH
+
+### Log Data Issues
+
+1. Check that the Node Discovery system is running and generating logs
+2. Verify database permissions allow read/write access
+3. Ensure sufficient disk space for database growth
+
+## Best Practices
+
+1. **Regular Cleanup**: Clear old logs periodically to prevent database growth
+2. **Monitoring**: Use `truthctl` commands to monitor node discovery and synchronization status
+3. **Sensitive Data**: The system is designed to not store sensitive information in logs
+4. **Performance**: Monitor database size and implement rotation strategies as needed
+
+## System Logs for Development and Debugging
+
+**Important Note**: The system logs described below are separate from the Node Discovery logging system and are primarily intended for development, debugging, and system administration purposes. The Node Discovery logs themselves are only accessible through the `truthctl` CLI application as described in the previous sections.
+
+For development, debugging, and system administration purposes, additional system logs may be available:
+
+### Desktop Application System Logs
+
+Desktop applications may generate system-level logs depending on the platform:
+
+**Linux:**
+- Application logs may be available through the system journal: `journalctl -u <application-name>`
+- Standard output/error streams can be captured when launching from terminal
+
+**macOS:**
+- Application logs may be found in Console.app
+- Located at `~/Library/Logs/` for user-specific applications
+
+**Windows:**
+- Application logs may be accessible through Event Viewer
+- Windows applications sometimes create log files in the installation directory
+
+### Android System Logs
+
+For Android applications, system logs can be accessed via:
 
 #### Via ADB (Recommended)
 
@@ -67,7 +204,7 @@ Android uses the system Logcat for all logging. Logs are not stored in files by 
 # View all logs
 adb logcat
 
-# Filter by tag (e.g., TruthTrainingApplication)
+# Filter by tag (e.g., application-specific tags)
 adb logcat -s TruthTrainingApplication:D MainActivity:D
 
 # Filter by log level
@@ -90,327 +227,9 @@ adb logcat -c
 4. Filter by package: `com.truth.training.client`
 5. Filter by log level using dropdown
 
-### Log Tags
-
-Common log tags used in Android app:
-
-- `TruthTrainingApplication`: Application lifecycle and database initialization
-- `MainActivity`: Main activity lifecycle and UI initialization
-- `TruthDatabase`: Database operations and migrations
-- `ContextPicker`: Context picker component operations
-- `EventRepository`: Event data operations
-- `P2PMessageHandler`: P2P message handling
-- `P2PSyncManager`: P2P synchronization
-- `NodeSyncWorker`: Background sync worker
-
-### Log Levels
-
-- `Log.v()`: Verbose (DEBUG)
-- `Log.d()`: Debug
-- `Log.i()`: Info
-- `Log.w()`: Warning
-- `Log.e()`: Error
-
-### Clearing Logs
-
-```bash
-# Clear logcat buffer
-adb logcat -c
-```
-
-Note: This only clears the buffer, not persistent logs. Android system logs are managed by the OS.
-
-## Server Logging
-
-**Note**: This is not configured, the Server application has not been tested yet. The described methods are based on the planned service configuration and may require additional setup during deployment.
-
-### Location
-
-Server logs are output to stdout/stderr by default. When running as a service, logs may be redirected to system log files:
-
-- **Linux (systemd)**: `journalctl -u truth-core-server` or `/var/log/truth-core/service.log` (if configured)
-- **macOS (LaunchAgent)**: `~/Library/Logs/truth-core-server.log` (if configured)
-- **Windows (WinSW)**: `%BASE%\logs\` directory (see service XML configuration)
-
-### Reading Logs
-
-#### Linux (systemd)
-
-**Note**: The author is not certain about this section, verification is needed. The described commands are based on standard systemd configuration and should work with proper service setup.
-
-```bash
-# View recent logs
-journalctl -u truth-core-server -n 100
-
-# Follow logs in real-time
-journalctl -u truth-core-server -f
-
-# View logs since boot
-journalctl -u truth-core-server -b
-
-# View logs for specific time range
-journalctl -u truth-core-server --since "2024-01-01 00:00:00" --until "2024-01-02 00:00:00"
-```
-
-#### macOS (LaunchAgent)
-
-**Note**: The author cannot verify this section, there is no ability to install this operating system. The described methods are based on standard macOS LaunchAgent configuration and may require additional setup.
-
-```bash
-# View logs if configured to file
-tail -f ~/Library/Logs/truth-core-server.log
-
-# Or via Console.app
-open -a Console
-# Then search for "truth-core-server"
-```
-
-#### Windows (WinSW)
-
-**Note**: The author cannot verify this section, there is no ability to install this operating system. The described methods are based on standard WinSW configuration and may require additional setup.
-
-```powershell
-# View log files
-Get-Content "$env:PROGRAMFILES\TruthCoreServer\logs\*.log" -Tail 100
-
-# Or via Event Viewer
-eventvwr.msc
-# Navigate to: Windows Logs → Application
-# Filter by source: "Truth Core Server"
-```
-
-### Log Level Configuration
-
-Server logging is controlled via the `RUST_LOG` environment variable:
-
-```bash
-# Set log level (from least to most verbose)
-export RUST_LOG=error    # Errors only
-export RUST_LOG=warn     # Warnings and errors
-export RUST_LOG=info     # Info, warnings, and errors (default)
-export RUST_LOG=debug    # Debug, info, warnings, and errors
-export RUST_LOG=trace    # All logs (very verbose)
-
-# Set per-module log levels
-export RUST_LOG=truth_core=debug,actix_web=info
-
-# Run server with log level
-RUST_LOG=debug truth_core_server
-```
-
-### Service Configuration
-
-#### Linux (systemd)
-
-Edit `/etc/systemd/user/truth-core-server.service`:
-
-```ini
-[Service]
-Environment=RUST_LOG=info
-```
-
-Then reload and restart:
-
-```bash
-systemctl --user daemon-reload
-systemctl --user restart truth-core-server
-```
-
-#### macOS (LaunchAgent)
-
-Edit `~/Library/LaunchAgents/com.truth.training.server.plist`:
-
-```xml
-<key>EnvironmentVariables</key>
-<dict>
-    <key>RUST_LOG</key>
-    <string>info</string>
-</dict>
-```
-
-#### Windows (WinSW)
-
-Edit `truth_core_server.xml`:
-
-```xml
-<service>
-    <env name="RUST_LOG" value="info"/>
-</service>
-```
-
-### Clearing Logs
-
-#### Linux (systemd)
-
-**Note**: The author is not certain about this section, verification is needed. The described commands are based on standard systemd journalctl capabilities.
-
-```bash
-# Clear journal logs (requires root)
-journalctl --vacuum-time=1d  # Keep last 1 day
-journalctl --vacuum-size=100M  # Keep last 100MB
-```
-
-#### macOS/Windows
-
-**Note**: The author cannot verify this section, there is no ability to install these operating systems. The described methods are based on standard capabilities of the respective systems.
-
-Delete log files manually or configure log rotation in service configuration.
-
-## CLI Logging
-
-### Location
-
-CLI logs are stored in the SQLite database specified via `--db` flag (default: `truth.db` in current directory).
-
-### Reading Logs
-
-#### Via CLI Command
-
-```bash
-# Show recent logs (default: 50 entries)
-truthctl logs show
-
-# Show specific number of entries
-truthctl logs show --limit 100
-
-# Show logs with verbose output
-truthctl logs show --verbose
-```
-
-#### Via SQLite (Direct Access)
-
-```bash
-# If using default database
-sqlite3 truth.db "SELECT * FROM logs ORDER BY timestamp DESC LIMIT 50;"
-
-# If using custom database
-sqlite3 /path/to/custom.db "SELECT * FROM logs ORDER BY timestamp DESC LIMIT 50;"
-```
-
-### Clearing Logs
-
-#### Via CLI Command
-
-```bash
-# Clear all logs
-truthctl logs clear
-```
-
-#### Via SQLite (Direct Access)
-
-```bash
-sqlite3 truth.db "DELETE FROM logs;"
-```
-
-## Telemetry Events
-
-In addition to standard logging, Truth Training emits telemetry events for observability:
-
-### Desktop UI Telemetry
-
-Events are logged via `console.warn()` and `console.log()` in the browser console:
-
-- `context_picker.load.success`: Context picker loaded successfully
-- `context_picker.load.failure`: Context picker failed to load
-- `context_picker.validation.failure`: Invalid context ID entered
-- `translation.missing`: Missing translation key
-- `locale.change`: Locale changed
-
-**Viewing Desktop Telemetry:**
-
-1. Open Desktop application
-2. Open browser DevTools (F12 or Cmd+Option+I)
-3. Navigate to **Console** tab
-4. Filter by event name or use search
-
-### Android Telemetry
-
-Events are logged via `android.util.Log`:
-
-- Same event names as Desktop
-- Logged with appropriate log levels (WARN for failures, INFO for success)
-
-**Viewing Android Telemetry:**
-
-```bash
-# Filter telemetry events
-adb logcat -s TruthTrainingApplication:I MainActivity:I ContextPicker:I
-```
-
-## Log Rotation and Management
-
-### Desktop UI
-
-Logs are stored in SQLite and do not automatically rotate. To prevent database growth:
-
-1. Regularly clear logs via UI or SQLite
-2. Set up periodic cleanup (manual or scripted)
-
-Example cleanup script:
-
-```bash
-#!/bin/bash
-# Clear logs older than 30 days
-sqlite3 ~/.local/share/TruthTraining/truth_training.sqlite \
-  "DELETE FROM logs WHERE datetime(timestamp) < datetime('now', '-30 days');"
-```
-
-### Server
-
-Configure log rotation in service configuration:
-
-#### Linux (systemd)
-
-Use `journalctl` rotation (automatic) or configure external log rotation tool.
-
-#### macOS/Windows
-
-Configure log rotation in service XML/plist or use external tools.
-
-### Android
-
-Logcat buffer is managed by Android OS. No manual rotation needed.
-
-## Troubleshooting
-
-### Desktop UI: Logs Not Appearing
-
-1. Check database file exists and is accessible
-2. Verify database exists: `sqlite3 <db_path> ".tables"`
-3. Check application permissions to write to database location
-
-### Android: Logs Not Visible
-
-1. Ensure device is connected: `adb devices`
-2. Check logcat buffer is not full: `adb logcat -c` to clear
-3. Verify app is running and generating logs
-4. Check log level filters are not too restrictive
-
-### Server: Logs Not Showing
-
-1. Verify `RUST_LOG` environment variable is set correctly
-2. Check service is running: `systemctl --user status truth-core-server` (Linux)
-3. Verify log output destination (stdout vs file)
-4. Check service user has write permissions to log location
-
-### CLI: Logs Command Fails
-
-1. Verify database file exists and is accessible
-2. Check database exists and contains expected tables: `sqlite3 <db_path> ".tables"`
-3. Ensure database is not locked by another process
-
-## Best Practices
-
-1. **Regular Cleanup**: Clear old logs periodically to prevent database/file growth
-2. **Log Level**: Use appropriate log levels (INFO for production, DEBUG for development)
-3. **Sensitive Data**: Never log sensitive information (passwords, keys, tokens)
-4. **Performance**: Be mindful of log volume in production environments
-5. **Monitoring**: Set up log monitoring/alerting for critical errors
-
 ## Related Documentation
 
-- [Install Paths By OS](Install_Paths_By_OS.md) - File locations by platform
 - [CLI Usage](CLI_Usage.md) - CLI commands including `logs` subcommands
 - [Troubleshooting](troubleshooting.md) - General troubleshooting guide
-- [UI Desktop](UI_Desktop.md) - Desktop UI features and navigation
+- [Node Discovery Architecture](android_discovery_architecture.md) - Technical details about node discovery
 
