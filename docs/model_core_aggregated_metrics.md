@@ -91,6 +91,79 @@ BEGIN
     WHERE NOT EXISTS (SELECT 1 FROM progress_metrics WHERE id = 1);
 END;
 ```
+-- Trigger to update temporal decay metrics based on the decay function w(t) = w₀ * e^(-λt)
+-- Applies temporal decay functions to trust weights and influence metrics over time as described in sections 3.6 and 3.7
+```sql
+CREATE TRIGGER update_temporal_decay_metrics
+AFTER UPDATE ON participants
+BEGIN
+    UPDATE participants
+    SET reputation_score = reputation_score * EXP(
+        -(CASE
+            WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+            THEN 0.000001
+            ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+        END) * (julianday('now') - julianday(last_activity, 'unixepoch'))
+    )
+    WHERE julianday('now') - julianday(last_activity, 'unixepoch') > 1  -- Only apply decay if more than 1 day has passed
+    AND public_key = NEW.public_key;
+END;
+```
+
+-- Trigger to update event classification based on convergence of impact and judgment axes
+-- Handles event classification updates and manages the "event_classification_calculation" view and related triggers that update the "event_ci" table's "resolution_data" field based on the convergence of **impact** and **judgment** axes
+```sql
+CREATE TRIGGER update_event_classification
+AFTER UPDATE ON event_ci
+BEGIN
+    UPDATE event_ci
+    SET resolution_data = (
+        SELECT CASE
+            WHEN NOT (
+                EXISTS (
+                    SELECT 1 FROM impact_metrics
+                    WHERE impact_metrics.event_id = event_ci.id
+                    AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+                ) OR
+                EXISTS (
+                    SELECT 1 FROM judgment_weights
+                    WHERE judgment_weights.event_id = event_ci.id
+                    AND judgment_weights.weight IS NOT NULL
+                )
+            ) THEN 'unstable'
+            WHEN (
+                EXISTS (
+                    SELECT 1 FROM impact_metrics
+                    WHERE impact_metrics.event_id = event_ci.id
+                    AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+                ) XOR
+                EXISTS (
+                    SELECT 1 FROM judgment_weights
+                    WHERE judgment_weights.event_id = event_ci.id
+                    AND judgment_weights.weight IS NOT NULL
+                )
+            ) THEN 'suppose'
+            WHEN (
+                EXISTS (
+                    SELECT 1 FROM impact_metrics
+                    WHERE impact_metrics.event_id = event_ci.id
+                    AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+                ) AND
+                EXISTS (
+                    SELECT 1 FROM judgment_weights
+                    WHERE judgment_weights.event_id = event_ci.id
+                    AND judgment_weights.weight IS NOT NULL
+                ) AND
+                event_ci.event_type = 'both' AND
+                (event_ci.status = 'resolved' OR event_ci.status = 'archived')
+            ) THEN 'consent'
+            ELSE 'unstable'
+        END
+    )
+    WHERE id = NEW.id;
+END;
+```
+
 -- Function to update progress metrics when new impact is recorded  
 ```sql
 CREATE TRIGGER update_progress_metrics_after_impact

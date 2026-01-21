@@ -412,21 +412,182 @@ BEGIN
         THEN RAISE(ABORT, 'Duplicate event detected')
         ELSE NULL
     END;
-    
-    -- Update or create corresponding entry in event_ci table
-    INSERT OR REPLACE INTO event_ci (created_by, event_type, status, old_status, resolution_data, created_at)
-    VALUES (
-        NEW.id,
-        'judgment',  -- Default event type
-        'active',    -- Default status
-        'active',    -- Default old status
-        'unstable',  -- Default resolution data
-        (SELECT strftime('%s', 'now'))  -- Current timestamp
+END;
+```    
+-- Trigger to update event_ci state fields based on impact data
+-- Automatically updates the "event_type", "status", and "resolution_data" fields in the "event_ci" table based on changes in impact data, timeline information, and convergence of assessment axes
+```sql 
+CREATE TRIGGER update_event_ci_state_from_impact
+AFTER INSERT ON impact
+BEGIN
+    UPDATE event_ci
+    SET
+        event_type = (
+            SELECT CASE
+                WHEN EXISTS (
+                    SELECT 1 FROM impact_metrics
+                    WHERE impact_metrics.event_id = event_ci.id
+                    AND impact_metrics.total_magnitude IS NOT NULL
+                ) AND EXISTS (
+                    SELECT 1 FROM judgment_weights
+                    WHERE judgment_weights.event_id = event_ci.id
+                    AND judgment_weights.weight IS NOT NULL
+                    )
+                THEN 'both'
+                WHEN EXISTS (
+                    SELECT 1 FROM impact_metrics
+                    WHERE impact_metrics.event_id = event_ci.id
+                    AND impact_metrics.total_magnitude IS NOT NULL
+                )
+                THEN 'impact'
+                WHEN EXISTS (
+                    SELECT 1 FROM judgment_weights
+                    WHERE judgment_weights.event_id = event_ci.id
+                    AND judgment_weights.weight IS NOT NULL
+                )
+                THEN 'judgment'
+                ELSE 'judgment'  -- Default value
+            END
+        ),
+        status = (
+            SELECT CASE
+                WHEN time_end IS NULL THEN 'active'
+                WHEN time_end >= (SELECT strftime('%s', 'now')) THEN 'resolved'
+                ELSE 'archived'
+            END
+            FROM event_timeline
+            JOIN truth_event ON event_timeline.id = truth_event.timeline_id
+            WHERE truth_event.id = (
+                SELECT created_by FROM event_ci WHERE id = NEW.event_id
+            )
+        ),
+        resolution_data = (
+            SELECT CASE
+                WHEN NOT (
+                    EXISTS (
+                        SELECT 1 FROM impact_metrics
+                        WHERE impact_metrics.event_id = event_ci.id
+                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+                    ) OR
+                    EXISTS (
+                        SELECT 1 FROM judgment_weights
+                        WHERE judgment_weights.event_id = event_ci.id
+                        AND judgment_weights.weight IS NOT NULL
+                    )
+                ) THEN 'unstable'
+                WHEN (
+                    EXISTS (
+                        SELECT 1 FROM impact_metrics
+                        WHERE impact_metrics.event_id = event_ci.id
+                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+                    ) XOR
+                    EXISTS (
+                        SELECT 1 FROM judgment_weights
+                        WHERE judgment_weights.event_id = event_ci.id
+                        AND judgment_weights.weight IS NOT NULL
+                    )
+                ) THEN 'suppose'
+                WHEN (
+                    EXISTS (
+                        SELECT 1 FROM impact_metrics
+                        WHERE impact_metrics.event_id = event_ci.id
+                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+                    ) AND
+                    EXISTS (
+                        SELECT 1 FROM judgment_weights
+                        WHERE judgment_weights.event_id = event_ci.id
+                        AND judgment_weights.weight IS NOT NULL
+                    ) AND
+                    event_ci.event_type = 'both' AND
+                    (event_ci.status = 'resolved' OR event_ci.status = 'archived')
+                ) THEN 'consent'
+                ELSE 'unstable'
+            END
+        )
+    WHERE id = (
+        SELECT event_id FROM impact WHERE id = NEW.id
     );
-    
-    -- Update participant's last activity timestamp
-    UPDATE participants
-    SET last_activity = (SELECT strftime('%s', 'now'))
-    WHERE public_key = NEW.participant_id;
 END;
 ```
+    
+-- Trigger to update event_ci state fields based on judgment data
+-- Automatically updates the "event_type" and "resolution_data" fields in the "event_ci" table based on changes in judgment data and convergence of assessment axes
+```sql
+CREATE TRIGGER update_event_ci_state_from_judgment
+AFTER INSERT ON judgment
+BEGIN
+    UPDATE event_ci
+    SET
+        event_type = (
+            SELECT CASE
+                WHEN EXISTS (
+                    SELECT 1 FROM impact_metrics
+                    WHERE impact_metrics.event_id = event_ci.id
+                    AND impact_metrics.total_magnitude IS NOT NULL
+                ) AND EXISTS (
+                    SELECT 1 FROM judgment_weights
+                    WHERE judgment_weights.event_id = event_ci.id
+                    AND judgment_weights.weight IS NOT NULL
+                )
+                THEN 'both'
+                WHEN EXISTS (
+                    SELECT 1 FROM impact_metrics
+                    WHERE impact_metrics.event_id = event_ci.id
+                    AND impact_metrics.total_magnitude IS NOT NULL
+                )
+                THEN 'impact'
+                WHEN EXISTS (
+                    SELECT 1 FROM judgment_weights
+                    WHERE judgment_weights.event_id = event_ci.id
+                    AND judgment_weights.weight IS NOT NULL
+                )
+                THEN 'judgment'
+                ELSE 'judgment'  -- Default value
+            END
+        ),
+        resolution_data = (
+            SELECT CASE
+                WHEN NOT (
+                    EXISTS (
+                        SELECT 1 FROM impact_metrics
+                        WHERE impact_metrics.event_id = event_ci.id
+                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+                    ) OR
+                    EXISTS (
+                        SELECT 1 FROM judgment_weights
+                        WHERE judgment_weights.event_id = event_ci.id
+                        AND judgment_weights.weight IS NOT NULL
+                    )
+                ) THEN 'unstable'
+                WHEN (
+                    EXISTS (
+                        SELECT 1 FROM impact_metrics
+                        WHERE impact_metrics.event_id = event_ci.id
+                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+                    ) XOR
+                    EXISTS (
+                        SELECT 1 FROM judgment_weights
+                        WHERE judgment_weights.event_id = event_ci.id
+                        AND judgment_weights.weight IS NOT NULL
+                    )
+                ) THEN 'suppose'
+                WHEN (
+                    EXISTS (
+                        SELECT 1 FROM impact_metrics
+                        WHERE impact_metrics.event_id = event_ci.id
+                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+                    ) AND
+                    EXISTS (
+                        SELECT 1 FROM judgment_weights
+                        WHERE judgment_weights.event_id = event_ci.id
+                        AND judgment_weights.weight IS NOT NULL
+                    ) AND
+                    event_ci.event_type = 'both' AND
+                    (event_ci.status = 'resolved' OR event_ci.status = 'archived')
+                ) THEN 'consent'
+                ELSE 'unstable'
+            END
+        )
+    WHERE id = NEW.event_id;
+END;
+    

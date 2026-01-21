@@ -38,11 +38,11 @@ BEGIN
     WHERE node_id = NEW.node_id;
 END;
 ```
--- Trigger to clean up expired tokens automatically  
--- Removes tokens that have exceeded their expiration time  
+-- Trigger to clean up expired tokens automatically
+-- Removes tokens that have exceeded their expiration time
 ```sql
 CREATE TRIGGER cleanup_expired_tokens
-AFTER SELECT ON expired_tokens
+AFTER INSERT ON active_tokens
 BEGIN
     DELETE FROM active_tokens
     WHERE expires_at < (SELECT strftime('%s', 'now'));

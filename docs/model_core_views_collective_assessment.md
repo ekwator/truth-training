@@ -84,10 +84,10 @@ END)) < -0.7
     END as truth_interpretation
 FROM truth_event te;
 ```
--- Function to calculate group ratings based on collective scores  
+-- Function to calculate group ratings based on collective scores
 ```sql
 CREATE VIEW group_ratings_calculation AS
-SELECT 
+SELECT
     p.group_membership as group_id,
     COUNT(p.public_key) as members,
     AVG(p.reputation_score) as avg_score,
@@ -97,4 +97,25 @@ SELECT
 FROM participants p
 WHERE p.group_membership IS NOT NULL
 GROUP BY p.group_membership;
+```
+
+-- Function to calculate event projection in truth-impact space for classification
+-- Uses pre-calculated aggregated values from consensus_ci and impact_metrics tables
+-- This view supports the event_projection table by providing the calculated quadrant classification
+```sql
+CREATE VIEW event_projection_calculation AS
+SELECT
+    ec.id as event_id,
+    COALESCE(cc.confidence_score, 0.5) as truth_score,
+    COALESCE(im.total_magnitude, 0.0) as impact_score,
+    CASE
+        WHEN COALESCE(cc.confidence_score, 0.5) >= 0.5 AND COALESCE(im.total_magnitude, 0.0) >= 0 THEN 'Q1'
+        WHEN COALESCE(cc.confidence_score, 0.5) >= 0.5 AND COALESCE(im.total_magnitude, 0.0) < 0 THEN 'Q2'
+        WHEN COALESCE(cc.confidence_score, 0.5) < 0.5 AND COALESCE(im.total_magnitude, 0.0) >= 0 THEN 'Q3'
+        ELSE 'Q4'
+    END as calculated_quadrant,
+    (SELECT strftime('%s', 'now')) as calculated_at
+FROM event_ci ec
+LEFT JOIN consensus_ci cc ON ec.id = cc.event_id
+LEFT JOIN impact_metrics im ON ec.id = im.event_id;
 ```

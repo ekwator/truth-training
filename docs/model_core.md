@@ -214,11 +214,23 @@ Activate when **events** are received from other **nodes** during synchronizatio
 
 • `process_sync_event_record` - handles the creation of **event** records from other **nodes** during synchronization, potentially with different validation rules. Checks for duplicate **events**, creates corresponding entries in the "event_ci" table, and updates **participant** activity timestamps.
 
+• `update_event_ci_state_from_impact` - automatically updates the "event_type", "status", and "resolution_data" fields in the "event_ci" table based on changes in **impact** data, **timeline** information, and convergence of **assessment axes** as described in section 2.6.3. This trigger fires when new **impact** records are inserted.
+
+• `update_event_ci_state_from_judgment` - automatically updates the "event_type" and "resolution_data" fields in the "event_ci" table based on changes in **judgment** data and convergence of **assessment axes** as described in section 2.6.3. This trigger fires when new **judgment** records are inserted.
+
 **Triggers from [docs/model_core_aggregated_metrics.md](model_core_aggregated_metrics.md):**
 
 •  `update_heuristic_weight` - updates the weight of **expert heuristics** based on their proven accuracy when the accuracy changes.
 
 •  `update_progress_metrics_after_impact` - updates **progress metrics** when a new **impact** is recorded, recalculating **impact totals** and **trends**.
+
+• `update_temporal_decay_metrics` - applies temporal **decay** functions to **trust weights** and influence **metrics** over **time**, implementing the **decay** formula :
+```
+w(t) = w₀ * e^(-λt)
+```
+as described in sections 3.6 and 3.7
+
+• `update_event_classification` - handles **event** classification updates and manages the "event_classification_calculation" view and related triggers that update the "event_ci" table's "resolution_data" field based on the convergence of **impact** and **judgment** axes as described in sections 2.3.2
 
 **Triggers from [docs/model_core_network_tables.md](model_core_network_tables.md):**
 
@@ -229,6 +241,128 @@ Activate when **events** are received from other **nodes** during synchronizatio
 •  `update_peer_synchronization_after_sync` - automatically updates peer history with new synchronization information when sync logs are created.
 
 •  `update_node_performance_after_sync` - updates **performance metrics** when synchronization **events** are logged.
+
+### Views for Data Analysis and Calculations
+
+The **Truth Training** system implements several SQL views to support data analysis and calculation of various metrics. These views are organized by functional area:
+
+#### Collective Assessment Views
+
+• **local_collective_score_calculation** - Calculates local collective scores for **events** based on **participant impact** data. This view supports the calculation of cs_i = f-local(I(E_i)) as described in section 2.6.3, where I_i(E_i) represents the set of participant **impacts**
+
+• **global_truth_score_calculation** - Aggregates local scores from different **nodes** to compute global **truth scores**. This view implements the formula :
+```
+truth_score_i-global = f-global({ cs_i-local_j })
+```
+**where** :  
+{cs_i-local_j} - represents local assessments from different **nodes**
+
+• **event_truthfulness_calculation** - Computes **event** truthfulness using the formula :
+```
+(P_i - N_i) / (|I(E_i)| + ε)
+```
+**where** :  
+- P_i - represents "positive" **impacts**  
+- N_i - represents "negative" **impacts** 
+- ε - is a **small constant** to prevent division by zero  
+This implements the core **truth** calculation algorithm described in section 2.6.3
+
+• **group_ratings_calculation** - Calculates group ratings based on **collective scores** and **participant reputation**. This view implements the formula :
+```
+R_group = (Σ R_i) / N
+```
+**where** :  
+- R_i - is the rating of member i and N is the number of members
+
+• **event_projection_calculation** - Projects **events** in **truth-impact space** for classification into **quadrants** (Q1-Q4). This view supports the intersection model described in section 2.3.1, calculating the "truth_score" and "impact_score" for the "event_projection" table
+
+#### Scoring Views
+
+• **impact_score_calculation** - Calculates **impact scores** based on **impact** records and **participant reputation**. This view implements the calculation logic for the "impact_score" field in the "truth_event" table, aggregating individual **impact values** taking into account their types, timestamps, and the reputation of **participants** who made the **impact assessments**
+
+• **judgment_score_calculation** - Calculates **judgment scores** based on **judgment** records, confidence levels and **participant reputation**. This view implements the calculation logic for the "judgment_score" field in the "truth_event" table, aggregating individual **judgments** taking into account their confidence levels, assessment types, and the **reputation** of **participant**s who made the **judgments**
+
+• **recalculate_all_impact_scores** - Maintenance view for recalculating all **impact scores**, used for system maintenance and data integrity
+
+• **recalculate_all_judgment_scores** - Maintenance view for recalculating all **judgment scores**, used for system maintenance and data integrity
+
+• **impact_score_calculation_detailed** - Detailed calculation of **impact scores** with comprehensive formulas, providing additional analytical capabilities for **impact assessment**
+
+• **judgment_score_calculation_detailed** - Detailed calculation of **judgment scores** with comprehensive formulas, providing additional analytical capabilities for **judgment assessment**
+
+#### Aggregated Metrics Views
+
+• **system_trend_calculation** - Calculates system-wide trends based on "positive" and "negative" **impacts** using the formula :
+```
+Trend = (Σ P - Σ N) / total_events
+```
+**where** :  
+- P - represents "positive" **impacts**  
+- N - represents "negative" **impacts**
+
+• **group_efficiency_calculation** - Evaluates group versus individual assessment efficiency by comparing "total_events_group" / "total_events ratios" to determine if group collaboration is effective
+
+• **heuristic_influence_calculation** - Calculates influence of **heuristics** on **judgments**, supporting the expert function mapping F :  
+```
+(E, C) → J 
+```
+**where** :  
+- E - is **event**
+- C - is **context**  
+- J - is **judgment**
+
+• **applicable_heuristics** - Identifies **heuristics** that meet confidence thresholds for application, implementing the **expert function** rules for **heuristic application**
+
+• **conflicting_heuristics** - Detects conflicting **heuristics** that may indicate system instability, supporting the **conflict resolution mechanisms** described in section 2.7
+
+• **final_event_assessment** - Calculates final **event assessments** as aggregated functions of **heuristics** and **judgments**, implementing the formula that combines **judgment confidence** with **heuristic influences**
+
+• **domain_classification_stats** - Provides statistics on **heuristic domains** (logic, statistical, empirical, etc.), supporting the domain classification system for **expert heuristics**
+
+• **relay_success_rate_calculation** - Calculates success rates for relay operations, supporting the **network performance metrics**
+
+• **quality_index_calculation** - Computes **quality** indices based on multiple factors using the formula :
+```
+Q(n) = α * recent_performance + β * historical_consistency + γ * trust_factor
+```
+
+• **peer_success_rate_calculation** - Calculates success rates from peer **synchronization history**, supporting the peer **synchronization tracking**
+
+• **sync_statistics** - Provides **synchronization statistics** by peer, supporting the **analysis** of **synchronization performance**
+
+• **event_classification_calculation** - Calculates **event** classification based on convergence of **impact** and **judgment** axes, supporting the **event** classification updates and management of the "event_classification_calculation" view
+
+• **event_state_history_tracking** - Tracks **event** state **history** for **temporal analysis**, supporting the tracking of how **event assessments** evolve over **time** as mentioned in section 3.6
+
+• **event_stability_detection** - Detects **event stability** based on temporal dynamics, supporting the stability detection logic mentioned in section 3.7
+
+#### Network Operations Views
+
+• **trust_score_calculation** - Calculates **trust scores** based on **events** and validations using the formula :
+```
+Trust(n) = (events_true - events_false) / (events_true + events_false + ε)
+```
+
+• **propagation_priority_calculation** - Calculates propagation priorities based on **trust** and **activity metrics**, implementing the function :
+```
+Priority(n) = f(trust_score, validation_count, reuse_frequency)
+```
+
+• **relay_success_rate_calculation** - Calculates relay success rates (duplicate from **aggregated metrics**) - Provides success **rate calculations** for **relay operations**
+
+• **quality_index_calculation** - Calculates **quality** indices (duplicate from **aggregated metrics**) - Provides **quality** index calculations based on **multiple factors**
+
+• **expired_tokens** - Identifies **tokens** that have exceeded their **expiration time**, supporting the cleanup of expired **authentication tokens**
+
+• **peer_success_rate_calculation** - Calculates **peer success rates** (duplicate from **aggregated metrics**) - Provides success rate calculations for **peer synchronization**
+
+• **sync_integrity_check** - Verifies **signature integrity** for **synchronization operations**, supporting the **validation** of **synchronization data integrity**
+
+• **sync_statistics** - Provides **synchronization statistics** (duplicate from **aggregated metrics**) - Aggregates **synchronization statistics** by **peer**
+
+• **stale_nodes** - Identifies **nodes** that exceed their "TTL" values, supporting the identification of **nodes** that should be removed from the **discovery list**
+
+• **unreachable_nodes** - Identifies **unreachable nodes** that exceed half their "TTL", supporting the identification of **nodes** that may need special handling
 
 ### 2.1 Participants
 
@@ -4360,15 +4494,15 @@ WHERE timestamp < (strftime('%s', 'now') - 86400 * 7); -- Delete attempts older 
 ```
 
 
-### Model Implementation References  
-**For detailed SQL implementation see** 👇:  
-- [model_core_network_tables.md](model_core_network_tables.md) — Node discovery and network tables schema  
-- [model_core_views_network_tables.md](model_core_views_network_tables.md) — Views for node discovery and network operations  
-- [model_core_collective_assessment.md](model_core_collective_assessment.md) — Collective assessment logic implementation  
-- [model_core_views_collective_assessment.md](model_core_views_collective_assessment.md) — Views for collective assessment calculations  
-- [model_core_scoring.md](model_core_scoring.md) — Impact and judgment scoring calculations  
-- [model_core_views_scoring.md](model_core_views_scoring.md) — Views for impact and judgment score calculations  
-- [model_core_aggregated_metrics.md](model_core_aggregated_metrics.md) — System metrics and expert functions schema  
+### Model Implementation References
+**For detailed SQL implementation see** 👇:
+- [model_core_network_tables.md](model_core_network_tables.md) — Node discovery and network tables schema
+- [model_core_views_network_tables.md](model_core_views_network_tables.md) — Views for node discovery and network operations
+- [model_core_collective_assessment.md](model_core_collective_assessment.md) — Collective assessment logic implementation
+- [model_core_views_collective_assessment.md](model_core_views_collective_assessment.md) — Views for collective assessment calculations
+- [model_core_scoring.md](model_core_scoring.md) — Impact and judgment scoring calculations
+- [model_core_views_scoring.md](model_core_views_scoring.md) — Views for impact and judgment score calculations
+- [model_core_aggregated_metrics.md](model_core_aggregated_metrics.md) — System metrics and expert functions schema
 - [model_core_views_aggregated_metrics.md](model_core_views_aggregated_metrics.md) — Views for system metrics and expert functions
 
 ## 5 Constraints, Security and Anti-Manipulation Mechanisms

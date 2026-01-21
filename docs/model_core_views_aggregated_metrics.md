@@ -161,8 +161,8 @@ SELECT
     END as calculated_success_rate
 FROM peer_synchronization;
 ```
--- Function to calculate synchronization statistics  
--- Provides aggregated statistics on synchronization attempts by peer  
+-- Function to calculate synchronization statistics
+-- Provides aggregated statistics on synchronization attempts by peer
 ```sql
 CREATE VIEW sync_statistics AS
 SELECT
@@ -173,4 +173,129 @@ SELECT
     AVG(CASE WHEN status = 'success' THEN 1.0 ELSE 0.0 END) as success_rate
 FROM sync_attempts
 GROUP BY peer_url;
+```
+
+-- Function to calculate event classification based on convergence of impact and judgment axes
+-- Handles event classification updates and manages event classification based on the convergence of impact and judgment axes
+```sql
+CREATE VIEW event_classification_calculation AS
+SELECT
+    ec.id as event_id,
+    ec.event_type,
+    ec.status,
+    CASE
+        WHEN NOT (
+            EXISTS (
+                SELECT 1 FROM impact_metrics
+                WHERE impact_metrics.event_id = ec.id
+                AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+            ) OR
+            EXISTS (
+                SELECT 1 FROM judgment_weights
+                WHERE judgment_weights.event_id = ec.id
+                AND judgment_weights.weight IS NOT NULL
+            )
+        ) THEN 'unstable'
+        WHEN (
+            EXISTS (
+                SELECT 1 FROM impact_metrics
+                WHERE impact_metrics.event_id = ec.id
+                AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+            ) XOR
+            EXISTS (
+                SELECT 1 FROM judgment_weights
+                WHERE judgment_weights.event_id = ec.id
+                AND judgment_weights.weight IS NOT NULL
+            )
+        ) THEN 'suppose'
+        WHEN (
+            EXISTS (
+                SELECT 1 FROM impact_metrics
+                WHERE impact_metrics.event_id = ec.id
+                AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
+            ) AND
+            EXISTS (
+                SELECT 1 FROM judgment_weights
+                WHERE judgment_weights.event_id = ec.id
+                AND judgment_weights.weight IS NOT NULL
+            ) AND
+            ec.event_type = 'both' AND
+            (ec.status = 'resolved' OR ec.status = 'archived')
+        ) THEN 'consent'
+        ELSE 'unstable'
+    END as calculated_resolution_data
+FROM event_ci ec;
+```
+
+-- Function to calculate event state history tracking for temporal analysis
+-- This view supports tracking how event assessments evolve over time as mentioned in section 3.6
+```sql
+CREATE VIEW event_state_history_tracking AS
+SELECT
+    esh.id,
+    esh.event_id,
+    esh.judgment_count,
+    esh.truth_score,
+    esh.impact_count,
+    esh.impact_score,
+    esh.recorded_at,
+    -- Calculate the rate of change of truth assessment over time
+    (esh.truth_score - LAG(esh.truth_score, 1, esh.truth_score) OVER (
+        PARTITION BY esh.event_id ORDER BY esh.recorded_at
+    )) /
+    (esh.recorded_at - LAG(esh.recorded_at, 1, esh.recorded_at) OVER (
+        PARTITION BY esh.event_id ORDER BY esh.recorded_at
+    ) + (CASE
+            WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+            THEN 0.000001
+            ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+        END)) as truth_change_rate,
+    -- Calculate the rate of change of impact assessment over time
+    (esh.impact_score - LAG(esh.impact_score, 1, esh.impact_score) OVER (
+        PARTITION BY esh.event_id ORDER BY esh.recorded_at
+    )) /
+    (esh.recorded_at - LAG(esh.recorded_at, 1, esh.recorded_at) OVER (
+        PARTITION BY esh.event_id ORDER BY esh.recorded_at
+    ) + (CASE
+            WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+            THEN 0.000001
+            ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+        END)) as impact_change_rate
+FROM event_state_history esh;
+```
+
+-- Function to calculate event stability detection based on temporal dynamics
+-- This view supports the stability detection logic mentioned in section 3.7
+```sql
+CREATE VIEW event_stability_detection AS
+SELECT
+    es.id,
+    es.event_id,
+    es.truth_stable,
+    es.impact_stable,
+    es.stabilized_at,
+    -- Calculate if truth is stabilized based on threshold (small_constants)
+    CASE
+        WHEN ABS(esht.truth_change_rate) < (CASE
+            WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+            THEN 0.000001
+            ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+        END)
+        AND (SELECT confidence FROM truth_state WHERE event_id = es.event_id LIMIT 1) > 0.7
+        THEN 1
+        ELSE 0
+    END as calculated_truth_stable,
+    -- Calculate if impact is stabilized based on threshold (small_constants)
+    CASE
+        WHEN ABS(esht.impact_change_rate) < (CASE
+            WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+            THEN 0.000001
+            ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+        END)
+        AND (SELECT impact_significance FROM truth_state WHERE event_id = es.event_id LIMIT 1) > 0.5
+        THEN 1
+        ELSE 0
+    END as calculated_impact_stable
+FROM event_stability es
+LEFT JOIN event_state_history_tracking esht ON es.event_id = esht.event_id;
 ```
