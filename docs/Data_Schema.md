@@ -454,6 +454,19 @@ Stores information about discovered nodes in Truth Training network.
 | created_at | INTEGER | Timestamp of record creation |
 | updated_at | INTEGER | Timestamp of last update |
 
+#### discovery_history Table
+Tracking changes in network node discovery for auditing and analyzing changes in node discovery, understanding reasons for discovery changes, analyzing node behavior and availability effectiveness, and ensuring transparency of discovery system.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INTEGER | Unique discovery record identifier (primary key, auto-increment) |
+| node_id | INTEGER | Foreign key to discovery_nodes.id |
+| discovery_type | TEXT | Type of discovery (beacon, manual, api) |
+| discovered_at | INTEGER | Timestamp of discovery |
+| ttl | INTEGER | Time to live for discovery record |
+| status | TEXT | Discovery status (active, expired, unreachable) |
+| source | TEXT | Source of discovery information |
+
 #### node_ratings Table
 Stores node reputation and trust for evaluating node reliability based on their activity and assessment accuracy.
 

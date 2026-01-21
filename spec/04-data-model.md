@@ -392,6 +392,17 @@ CREATE TABLE discovery_nodes (
     FOREIGN KEY (node_id) REFERENCES participants(public_key)
 );
 
+CREATE TABLE discovery_history (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_id        INTEGER NOT NULL,
+    discovery_type TEXT NOT NULL,
+    discovered_at  INTEGER NOT NULL,
+    ttl            INTEGER NOT NULL,
+    status         TEXT NOT NULL,
+    source         TEXT NOT NULL,
+    FOREIGN KEY (node_id) REFERENCES discovery_nodes(id)
+);
+
 CREATE TABLE node_ratings (
     node_id              TEXT PRIMARY KEY,
     events_true          INTEGER NOT NULL DEFAULT 0,
@@ -484,6 +495,7 @@ CREATE INDEX idx_discovery_nodes_last_seen ON discovery_nodes(last_seen);
 CREATE INDEX idx_discovery_nodes_type ON discovery_nodes(type);
 CREATE INDEX idx_discovery_nodes_reachable ON discovery_nodes(reachable);
 CREATE INDEX idx_discovery_nodes_node_id ON discovery_nodes(node_id);
+CREATE INDEX idx_discovery_history_node_id ON discovery_history(node_id);
 CREATE INDEX idx_node_ratings_node_id ON node_ratings(node_id);
 CREATE INDEX idx_node_performance_pubkey ON node_performance(pubkey);
 CREATE INDEX idx_active_tokens_public_key ON active_tokens(public_key);
