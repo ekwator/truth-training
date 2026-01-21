@@ -268,66 +268,58 @@ participants.reputation_history = reputation_history.id
 ```
 **Base participant mapping**
 ```sql
-base_participant_id =
-SELECT participants.public_key
-FROM participants
-WHERE participants.public_key = judgment.participant_id
+base_participant_id = participants.public_key
+-- This represents the participant whose reputation is being calculated
+-- Used as reference in reputation calculation formulas below
 ```
 **Aggregation formulas "reputation_score"**
 ```sql
-participants.reputation_score = (
-    SELECT CASE
-        WHEN total_judgment > 0 THEN accurate_judgment * 1.0 / total_judgment
-        ELSE 0.5
-    END
-    FROM participants p
-    WHERE p.public_key = base_participant_id
-)
+-- Reputation score is calculated via triggers when impact or judgment records are added
+-- The actual calculation happens in the following triggers:
+-- 1. update_participant_reputation_on_impact (for impact assessments)
+-- 2. update_participant_reputation_on_judgment (for judgment assessments)
+
+participants.reputation_score = CASE
+    WHEN (total_impact + total_judgment) > 0 THEN
+        (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
+    ELSE 0.5  -- Default neutral score when no assessments have been made
+END
+
+-- This score is updated automatically via SQL triggers when:
+-- - A new impact record is added (checked against collective_score for accuracy)
+-- - A new judgment record is added (checked against collective_score for accuracy)
+-- The trigger recalculates the reputation based on the combined accuracy of both impact and judgment assessments
 ```
 **Aggregation formulas "total_judgment"**
 ```sql
 participants.total_judgment = (
-    SELECT COUNT(*)
-    FROM judgment
-    WHERE judgment.participant_id = base_participant_id
+    -- Incremented via trigger update_participant_reputation_on_judgment when new judgment records are added
+    -- Total count of judgment assessments made by the participant
+    -- Updated automatically when participant creates new judgment records
 )
 ```
 **Aggregation formulas "accurate_judgment"**
 ```sql
 participants.accurate_judgment = (
-    SELECT COUNT(*)
-    FROM judgment j
-    JOIN consensus_ci cc ON j.event_id = cc.event_id
-    WHERE j.participant_id = base_participant_id
-    AND j.assessment = cc.consensus_value
+    -- Incremented via trigger update_participant_reputation_on_judgment when judgment assessments are accurate
+    -- Accuracy is determined by comparing judgment assessment with the collective_score from truth_event
+    -- Updated automatically when participant's judgment aligns with collective assessment
 )
 ```
 **Aggregation formulas "total_impact"**
 ```sql
 participants.total_impact = (
-    SELECT COUNT(*)
-    FROM impact
-    WHERE impact.event_id IN (
-        SELECT event_id FROM truth_event WHERE participant_id = base_participant_id
-    )
+    -- Incremented via trigger update_participant_reputation_on_impact when new impact records are added
+    -- Total count of impact assessments made by the participant
+    -- Updated automatically when participant creates new impact records
 )
 ```
 **Aggregation formulas "accurate_impact"**
 ```sql
 participants.accurate_impact = (
-    SELECT COUNT(*)
-    FROM impact i
-    JOIN impact_metrics im ON i.event_id = im.event_id
-    WHERE i.event_id IN (
-        SELECT event_id FROM truth_event WHERE participant_id = base_participant_id
-    )
-    AND i.value = (
-        CASE
-            WHEN im.positive_ratio > im.negative_ratio THEN 1
-            WHEN im.positive_ratio < im.negative_ratio THEN 0
-            ELSE NULL
-        END
-    )
+    -- Incremented via trigger update_participant_reputation_on_impact when impact assessments are accurate
+    -- Accuracy is determined by comparing impact value with the collective_score from truth_event
+    -- Updated automatically when participant's impact aligns with collective assessment
 )
 ```
 **Aggregation formulas "created_at"**
@@ -445,7 +437,8 @@ reputation_history.old_reputation = (
 ```sql
 reputation_history.new_reputation = (
     SELECT CASE
-        WHEN total_judgment > 0 THEN accurate_judgment * 1.0 / total_judgment
+        WHEN (total_impact + total_judgment) > 0 THEN
+            (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
         ELSE 0.5
     END
     FROM participants
