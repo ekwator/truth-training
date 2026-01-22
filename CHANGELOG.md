@@ -5,7 +5,7 @@
 **Release Date**: 2025-12-28
 **Status**: Documentation Release
 
-This release focuses on comprehensive documentation updates and significant enhancements to the core data model for the Truth Training application v1.2.0. The changes include extensive updates to model documentation, implementation of triggers for automated calculations, enhanced P2P synchronization documentation, and numerous refinements to the core model components. Additionally, the project constitution has been aligned with updated quality gates and architectural documentation.
+This release focuses on comprehensive documentation updates and significant enhancements to the core data model for the Truth Training application v1.1.0. The changes include extensive updates to model documentation, implementation of triggers for automated calculations, enhanced P2P synchronization documentation, and numerous refinements to the core model components. Additionally, the project constitution has been aligned with updated quality gates and architectural documentation.
 
 ### 📚 Documentation Updates
 
