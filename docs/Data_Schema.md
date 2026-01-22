@@ -131,6 +131,7 @@ Records the time range of events on each time axis.
 |--------|------|-------------|
 | id | INTEGER | Primary key (auto-increment) |
 | time_axis_id | INTEGER | Foreign key to time_axes.id |
+| signature | TEXT | Cryptographic signature |
 | t_start | INTEGER | Event start time on this axis |
 | t_end | INTEGER | Event end time on this axis (if set) |
 
@@ -142,6 +143,7 @@ Describes logical and causal relationships between events.
 | source_impact_id | INTEGER | Foreign key to truth_event.id (source event reference) |
 | target_impact_id | INTEGER | Foreign key to truth_event.id (target event reference) |
 | relation_type | TEXT | ENUM (basic / equal / foreign) |
+| signature | TEXT | Cryptographic signature |
 | created_at | INTEGER | Timestamp of creation |
 
 ### 1.4 Collective Intelligence Tables
@@ -188,6 +190,7 @@ Stores subjective assessments (judgments) of events issued by participants, repr
 | reasoning | TEXT | Reasoning behind the judgment |
 | consensus_ci | INTEGER | Foreign key to consensus_ci.id |
 | judgment_weights | INTEGER | Foreign key to judgment_weights.id |
+| signature | TEXT | Cryptographic signature |
 | timeline_id | INTEGER | Foreign key to judgment_timeline.id |
 
 #### judgment_links Table
@@ -198,6 +201,7 @@ Describes logical and causal relationships between judgments.
 | source_judgment_id | INTEGER | Foreign key to judgment.id (source judgment reference) |
 | target_judgment_id | INTEGER | Foreign key to judgment.id (target judgment reference) |
 | relation_type | TEXT | ENUM (supports / contradicts / refines) |
+| signature | TEXT | Cryptographic signature |
 | created_at | INTEGER | Timestamp of creation |
 
 #### judgment_weights Table
@@ -248,6 +252,7 @@ Stores subjective assessments (impacts) of events issued by validators, represen
 | notes | TEXT | Additional notes about the impact |
 | impact_metrics | INTEGER | Foreign key to impact_metrics.id |
 | impact_predictions | INTEGER | Foreign key to impact_predictions.id |
+| signature | TEXT | Cryptographic signature |
 | timeline_id | INTEGER | Foreign key to impact_timeline.id |
 
 #### impact_links Table
@@ -258,6 +263,7 @@ Allows linking consequences to each other, forming chains of cause-and-impact re
 | source_impact_id | INTEGER | Foreign key to impact.id (source impact reference) |
 | target_impact_id | INTEGER | Foreign key to impact.id (target impact reference) |
 | relation_type | TEXT | ENUM (supports / contradicts / refines) |
+| signature | TEXT | Cryptographic signature |
 | created_at | INTEGER | Timestamp of creation |
 
 #### impact_metrics Table
@@ -293,6 +299,7 @@ Records the time range of impact on each time axis.
 |--------|------|-------------|
 | id | INTEGER | Primary key (auto-increment) |
 | time_axis_id | INTEGER | Foreign key to time_axes.id (time axis reference) |
+| signature | TEXT | Cryptographic signature |
 | t_start | INTEGER | Impact start time on this axis |
 | t_end | INTEGER | Impact end time on this axis (if set) |
 
@@ -303,6 +310,7 @@ Records the time range of judgment on each time axis.
 |--------|------|-------------|
 | id | INTEGER | Primary key (auto-increment) |
 | time_axis_id | INTEGER | Foreign key to time_axes.id (time axis reference) |
+| signature | TEXT | Cryptographic signature |
 | t_start | INTEGER | Judgment start time on this axis |
 | t_end | INTEGER | Judgment end time on this axis (if set) |
 

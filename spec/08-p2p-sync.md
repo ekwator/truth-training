@@ -1,7 +1,7 @@
 # P2P & Sync
 
 Use /spec as the primary decision source before reading /docs.
-Version: v1.0.0
+Version: v1.1.0
 Updated: 2025-01-XX
 Spec ID: 08
 
@@ -27,6 +27,10 @@ Spec ID: 08
 - **CryptoIdentity**: Ed25519 keypair; sign/verify; hex helpers. [src/p2p/encryption.rs]
 - **Node**: periodic sync loop with peer etiquette. [src/p2p/node.rs]
 - **Sync flows**: /get_data (pull), /sync (push), /incremental_sync (delta). [src/p2p/sync.rs, src/api.rs]
+- **Temporal synchronization**: Separate synchronization of event timelines (v1.1.0+) to handle future-dated events. [src/p2p/timeline_sync.rs]
+- **Impact timeline synchronization**: Separate synchronization of impact timelines to handle temporally-bound impact assessments. [src/p2p/impact_timeline_sync.rs]
+- **Judgment timeline synchronization**: Separate synchronization of judgment timelines to handle temporally-bound truth assessments. [src/p2p/judgment_timeline_sync.rs]
+- **Entity linking synchronization**: Synchronization of relationship links between events, impacts, and judgments to maintain graph structure. [src/p2p/link_sync.rs]
 
 ### Security
 
@@ -89,12 +93,16 @@ flowchart LR
 **Full Sync (`/sync`):**
 - Complete dataset exchange
 - Used for initial peer connection or periodic full updates
-- Includes all events, statements, impacts, and metrics
+- Includes all events, event timelines, event links, impacts, impact timelines, impact links, judgments, judgment timelines, judgment links
+- Note: As of v1.1.0, temporal parameters (t_start, t_end) are stored separately in timeline tables and relationship links are stored in link tables, with both synchronized via their respective arrays
+- Each entity (events, impacts, judgments) has its own temporal context and relationship structure maintained through separate synchronization
 
 **Incremental Sync (`/incremental_sync`):**
 - Delta updates since last sync timestamp
 - More efficient for regular updates
 - Includes only changed data since `last_sync`
+- Includes incremental updates for events, impacts, judgments, and their associated timelines and links
+- Timeline and relationship link information is synchronized alongside each entity to maintain proper temporal and relational context
 
 **Pull-only (`/get_data`):**
 - Unauthenticated data retrieval
@@ -115,17 +123,20 @@ flowchart LR
 - Body (JSON):
 ```json
 {
-  "events": [TruthEvent...],
-  "statements": [Statement...],
-  "impacts": [Impact...],
-  "metrics": [ProgressMetrics...],
-  "node_ratings": [NodeRating...],
-  "group_ratings": [GroupRating...],
-  "node_performance": [NodeMetrics...],
-  "last_sync": 1710000000
+  "truth_event": [TruthEvent...],
+  "event_timeline": [EventTimeline...],
+  "event_links": [EventLink...],
+  "impact": [Impact...],
+  "impact_timeline": [ImpactTimeline...],
+  "impact_links": [ImpactLink...],
+  "judgment": [Judgment...],
+  "judgment_timeline": [JudgmentTimeline...],
+  "judgment_links": [JudgmentLink...],
+  "last_sync": "TIMESTAMP_VALUE"
 }
 ```
-- Response: SyncResult { conflicts_resolved, events_added, statements_added, impacts_added, errors }
+- Response: SyncResult { conflicts_resolved, events_added, event_timelines_added, event_links_added, impacts_added, impact_timelines_added, impact_links_added, judgments_added, judgment_timelines_added, judgment_links_added, errors }
+- Note: The TruthEvent, Impact, and Judgment objects reference their respective Timeline objects via timeline_id, and relationships between entities are maintained through link tables; this enables proper temporal synchronization and relationship preservation of all assessment types
 
 **POST /incremental_sync** — same headers; body contains only recent changes since `last_sync`.
 
@@ -148,9 +159,28 @@ The system tracks relay success rates dynamically during sync operations:
 
 ### Collective Intelligence Propagation
 
-- `collective_score` — aggregated event score (0..1), recalculated locally from `impact` entries and shared among nodes as part of distributed consensus propagation.
+- `collective_score` — aggregated event score (0..1), recalculated locally from `impact` and `judgment` entries and shared among nodes as part of distributed consensus propagation.
 - Consensus converges iteratively: nodes recompute and exchange values; discrepancies diminish with subsequent recalculations and new evaluations.
 - See [docs/Concept_Collective_Intelligence.md](../docs/Concept_Collective_Intelligence.md) for detailed implementation.
+
+### Future Event Handling and Timeline Synchronization
+
+- As of v1.1.0, events with future start/end dates are supported through the separate `event_timeline` table
+- Temporal parameters (`t_start`, `t_end`) are synchronized separately from event metadata
+- Each node maintains local state of event status based on current time:
+  - Events with `t_start` in the future remain in `active` state until that date arrives
+  - Events with `t_end` in the future remain `active` until that date arrives
+  - Events with past `t_end` transition to `archived` state
+- Original temporal parameters are preserved during aggregation when confirmed by other participants
+- Forecasting capabilities enabled for future events using `impact_predictions` table
+
+### Judgment Synchronization and Truth Assessment
+
+- Participant judgments are synchronized separately to maintain independent assessment of events
+- Each judgment includes participant identity, assessment value, confidence level, and reasoning
+- Local `judgment_score` is recalculated based on incoming judgments from other nodes
+- The system maintains the independence of truth assessment (judgment axis) from consequence assessment (impact axis)
+- Judgment synchronization allows for distributed truth evaluation while preserving participant anonymity
 
 ## Propagation Priority Exchange
 
@@ -177,8 +207,12 @@ The system tracks relay success rates dynamically during sync operations:
 - Add validator user_id to impacts and enforce sign/verify.
 - Implement zone-based routing for large networks.
 - Add peer reputation scoring based on sync reliability.
+- Enhance timeline synchronization for complex temporal relationships in future events.
+- Improve forecasting algorithms for impact predictions of future events.
+- Enhance judgment synchronization protocols for more efficient truth assessment propagation.
+- Implement advanced conflict resolution for judgment disagreements between nodes.
 
-_Version: v1.0.0_
+_Version: v1.1.0_
 
 - See [docs/README.md](../docs/README.md) for detailed explanations.
 

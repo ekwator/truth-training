@@ -1,7 +1,7 @@
 # HTTP API (current implementation)
 
 Use /spec as the primary decision source before reading /docs.
-Version: v1.0.0
+Version: v1.1.0
 Updated: 2025-01-XX
 Spec ID: 05
 
@@ -29,11 +29,11 @@ Base URL: http://<host>:<port>/
 - POST /sync (signed) → SyncResult
   - Headers: X-Public-Key, X-Signature, X-Timestamp
   - Message signed: `sync_push:{ts}`
-  - Body: SyncData { events, statements, impacts, metrics, node_ratings, group_ratings, node_performance, last_sync }
+  - Body: SyncData { events, event_timelines, event_links, statements, impacts, impact_timelines, impact_links, judgments, judgment_timelines, judgment_links, metrics, node_ratings, group_ratings, node_performance, last_sync }
 - POST /incremental_sync (signed) → SyncResult
   - Headers: X-Public-Key, X-Signature, X-Timestamp
   - Message signed: `incremental_sync:{ts}`
-  - Body: SyncData with recent changes only
+  - Body: SyncData with recent changes only including events, event_timelines, event_links, impacts, impact_timelines, impact_links, judgments, judgment_timelines, judgment_links, and their associated timelines and links
 
 Notes
 - Signed endpoints require Ed25519 signature of the message pattern above.
@@ -90,8 +90,8 @@ JWT Claims include role and trust_score:
 ```json
 {
   "sub": "<pubkey>",
-  "exp": 1710003600,
-  "iat": 1710000000,
+  "exp": "TIMESTAMP_VALUE",
+  "iat": "TIMESTAMP_VALUE",
   "role": "node",
   "trust_score": 0.42
 }
@@ -115,43 +115,30 @@ Future alignment
 
 ### JSON Schemas (informal)
 
-TruthEvent (v1.0.0: embedded context fields)
+TruthEvent (v1.1.0: embedded context fields with timeline reference)
 ```json
 {
   "id": 1,
   "description": "string",
+  "global_id": "string",
+  "participant_id": "hex",
+  "signature": "hex",
   "category_id": 1,
   "forma_id": 2,
   "cause_id": 3,
   "develop_id": 4,
   "effect_id": 5,
-  "vector": true,
+  "vector": 1,
   "detected": null,
-  "corrected": false,
-  "timestamp_start": 1710000000,
-  "timestamp_end": null,
+  "corrected": 0,
+  "timeline_id": 1,
   "code": 1,
-  "signature": "hex|null",
-  "public_key": "hex|null",
-  "collective_score": 0.75
+  "collective_score": 0.75,
+  "impact_score": 0.0,
+  "judgment_score": null
 }
 ```
-Note: All context fields (category_id, forma_id, cause_id, develop_id, effect_id) are nullable. The `context_id` field has been removed in v1.0.0.
-
-Statement
-```json
-{
-  "id": 1,
-  "event_id": 1,
-  "text": "string",
-  "context": "string|null",
-  "truth_score": 0.5,
-  "created_at": 1710000000,
-  "updated_at": 1710000000,
-  "signature": "hex|null",
-  "public_key": "hex|null"
-}
-```
+Note: All context fields (category_id, forma_id, cause_id, develop_id, effect_id) are non-nullable. The `context_id` field has been removed, and `timestamp_start`/`timestamp_end` have been moved to the separate event_timeline table referenced by timeline_id. The `public_key` field has been renamed to `participant_id`. Boolean fields (vector, detected, corrected) are now integers (0/1). Added impact_score and judgment_score fields for local assessment metrics.
 
 Impact
 ```json
@@ -159,42 +146,108 @@ Impact
   "id": 1,
   "event_id": 1,
   "type_id": 1,
-  "value": true,
+  "trend": 1,
+  "value": null,
   "notes": "string|null",
-  "created_at": 1710000000,
-  "signature": "hex|null",
-  "public_key": "hex|null"
+  "impact_metrics": 1,
+  "impact_predictions": 1,
+  "signature": "hex",
+  "timeline_id": 1
 }
 ```
-Note: `id` is INTEGER (PK, AUTOINCREMENT), not UUID.
+Note: `id` is INTEGER (PK, AUTOINCREMENT), not UUID. The `public_key` field has been removed as it's derivable from the signature. The `value` field is now nullable and represents impact magnitude (NULL for undefined, 0 for negative, 1 for positive). The `trend` field represents impact trend (0/1/2/3 for "logical_negative"/"logical_positive"/"illogical_negative"/"illogical_positive"). The `created_at` timestamp is now part of the timeline referenced by `timeline_id`.
 
-ProgressMetrics
+Judgment
 ```json
 {
   "id": 1,
-  "timestamp": 1710000000,
-  "total_events": 10,
-  "total_events_group": 10,
-  "total_positive_impact": 1.0,
-  "total_positive_impact_group": 1.0,
-  "total_negative_impact": 0.0,
-  "total_negative_impact_group": 0.0,
-  "trend": 1.0,
-  "trend_group": 1.0
+  "participant_id": "hex",
+  "event_id": 1,
+  "assessment": null,
+  "confidence_level": 0.5,
+  "reasoning": "string|null",
+  "consensus_ci": 1,
+  "judgment_weights": 1,
+  "timeline_id": 1,
+  "signature": "hex"
 }
 ```
+Note: `id` is INTEGER (PK, AUTOINCREMENT). The `assessment` field is nullable and represents truth assessment (NULL for undefined, -1.0 for false, 0.0 for neutral, 1.0 for true). The `confidence_level` field represents the participant's confidence in their assessment (0.0 to 1.0). The `reasoning` field contains textual justification for the judgment. The `timeline_id` references the judgment_timeline table for temporal context.
 
 SyncData
 ```json
 {
-  "events": [/* TruthEvent[] */],
-  "statements": [/* Statement[] */],
-  "impacts": [/* Impact[] */],
-  "metrics": [/* ProgressMetrics[] */],
-  "node_ratings": [/* NodeRating[] */],
-  "group_ratings": [/* GroupRating[] */],
-  "node_performance": [/* NodeMetrics[]; includes relay_success_rate, quality_index, propagation_priority */],
-  "last_sync": 1710000000
+  "truth_event": [/* TruthEvent[] */],
+  "event_timeline": [
+    {
+      "id": 1,
+      "time_axis_id": 2,
+      "t_start": "TIMESTAMP_VALUE",
+      "t_end": "TIMESTAMP_VALUE",
+      "signature": "hex"
+    }
+  ],
+  "event_links": [
+    {
+      "source_event_id": 1,
+      "target_event_id": 2,
+      "relation_type": "causal",
+      "signature": "hex",
+      "created_at": "TIMESTAMP_VALUE"
+    }
+  ],
+  "impact": [/* Impact[] */],
+  "impact_timeline": [
+    {
+      "id": 1,
+      "time_axis_id": 1,
+      "signature": "hex",
+      "t_start": "TIMESTAMP_VALUE",
+      "t_end": null
+    }
+  ],
+  "impact_links": [
+    {
+      "source_impact_id": 1,
+      "target_impact_id": 2,
+      "relation_type": "support",
+      "signature": "hex",
+      "created_at": "TIMESTAMP_VALUE"
+    }
+  ],
+  "judgment": [
+    {
+      "id": 1,
+      "participant_id": "hex",
+      "event_id": 1,
+      "assessment": 1.0,
+      "confidence_level": 0.8,
+      "reasoning": "Evidence strongly supports this event",
+      "consensus_ci": 1,
+      "judgment_weights": 1,
+      "timeline_id": 1,
+      "signature": "hex"
+    }
+  ],
+  "judgment_timeline": [
+    {
+      "id": 1,
+      "time_axis_id": 1,
+      "signature": "hex",
+      "t_start": "TIMESTAMP_VALUE",
+      "t_end": null
+    }
+  ],
+  "judgment_links": [
+    {
+      "source_judgment_id": 1,
+      "target_judgment_id": 2,
+      "relation_type": "support",
+      "signature": "hex",
+      "created_at": "TIMESTAMP_VALUE"
+    }
+  ],
+  "last_sync": "TIMESTAMP_VALUE"
 }
 ```
 
@@ -203,16 +256,20 @@ SyncResult
 {
   "conflicts_resolved": 0,
   "events_added": 0,
-  "statements_added": 0,
+  "event_timelines_added": 0,
+  "event_links_added": 0,
   "impacts_added": 0,
+  "impact_timelines_added": 0,
+  "impact_links_added": 0,
+  "judgments_added": 0,
+  "judgment_timelines_added": 0,
+  "judgment_links_added": 0,
   "errors": ["string"],
-  "nodes_trust_changed": 0,
-  "trust_diff": [{"node_id":"hex","delta":0.1}],
   "avg_quality_index": 0.82
 }
 ```
 
-_Version: v1.0.0_
+_Version: v1.1.0_
 
 - See [docs/README.md](../docs/README.md) for detailed explanations.
 

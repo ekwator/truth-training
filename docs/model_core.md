@@ -1769,6 +1769,7 @@ Describes logical and causal **relationships** between **event**
 source_impact_id (INTEGER, NOT NULL) — FK → truth_event.id — source event reference
 target_impact_id (INTEGER, NOT NULL) — FK → truth_event.id — target event reference
 relation_type    (TEXT, NOT NULL) — ENUM (basic / equal / foreign)
+signature        (TEXT, NOT NULL) — cryptographic signature
 created_at       (INTEGER, NOT NULL) — timestamp of creation
 ```
 🏠 Database: truth_training.sqlite  
@@ -1949,6 +1950,7 @@ value              (INTEGER) — impact value (NULL/0/1 for measurable/negative/
 notes              (TEXT) — additional notes about the impact
 impact_metrics     (INTEGER, NOT NULL) — FK → impact_metrics.id
 impact_predictions (INTEGER, NOT NULL) — FK → impact_predictions.id
+signature          (TEXT, NOT NULL) — cryptographic signature
 timeline_id        (INTEGER, NOT NULL) — FK → impact_timeline.id
 ```
 🏠 Database: truth_training.sqlite  
@@ -1972,6 +1974,7 @@ Allows **linking consequences** to each **other**, forming chains of **cause-and
 source_impact_id (INTEGER, NOT NULL) — FK → impact.id — source impact reference
 target_impact_id (INTEGER, NOT NULL) — FK → impact.id — target impact reference
 relation_type    (TEXT, NOT NULL) — ENUM (supports / contradicts / refines)
+signature        (TEXT, NOT NULL) — cryptographic signature
 created_at       (INTEGER, NOT NULL) — timestamp of creation
 ```
 
@@ -2394,6 +2397,7 @@ confidence_level (REAL) — confidence level of the assessment
 reasoning        (TEXT) — reasoning behind the judgment
 consensus_ci     (INTEGER, NOT NULL) — FK → consensus_ci.id
 judgment_weights (INTEGER, NOT NULL) — FK → judgment_weights.id
+signature        (TEXT, NOT NULL) — cryptographic signature
 timeline_id      (INTEGER, NOT NULL) — FK → judgment_timeline.id
 ```
 🏠 Database: truth_training.sqlite  
@@ -2465,6 +2469,7 @@ Describes logical and causal relationships between judgment
 source_judgment_id (INTEGER, NOT NULL) — FK → judgment.id — source judgment reference
 target_judgment_id (INTEGER, NOT NULL) — FK → judgment.id — target judgment reference
 relation_type      (TEXT, NOT NULL) — ENUM supports / contradicts / refines
+signature          (TEXT, NOT NULL) — cryptographic signature
 created_at         (INTEGER, NOT NULL) — timestamp of creation
 ```
 🏠 Database: truth_training.sqlite  
@@ -3260,6 +3265,7 @@ Records the **time range** of **events** on each **time axis**
 ```
 id           (INTEGER, PK, AUTOINCREMENT) — unique timeline record ID
 time_axis_id (INTEGER, NOT NULL) — FK → time_axes.id — time axis reference
+signature    (TEXT, NOT NULL) — cryptographic signature
 t_start      (INTEGER, NOT NULL) — event start time on this axis
 t_end        (INTEGER) — event end time on this axis (if set)
 ```
@@ -3309,6 +3315,7 @@ Records the time range of **impact** on each **time axis**
 ```
 id           (INTEGER, PK, AUTOINCREMENT) — unique timeline record ID
 time_axis_id (INTEGER, NOT NULL) — FK → time_axes.id — time axis reference
+signature    (TEXT, NOT NULL) — cryptographic signature
 t_start      (INTEGER, NOT NULL) — impact start time on this axis
 t_end        (INTEGER) — impact end time on this axis (if set)
 ```
@@ -3348,6 +3355,7 @@ Records the **time range** of **judgment** on each **time axis**
 ```
 id           (INTEGER, PK, AUTOINCREMENT) — unique timeline record ID
 time_axis_id (INTEGER, NOT NULL) — FK → time_axes.id — time axis reference
+signature    (TEXT, NOT NULL) — cryptographic signature
 t_start      (INTEGER, NOT NULL) — judgment start time on this axis
 t_end        (INTEGER) — judgment end time on this axis (if set)
 ```
@@ -3633,8 +3641,8 @@ Decay(T, t) ∝ e^(−λt)
 
 ## 4 Node Discovery and Network Tables
 
-**Note** :  
-• The "Node Discovery" tables participate indirectly in P2P information exchange. For details on the relationship between these tables and P2P exchange implementation, see [docs/p2p_release.md](p2p_release.md) which describes how these tables are used in the implementation of P2P information exchange.  
+**Note** :
+• The "Node Discovery" tables participate indirectly in P2P information exchange. For details on the relationship between these tables and P2P exchange implementation, see [docs/p2p_release.md](p2p_release.md) and [spec/08-p2p-sync.md](../spec/08-p2p-sync.md) which describe how these tables are used in the implementation of P2P information exchange and the propagation and aggregation of timeline information across nodes.
 • Additionally, for Android-specific implementation details of the Node Discovery system, see [docs/android_discovery_architecture.md](android_discovery_architecture.md) which describes the architecture of the Node Discovery system for the Android mobile application
 
 **Note on table naming**: In version v1.1.0, the tables were renamed for clarity :  

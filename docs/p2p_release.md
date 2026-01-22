@@ -83,6 +83,40 @@ small_constants is used in P2P synchronization in several critical ways:
 
 Thus, small_constants plays an important role in ensuring mathematical stability and resilience of the P2P system against manipulation by introducing controlled degrees of uncertainty in critical computations during synchronization processes.
 
+### Judgment Synchronization in P2P Networks
+
+In addition to events and impacts, the P2P synchronization system also handles the distribution of participant judgments. This is critical for maintaining the truth assessment axis of the system:
+
+- **Judgment propagation**: Individual participant judgments are synchronized between nodes to enable distributed truth assessment
+- **Assessment independence**: Each node maintains its own local assessment metrics
+- **Truth convergence**: Through synchronization, nodes gradually converge on truth assessments as more judgments accumulate from the network
+- **Participant anonymity**: The system preserves the independence of judgments while allowing for collective truth emergence
+
+The judgment synchronization process works alongside event and impact synchronization to ensure that both axes of the truth-consequence space are properly maintained across the distributed network.
+
+### Timeline Synchronization in P2P Networks
+
+In addition to synchronizing the core data entities, the P2P system also handles temporal aspects of all entities:
+
+- **Event timeline synchronization**: Event temporal parameters (start/end times) are synchronized separately from event metadata to handle future-dated events
+- **Impact timeline synchronization**: Impact temporal parameters are synchronized to maintain proper timing context for consequence assessments
+- **Judgment timeline synchronization**: Judgment temporal parameters are synchronized to maintain proper timing context for truth assessments
+- **Temporal consistency**: All timeline data ensures that entities maintain proper chronological relationships across the network
+
+This temporal synchronization ensures that all nodes maintain consistent understanding of when events, impacts, and judgments occurred or are scheduled to occur.
+
+### Relationship Link Synchronization in P2P Networks
+
+In addition to synchronizing the core entities and their temporal aspects, the P2P system also maintains the relationships between entities:
+
+- **Event link synchronization**: Event-to-event relationships are synchronized to maintain causal and logical connections between events
+- **Impact link synchronization**: Impact-to-impact relationships are synchronized to maintain consequence chain connections
+- **Judgment link synchronization**: Judgment-to-judgment relationships are synchronized to maintain logical connections between truth assessments
+- **Cross-entity links**: Links between different entity types (e.g., impact to judgment) are synchronized to maintain the full relationship graph
+- **Graph consistency**: All link data ensures that the relationship structure remains consistent across the network
+
+This relationship synchronization ensures that all nodes maintain consistent understanding of how events, impacts, and judgments relate to each other in the collective intelligence graph.
+
 ## 3 P2P Module Components and Implementation
 
 ### 3.1 Encryption Module
@@ -279,13 +313,24 @@ mod tests {
 • Periodic synchronization with peers every 30 seconds
 • Peer management through URL and public key mapping
 • Integration with cryptographic identity for secure communications
-
 ### 3.3 Synchronization Module
 
 #### Module: sync.rs - Peer Synchronization
 
 **Purpose** :
 Peer Synchronization module for handling asynchronous synchronization with specific peers, including signing requests and verifying responses
+
+**Synchronization Payload** :
+The synchronization process exchanges the following data between nodes:
+- Events (truth_event table)
+- Event timelines (event_timeline table)
+- Event links (event_links table)
+- Impacts (impact table)
+- Impact timelines (impact_timeline table)
+- Impact links (impact_links table)
+- Judgments (judgment table)
+- Judgment timelines (judgment_timeline table)
+- Judgment links (judgment_links table)
 
 **Functions** :
 ```
@@ -461,42 +506,7 @@ async fn health() -> Result<HttpResponse> {
 **Response**: 200 OK with body "OK"
 **Usage**: Server availability monitoring
 
-#### 2. GET /statements
-**Description**: Get list of all statements (stub)
-**Implementation**:
-```rust
-use actix_web::{get, HttpResponse, Result};
-
-#[get("/statements")]
-async fn get_statements() -> Result<HttpResponse> {
-    Ok(HttpResponse::Ok().json(vec![] as Vec<String>))
-}
-```
-**Response**: 200 OK with JSON array of strings (currently empty)
-**Status**: TODO - requires implementation in core_lib
-
-#### 3. POST /statements
-**Description**: Add new statement (stub)
-**Implementation**:
-```rust
-use actix_web::{post, HttpResponse, Result, web};
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-struct StatementRequest {
-    // Statement fields would go here
-}
-
-#[post("/statements")]
-async fn post_statements(_req: web::Json<StatementRequest>) -> Result<HttpResponse> {
-    Ok(HttpResponse::Ok().json("TODO"))
-}
-```
-**Request body**: StatementRequest JSON object
-**Response**: 200 OK with JSON string "TODO"
-**Status**: TODO - requires implementation in core_lib
-
-#### 4. GET /events
+#### 2. GET /events
 **Description**: Get list of all truth events with cryptographic authentication
 **Implementation**:
 ```rust
@@ -555,7 +565,7 @@ X-Signature: hex-encoded message signature
 401 Unauthorized on invalid signature
 **Usage**: P2P synchronization between nodes
 
-#### 5. POST /events
+#### 3. POST /events
 **Description**: Add new truth event
 **Implementation**:
 ```rust
@@ -582,7 +592,7 @@ async fn post_events(req: web::Json<EventRequest>) -> Result<HttpResponse> {
 **Response**: 200 OK with JSON object {"id": "event_id"}
 **Automatically sets**: code: 1, timestamp_start: current time
 
-#### 6. POST /impacts
+#### 4. POST /impacts
 **Description**: Add new impact to event
 **Implementation**:
 ```rust
@@ -610,6 +620,35 @@ async fn post_impacts(req: web::Json<ImpactRequest>) -> Result<HttpResponse> {
 **Request body**: JSON Impact object
 **Response**: 200 OK with JSON object {"id": "impact_id"}
 
+#### 5. POST /judgments
+**Description**: Add new judgment to event
+**Implementation**:
+```rust
+use actix_web::{post, HttpResponse, Result, web};
+use serde::Deserialize;
+use crate::core::storage::add_judgment;
+
+#[derive(Deserialize)]
+struct JudgmentRequest {
+    event_id: i32,
+    assessment: Option<f64>,  // -1.0 to 1.0 scale for truth assessment
+    confidence_level: Option<f64>,  // 0.0 to 1.0 scale for confidence
+    reasoning: Option<String>,  // Textual justification for the judgment
+    // Other judgment fields
+}
+
+#[post("/judgments")]
+async fn post_judgments(req: web::Json<JudgmentRequest>) -> Result<HttpResponse> {
+    let judgment_id = web::block(move || {
+        add_judgment(req.event_id, req.assessment, req.confidence_level, req.reasoning.as_deref())
+    }).await.unwrap();
+    
+    Ok(HttpResponse::Ok().json(serde_json::json!({"id": judgment_id})))
+}
+```
+**Request body**: JSON Judgment object
+**Response**: 200 OK with JSON object {"id": "judgment_id"}
+
 ### 4.2 Implementation Features
 
 **Asynchronicity**: All endpoints use actix-web with asynchronous handlers
@@ -626,13 +665,12 @@ Cryptographic identity (Ed25519)
 P2P node with periodic synchronization
 Network discovery via UDP beacons
 Secure synchronization between peers
-✅ Created complete server API commands list - 6 endpoints:
+✅ Created complete server API commands list - 5 endpoints:
 GET /health - health check
-GET /statements - get statements (stub)
-POST /statements - add statements (stub)
 GET /events - get events with P2P authentication
 POST /events - add truth events
 POST /impacts - add impacts
+POST /judgments - add judgments
 
 The P2P module is fully functional and integrated into the main application to provide decentralized data synchronization between nodes.
 

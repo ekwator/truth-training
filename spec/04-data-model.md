@@ -144,6 +144,7 @@ CREATE TABLE impact (
     notes              TEXT,
     impact_metrics     INTEGER NOT NULL,
     impact_predictions INTEGER NOT NULL,
+    signature          TEXT NOT NULL,
     timeline_id        INTEGER NOT NULL,
     FOREIGN KEY (event_id) REFERENCES truth_event(id),
     FOREIGN KEY (type_id) REFERENCES effect(id),
@@ -179,6 +180,7 @@ CREATE TABLE impact_links (
     source_impact_id INTEGER NOT NULL,
     target_impact_id INTEGER NOT NULL,
     relation_type    TEXT NOT NULL,
+    signature        TEXT NOT NULL,
     created_at       INTEGER NOT NULL,
     FOREIGN KEY (source_impact_id) REFERENCES impact(id),
     FOREIGN KEY (target_impact_id) REFERENCES impact(id)
@@ -193,6 +195,7 @@ CREATE TABLE judgment (
     reasoning        TEXT,
     consensus_ci     INTEGER NOT NULL,
     judgment_weights INTEGER NOT NULL,
+    signature        TEXT NOT NULL,
     timeline_id      INTEGER NOT NULL,
     FOREIGN KEY (participant_id) REFERENCES participants(id),
     FOREIGN KEY (event_id) REFERENCES event_ci(id),
@@ -206,6 +209,7 @@ CREATE TABLE judgment_links (
     source_judgment_id INTEGER NOT NULL,
     target_judgment_id INTEGER NOT NULL,
     relation_type      TEXT NOT NULL,
+    signature          TEXT NOT NULL,
     created_at         INTEGER NOT NULL,
     FOREIGN KEY (source_judgment_id) REFERENCES judgment(id),
     FOREIGN KEY (target_judgment_id) REFERENCES judgment(id)
@@ -267,6 +271,7 @@ CREATE TABLE event_links (
     source_impact_id INTEGER NOT NULL,
     target_impact_id INTEGER NOT NULL,
     relation_type    TEXT NOT NULL,
+    signature        TEXT NOT NULL,
     created_at       INTEGER NOT NULL,
     FOREIGN KEY (source_impact_id) REFERENCES truth_event(id),
     FOREIGN KEY (target_impact_id) REFERENCES truth_event(id)
@@ -282,6 +287,7 @@ CREATE TABLE time_axes (
 CREATE TABLE event_timeline (
     id           INTEGER PRIMARY KEY,
     time_axis_id INTEGER NOT NULL,
+    signature    TEXT NOT NULL,
     t_start      INTEGER NOT NULL,
     t_end        INTEGER,
     FOREIGN KEY (time_axis_id) REFERENCES time_axes(id)
@@ -290,6 +296,7 @@ CREATE TABLE event_timeline (
 CREATE TABLE impact_timeline (
     id           INTEGER PRIMARY KEY,
     time_axis_id INTEGER NOT NULL,
+    signature    TEXT NOT NULL,
     t_start      INTEGER NOT NULL,
     t_end        INTEGER,
     FOREIGN KEY (time_axis_id) REFERENCES time_axes(id)
@@ -298,6 +305,7 @@ CREATE TABLE impact_timeline (
 CREATE TABLE judgment_timeline (
     id           INTEGER PRIMARY KEY,
     time_axis_id INTEGER NOT NULL,
+    signature    TEXT NOT NULL,
     t_start      INTEGER NOT NULL,
     t_end        INTEGER,
     FOREIGN KEY (time_axis_id) REFERENCES time_axes(id)
