@@ -17,6 +17,7 @@ This document describes the methodology and approach for comprehensive disassemb
 ### 2.1 Core Components
 - **Event Processing Engine**: Handles truth event lifecycle management
 - **Impact Assessment Module**: Calculates subjective influence metrics
+- **Judgment Assessment Module**: Evaluates events to determine truthfulness through collective assessment
 - **Context Management System**: Manages evaluation contexts and categories
 - **Database Layer**: SQLite-based storage with synchronization capabilities
 
@@ -90,6 +91,24 @@ Event Input → Impact Calculation → Weight Assignment → Result Aggregation
 - Context management system
 - Database layer
 
+### 4.3 Judgment Assessment Module
+```
+Event Input → Individual Judgment → Collective Evaluation → Truth Determination → Result Aggregation
+```
+
+**Key Functions:**
+- Individual event evaluation by users
+- Collection of independent judgments
+- Statistical aggregation of judgments
+- Truth determination based on collective assessment
+- Independence preservation to maintain crowd wisdom validity
+
+**Dependencies:**
+- Event processing engine
+- Context management system
+- Database layer
+- Privacy controls (to ensure independence)
+
 ---
 
 ## 5. Interface Specifications
@@ -112,7 +131,7 @@ Event Input → Impact Calculation → Weight Assignment → Result Aggregation
 
 ### 6.1 Event Lifecycle
 ```
-Creation → Validation → Context Assignment → Impact Assessment → Aggregation → Archival
+Creation → Validation → Context Assignment → Judgment Assessment → Impact Assessment → Aggregation → Archival
 ```
 
 ### 6.2 Data Synchronization

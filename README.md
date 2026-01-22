@@ -118,9 +118,49 @@ It asks:
 
 > “What happened as a result of this being accepted as true?”
 
+## 5. Judgment Assessment (Truth Determination)
+
+### What Is Judgment
+
+**Judgment** is an individual user's assessment of an event's truthfulness, forming the basis for collective truth determination.
+
+Judgment answers the question:
+
+> "Is this event true or false based on my understanding?"
+
+Each Judgment:
+
+- is linked to a specific event
+- represents individual truth assessment
+- contributes to collective truth score
+- preserves user anonymity
+- is time-stamped
+
+### Truth Calculation Based on Judgments
+
+The truthfulness of an event emerges from the aggregation of individual judgments:
+
+Event truthfulness ≈
+(Σ positive judgments − Σ negative judgments)
+÷ total number of judgments
+
+**Key Principle:**
+
+Truth is determined through collective independent assessments rather than direct declaration or voting.
+
 ---
 
-## 5. Truth Calculation (Implicit Truth Score)
+## 6. Impact vs Judgment
+
+While Impact evaluates consequences, Judgment determines truthfulness:
+
+- **Impact**: "What effect did this have?" (consequence-focused)
+- **Judgment**: "Is this true or false?" (truth-focused)
+
+---
+
+## 7. Truth Calculation (Implicit Truth Score)
+
 
 The truthfulness of an event is not stored as a field and is not explicitly defined.
 
@@ -145,7 +185,7 @@ Event truthfulness ≈
 
 ---
 
-## 6. The “Wisdom of the Crowd” Principle
+## 8. The "Wisdom of the Crowd" Principle
 
 The system embeds key conditions for valid collective evaluation:
 
@@ -164,7 +204,7 @@ Truth emerges as statistical equilibrium, not as a decision.
 
 ---
 
-## 7. Evaluation Context
+## 9. Evaluation Context
 
 Each event is linked to a **context**, which defines:
 
@@ -181,7 +221,7 @@ Context:
 
 ---
 
-## 8. Aggregated Metrics (Progress Metrics)
+## 10. Aggregated Metrics (Progress Metrics)
 
 The system periodically computes aggregates:
 
@@ -197,7 +237,7 @@ These metrics:
 
 ---
 
-## 9. Database Schema (Semantic Overview)
+## 11. Database Schema (Semantic Overview)
 
 ### Core Tables
 
@@ -231,13 +271,22 @@ Multifactor interpretation model:
 - development  
 - effect  
 
+#### `judgment`
+
+Stores judgment:
+
+- link to event
+- truth assessment (true/false)
+- timestamp
+- user anonymity identifier
+
 #### `progress_metrics`
 
 Aggregated system state indicators
 
 ---
 
-## 10. The Main Consequence
+## 12. The Main Consequence
 
 **Truth Training:**
 
@@ -257,7 +306,7 @@ Truth here is:
 
 ---
 
-## 11. Why This Logic Is Resilient
+## 13. Why This Logic Is Resilient
 
 - lies may be profitable in the short term  
 - but their consequences accumulate  
