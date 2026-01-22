@@ -30,7 +30,7 @@ Security updates are provided for the **latest stable release** and the **develo
 
 | Component | Version | Supported | Notes |
 | ---------- | -------- | ---------- | ----- |
-| All (`master`) | v1.0.0 | ✅ Yes | Main desktop app/logic & Shared core library & ore library binary & Tauri-based desktop UI |
+| All (`master`) | v1.0.0+ | ✅ Yes | Starting from v1.0.0, all subsequent versions v1.N.N are supported; previous versions automatically end support |
 | Desktop UI | v0.1.3 | ❌ No | Tauri-based UI, production-ready builds |
 | Core (`master`) | v0.4.2 | ❌ No | Desktop Integration & Cross-Platform Builds |
 | Desktop UI | v0.1.2 | ❌ No | Tauri-based UI, production-ready builds |
