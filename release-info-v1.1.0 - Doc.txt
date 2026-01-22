@@ -1,42 +1,94 @@
 v1.1.0-Doc
-Truth Training v1.1.0 — Documentation Update Release
+Truth Training v1.1.0 — Comprehensive Documentation and Model Enhancement Release
 
-This release focuses on comprehensive documentation updates for the Truth Training application v1.1.0. The changes include updated documentation files that reflect the next development phase of the application. Additionally, the project constitution has been updated through the `rule_constistucion.md` file to align with the new documentation, as processed by the /constitution command of the Spec-Kit tool from GitHub.
+This release focuses on comprehensive documentation updates and significant enhancements to the core data model for the Truth Training application v1.2.0. The changes include extensive updates to model documentation, implementation of triggers for automated calculations, enhanced P2P synchronization documentation, and numerous refinements to the core model components. Additionally, the project constitution has been aligned with updated quality gates and architectural documentation.
 
 ### 📚 Documentation Updates
 
 #### Core Documentation Refinements
 - **Data Schema Documentation**: Updated [`docs/Data_Schema.md`](docs/Data_Schema.md) with latest schema changes and field definitions
 - **Discovery Nodes Schema**: Enhanced [`docs/Discovery_Nodes_Schema.md`](docs/Discovery_Nodes_Schema.md) with detailed node structure information
-- **P2P Release Documentation**: Revised [`docs/p2p_release.md`](docs/p2p_release.md) reflecting current peer-to-peer synchronization implementation
-- **README Update**: Modified main [`README.md`](README.md) to reflect current project status and documentation changes
+- **P2P Release Documentation**: Revised [`docs/p2p_release.md`](docs/p2p_release.md) reflecting current peer-to-peer synchronization implementation with detailed small_constants usage
+- **README Update**: Modified main [`README.md`](README.md) to include judgment assessment information and reflect current project status
+- **Technical Specification**: Updated [`docs/Technical_Specification.md`](docs/Technical_Specification.md) with comprehensive component disassembly details
+- **Architecture Documentation**: Enhanced [`docs/architecture.md`](docs/architecture.md) with P2P implementation details for different platforms
+- **Build Instructions**: Updated [`docs/build_instructions.md`](docs/build_instructions.md) to match actual workflow configurations and correct database filename references
+- **CLI Usage Documentation**: Updated [`docs/CLI_Usage.md`](docs/CLI_Usage.md) with accurate database filename references
+- **Quickstart CLI**: Updated [`docs/quickstart_cli.md`](docs/quickstart_cli.md) with latest changes
 
 #### Model Documentation Additions
-- **Core Model Documentation**: Added comprehensive documentation in [`docs/model_core.md`](docs/model_core.md) detailing the core data model
-- **Aggregated Metrics Schema**: Created [`docs/model_core_aggregated_metrics.sql`](docs/model_core_aggregated_metrics.sql) with SQL schema for aggregated metrics
-- **Collective Assessment Schema**: Created [`docs/model_core_collective_assessment.sql`](docs/model_core_collective_assessment.sql) with SQL schema for collective assessment
-- **Network Tables Schema**: Created [`docs/model_core_network_tables.sql`](docs/model_core_network_tables.sql) with SQL schema for network-related tables
-- **Scoring System Schema**: Created [`docs/model_core_scoring.sql`](docs/model_core_scoring.sql) with SQL schema for scoring mechanisms
+- **Core Model Documentation**: Enhanced [`docs/model_core.md`](docs/model_core.md) with formatting corrections, trigger documentation, detailed field descriptions for truth_event.code and detected flags, and real-time reputation integration
+- **Aggregated Metrics Documentation**: Created [`docs/model_core_aggregated_metrics.md`](docs/model_core_aggregated_metrics.md) with comprehensive metric documentation
+- **Collective Assessment Documentation**: Created [`docs/model_core_collective_assessment.md`](docs/model_core_collective_assessment.md) with detailed assessment procedures
+- **Network Tables Documentation**: Created [`docs/model_core_network_tables.md`](docs/model_core_network_tables.md) with comprehensive network-related table documentation
+- **Scoring System Documentation**: Updated [`docs/model_core_scoring.md`](docs/model_core_scoring.md) with latest scoring mechanisms
+- **Views Documentation**: Added comprehensive documentation for views in core model: [`docs/model_core_views_aggregated_metrics.md`](docs/model_core_views_aggregated_metrics.md), [`docs/model_core_views_collective_assessment.md`](docs/model_core_views_collective_assessment.md), [`docs/model_core_views_network_tables.md`](docs/model_core_views_network_tables.md), and [`docs/model_core_views_scoring.md`](docs/model_core_views_scoring.md)
 
-### 🏛️ Constitutional Updates
+#### Migration Documentation
+- **Migration Guide**: Added [`docs/migration_documentation.md`](docs/migration_documentation.md) detailing migration procedures, including information about removing columns and transferring/aggregating information
 
-#### Project Constitution Alignment
-- **Rule Constitution**: Updated [`docs/archive/prompt/ekwator/constitution/rule_constistucion.md`](docs/archive/prompt/ekwator/constitution/rule_constistucion.md) to reflect changes in project governance and documentation standards
+#### Logging and Discovery Documentation
+- **Node Discovery Architecture**: Updated [`docs/android_discovery_architecture.md`](docs/android_discovery_architecture.md) with latest architectural details
+- **Logging Documentation**: Updated [`docs/logging.md`](docs/logging.md) with enhanced logging procedures
+
+### 🔧 Model and Implementation Enhancements
+
+#### Trigger Implementation
+- **Impact Prediction Triggers**: Implemented new triggers including `create_impact_predictions_on_status_change` and `create_impact_prediction_on_correction` documented in [`docs/model_core.md`](docs/model_core.md)
+- **Reputation Calculation Fixes**: Updated reputation calculation formulas in triggers to account for both impact and judgment assessments
+- **Formula Corrections**: Fixed division by zero in impact_predictions formulas and corrected horizon calculation for NULL t_end values
+- **SQL Implementation**: Replaced Rust functions with SQL implementation for "small constants" and "CURRENT_TIMESTAMP" variables
+
+#### Impact Predictions Model
+- **Real-time Integration**: Enhanced impact_predictions model with real-time reputation integration
+- **Calculation Improvements**: Fixed reputation aggregation logic and documentation in impact predictions
+
+#### Discovery History
+- **Missing Table Documentation**: Added missing discovery_history table to documentation
+
+### 🏛️ Constitutional and Quality Updates
+
+#### Quality Gates Alignment
+- **Quality Gates Specification**: Updated [`spec/14-quality-gates.md`](spec/14-quality-gates.md) with implementation references and alignment with constitution Rule 5
 - **Constitutional Compliance**: Ensured all documentation updates align with constitutional requirements and project principles
 
-### 📋 Specification Updates
+#### Architectural Specifications
+- **Architecture Specification**: Updated [`spec/03-architecture.md`](spec/03-architecture.md) with latest architectural details
+- **API Specification**: Updated [`spec/05-api.md`](spec/05-api.md) with latest API changes
+- **P2P Synchronization**: Updated [`spec/08-p2p-sync.md`](spec/08-p2p-sync.md) with synchronization improvements
+- **CLI Specification**: Updated [`spec/10-cli.md`](spec/10-cli.md) with latest CLI changes
+- **Function Core**: Updated [`spec/22-function_core.md`](spec/22-function_core.md) with latest function definitions
 
-#### Data Model Specification
-- **Data Model Refinement**: Updated [`spec/04-data-model.md`](spec/04-data-model.md) with latest data model changes and relationships
-- **Specification README**: Updated [`spec/README.md`](spec/README.md) to reflect current specification structure and organization
-- **Knowledge Base Specification**: Added [`spec/26-seed_knowledge_base_table_value.md`](spec/26-seed_knowledge_base_table_value.md) detailing knowledge base table value seeding process
+### 📋 Additional Updates
+
+#### Security Policy
+- **Version Support Policy**: Updated [`SECURITY.md`](SECURITY.md) to clarify version support policy
+
+#### Data Model Consistency
+- **Schema Consistency**: Fixed inconsistencies between model_core.md and spec/04-data-model.md
+- **Small Constants Implementation**: Replaced 0.001 values with SQL implementation of small_constants in collective assessment docs
+
+#### Build and Packaging
+- **Windows Installer**: Updated Windows installer build instructions with actual executable commands and missing build commands
+- **Desktop Integration**: Updated [`docs/integration/desktop/README_INTEGRATION.md`](docs/integration/desktop/README_INTEGRATION.md) with latest integration details
 
 ### 🗑️ Documentation Cleanup
 
-Removed obsolete documentation files that were replaced by new comprehensive documentation:
-- Removed [`docs/archive/prompt/ekwator/constitution/model_constistucion.md`](docs/archive/prompt/ekwator/constitution/model_constistucion.md) (replaced by updated constitutional documentation)
-- Removed [`docs/mat_model.md`](docs/mat_model.md) (replaced by new model documentation)
-- Removed [`docs/schema-discovery_nodes.sql`](docs/schema-discovery_nodes.sql) (replaced by new schema documentation)
-- Removed [`docs/schema-truth_teraining.sql`](docs/schema-truth_teraining.sql) (replaced by new schema documentation)
+Updated obsolete documentation files with new comprehensive documentation and implementation details:
+- Updated SQL schemas now reflect trigger-based implementations rather than manual calculations
+- Enhanced documentation now includes real-time reputation integration and improved formulas
 
 ---
+
+# 🚀 Support the Future Release of Truth Training
+
+The full version of **Truth Training** can become publicly available sooner —  
+your support directly accelerates development.
+
+If you want to help the project grow, you can support it here:  
+👉 [Donate to the Project](https://github.com/ekwator)
+
+Every contribution moves us closer to completing the full application  
+and delivering a polished, open-source release for everyone.
+
+Thank you for being part of this journey.
