@@ -371,12 +371,14 @@ Priority(n) = f(trust_score, validation_count, reuse_frequency)
 📝 **System-level** table of the Collective Intelligence Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
 
-**Purpose** :  
-Stores information about collective intelligence system participants  
+**Purpose** :
+Stores information about collective intelligence system participants
+At initialization, a record "participants.id = 1" is created in the "participants" table. This record is used for filtering when calculating data for the local participant system.
+
 **Fields** :
 ```
+id                 (INTEGER, PK, AUTOINCREMENT) — unique context identifier
 public_key         (TEXT, PK, UNIQUE, NOT NULL) — unique participant's public key - identifier
-signature          (TEXT, NOT NULL) — cryptographic signature
 reputation_score   (REAL, NOT NULL, DEFAULT 0.5) — participant's reputation score
 reputation_history (INTEGER, NOT NULL) — FK → reputation_history.id — participant's reputation history
 total_judgment     (INTEGER, NOT NULL, DEFAULT 0) — total number of judgment made
@@ -391,13 +393,13 @@ last_activity      (INTEGER) — timestamp of last activity
 **Notes** :  
 • Participant is not tied to identity  
 • Authentication is based on cryptographic key  
-• Reputation is calculated based on accuracy of judgment  
+• Reputation is calculated based on accuracy of judgment and impact
 
 **Model "participants"** :  
 **Source relation**
 ```sql
-participants.public_key = judgment.participant_id
-participants.public_key = impact.participant_id
+participants.id = judgment.participant_id
+participants.id = impact.participant_id
 participants.reputation_history = reputation_history.id
 ```
 **Base participant mapping**
@@ -406,60 +408,73 @@ base_participant_id = participants.public_key
 -- This represents the participant whose reputation is being calculated
 -- Used as reference in reputation calculation formulas below
 ```
-**Aggregation formulas "reputation_score"**
-```sql
--- Reputation score is calculated via triggers when impact or judgment records are added
--- The actual calculation happens in the following triggers:
--- 1. update_participant_reputation_on_impact (for impact assessments)
--- 2. update_participant_reputation_on_judgment (for judgment assessments)
 
-participants.reputation_score = CASE
-    WHEN (total_impact + total_judgment) > 0 THEN
-        (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
-    ELSE 0.5  -- Default neutral score when no assessments have been made
-END
+**Rust Model for Key Generation for creating first record** :
+```rust
+use ring::{rand, signature};
 
--- This score is updated automatically via SQL triggers when:
--- - A new impact record is added (checked against collective_score for accuracy)
--- - A new judgment record is added (checked against collective_score for accuracy)
--- The trigger recalculates the reputation based on the combined accuracy of both impact and judgment assessments
+/// Generates a new key pair for the user table
+pub fn generate_user_keys() -> Result<(String, String), Box<dyn std::error::Error>> {
+    let rng = rand::SystemRandom::new();
+    
+    // Generate Ed25519 key pair for strong security with compact keys
+    let pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng)?;
+    
+    // Extract the public key (this is what goes in the 'user' table)
+    let key_pair = signature::Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())?;
+    let public_key = hex::encode(key_pair.public_key().as_ref());
+    
+    // The private key is the original pkcs8 bytes (these should be stored securely)
+    let private_key = base64::encode(pkcs8_bytes.as_ref());
+    
+    Ok((public_key, private_key))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_user_keys() {
+        let (public_key, private_key) = generate_user_keys().unwrap();
+        
+        // Verify key formats
+        assert!(!public_key.is_empty());
+        assert!(!private_key.is_empty());
+        
+        // Public key should be hex encoded 32-byte Ed25519 key (64 hex chars)
+        assert_eq!(public_key.len(), 64);
+        
+        println!("Generated public key: {}", public_key);
+    }
+}
 ```
-**Aggregation formulas "total_judgment"**
+
+**SQL code for creating first record** :
 ```sql
-participants.total_judgment = (
-    -- Incremented via trigger update_participant_reputation_on_judgment when new judgment records are added
-    -- Total count of judgment assessments made by the participant
-    -- Updated automatically when participant creates new judgment records
-)
+-- Insert the first participant record with generated keys
+INSERT INTO participants (public_key, created_at, last_activity)
+VALUES ('GENERATED_PUBLIC_KEY_HEX', (SELECT strftime('%s', 'now')), (SELECT strftime('%s', 'now')));
+
+-- Initialize the corresponding reputation history record
+INSERT INTO reputation_history (old_reputation, new_reputation, change_reason, updated_at)
+VALUES (0.5, 0.5, 'initial_registration', (SELECT strftime('%s', 'now')));
+
+-- Update the participants table to reference the reputation history
+UPDATE participants
+SET reputation_history = (SELECT id FROM reputation_history WHERE change_reason = 'initial_registration' LIMIT 1)
+WHERE id = 1;
 ```
-**Aggregation formulas "accurate_judgment"**
-```sql
-participants.accurate_judgment = (
-    -- Incremented via trigger update_participant_reputation_on_judgment when judgment assessments are accurate
-    -- Accuracy is determined by comparing judgment assessment with the collective_score from truth_event
-    -- Updated automatically when participant's judgment aligns with collective assessment
-)
+
+During P2P communication between nodes, if an API request returns data with a "participant_id" value from the "truth_event" table that is not present in any record of the "participants.public_key" table, a new record must be created in the "participants" table with the value of this field equal to the received one.:
+
+TruthEvent
+```json
+{
+  "participant_id": "hex",
+}
 ```
-**Aggregation formulas "total_impact"**
-```sql
-participants.total_impact = (
-    -- Incremented via trigger update_participant_reputation_on_impact when new impact records are added
-    -- Total count of impact assessments made by the participant
-    -- Updated automatically when participant creates new impact records
-)
-```
-**Aggregation formulas "accurate_impact"**
-```sql
-participants.accurate_impact = (
-    -- Incremented via trigger update_participant_reputation_on_impact when impact assessments are accurate
-    -- Accuracy is determined by comparing impact value with the collective_score from truth_event
-    -- Updated automatically when participant's impact aligns with collective assessment
-)
-```
-**Aggregation formulas "created_at"**
-```sql
-participants.created_at = CURRENT_TIMESTAMP
-```
+See [spec/05-api.md](../spec/05-api.md) which contains full API documentation.
 
 #### Model: Participant Reputation Tracking
 
@@ -542,7 +557,7 @@ It is **not accept direct participant input**, and is **not transmitted over the
 id             (INTEGER, PK, AUTOINCREMENT) — unique history record identifier
 old_reputation (REAL, NOT NULL) — previous reputation score
 new_reputation (REAL, NOT NULL) — new reputation score
-change_reason (TEXT, NOT NULL) — reason for reputation change
+change_reason  (TEXT, NOT NULL) — reason for reputation change
 updated_at     (INTEGER, NOT NULL) — timestamp of update
 ```
 🏠 Database: truth_training.sqlite
@@ -555,7 +570,7 @@ reputation_history.id = participants.reputation_history
 **Base participant mapping**
 ```sql
 base_participant_id =
-SELECT participants.public_key
+SELECT participants.id
 FROM participants
 WHERE participants.reputation_history = reputation_history.id
 ```
@@ -583,12 +598,12 @@ reputation_history.new_reputation = (
 ```sql
 reputation_history.change_reason = (
     SELECT CASE
-        WHEN (SELECT reputation_score FROM participants WHERE public_key = base_participant_id) >
+        WHEN (SELECT reputation_score FROM participants WHERE id = base_participant_id) >
              (SELECT old_reputation FROM reputation_history WHERE id = reputation_history.id)
         THEN 'accuracy_confirmation'
-        WHEN (SELECT total_judgment FROM participants WHERE public_key = base_participant_id) % 10 = 0
+        WHEN (SELECT total_judgment FROM participants WHERE id = base_participant_id) % 10 = 0
         THEN 'assessment_completed'
-        WHEN (SELECT reputation_score FROM participants WHERE public_key = base_participant_id) >
+        WHEN (SELECT reputation_score FROM participants WHERE id = base_participant_id) >
              (SELECT AVG(reputation_score) FROM participants) * 1.2
         THEN 'consensus_alignment'
         ELSE 'reputation_update'
@@ -1952,6 +1967,7 @@ impact_metrics     (INTEGER, NOT NULL) — FK → impact_metrics.id
 impact_predictions (INTEGER, NOT NULL) — FK → impact_predictions.id
 signature          (TEXT, NOT NULL) — cryptographic signature
 timeline_id        (INTEGER, NOT NULL) — FK → impact_timeline.id
+participant_id   (TEXT, NOT NULL) — FK → participants.public_key
 ```
 🏠 Database: truth_training.sqlite  
 
@@ -2019,6 +2035,7 @@ calculated_at   (INTEGER, NOT NULL) — timestamp of calculated
 **Model impact_metrics** :  
 **Source relation**
 ```sql
+impact..participant_id = 1
 impact.event_id = truth_event.id
 truth_event.id = event_ci.created_by
 impact_metrics.event_id = event_ci.id
@@ -2390,7 +2407,7 @@ Storing **judgment** that **collective intelligence** system **participants** is
 **Fields** :  
 ```
 id               (INTEGER, PK, AUTOINCREMENT) — unique judgment identifier
-participant_id   (INTEGER, NOT NULL) — FK → participants.id
+participant_id   (TEXT, NOT NULL) — FK → participants.public_key
 event_id         (INTEGER, NOT NULL) — FK → event_ci.id
 assessment       (REAL) — type of assessment ∈{NULL,-1,0,1} — (undefined/false/null/true)
 confidence_level (REAL) — confidence level of the assessment
@@ -2413,7 +2430,7 @@ timeline_id      (INTEGER, NOT NULL) — FK → judgment_timeline.id
 **Model "judgment"** :  
 **Source relation**
 ```sql
-judgment.participant_id = participants.id
+judgment.participant_id = 1
 judgment.event_id = event_ci.id
 judgment_weights.judgment_id = judgment.id
 consensus_ci.judgment_id = judgment.id

@@ -75,8 +75,8 @@ CREATE TABLE context (
 );
 
 CREATE TABLE participants (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
     public_key         TEXT PRIMARY KEY,
-    signature          TEXT NOT NULL,
     reputation_score   REAL NOT NULL DEFAULT 0.5,
     reputation_history INTEGER NOT NULL,
     total_judgment     INTEGER NOT NULL DEFAULT 0,
@@ -146,11 +146,13 @@ CREATE TABLE impact (
     impact_predictions INTEGER NOT NULL,
     signature          TEXT NOT NULL,
     timeline_id        INTEGER NOT NULL,
+    participant_id     TEXT NOT NULL,
     FOREIGN KEY (event_id) REFERENCES truth_event(id),
     FOREIGN KEY (type_id) REFERENCES effect(id),
     FOREIGN KEY (impact_metrics) REFERENCES impact_metrics(id),
     FOREIGN KEY (impact_predictions) REFERENCES impact_predictions(id),
-    FOREIGN KEY (timeline_id) REFERENCES impact_timeline(id)
+    FOREIGN KEY (timeline_id) REFERENCES impact_timeline(id),
+    FOREIGN KEY (participant_id) REFERENCES participants(public_key)
 );
 
 CREATE TABLE impact_metrics (
@@ -188,7 +190,7 @@ CREATE TABLE impact_links (
 
 CREATE TABLE judgment (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    participant_id   INTEGER NOT NULL,
+    participant_id   TEXT NOT NULL,
     event_id         INTEGER NOT NULL,
     assessment       REAL,
     confidence_level REAL,
@@ -197,7 +199,7 @@ CREATE TABLE judgment (
     judgment_weights INTEGER NOT NULL,
     signature        TEXT NOT NULL,
     timeline_id      INTEGER NOT NULL,
-    FOREIGN KEY (participant_id) REFERENCES participants(id),
+    FOREIGN KEY (participant_id) REFERENCES participants(public_key),
     FOREIGN KEY (event_id) REFERENCES event_ci(id),
     FOREIGN KEY (consensus_ci) REFERENCES consensus_ci(id),
     FOREIGN KEY (judgment_weights) REFERENCES judgment_weights(id),

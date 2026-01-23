@@ -156,7 +156,8 @@ Impact
   "impact_metrics": 1,
   "impact_predictions": 1,
   "signature": "hex",
-  "timeline_id": 1
+  "timeline_id": 1,
+  "participant_id": "hex"
 }
 ```
 Note: `id` is INTEGER (PK, AUTOINCREMENT), not UUID. The `public_key` field has been removed as it's derivable from the signature. The `value` field is now nullable and represents impact magnitude (NULL for undefined, 0 for negative, 1 for positive). The `trend` field represents impact trend (0/1/2/3 for "logical_negative"/"logical_positive"/"illogical_negative"/"illogical_positive"). The `created_at` timestamp is now part of the timeline referenced by `timeline_id`.

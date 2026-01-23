@@ -153,8 +153,8 @@ Stores information about collective intelligence system participants.
 
 | Column | Type | Description |
 |--------|------|-------------|
+| id | INTEGER | Primary key (auto-increment) |
 | public_key | TEXT | Primary key (participant identifier - public key, unique) |
-| signature | TEXT | Cryptographic signature |
 | reputation_score | REAL | Participant's reputation score (range 0.0 .. 1.0, default 0.5) |
 | reputation_history | INTEGER | Foreign key to reputation_history.id |
 | total_judgment | INTEGER | Total number of judgment made (default 0) |
@@ -183,7 +183,7 @@ Stores subjective assessments (judgments) of events issued by participants, repr
 | Column | Type | Description |
 |--------|------|-------------|
 | id | INTEGER | Primary key (auto-increment) |
-| participant_id | INTEGER | Foreign key to participants.id |
+| participant_id | TEXT | Foreign key to participants.public_key |
 | event_id | INTEGER | Foreign key to event_ci.id |
 | assessment | REAL | Type of assessment |
 | confidence_level | REAL | Confidence level of the assessment |
@@ -254,6 +254,7 @@ Stores subjective assessments (impacts) of events issued by validators, represen
 | impact_predictions | INTEGER | Foreign key to impact_predictions.id |
 | signature | TEXT | Cryptographic signature |
 | timeline_id | INTEGER | Foreign key to impact_timeline.id |
+| participant_id | TEXT | Foreign key to participants.public_key |
 
 #### impact_links Table
 Allows linking consequences to each other, forming chains of cause-and-impact relationships.
