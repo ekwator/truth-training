@@ -672,6 +672,8 @@ POST /events - add truth events
 POST /impacts - add impacts
 POST /judgments - add judgments
 
+For complete API specification, see [spec/05-api.md](../spec/05-api.md) which contains full API documentation.
+
 The P2P module is fully functional and integrated into the main application to provide decentralized data synchronization between nodes.
 
 

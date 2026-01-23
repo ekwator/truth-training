@@ -212,6 +212,8 @@ The system tracks relay success rates dynamically during sync operations:
 - Enhance judgment synchronization protocols for more efficient truth assessment propagation.
 - Implement advanced conflict resolution for judgment disagreements between nodes.
 
+For complete API specification, see [spec/05-api.md](05-api.md) which contains full API documentation.
+
 _Version: v1.1.0_
 
 - See [docs/README.md](../docs/README.md) for detailed explanations.
