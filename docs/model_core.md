@@ -246,7 +246,7 @@ as described in sections 3.6 and 3.7
 
 The **Truth Training** system implements several SQL views to support data analysis and calculation of various metrics. These views are organized by functional area:
 
-#### Collective Assessment Views
+#### Collective Assessment Views [model_core_views_collective_assessment.md](model_core_views_collective_assessment.md)
 
 • **local_collective_score_calculation** - Calculates local collective scores for **events** based on **participant impact** data. This view supports the calculation of cs_i = f-local(I(E_i)) as described in section 2.6.3, where I_i(E_i) represents the set of participant **impacts**
 
@@ -276,7 +276,7 @@ R_group = (Σ R_i) / N
 
 • **event_projection_calculation** - Projects **events** in **truth-impact space** for classification into **quadrants** (Q1-Q4). This view supports the intersection model described in section 2.3.1, calculating the "truth_score" and "impact_score" for the "event_projection" table
 
-#### Scoring Views
+#### Scoring Views [model_core_views_scoring.md](model_core_views_scoring.md)
 
 • **impact_score_calculation** - Calculates **impact scores** based on **impact** records and **participant reputation**. This view implements the calculation logic for the "impact_score" field in the "truth_event" table, aggregating individual **impact values** taking into account their types, timestamps, and the reputation of **participants** who made the **impact assessments**
 
@@ -290,7 +290,7 @@ R_group = (Σ R_i) / N
 
 • **judgment_score_calculation_detailed** - Detailed calculation of **judgment scores** with comprehensive formulas, providing additional analytical capabilities for **judgment assessment**
 
-#### Aggregated Metrics Views
+#### Aggregated Metrics Views [model_core_views_aggregated_metrics.md](model_core_views_aggregated_metrics.md)
 
 • **system_trend_calculation** - Calculates system-wide trends based on "positive" and "negative" **impacts** using the formula :
 ```
@@ -336,7 +336,7 @@ Q(n) = α * recent_performance + β * historical_consistency + γ * trust_factor
 
 • **event_stability_detection** - Detects **event stability** based on temporal dynamics, supporting the stability detection logic mentioned in section 3.7
 
-#### Network Operations Views
+#### Network Operations Views [model_core_views_network_tables.md](model_core_views_network_tables.md)
 
 • **trust_score_calculation** - Calculates **trust scores** based on **events** and validations using the formula :
 ```
