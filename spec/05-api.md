@@ -118,6 +118,8 @@ Future alignment
 ### JSON Schemas (informal)
 
 TruthEvent (v1.1.0: embedded context fields with timeline reference)
+
+TruthEvent
 ```json
 {
   "id": 1,
@@ -185,9 +187,10 @@ SyncData
     {
       "id": 1,
       "time_axis_id": 2,
+      "signature": "hex",
       "t_start": "TIMESTAMP_VALUE",
-      "t_end": "TIMESTAMP_VALUE",
-      "signature": "hex"
+      "t_end": "TIMESTAMP_VALUE"
+      
     }
   ],
   "event_links": [
@@ -199,8 +202,8 @@ SyncData
       "created_at": "TIMESTAMP_VALUE"
     }
   ],
-  "impacts": [/* Impact[] */],
-  "impact_timelines": [
+  "impact": [/* Impact[] */],
+  "impact_timeline": [
     {
       "id": 1,
       "time_axis_id": 1,
@@ -218,8 +221,8 @@ SyncData
       "created_at": "TIMESTAMP_VALUE"
     }
   ],
-  "judgments": [/* Judgment[] */],
-  "judgment_timelines": [
+  "judgment": [/* Judgment[] */],
+  "judgment_timeline": [
     {
       "id": 1,
       "time_axis_id": 1,
