@@ -13,27 +13,29 @@ Base URL: http://<host>:<port>/
 - POST /seed { locale?: "ru"|"en" }
 - GET /events (signed) → list of events; headers: X-Public-Key, X-Signature
 - POST /events { description, category_id?, forma_id?, cause_id?, develop_id?, effect_id?, vector } (v1.0.0: context_id removed, embedded fields required)
+- GET /impacts → list of impacts for an event
 - POST /impacts Impact
-  - Impact: { id: integer, event_id: integer, type_id: number, value: boolean, notes?: string, created_at: number }
-- GET /statements → list
-- POST /statements { event_id, text, context?, truth_score? }
+  - Impact: { id: integer, event_id: integer, type_id: number, trend: integer, value: boolean, notes?: string, impact_metrics: integer, impact_predictions: integer, signature: string, timeline_id: integer }
+- GET /judgments → list of judgments for an event
+- POST /judgments { event_id, assessment, confidence_level?, reasoning? }
+  - Judgment: { id: integer, participant_id: string, event_id: integer, assessment: number, confidence_level: number, reasoning: string, consensus_ci: integer, judgment_weights: integer, timeline_id: integer, signature: string }
 - POST /detect { event_id, detected, corrected? }
 - POST /recalc → { status, metric_id }
 - POST /api/v1/recalc_collective → { status: "ok" }
 - GET /progress → list of progress_metrics rows
-- GET /get_data → { events, impacts, metrics }
+- GET /get_data → { events, impacts, judgments, metrics }
 - GET /api/v1/info → { node_name, version, p2p_enabled, db_path, peer_count }
-- GET /api/v1/stats → { events, statements, impacts, node_ratings, group_ratings, avg_trust_score, avg_quality_index, active_nodes }
+- GET /api/v1/stats → { events, judgments, impacts, node_ratings, group_ratings, avg_trust_score, avg_quality_index, active_nodes }
 - GET /api/v1/network/local → peer history and local network summary
 - GET /graph/json → network graph visualization data
 - POST /sync (signed) → SyncResult
   - Headers: X-Public-Key, X-Signature, X-Timestamp
   - Message signed: `sync_push:{ts}`
-  - Body: SyncData { events, event_timelines, event_links, statements, impacts, impact_timelines, impact_links, judgments, judgment_timelines, judgment_links, metrics, node_ratings, group_ratings, node_performance, last_sync }
+  - Body: SyncData { truth_event, event_timeline, event_links, impacts, impact_timeline, impact_links, judgments, judgment_timeline, judgment_links, last_sync }
 - POST /incremental_sync (signed) → SyncResult
   - Headers: X-Public-Key, X-Signature, X-Timestamp
   - Message signed: `incremental_sync:{ts}`
-  - Body: SyncData with recent changes only including events, event_timelines, event_links, impacts, impact_timelines, impact_links, judgments, judgment_timelines, judgment_links, and their associated timelines and links
+  - Body: SyncData with recent changes only including truth_event, event_timeline, event_links, impacts, impact_timeline, impact_links, judgments, judgment_timeline, judgment_links, and their associated timelines and links
 
 Notes
 - Signed endpoints require Ed25519 signature of the message pattern above.
@@ -157,6 +159,7 @@ Impact
 ```
 Note: `id` is INTEGER (PK, AUTOINCREMENT), not UUID. The `public_key` field has been removed as it's derivable from the signature. The `value` field is now nullable and represents impact magnitude (NULL for undefined, 0 for negative, 1 for positive). The `trend` field represents impact trend (0/1/2/3 for "logical_negative"/"logical_positive"/"illogical_negative"/"illogical_positive"). The `created_at` timestamp is now part of the timeline referenced by `timeline_id`.
 
+
 Judgment
 ```json
 {
@@ -196,8 +199,8 @@ SyncData
       "created_at": "TIMESTAMP_VALUE"
     }
   ],
-  "impact": [/* Impact[] */],
-  "impact_timeline": [
+  "impacts": [/* Impact[] */],
+  "impact_timelines": [
     {
       "id": 1,
       "time_axis_id": 1,
@@ -215,21 +218,8 @@ SyncData
       "created_at": "TIMESTAMP_VALUE"
     }
   ],
-  "judgment": [
-    {
-      "id": 1,
-      "participant_id": "hex",
-      "event_id": 1,
-      "assessment": 1.0,
-      "confidence_level": 0.8,
-      "reasoning": "Evidence strongly supports this event",
-      "consensus_ci": 1,
-      "judgment_weights": 1,
-      "timeline_id": 1,
-      "signature": "hex"
-    }
-  ],
-  "judgment_timeline": [
+  "judgments": [/* Judgment[] */],
+  "judgment_timelines": [
     {
       "id": 1,
       "time_axis_id": 1,
