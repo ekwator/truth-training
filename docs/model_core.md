@@ -413,7 +413,7 @@ base_participant_id = participants.public_key
 ```rust
 use ring::{rand, signature};
 
-/// Generates a new key pair for the user table
+/// Generates a new key pair (GENERATED_PUBLIC_KEY_HEX,GENERATED_PRIVATE_KEY_HEX)
 pub fn generate_user_keys() -> Result<(String, String), Box<dyn std::error::Error>> {
     let rng = rand::SystemRandom::new();
     
