@@ -100,7 +100,7 @@ CREATE TABLE truth_event (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     description      TEXT NOT NULL,
     global_id        TEXT NOT NULL UNIQUE,
-    participant_id   TEXT NOT NULL,
+    participant_id   INTEGER NOT NULL,
     signature        TEXT NOT NULL,
     category_id      INTEGER NOT NULL,
     forma_id         INTEGER NOT NULL,
@@ -115,7 +115,7 @@ CREATE TABLE truth_event (
     collective_score REAL NOT NULL,
     impact_score     REAL NOT NULL,
     judgment_score   REAL,
-    FOREIGN KEY (participant_id) REFERENCES participants(public_key),
+    FOREIGN KEY (participant_id) REFERENCES participants(id),
     FOREIGN KEY (category_id) REFERENCES category(id),
     FOREIGN KEY (forma_id) REFERENCES forma(id),
     FOREIGN KEY (cause_id) REFERENCES cause(id),
@@ -146,13 +146,13 @@ CREATE TABLE impact (
     impact_predictions INTEGER NOT NULL,
     signature          TEXT NOT NULL,
     timeline_id        INTEGER NOT NULL,
-    participant_id     TEXT NOT NULL,
+    participant_id     INTEGER NOT NULL,
     FOREIGN KEY (event_id) REFERENCES truth_event(id),
     FOREIGN KEY (type_id) REFERENCES effect(id),
     FOREIGN KEY (impact_metrics) REFERENCES impact_metrics(id),
     FOREIGN KEY (impact_predictions) REFERENCES impact_predictions(id),
     FOREIGN KEY (timeline_id) REFERENCES impact_timeline(id),
-    FOREIGN KEY (participant_id) REFERENCES participants(public_key)
+    FOREIGN KEY (participant_id) REFERENCES participants(id)
 );
 
 CREATE TABLE impact_metrics (
@@ -190,7 +190,7 @@ CREATE TABLE impact_links (
 
 CREATE TABLE judgment (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    participant_id   TEXT NOT NULL,
+    participant_id   INTEGER NOT NULL,
     event_id         INTEGER NOT NULL,
     assessment       REAL,
     confidence_level REAL,
@@ -199,12 +199,11 @@ CREATE TABLE judgment (
     judgment_weights INTEGER NOT NULL,
     signature        TEXT NOT NULL,
     timeline_id      INTEGER NOT NULL,
-    FOREIGN KEY (participant_id) REFERENCES participants(public_key),
+    FOREIGN KEY (participant_id) REFERENCES participants(id),
     FOREIGN KEY (event_id) REFERENCES event_ci(id),
     FOREIGN KEY (consensus_ci) REFERENCES consensus_ci(id),
     FOREIGN KEY (judgment_weights) REFERENCES judgment_weights(id),
-    FOREIGN KEY (timeline_id) REFERENCES judgment_timeline(id),
-    UNIQUE(participant_id, event_id)
+    FOREIGN KEY (timeline_id) REFERENCES judgment_timeline(id)
 );
 
 CREATE TABLE judgment_links (
@@ -373,10 +372,11 @@ CREATE INDEX idx_truth_event_global_id ON truth_event(global_id);
 CREATE INDEX idx_truth_event_participant_id ON truth_event(participant_id);
 CREATE INDEX idx_impact_event_id ON impact(event_id);
 CREATE INDEX idx_judgment_event_id ON judgment(event_id);
+CREATE INDEX idx_impact_participant_id ON impact(participant_id);
 CREATE INDEX idx_judgment_participant_id ON judgment(participant_id);
 CREATE INDEX idx_statements_event_id ON statements(event_id);
 CREATE INDEX idx_event_ci_created_by ON event_ci(created_by);
-CREATE INDEX idx_participants_public_key ON participants(public_key);
+CREATE INDEX idx_participants_id ON participants(id);
 ```
 
 ## Discovery Nodes Database (discovery_nodes.sqlite)
@@ -399,7 +399,7 @@ CREATE TABLE discovery_nodes (
     node_id    TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    FOREIGN KEY (node_id) REFERENCES participants(public_key)
+    FOREIGN KEY (node_id) REFERENCES participants(id)
 );
 
 CREATE TABLE discovery_history (

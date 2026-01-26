@@ -125,7 +125,7 @@ TruthEvent
   "id": 1,
   "description": "string",
   "global_id": "string",
-  "participant_id": "hex",
+  "participant_id": "hex",  // This is the public_key of the participant
   "signature": "hex",
   "category_id": 1,
   "forma_id": 2,
@@ -142,7 +142,7 @@ TruthEvent
   "judgment_score": null
 }
 ```
-Note: All context fields (category_id, forma_id, cause_id, develop_id, effect_id) are non-nullable. The `context_id` field has been removed, and `timestamp_start`/`timestamp_end` have been moved to the separate event_timeline table referenced by timeline_id. The `public_key` field has been renamed to `participant_id`. Boolean fields (vector, detected, corrected) are now integers (0/1). Added impact_score and judgment_score fields for local assessment metrics.
+Note: All context fields (category_id, forma_id, cause_id, develop_id, effect_id) are non-nullable. The `context_id` field has been removed, and `timestamp_start`/`timestamp_end` have been moved to the separate event_timeline table referenced by timeline_id. The `public_key` field has been renamed to `participant_id`. Boolean fields (vector, detected, corrected) are now integers (0/1). Added impact_score and judgment_score fields for local assessment metrics. The combination of `global_id` and `participant_id` forms a unique constraint ensuring that each event is unique per participant.
 
 Impact
 ```json
@@ -157,17 +157,18 @@ Impact
   "impact_predictions": 1,
   "signature": "hex",
   "timeline_id": 1,
-  "participant_id": "hex"
+  "participant_id": "hex"  // This is the public_key of the participant
 }
 ```
-Note: `id` is INTEGER (PK, AUTOINCREMENT), not UUID. The `public_key` field has been removed as it's derivable from the signature. The `value` field is now nullable and represents impact magnitude (NULL for undefined, 0 for negative, 1 for positive). The `trend` field represents impact trend (0/1/2/3 for "logical_negative"/"logical_positive"/"illogical_negative"/"illogical_positive"). The `created_at` timestamp is now part of the timeline referenced by `timeline_id`.
+```
+Note: `id` is INTEGER (PK, AUTOINCREMENT), not UUID. The `public_key` field has been removed as it's derivable from the signature. The `value` field is now nullable and represents impact magnitude (NULL for undefined, 0 for negative, 1 for positive). The `trend` field represents impact trend (0/1/2/3 for "logical_negative"/"logical_positive"/"illogical_negative"/"illogical_positive"). The `created_at` timestamp is now part of the timeline referenced by `timeline_id`. Each impact is associated with a participant via the `participant_id` field which references the public key of the participant who created the impact assessment.
 
 
 Judgment
 ```json
 {
   "id": 1,
-  "participant_id": "hex",
+  "participant_id": "hex",  // This is the public_key of the participant
   "event_id": 1,
   "assessment": null,
   "confidence_level": 0.5,
@@ -178,7 +179,7 @@ Judgment
   "signature": "hex"
 }
 ```
-Note: `id` is INTEGER (PK, AUTOINCREMENT). The `assessment` field is nullable and represents truth assessment (NULL for undefined, -1.0 for false, 0.0 for neutral, 1.0 for true). The `confidence_level` field represents the participant's confidence in their assessment (0.0 to 1.0). The `reasoning` field contains textual justification for the judgment. The `timeline_id` references the judgment_timeline table for temporal context.
+Note: `id` is INTEGER (PK, AUTOINCREMENT). The `assessment` field is nullable and represents truth assessment (NULL for undefined, -1.0 for false, 0.0 for neutral, 1.0 for true). The `confidence_level` field represents the participant's confidence in their assessment (0.0 to 1.0). The `reasoning` field contains textual justification for the judgment. The `timeline_id` references the judgment_timeline table for temporal context. Each judgment is associated with a participant via the `participant_id` field which references the public key of the participant who created the judgment.
 
 SyncData
 ```json

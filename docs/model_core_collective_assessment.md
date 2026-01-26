@@ -252,10 +252,10 @@ BEGIN
             FROM impact_predictions ip
             JOIN event_ci ec ON ip.event_id = ec.id
             JOIN truth_event te ON ec.created_by = te.id
-            WHERE te.participant_id = participants.public_key
+            WHERE te.participant_id = participants.id
             AND ec.status IN ('resolved', 'archived')
         )
-    WHERE public_key = (
+    WHERE id = (
         SELECT te.participant_id
         FROM truth_event te
         JOIN event_ci ec ON te.id = ec.created_by
@@ -280,7 +280,7 @@ BEGIN
             WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) < 0.5 AND NEW.value = 0 THEN 1
             ELSE 0
         END
-    WHERE public_key = (
+    WHERE id = (
         SELECT participant_id FROM truth_event WHERE id = NEW.event_id
     );
     
@@ -291,7 +291,7 @@ BEGIN
                 (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
             ELSE 0.5
         END
-        WHERE public_key = (
+        WHERE id = (
             SELECT participant_id FROM truth_event WHERE id = NEW.event_id
         );
     END;
@@ -313,7 +313,7 @@ BEGIN
             WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) < 0.5 AND NEW.assessment = 'false' THEN 1
             ELSE 0
         END
-    WHERE public_key = (
+    WHERE id = (
         SELECT participant_id FROM truth_event WHERE id = (
             SELECT created_by FROM event_ci WHERE id = NEW.event_id
         )
@@ -326,7 +326,7 @@ BEGIN
                 (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
             ELSE 0.5
         END
-        WHERE public_key = (
+        WHERE id = (
             SELECT participant_id FROM truth_event WHERE id = (
                 SELECT created_by FROM event_ci WHERE id = NEW.event_id
             )
@@ -393,7 +393,7 @@ BEGIN
     
     -- Verify that participant_id exists in participants table
     SELECT CASE
-        WHEN NOT EXISTS (SELECT 1 FROM participants WHERE public_key = NEW.participant_id) THEN RAISE(ABORT, 'Invalid participant_id')
+        WHEN NOT EXISTS (SELECT 1 FROM participants WHERE id = NEW.participant_id) THEN RAISE(ABORT, 'Invalid participant_id')
         ELSE NULL
     END;
 END;
@@ -509,7 +509,7 @@ BEGIN
     );
 END;
 ```
-    
+
 -- Trigger to update event_ci state fields based on judgment data
 -- Automatically updates the "event_type" and "resolution_data" fields in the "event_ci" table based on changes in judgment data and convergence of assessment axes
 ```sql
@@ -590,4 +590,70 @@ BEGIN
         )
     WHERE id = NEW.event_id;
 END;
+```
+
+-- Trigger to update participant reputation based on impact accuracy with proper participant_id reference
+-- Uses collective_score as a reference/anchor value for system state and connects through the proper relationship
+```sql
+CREATE TRIGGER update_participant_reputation_on_impact_proper_ref
+AFTER INSERT ON impact
+FOR EACH ROW
+BEGIN
+    -- Update participant's impact metrics based on new impact
+    -- Using the proper relationship: impact.participant_id → participants.id
+    UPDATE participants
+    SET
+        total_impact = total_impact + 1,
+        -- Check if the impact aligns with the collective_score (as a measure of accuracy)
+        accurate_impact = accurate_impact + CASE
+            WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) > 0.5 AND NEW.value = 1 THEN 1
+            WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) < 0.5 AND NEW.value = 0 THEN 1
+            ELSE 0
+        END
+    WHERE id = NEW.participant_id;  -- Proper reference using NEW.participant_id
     
+    -- Update reputation score based on combined accuracy of both impact and judgment assessments
+    UPDATE participants
+    SET reputation_score = CASE
+        WHEN (total_impact + total_judgment) > 0 THEN
+            (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
+        ELSE 0.5
+    END
+    WHERE id = NEW.participant_id;  -- Proper reference using NEW.participant_id
+END;
+```
+
+-- Trigger to update participant reputation based on judgment accuracy with proper participant_id reference
+-- Uses collective_score as a reference/anchor value for system state and connects through the proper relationship
+```sql
+CREATE TRIGGER update_participant_reputation_on_judgment_proper_ref
+AFTER INSERT ON judgment
+FOR EACH ROW
+BEGIN
+    -- Update participant's judgment metrics based on new judgment
+    -- Using the proper relationship: judgment.participant_id → participants.id
+    UPDATE participants
+    SET
+        total_judgment = total_judgment + 1,
+        -- Check if the judgment aligns with the collective_score (as a measure of accuracy)
+        accurate_judgment = accurate_judgment + CASE
+            WHEN (SELECT collective_score FROM truth_event WHERE id = (
+                SELECT created_by FROM event_ci WHERE id = NEW.event_id
+            )) > 0.5 AND NEW.assessment = 'true' THEN 1
+            WHEN (SELECT collective_score FROM truth_event WHERE id = (
+                SELECT created_by FROM event_ci WHERE id = NEW.event_id
+            )) < 0.5 AND NEW.assessment = 'false' THEN 1
+            ELSE 0
+        END
+    WHERE id = NEW.participant_id;  -- Proper reference using NEW.participant_id
+    
+    -- Update reputation score based on combined accuracy of both impact and judgment assessments
+    UPDATE participants
+    SET reputation_score = CASE
+        WHEN (total_impact + total_judgment) > 0 THEN
+            (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
+        ELSE 0.5
+    END
+    WHERE id = NEW.participant_id;  -- Proper reference using NEW.participant_id
+END;
+```

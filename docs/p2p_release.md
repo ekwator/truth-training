@@ -94,6 +94,30 @@ In addition to events and impacts, the P2P synchronization system also handles t
 
 The judgment synchronization process works alongside event and impact synchronization to ensure that both axes of the truth-consequence space are properly maintained across the distributed network.
 
+### Unique Constraint in P2P Exchange
+
+During P2P synchronization, a unique constraint is enforced using the combination of "global_id" and "participant_id" fields in the "truth_event" table. This ensures that each event identified by a specific "global_id" from a specific participant (identified by "participant_id" which references the public_key in the participants table) is treated as a unique entity across the network. This prevents duplication of the same event from the same participant during synchronization.
+
+### Participant Record Management During P2P Sync
+
+During P2P synchronization, when nodes receive data from other nodes, the "participant_id" field in "truth_event", "impact", and "judgment" tables contains the public key value of the participant who created the record. If this public key value is not found in the local "participants.public_key" field, a new participant record is created in the local database with the received public key value. This ensures that all nodes have the necessary participant records to properly attribute events, impacts, and judgments to their creators.
+
+### Signature Field Handling in P2P Networks
+
+All tables participating in P2P synchronization include signature fields that are used to verify authenticity and integrity of the data during synchronization:
+
+- **truth_event table**: Contains a "signature" field for verifying the authenticity of the event
+- **impact table**: Contains a "signature" field for verifying the authenticity of the impact assessment
+- **judgment table**: Contains a "signature" field for verifying the authenticity of the judgment
+- **event_timeline table**: Contains a "signature" field for verifying the authenticity of timeline information
+- **impact_timeline table**: Contains a "signature" field for verifying the authenticity of impact timeline information
+- **judgment_timeline table**: Contains a "signature" field for verifying the authenticity of judgment timeline information
+- **event_links table**: Contains a "signature" field for verifying the authenticity of event relationship links
+- **impact_links table**: Contains a "signature" field for verifying the authenticity of impact relationship links
+- **judgment_links table**: Contains a "signature" field for verifying the authenticity of judgment relationship links
+
+These signature fields are critical for ensuring data integrity during P2P synchronization between nodes.
+
 ### Timeline Synchronization in P2P Networks
 
 In addition to synchronizing the core data entities, the P2P system also handles temporal aspects of all entities:

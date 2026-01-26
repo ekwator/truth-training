@@ -32,6 +32,16 @@ Spec ID: 08
 - **Judgment timeline synchronization**: Separate synchronization of judgment timelines to handle temporally-bound truth assessments. [src/p2p/judgment_timeline_sync.rs]
 - **Entity linking synchronization**: Synchronization of relationship links between events, impacts, and judgments to maintain graph structure. [src/p2p/link_sync.rs]
 
+### P2P Exchange Mechanics
+
+The P2P exchange system synchronizes the following tables between nodes: "truth_event", "event_timeline", "event_links", "impact", "impact_timeline", "impact_links", "judgment", "judgment_timeline", "judgment_links". The "participants" table does not participate in direct P2P exchange, but when receiving data from other nodes, if a "participant_id" value (representing the public_key) from "truth_event", "impact", or "judgment" tables is not found in the local "participants.public_key" field, a new participant record is created with that public_key value.
+
+**Unique Constraint in P2P Exchange**: During P2P synchronization, the unique constraint formed by "global_id" and "participant_id" ensures that each event is unique per participant. When nodes exchange "truth_event" data, an event with a specific "global_id" from a specific participant (identified by "participant_id") is treated as a unique entity. This prevents duplication of the same event from the same participant during synchronization.
+
+**Participant Creation During Sync**: During P2P synchronization, when nodes exchange data for "truth_event", "impact", and "judgment" tables, the "participant_id" field in these tables actually represents the public key value of the participant. If this public key value does not exist in the local "participants.public_key" field, a new record is created in the local "participants" table with the public key value from the received "participant_id" field. This ensures that all nodes have the necessary participant records to properly associate events, impacts, and judgments with their creators.
+
+**Signature Field Description**: All tables participating in P2P exchange (truth_event, impact, judgment, event_timeline, impact_timeline, judgment_timeline, event_links, impact_links, judgment_links) contain a "signature" field that is used to verify the authenticity and integrity of the data during synchronization.
+
 ### Security
 
 - Signed requests with `X-Public-Key`, `X-Signature`, `X-Timestamp`.

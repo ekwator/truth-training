@@ -108,7 +108,7 @@ Main table storing events in the Truth Training system with embedded context fie
 | id | INTEGER | Primary key (auto-increment) |
 | description | TEXT | Event description |
 | global_id | TEXT | Global event identifier for network identification (unique) |
-| participant_id | TEXT | Foreign key to participants.public_key |
+| participant_id | INTEGER | Foreign key to participants.id |
 | signature | TEXT | Cryptographic signature |
 | category_id | INTEGER | Foreign key to category.id |
 | forma_id | INTEGER | Foreign key to forma.id |
@@ -183,7 +183,7 @@ Stores subjective assessments (judgments) of events issued by participants, repr
 | Column | Type | Description |
 |--------|------|-------------|
 | id | INTEGER | Primary key (auto-increment) |
-| participant_id | TEXT | Foreign key to participants.public_key |
+| participant_id | INTEGER | Foreign key to participants.id |
 | event_id | INTEGER | Foreign key to event_ci.id |
 | assessment | REAL | Type of assessment |
 | confidence_level | REAL | Confidence level of the assessment |
@@ -254,7 +254,7 @@ Stores subjective assessments (impacts) of events issued by validators, represen
 | impact_predictions | INTEGER | Foreign key to impact_predictions.id |
 | signature | TEXT | Cryptographic signature |
 | timeline_id | INTEGER | Foreign key to impact_timeline.id |
-| participant_id | TEXT | Foreign key to participants.public_key |
+| participant_id | INTEGER | Foreign key to participants.id |
 
 #### impact_links Table
 Allows linking consequences to each other, forming chains of cause-and-impact relationships.
@@ -459,7 +459,7 @@ Stores information about discovered nodes in Truth Training network.
 | last_seen | INTEGER | Time of last successful contact |
 | ttl | INTEGER | Record lifetime before automatic deletion |
 | source | TEXT | Source of node discovery |
-| node_id | TEXT | Foreign key to participants.public_key |
+| node_id | INTEGER | Foreign key to participants.id |
 | created_at | INTEGER | Timestamp of record creation |
 | updated_at | INTEGER | Timestamp of last update |
 

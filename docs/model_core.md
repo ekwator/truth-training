@@ -107,19 +107,8 @@ CASE
     THEN 0.000001  -- smallest positive value to exclude 0
     ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )  -- ensure it's always less than 2
 END
-
--- For convenience in complex queries, this can be defined as a view:
-CREATE VIEW IF NOT EXISTS small_constants_view AS
-SELECT
-    CASE
-        WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
-        THEN 0.000001
-        ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
-    END AS small_constant;
-
--- Or for direct use in expressions without creating a view:
--- Replace calls to small_constants() with the CASE expression above
 ```
+For convenience in complex queries, this can be defined as a view : `small_constants_view`
 
 This SQL implementation replaces the Rust function to maintain the same quantum uncertainty behavior while enabling use in SQL triggers and stored procedures across desktop and mobile platforms. The implementation uses SQLite's built-in time functions to generate a time-based pseudo-random value in the range (0, 2), maintaining the quantum uncertainty property essential to the model.
 
@@ -142,7 +131,7 @@ This explains why in some code parts (e.g. "get_truth_event" function) these fie
 
 This section describes the trigger system for data recalculation and aggregation that occurs when new information is added to the system. The triggers are activated when data is added through various pathways :
 
-•  By **participants** through the core system (core/) by entering data using desktop, mobile (android, iOS) applications when creating :  
+•  By participants through the core system (core/) by entering data using desktop, mobile (android, iOS) applications when creating :  
  ◦ **Events** (**event**)  
  ◦ **Impacts** (**impact**)  
  ◦ **Judgments** (**judgment**)
@@ -196,6 +185,26 @@ Activate when a **participant** creates a new **event** through the user interfa
 
 **Triggers from [docs/model_core_scoring.md](model_core_scoring.md):**
 
+• `update_impact_score_after_impact_change` - recalculates the **impact score** for an **event** when new **impact** data is added, considering participant reputation. For local user ("participants.id" = 1), filters by "participant_id" = 1; for global/group calculations, groups by "impact.participant_id"
+
+• `update_judgment_score_after_judgment_change` - recalculates the **judgment score** for an **event** when new **judgment** data is added, considering **participant reputation** and confidence. For local user ("participants.id" = 1), filters by "participant_id" = 1; for global/group calculations, groups by "judgment.participant_id"
+
+• `update_collective_score_after_impact_or_judgment_change` - recalculates the "collective_score" when **impact** or **judgment** scores change, implementing the relationship: "collective_score" ← "impact_score" + "judgment_score"
+
+• `update_impact_score_after_impact_change_all_participants` - updates **impact** score based on all **participants'** contributions, implementing the relationship: "impact.participant_id" → "participants.id"
+
+• `update_judgment_score_after_judgment_change_all_participants` - updates **judgment** score based on all **participants'** contributions, implementing the relationship: "judgment.participant_id" → "participants.id"
+
+• `update_impact_metrics_after_impact_insert` - updates "impact_metrics" after **impact** is added, implementing the relationship: "impact_metrics.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
+• `update_judgment_weights_after_judgment_insert` - updates "judgment_weights" after **judgment** is added, implementing the relationship: "judgment_weights.event_id" → "event_ci.id" → "judgment_weights.participant_id" → "participants.id"
+
+• `update_consensus_ci_after_judgment_insert` - updates "consensus_ci" after **judgment** is added, implementing the relationship: "consensus_ci.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
+• `update_event_projection_after_scores_change` - updates "event_projection" after scores change, implementing the relationship: "event_projection.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
+• `update_truth_state_after_event_state_change` - updates "truth_state" after **event** state changes, implementing the relationship: "truth_state.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
 •  `update_impact_score_after_impact_change` - activates when a new entry is added to the "impact" table and automatically recalculates the "impact_score" for the associated "truth_event".
 
 •  `update_judgment_score_after_judgment_change` - activates when a new entry is added to the "judgment" table and automatically recalculates the "judgment_score" for the associated **event**.
@@ -210,6 +219,28 @@ Activate when **events** are received from other **nodes** during synchronizatio
 
 **Triggers from [docs/model_core_collective_assessment.md](model_core_collective_assessment.md):**
 
+• `create_event_record` - creates the initial **event** record in the "truth_event" table when a **participant** submits a new **event**. This trigger also creates the corresponding entry in the "event_ci" table (**event neuron**) with default values
+
+• `initialize_event_metrics` - initializes all **metric fields** ("collective_score", "impact_score", "judgment_score") to default values when a new **event** is inserted. Sets "collective_score" to 0.5 (neutral), "impact_score" to 0.0, and "judgment_score" to NULL
+
+• `update_participant_reputation_on_impact` - updates **participant's reputation** based on the accuracy of their **impact assessments**, comparing against the "collective_score" as a reference value. Increases "accurate_impact" counter when the **impact aligns** with the **collective assessment**
+
+• `update_participant_reputation_on_judgment` - updates **participant's reputation** based on the accuracy of their **judgment assessments**, comparing against the "collective_score" as a reference value. Increases "accurate_judgment" counter when the **judgmen**t aligns with the **collective assessment**
+
+• `create_impact_prediction_on_impact_creation` - creates a new record in the "impact_predictions" table when a **participant** creates an **impact** record that relates to a future predicted factual **consequence**. This trigger calculates **prediction** values based on the **event's impact** data and **collective score** when a new **impact** is recorded
+
+• `create_impact_predictions_on_status_change` - creates new records in the "impact_predictions" table when an **event's** status changes in "event_ci.status" (e.g. from "active"/"resolved" to "archived"). This trigger preserves historical **prediction** data and adjusts **prediction probabilities** based on the actual outcomes compared to expected values when the **event** reaches a resolution state
+
+• `update_participant_reputation_on_prediction_accuracy` - updates **participant reputation** based on the accuracy of **impact predictions**. This trigger aggregates prediction accuracy across all **events** where the **participant** created **impact** records, comparing "impact_predictions.expected_strength" against actual "truth_event.collective_score". The calculation considers the "horizon" value: **predictions** made earlier (with larger "horizon" values) receive greater weight in **reputation** calculations. **Reputation** is updated when **events** transition to "resolved" or "archived" status
+
+• `aggregate_local_scores_for_global` - populates the "statements" table with local assessments for global calculation when "truth_event" is updated. This trigger fires when the "collective_score" changes and updates the statements table for cross-node aggregation
+
+• `update_participant_reputation_on_prediction_accuracy_comprehensive` - comprehensive trigger that updates **participant reputation** based on **prediction accuracy** across all **events** where the **participant** is the **event creator**, implementing the relationship: "impact_predictions.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
+• `update_participant_reputation_on_impact_with_proper_ref` - updates **participant reputation** based on **impact accuracy** using "collective_score" as reference, implementing the relationship: "impact.participant_id" → "participants.id"
+
+• `update_participant_reputation_on_judgment_proper_ref` - updates **participant reputation** based on **judgment accuracy** with proper "participant_id" reference, implementing the relationship: "judgment.participant_id" → "participants.id" AND "judgment.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
 • `validate_incoming_event` - validates the structure and cryptographic signatures of **events** received from other **nodes** before processing. Verifies that required fields are present, "global_id" is properly formatted, **signatures** exist, and **context** fields reference valid entries in their respective tables.
 
 • `process_sync_event_record` - handles the creation of **event** records from other **nodes** during synchronization, potentially with different validation rules. Checks for duplicate **events**, creates corresponding entries in the "event_ci" table, and updates **participant** activity timestamps.
@@ -219,6 +250,32 @@ Activate when **events** are received from other **nodes** during synchronizatio
 • `update_event_ci_state_from_judgment` - automatically updates the "event_type" and "resolution_data" fields in the "event_ci" table based on changes in **judgment** data and convergence of **assessment axes** as described in section 2.6.3. This trigger fires when new **judgment** records are inserted.
 
 **Triggers from [docs/model_core_aggregated_metrics.md](model_core_aggregated_metrics.md):**
+
+• `update_heuristic_weight_after_accuracy_change` - updates **heuristic weight** based on proven accuracy when accuracy values change
+
+• `update_progress_metrics_after_event_processing` - updates system-wide **progress metrics** when new events are processed
+
+• `update_temporal_decay_metrics_trigger` - applies temporal **decay functions** to trust weights and influence metrics over time as described in sections 3.6 and 3.7
+
+• `update_event_classification_after_convergence` - handles **event classification** updates and manages the `event_classification_calculation` view and related triggers that update the "event_ci" table's "resolution_data" field based on the convergence of **impact** and **judgment** axes
+
+• `update_progress_metrics_after_impact_recording` - updates **progress metrics** when new **impact** is recorded, recalculating **impact totals** and **trends**
+
+• `update_event_projection_after_event_ci_change` - updates the "event_projection" table when "event_ci" is updated, implementing the relationship: "event_projection.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
+• `update_impact_metrics_after_impact_change` - updates "impact_metrics" when **impact** is added or modified, implementing the relationship: "impact_metrics.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
+• `update_impact_predictions_after_event_ci_status_change` - updates "impact_predictions" when "event_ci" status changes, implementing the relationship: "impact_predictions.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id → truth_event.participant_id"
+
+• `update_consensus_ci_after_judgment_change` - updates "consensus_ci" when **judgment** is added or modified, implementing the relationship: "consensus_ci.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
+• `update_judgment_weights_after_participant_change` - updates "judgment_weights" when **participant reputation** changes, implementing the relationship: "judgment_weights.participant_id" → "participants.id" AND "judgment_weights.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
+• `update_truth_state_after_event_ci_change` - updates "truth_state" when "event_ci" is updated, implementing the relationship: "truth_state.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
+• `update_event_state_history_after_event_change` - updates "event_state_history" when **event metrics** change, implementing the relationship: "event_state_history.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id"
+
+• `update_event_stability_after_event_state_change` - updates "event_stability" when **event state** changes, implementing the relationship: "event_stability.event_id" → "event_ci.id" → "event_ci.created_by" → "truth_event.id" → "truth_event.participant_id" 
 
 •  `update_heuristic_weight` - updates the weight of **expert heuristics** based on their proven accuracy when the accuracy changes.
 
@@ -234,11 +291,29 @@ as described in sections 3.6 and 3.7
 
 **Triggers from [docs/model_core_network_tables.md](model_core_network_tables.md):**
 
-•  `update_trust_score_after_rating_change` - automatically recalculates **trust score** and propagation priority based on new **event** counts when node ratings are updated.
+• `update_trust_score_after_rating_change` - automatically recalculates **trust score** and propagation priority based on new **event** counts when **node ratings** are updated
+
+• `cleanup_expired_tokens` - removes **tokens** that have exceeded their expiration time
+
+• `update_peer_synchronization_after_sync` - automatically updates **peer history** with new synchronization information when sync logs are created
+
+• `update_node_performance_after_sync` - updates **performance metrics** when synchronization **events** are logged
+
+• `update_participant_reputation_on_sync` - updates **participant reputation** based on sync success/failure, connecting: "sync_operations.public_key" → "discovery_nodes.node_id" → "participants.public_key"
+
+• `update_discovery_history_on_node_discovery` - updates **discovery history** when new **nodes** are discovered, connecting: "discovery_history.node_id" → "discovery_nodes.id"
+
+• `update_node_trust_limits_based_on_sync_performance` - updates **node trust limits** based on sync performance, connecting: "node_trust_limits.node_id" → "discovery_nodes.node_id"
+
+• `update_node_behavior_patterns_on_sync` - updates **node behavior patterns** based on sync patterns, connecting: "node_behavior_patterns.node_id" → "discovery_nodes.node_id"
+
+• `update_manipulation_indicators_on_suspicious_sync` - updates **manipulation indicators** based on suspicious sync patterns, connecting: "manipulation_indicators.node_id" → "discovery_nodes.node_id"
+
+•  `update_trust_score_after_rating_change` - automatically recalculates **trust score** and propagation priority based on new **event** counts when **node ratings** are updated.
 
 •  `cleanup_expired_tokens` - removes **tokens** that have exceeded their expiration time.
 
-•  `update_peer_synchronization_after_sync` - automatically updates peer history with new synchronization information when sync logs are created.
+•  `update_peer_synchronization_after_sync` - automatically updates **peer history** with new synchronization information when sync logs are created.
 
 •  `update_node_performance_after_sync` - updates **performance metrics** when synchronization **events** are logged.
 
@@ -248,7 +323,7 @@ The **Truth Training** system implements several SQL views to support data analy
 
 #### Collective Assessment Views [model_core_views_collective_assessment.md](model_core_views_collective_assessment.md)
 
-• **local_collective_score_calculation** - Calculates local collective scores for **events** based on **participant impact** data. This view supports the calculation of cs_i = f-local(I(E_i)) as described in section 2.6.3, where I_i(E_i) represents the set of participant **impacts**
+• **local_collective_score_calculation** - Calculates local collective scores for **events** based on **participant impact** data. This view supports the calculation of cs_i = f-local(I(E_i)) as described in section 2.6.3, where I_i(E_i) represents the set of **participant impacts**
 
 • **global_truth_score_calculation** - Aggregates local scores from different **nodes** to compute global **truth scores**. This view implements the formula :
 ```
@@ -364,6 +439,52 @@ Priority(n) = f(trust_score, validation_count, reuse_frequency)
 
 • **unreachable_nodes** - Identifies **unreachable nodes** that exceed half their "TTL", supporting the identification of **nodes** that may need special handling
 
+#### Missing Views That Should Be Implemented
+
+The following views are referenced in the model documentation but may not be fully implemented in the separate view files:
+
+• **[small_constants_view](model_core_views_small_constants.md)** - Provides consistent **small random constants** for **quantum uncertainty** calculations as described in section 1.1.1, implementing the SQL expression for generating values in range (0, 2) excluding endpoints
+
+• **[consensus_calculation](model_core_views_consensus_calculation.md)** - Calculates **consensus values** based on **participant judgments** and **impact assessments**, implementing the aggregation function that computes collective agreement on **event truth** and **impact** values
+
+• **[participant_reputation_calculation](model_core_views_participant_reputation.md )** - Computes **participant reputation scores** based on **historical accuracy** of **their judgments** and **impact predictions**, implementing the **reputation update** algorithm described in section 2.1
+
+• **[event_convergence_analysis](model_core_views_event_convergence.md)** - Analyzes convergence between **impact** and **judgment** axes for **event** classification, implementing the logic for determining when an **event** reaches stable **truth** and **impact** values
+
+• **[temporal_decay_calculation](model_core_views_temporal_decay.md)** - Implements temporal **decay functions** for **trust weights** and **influence metrics** over **time** as described in sections 3.6 and 3.7, applying the formula :
+```
+w(t) = w₀ * e^(-λt)
+```
+• **[prediction_accuracy_metrics](model_core_views_prediction_accuracy.md )** - Calculates **prediction accuracy** for **impact predictions** compared to actual outcomes, supporting the **participant reputation** updates based on **prediction accuracy** as described in section 2.6.1
+
+• **[quadrant_classification_calculation](model_core_views_quadrant_classification.md)** - Determines **event quadrant** classification (Q1-Q4) based on **truth** and **impact** scores, implementing the classification algorithm described in section 2.3.1
+
+• **[participant_trust_propagation](model_core_views_participant_trust_propagation.md)** - Calculates **trust propagation** through the network based on **participant relationships** and **validation accuracy**, implementing the **trust propagation** algorithm described in section 5
+
+• **[event_correlation_analysis](model_core_views_event_correlation_analysis.md)** - Analyzes correlations between related **events** in the **event graph**, implementing the relationship **analysis described** in section 2.5
+
+• **[system_health_monitoring](model_core_views_system_health_monitoring.md)** - Provides system-wide **health metrics** and **performance indicators**, aggregating data from various system tables to assess overall system stability and performance
+
+#### Additional Required Views
+
+The following additional views are essential for the proper functioning of the **Truth Training** system:
+
+• **[truth_event_impact_correlation](model_core_views_truth_event_impact_correlation.md)** - Calculates correlation between "truth_event" "collective_score" and **impact assessments** to identify patterns in how **truth assessments** relate to **impact observations**
+
+• **[judgment_impact_convergence](model_core_views_judgment_impact_convergence.md)** - Tracks convergence between **judgment** and **impact assessments** over **time** to determine when **event assessments stabilize**
+
+• **[participant_accuracy_trends](model_core_views_participant_accuracy_trends.md)** - Analyzes trends in participant accuracy over time to identify consistent performers and adjust reputation weights accordingly
+
+• **[event_timeline_analytics](model_core_views_event_timeline_analytics.md)** - Provides analytics on **event timelines** to understand temporal patterns in **truth evolution** and **impact manifestation**
+
+• **[context_effectiveness_metrics](model_core_views_context_effectiveness_metrics.md)** - Measures the effectiveness of different **context classifications** in **predicting accurate impact** and **judgment outcomes**
+
+• **[heuristic_validation_metrics](model_core_views_heuristic_validation_metrics.md)** - Validates the effectiveness of **expert heuristics** by comparing their **predictions** against actual outcomes
+
+• **[network_consensus_stability](model_core_views_network_consensus_stability.md)** - Measures the stability of **consensus across** the network over **time** to identify **potential manipulation** or **disagreement patterns**
+
+• **[prediction_horizon_analysis](model_core_views_prediction_horizon_analysis.md)** - Analyzes the accuracy of **impact predictions** based on their **temporal horizon** to improve **prediction** models
+
 ### 2.1 Participants
 
 #### Table: participants
@@ -372,13 +493,13 @@ Priority(n) = f(trust_score, validation_count, reuse_frequency)
 It is **not accept direct participant input**, and is **not transmitted over the network**
 
 **Purpose** :
-Stores information about collective intelligence system participants
-At initialization, a record "participants.id = 1" is created in the "participants" table. This record is used for filtering when calculating data for the local participant system.
+Stores information about **collective intelligence** system **participants**  
+At initialization, a record "participants.id = 1" is created in the "participants" table with a unique **public key**. This record represents the **local participant** and is used for **filtering** when calculating data for the **local participant** system. The "id" field is an auto-incrementing integer that serves as the **primary key**, while the "public_key" field contains the actual **cryptographic public key** of the **participant** and is used as the reference value in **P2P exchange**s. During **P2P synchronization**, when **nodes receive data** from **other nodes**, if a "participant_id" value (representing the "public_key") from "truth_event", "impact", or "judgment" tables is not found in the local "participants.public_key" field, a new **participant** record is **created** with that "public_key" value
 
 **Fields** :
 ```
-id                 (INTEGER, PK, AUTOINCREMENT) — unique context identifier
-public_key         (TEXT, PK, UNIQUE, NOT NULL) — unique participant's public key - identifier
+id                 (INTEGER, PK, AUTOINCREMENT) — unique participant identifier (auto-incrementing)
+public_key         (TEXT, UNIQUE, NOT NULL) — unique participant's public key - cryptographic identifier
 reputation_score   (REAL, NOT NULL, DEFAULT 0.5) — participant's reputation score
 reputation_history (INTEGER, NOT NULL) — FK → reputation_history.id — participant's reputation history
 total_judgment     (INTEGER, NOT NULL, DEFAULT 0) — total number of judgment made
@@ -391,20 +512,30 @@ last_activity      (INTEGER) — timestamp of last activity
 🏠 Database: truth_training.sqlite
 
 **Notes** :  
-• Participant is not tied to identity  
-• Authentication is based on cryptographic key  
-• Reputation is calculated based on accuracy of judgment and impact
+• **Participant** is not tied to identity  
+• Authentication is based on **cryptographic key**  
+• **Reputation** is calculated based on **accuracy** of **judgment** and **impact**  
+• The **participant's public key** is used as their **unique identifier** in the system  
+• All records in tables participate in **P2P sync** ("truth_event", "impact", "judgment") contain a "signature" field that **authenticates the participant's** contribution
 
 **Model "participants"** :  
 **Source relation**
 ```sql
-participants.id = judgment.participant_id
-participants.id = impact.participant_id
+truth_event.participant_id = participants.id
+impact.participant_id = participants.id
+judgment.participant_id = participants.id
 participants.reputation_history = reputation_history.id
+-- Additional relationships for the new triggers
+truth_event.id = event_ci.created_by → truth_event.participant_id = participants.id
+impact.event_id → event_ci.id → event_ci.created_by = truth_event.id → truth_event.participant_id = participants.id
+judgment.event_id → event_ci.id → event_ci.created_by = truth_event.id → truth_event.participant_id = participants.id
 ```
+
+**Note**: The "participant_id" field in "truth_event", "impact", and "judgment" tables references the "id" field in the "participants" table. This "id" field is an auto-incrementing integer that serves as the primary key, while the actual public key value is stored in the "public_key" field of the "participants" table.
+
 **Base participant mapping**
 ```sql
-base_participant_id = participants.public_key
+base_participant_id = participants.id
 -- This represents the participant whose reputation is being calculated
 -- Used as reference in reputation calculation formulas below
 ```
@@ -466,12 +597,12 @@ SET reputation_history = (SELECT id FROM reputation_history WHERE change_reason 
 WHERE id = 1;
 ```
 
-During P2P communication between nodes, if an API request returns data with a "participant_id" value from the "truth_event" table that is not present in any record of the "participants.public_key" table, a new record must be created in the "participants" table with the value of this field equal to the received one.:
+During **P2P communication** between **nodes**, if an **API** request returns data with a "participant_id" value (which represents the "public_key" field from the "participants" table) from the "truth_event", "impact", or "judgment" tables that is not present in any record of the "participants.public_key" table, a new record must be created in the "participants" table with the "public_key" field **equal** to the received "participant_id" value:
 
-TruthEvent
+TruthEvent, Impact, Judgment
 ```json
 {
-  "participant_id": "hex",
+  "participant_id": "hex",  // This represents the public_key of the participant
 }
 ```
 See [spec/05-api.md](../spec/05-api.md) which contains full API documentation.
@@ -579,7 +710,7 @@ WHERE participants.reputation_history = reputation_history.id
 reputation_history.old_reputation = (
     SELECT reputation_score
     FROM participants
-    WHERE participants.public_key = base_participant_id
+    WHERE participants.id = base_participant_id
 )
 ```
 **Aggregation formulas "new_reputation"**
@@ -1012,6 +1143,8 @@ calculated_at (INTEGER, NOT NULL) — timestamp of calculation
 **Source relation**
 ```sql
 event_projection.event_id = event_ci.id
+event_ci.created_by = truth_event.id
+truth_event.participant_id = participants.id
 event_projection.truth_score = (
     SELECT consensus_ci.confidence_score
     FROM consensus_ci
@@ -1742,61 +1875,6 @@ It is **direct editing for participant input**, and is **not transmitted over th
 
 **Purpose** :  
 • **Storing** main data about **event** in **Truth Training system**, including **their description**, **context**, **timestamps**, **vector** (incoming/outgoing), **detection** and **correction status**, and **various assessments**  
-**Fields** :
-```
-id               (INTEGER, PK, AUTOINCREMENT) — unique truth_event identifier
-description      (TEXT, NOT NULL) — event description
-global_id        (TEXT, NOT NULL, UNIQUE) — global event identifier for network identification
-participant_id   (TEXT, NOT NULL) — FK → participants.public_key
-signature        (TEXT, NOT NULL) — cryptographic signature
-category_id      (INTEGER, NOT NULL) — FK → category.id
-forma_id         (INTEGER, NOT NULL) — FK → forma.id
-cause_id         (INTEGER, NOT NULL) — FK → cause.id
-develop_id       (INTEGER, NOT NULL) — FK → develop.id
-effect_id        (INTEGER, NOT NULL) — FK → effect.id
-vector           (INTEGER, NOT NULL) — event direction (0/1) 0-incoming; 1-outgoing
-detected         (INTEGER) — detection flag (NULL/0/1)
-corrected        (INTEGER, NOT NULL, DEFAULT 0) — correction flag
-timeline_id      (INTEGER, NOT NULL) — FK → event_timeline.id
-code             (INTEGER, NOT NULL, DEFAULT 1) — circulation code for distribution protocol
-collective_score (REAL, NOT NULL) — local training/assessment metric
-impact_score     (REAL, NOT NULL) — local impact metric
-judgment_score   (REAL) — local judgment metric
-```
-🏠 Database: truth_training.sqlite  
-
-**Notes** :  
-• **Event identity** is defined by ("global_id", "truth_event","participant_id)", **never** by **local autoincrement id**  
-• **Event content** is stored in embedded **context fields** ("category", "forma", "cause", "develop", "effect")  
-• Circulation **code** controls distribution **protocol**, **not truth** calculation  
-• **collective_score**, "impact_score", and "judgment_score" are **local metrics**, **not** final **truth values**  
-• "timeline_id"  Each **participant** has **their own chronology** of **event**  
-
-#### Table: event_links
-
-📝 **User-level** table of the Collective Intelligence Layer  
-It is **direct editing for participant input**, and is **not transmitted over the network**
-
-**Purpose** :  
-Describes logical and causal **relationships** between **event**  
-**Fields** :
-```
-source_impact_id (INTEGER, NOT NULL) — FK → truth_event.id — source event reference
-target_impact_id (INTEGER, NOT NULL) — FK → truth_event.id — target event reference
-relation_type    (TEXT, NOT NULL) — ENUM (basic / equal / foreign)
-signature        (TEXT, NOT NULL) — cryptographic signature
-created_at       (INTEGER, NOT NULL) — timestamp of creation
-```
-🏠 Database: truth_training.sqlite  
-
-**Notes** :  
-• **Implements** an event **graph**  
-• Used to **analyze** primary and secondary **events**
-
-The **event axis** reflects the **chain of events** over **time**  
-• An **event** can be **repeated** over **time** with consensus confirmation  
-• An **event** is **comparable** to **another event**  
-• An **event** forms **feedback** on **system training**
 
 #### Model Truth Event :
 
@@ -1814,8 +1892,8 @@ It is **direct editing for participant input**, and is **not transmitted over th
 id               (INTEGER, PK, AUTOINCREMENT) — unique truth_event identifier
 description      (TEXT, NOT NULL) — event description
 global_id        (TEXT, NOT NULL, UNIQUE) — global event identifier for network identification
-participant_id   (TEXT, NOT NULL) — FK → participants.public_key
-signature        (TEXT, NOT NULL) — cryptographic signature
+participant_id   (INTEGER, NOT NULL) — FK → participants.id (references the auto-incrementing id field which corresponds to the public_key value stored in the participants table)
+signature        (TEXT, NOT NULL) — cryptographic signature for verifying authenticity during P2P sync
 category_id      (INTEGER, NOT NULL) — FK → category.id
 forma_id         (INTEGER, NOT NULL) — FK → forma.id
 cause_id         (INTEGER, NOT NULL) — FK → cause.id
@@ -1832,6 +1910,9 @@ judgment_score   (REAL) — local judgment metric
 ```
 🏠 Database: truth_training.sqlite  
 
+**Constraints** :
+• UNIQUE("global_id", "participant_id") — each **event** must be **unique** for each **participant** ("participant_id" references "participants.id" which contains the "public_key" value). This ensures that during **P2P exchange**, an **event identified** by a specific "global_id" and originating from a specific **participant** (referenced by "participant_id" which points to the "public_key" in "participants" table) is treated as a **unique entity across** the system
+
 **Notes** :  
 • **Event identity** is defined by ("global_id", "truth_event","participant_id)", **never** by **local autoincrement id**  
 • **Event content** is stored in embedded **context fields** ("category", "forma", "cause", "develop", "effect")  
@@ -1843,7 +1924,7 @@ judgment_score   (REAL) — local judgment metric
 
 **Field explanations** :  
 • "global_id" — mandatory UUID field used to identify same **event** on different **nodes**  
-• "participant_id" — creator's public key (FK to "participants" table)  
+• "participant_id" — creator's "id" (FK to "participants" table)  
 • "vector" — **event** direction (e.g. "outgoing"/"incoming")  
 • "detected", "corrected", "code" — auxiliary transport fields (see [docs/event_rating_protocol.md](event_rating_protocol.md))  
 • "collective_score" (csᵢ) — local **training**/**assessment metric** calculated based on **impact** and **judgment** assessments; this score represents the aggregated **local assessment** of the **event's truth** value and is updated through SQL triggers when new **impact** or **judgment** data is added (see [docs/model_core_collective_assessment.md](model_core_collective_assessment.md) for trigger details)  
@@ -1886,6 +1967,32 @@ The "collective_score" is automatically updated through SQL triggers that respon
 • In implementation code: core/src/storage.rs - contains SQL definition of table in "SCHEMA_SQL" constant  
 • In event rating protocol documentation: [docs/event_rating_protocol.md](event_rating_protocol.md)  - describes use of "code" field and "score" calculation based on data from this table
 
+#### Table: event_links
+
+📝 **User-level** table of the Collective Intelligence Layer  
+It is **direct editing for participant input**, and is **not transmitted over the network**
+
+**Purpose** :  
+Describes logical and causal **relationships** between **event**   
+**Fields** :
+```
+source_impact_id (INTEGER, NOT NULL) — FK → truth_event.id — source event reference
+target_impact_id (INTEGER, NOT NULL) — FK → truth_event.id — target event reference
+relation_type    (TEXT, NOT NULL) — ENUM (basic / equal / foreign)
+signature        (TEXT, NOT NULL) — cryptographic signature for verifying authenticity during P2P sync
+created_at       (INTEGER, NOT NULL) — timestamp of creation
+```
+🏠 Database: truth_training.sqlite  
+
+**Notes** :  
+• **Implements** an event **graph**  
+• Used to **analyze** primary and secondary **events**
+
+The **event axis** reflects the **chain of events** over **time**  
+• An **event** can be **repeated** over **time** with consensus confirmation  
+• An **event** is **comparable** to **another event**  
+• An **event** forms **feedback** on **system training**
+
 ### 2.6 impact Assessment and judgment
 
 📌 Key idea :  
@@ -1901,7 +2008,7 @@ Impact is formalized as a vector :
 impact.trend= Quality⟨event_id, type_id, value, t⟩
 ```
 **Where** :  
-- "event_id" → truth_event.id (FK)  
+- "event_id" → "event_ci.id" (FK)
 - "type_id" → effect.id (FK)  
 - "value" ∈{NULL,0,1} — (measurable/negative/positive)  
 - "t" - time of recording
@@ -1958,16 +2065,16 @@ It is **direct editing for participant input**, and is **not transmitted over th
 **Fields** :
 ```
 id                 (INTEGER, PK, AUTOINCREMENT) — unique impact identifier
-event_id           (INTEGER, NOT NULL) — FK → truth_event.id
+event_id           (INTEGER, NOT NULL) — FK → event_ci.id
 type_id            (INTEGER, NOT NULL) — FK → effect.id (Reference knowledge-base)
 trend              (INTEGER, NOT NULL) — impact trend 0 /1 / 2 / 3  ("logical_negative"/"logical_positive"/"illogical_negative"/"illogical_positive")
 value              (INTEGER) — impact value (NULL/0/1 for measurable/negative/positive)
 notes              (TEXT) — additional notes about the impact
 impact_metrics     (INTEGER, NOT NULL) — FK → impact_metrics.id
 impact_predictions (INTEGER, NOT NULL) — FK → impact_predictions.id
-signature          (TEXT, NOT NULL) — cryptographic signature
+signature        (TEXT, NOT NULL) — cryptographic signature for verifying authenticity during P2P sync
 timeline_id        (INTEGER, NOT NULL) — FK → impact_timeline.id
-participant_id   (TEXT, NOT NULL) — FK → participants.public_key
+participant_id     (INTEGER, NOT NULL) — FK → participants.id (references the id field which contains the public_key value)
 ```
 🏠 Database: truth_training.sqlite  
 
@@ -1990,7 +2097,7 @@ Allows **linking consequences** to each **other**, forming chains of **cause-and
 source_impact_id (INTEGER, NOT NULL) — FK → impact.id — source impact reference
 target_impact_id (INTEGER, NOT NULL) — FK → impact.id — target impact reference
 relation_type    (TEXT, NOT NULL) — ENUM (supports / contradicts / refines)
-signature        (TEXT, NOT NULL) — cryptographic signature
+signature        (TEXT, NOT NULL) — cryptographic signature for verifying authenticity during P2P sync
 created_at       (INTEGER, NOT NULL) — timestamp of creation
 ```
 
@@ -2035,10 +2142,12 @@ calculated_at   (INTEGER, NOT NULL) — timestamp of calculated
 **Model impact_metrics** :  
 **Source relation**
 ```sql
-impact..participant_id = 1
-impact.event_id = truth_event.id
-truth_event.id = event_ci.created_by
 impact_metrics.event_id = event_ci.id
+event_ci.created_by = truth_event.id
+truth_event.participant_id = participants.id
+impact.participant_id = 1
+impact.event_id = event_ci.id
+truth_event.id = event_ci.created_by
 ```
 **Base event mapping**
 ```sql
@@ -2407,20 +2516,18 @@ Storing **judgment** that **collective intelligence** system **participants** is
 **Fields** :  
 ```
 id               (INTEGER, PK, AUTOINCREMENT) — unique judgment identifier
-participant_id   (TEXT, NOT NULL) — FK → participants.public_key
+participant_id   (INTEGER, NOT NULL) — FK → participants.id
 event_id         (INTEGER, NOT NULL) — FK → event_ci.id
 assessment       (REAL) — type of assessment ∈{NULL,-1,0,1} — (undefined/false/null/true)
 confidence_level (REAL) — confidence level of the assessment
 reasoning        (TEXT) — reasoning behind the judgment
 consensus_ci     (INTEGER, NOT NULL) — FK → consensus_ci.id
 judgment_weights (INTEGER, NOT NULL) — FK → judgment_weights.id
-signature        (TEXT, NOT NULL) — cryptographic signature
+signature        (TEXT, NOT NULL) — cryptographic signature for verifying authenticity during P2P sync
 timeline_id      (INTEGER, NOT NULL) — FK → judgment_timeline.id
+participant_id   (INTEGER, NOT NULL) — FK → participants.id (references the id field which contains the public_key value)
 ```
 🏠 Database: truth_training.sqlite  
-
-**Constraints** :  
-• UNIQUE("participant_id", "event_id") — each **participant** can have only one summarized **judgment** for each **event**
 
 **Notes** :  
 • **judgment** is not changed, only new record is possible  
@@ -2486,7 +2593,7 @@ Describes logical and causal relationships between judgment
 source_judgment_id (INTEGER, NOT NULL) — FK → judgment.id — source judgment reference
 target_judgment_id (INTEGER, NOT NULL) — FK → judgment.id — target judgment reference
 relation_type      (TEXT, NOT NULL) — ENUM supports / contradicts / refines
-signature          (TEXT, NOT NULL) — cryptographic signature
+signature          (TEXT, NOT NULL) — cryptographic signature for verifying authenticity during P2P sync
 created_at         (INTEGER, NOT NULL) — timestamp of creation
 ```
 🏠 Database: truth_training.sqlite  
@@ -2557,6 +2664,8 @@ algorithm_version (INTEGER, NOT NULL) — version of algorithm used
 **Source relation**
 ```sql
 consensus_ci.event_id = event_ci.id
+event_ci.created_by = truth_event.id
+truth_event.participant_id = participants.id
 judgment.event_id = consensus_ci.event_id
 judgment_weights.event_id = consensus_ci.event_id
 ```
@@ -2659,11 +2768,13 @@ calculated_at  (INTEGER, NOT NULL) — timestamp of creation
 ```
 🏠 Database: truth_training.sqlite  
 
-**Model "judgment_weights"** :  
+**Model "judgment_weights"** :
 **Source relation**
 ```sql
-judgment_weights.participant_id = participants.id
 judgment_weights.event_id = event_ci.id
+event_ci.created_by = truth_event.id
+truth_event.participant_id = participants.id
+judgment_weights.participant_id = participants.id
 judgment.participant_id = judgment_weights.participant_id
 ```
 **Base participant mapping**
@@ -3282,7 +3393,7 @@ Records the **time range** of **events** on each **time axis**
 ```
 id           (INTEGER, PK, AUTOINCREMENT) — unique timeline record ID
 time_axis_id (INTEGER, NOT NULL) — FK → time_axes.id — time axis reference
-signature    (TEXT, NOT NULL) — cryptographic signature
+signature    (TEXT, NOT NULL) — cryptographic signature for verifying authenticity during P2P sync
 t_start      (INTEGER, NOT NULL) — event start time on this axis
 t_end        (INTEGER) — event end time on this axis (if set)
 ```
@@ -3332,7 +3443,7 @@ Records the time range of **impact** on each **time axis**
 ```
 id           (INTEGER, PK, AUTOINCREMENT) — unique timeline record ID
 time_axis_id (INTEGER, NOT NULL) — FK → time_axes.id — time axis reference
-signature    (TEXT, NOT NULL) — cryptographic signature
+signature    (TEXT, NOT NULL) — cryptographic signature for verifying authenticity during P2P sync
 t_start      (INTEGER, NOT NULL) — impact start time on this axis
 t_end        (INTEGER) — impact end time on this axis (if set)
 ```
@@ -3372,7 +3483,7 @@ Records the **time range** of **judgment** on each **time axis**
 ```
 id           (INTEGER, PK, AUTOINCREMENT) — unique timeline record ID
 time_axis_id (INTEGER, NOT NULL) — FK → time_axes.id — time axis reference
-signature    (TEXT, NOT NULL) — cryptographic signature
+signature    (TEXT, NOT NULL) — cryptographic signature for verifying authenticity during P2P sync
 t_start      (INTEGER, NOT NULL) — judgment start time on this axis
 t_end        (INTEGER) — judgment end time on this axis (if set)
 ```
@@ -3433,9 +3544,9 @@ Truth(E, t) = {state, score, confidence, dispersion}
 • **Collective truth** — is not value, but distribution of assessments in **judgment** space
 
 **Truth is represented** :  
-• as vector ("truth_state","truth_score")  
-• as density ("dispersion")  
-• as dynamic state ("confidence")  
+• as **vector** ("truth_state","truth_score")  
+• as **density** ("dispersion")  
+• as **dynamic state** ("confidence")
 
 **Let** :
 ```
@@ -3449,17 +3560,17 @@ T(E) = A(J)
 "A" — aggregating function.
 
 **Possible aggregators** :  
-• weighted average  
-• median  
-• quantile distribution  
-• bayesian aggregation  
-• neuron-like function  
+• **weighted** average  
+• **median**  
+• **quantile** distribution  
+• **bayesian** aggregation  
+• **neuron-like** function
 
-Each **judgment** has **weight** w, depending on :
-• node trust  
-• consistency with other assessments  
-• time  
-• applied heuristics
+Each **judgment** has **weight** w, depending on :  
+• **node trust**  
+• **consistency** with other **assessments**  
+• **time**  
+• applied **heuristics**
 
 **State Transition Rules** :
 ```sql
@@ -3473,11 +3584,39 @@ ELSE
 
 **Notes** :  
 - "truth_score" ≠ **verdict**  
-- confidence reflects assessment stability
+- confidence reflects **assessment stability**
 
-Polarization is recorded when assessments form multiple clusters  
+**Polarization** is recorded when **assessments** form **multiple clusters**  
 **Truth** — is not result  
 **Truth** — is process of alignment
+
+**Model "truth_state"** :  
+**Source relation**
+```sql
+truth_state.event_id = event_ci.id
+event_ci.created_by = truth_event.id
+truth_event.participant_id = participants.id
+```
+
+**Base event mapping**
+```sql
+base_event_id =
+SELECT event_ci.created_by
+FROM event_ci
+WHERE event_ci.id = truth_state.event_id
+```
+**Aggregation formulas "truth_score"**
+```sql
+truth_state.truth_score = (
+    SELECT consensus_ci.confidence_score
+    FROM consensus_ci
+    WHERE consensus_ci.event_id = truth_state.event_id
+)
+```
+**Aggregation formulas "calculated_at"**
+```sql
+truth_state.calculated_at = CURRENT_TIMESTAMP
+```
 
 ### 3.6 Table: event_state_history
 
@@ -3550,22 +3689,22 @@ IF new_impact_recorded
 ```
 
 **Impact(E, t)** :  
-• can be monotonic (accumulative)  
-• can be impulsive  
-• can decay
+• can be **monotonic** (accumulative)  
+• can be **impulsive**  
+• can **decay**
 
 **Truth(E, t)** :  
-• not required to be monotonic  
-• allows revision  
+• not required to be **monotonic**  
+• allows revision
 
 Between event appearance and its assessment there is temporal lag :
 ```
 Δt_truth ≠ Δt_impact
 ```
 **Reasons** :  
-• observation delay  
-• social propagation  
-• cognitive inertia
+• observation **delay**  
+• social **propagation**  
+• **cognitive** inertia
 
 **Event **is considered stabilized if :
 ```
@@ -3585,6 +3724,43 @@ CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'no
 • Enables temporal analysis of **event evolution**  
 • Supports stability detection algorithms
 
+**Model "event_state_history"** :  
+**Source relation**
+```sql
+event_state_history.event_id = event_ci.id
+event_ci.created_by = truth_event.id
+truth_event.participant_id = participants.id
+```
+
+**Base event mapping**
+```sql
+base_event_id =
+SELECT event_ci.created_by
+FROM event_ci
+WHERE event_ci.id = event_state_history.event_id
+```
+**Aggregation formulas "truth_score"**
+```sql
+event_state_history.truth_score = (
+    SELECT consensus_ci.confidence_score
+    FROM consensus_ci
+    WHERE consensus_ci.event_id = event_state_history.event_id
+)
+```
+**Aggregation formulas "impact_score"**
+```sql
+event_state_history.impact_score = (
+    SELECT impact_metrics.total_magnitude
+    FROM impact_metrics
+    WHERE impact_metrics.event_id = event_state_history.event_id
+)
+```
+**Aggregation formulas "recorded_at"**
+```sql
+event_state_history.recorded_at = CURRENT_TIMESTAMP
+```
+
+
 ### 3.7 Table: event_stability
 
 📝 **System-level** table of the Collective Intelligence Layer
@@ -3593,7 +3769,7 @@ It is **not accept direct participant input**, and is **not transmitted over the
 **Purpose** :  
 • **Records** when an **event** has become **stable** in **truth and/or impact**  
 • This **helps flag** **factors** historical resolved misinformation that **no longer require active monitoring**  
-• Even when stable, events can be "reactivated" by new **judgments** or **impacts**, at which point entries in history or stability may be updated
+• Even when stable, **events** can be **"reactivated"** by new **judgments** or **impacts**, at which point entries in history or stability may be updated
 
 **Fields** :
 ```
@@ -3601,9 +3777,67 @@ id            (INTEGER, PK, AUTOINCREMENT) — unique record identifier
 event_id      (INTEGER, NOT NULL) — FK → event_ci.id
 truth_stable  (INTEGER) — BOOLEAN 0/1  — true if truth is stabilized.
 impact_stable (INTEGER) — BOOLEAN 0/1  — true if impact is stabilized.
-stabilized_at (INTEGER, NOT NULL) — when stabilization was detected.
+stabilized_at (INTEGER) — when stabilization was detected (NULL if not stable).
 ```
-🏠 Database: truth_training.sqlite  
+🏠 Database: truth_training.sqlite
+
+**Model "event_stability"** :  
+**Source relation**
+```sql
+event_stability.event_id = event_ci.id
+event_ci.created_by = truth_event.id
+truth_event.participant_id = participants.id
+```
+
+**Base event mapping**
+```sql
+base_event_id =
+SELECT event_ci.created_by
+FROM event_ci
+WHERE event_ci.id = event_stability.event_id
+```
+
+**Aggregation formulas "truth_stable"**
+```sql
+event_stability.truth_stable = (
+    SELECT CASE
+        WHEN ABS((SELECT AVG(truth_score) - MIN(truth_score)
+                 FROM event_state_history
+                 WHERE event_id = base_event_id
+                 AND recorded_at >= (SELECT MAX(recorded_at) - 86400 FROM event_state_history WHERE event_id = base_event_id)) /
+                 (CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END)) < 0.01
+        THEN 1
+        ELSE 0
+    END
+)
+```
+
+**Aggregation formulas "impact_stable"**
+```sql
+event_stability.impact_stable = (
+    SELECT CASE
+        WHEN ABS((SELECT AVG(impact_score) - MIN(impact_score)
+                 FROM event_state_history
+                 WHERE event_id = base_event_id
+                 AND recorded_at >= (SELECT MAX(recorded_at) - 86400 FROM event_state_history WHERE event_id = base_event_id)) /
+                 (CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END)) < 0.01
+        THEN 1
+        ELSE 0
+    END
+)
+```
+
+**Aggregation formulas "stabilized_at"**
+```sql
+event_stability.stabilized_at = (
+    SELECT CASE
+        WHEN (SELECT truth_stable FROM event_stability WHERE event_id = base_event_id) = 1
+             OR (SELECT impact_stable FROM event_stability WHERE event_id = base_event_id) = 1
+        THEN (SELECT MAX(recorded_at) FROM event_state_history WHERE event_id = base_event_id)
+        ELSE NULL
+    END
+)
+```
 
 ##### Model: Event Stability Detection
 
@@ -3621,14 +3855,14 @@ IF |∂I/∂t| < ε_I AND impact_significance > min_significance
     impact_stable = TRUE
 ```
 **Where** :  
-ε_T = "small_constants" using SQL implementation : 
+ε_T = "small_constants" using SQL implementation :
 ```sql
 CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END)
 ```
  — truth stability threshold  
 ε_I = "small_constants" using SQL implementation :
 ```sql
-CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END) 
+CASE WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0 THEN 0.000001 ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 ) END)
 ```
 — impact stability threshold  
 |∂T/∂t| — absolute value of rate of change of **truth assessment** over **time**  
@@ -3652,8 +3886,8 @@ Decay(T, t) ∝ e^(−λt)
 ```
 
 **Notes** :  
-• Tracks when events reach stable states  
-• Enables efficient resource allocation by focusing on unstable events  
+• Tracks when **events** reach stable states  
+• Enables efficient resource allocation by focusing on **unstable events**  
 • Supports reactivation when new evidence emerges
 
 ## 4 Node Discovery and Network Tables
@@ -4587,7 +4821,7 @@ SET
         SELECT MIN(node_trust_limits.max_weight, p.reputation_score * node_trust_limits.decay_factor)
         FROM impact_metrics im
         JOIN truth_event te ON im.event_id = te.id
-        JOIN participants p ON te.participant_id = p.public_key
+        JOIN participants p ON te.participant_id = p.id
         WHERE im.event_id = node_trust_limits.node_id
     )),
     last_adjusted_at = CURRENT_TIMESTAMP
@@ -4904,8 +5138,29 @@ Truth Training — is not application.
 This :  
 • way of collective thinking  
 • formalized ethical mechanism  
-• distributed cognitive system  
+• distributed cognitive system
 
 > **Truth is not what was said first.
 > Truth is what survives circulation.**
+
+## Summary of P2P Exchange and Participant Management
+
+The **Truth Trainin**g system implements the following **P2P exchange logic**:
+
+1. **No Users Table**: There is no "users" table in the system, in accordance with the principle of not duplicating information.
+
+2. **Participants Table**: Instead, the "participants" table serves as the source of **participant** identity, with an initial record created at initialization with "participants.id = 1"
+
+3. **P2P Exchange**: The following tables participate in **P2P exchange** between **nodes** :  
+"truth_event", "event_timeline", "event_links", "impact", "impact_timeline", "impact_links", "judgment", "judgment_timeline", "judgment_links"
+
+4. **Participant Creation During Sync**: When **nodes exchange** data during **P2P synchronization**, if a "participant_id" value (representing the "public_key") from "truth_event", "impact", or "judgment" tables is not found in the local "participants.public_key" field, a new **participant** record is created with that "public_key" value
+
+5. **Signature Fields**: All tables participating in **P2P exchange** contain "signature" fields that are used to verify the authenticity and integrity of the data during synchronization
+
+6. **Foreign Key Relationships**: The "participant_id" field in "truth_event", "impact", and "judgment" tables is a foreign key referencing the "id" field in the "participants" table, which contains the **public key** value
+
+7. **Unique Constraint**: The combination of "global_id" and "participant_id" in the "truth_event" table creates a **unique constraint** ensuring that each **event** is **unique per participant**. This constraint is critical during **P2P synchronization** to prevent **duplication of events** from the same **participant**
+
+
 

@@ -155,3 +155,189 @@ BEGIN
     );
 END;
 ```
+
+-- Trigger to update participant reputation based on sync accuracy
+-- Updates participant reputation based on the accuracy of synced events
+-- Implements the relationship: sync_operations.public_key → discovery_nodes.node_id → participants.public_key
+```sql
+CREATE TRIGGER update_participant_reputation_on_sync
+AFTER INSERT ON sync_operations
+BEGIN
+    -- Update participant's reputation based on sync success/failure
+    UPDATE participants
+    SET
+        total_judgment = total_judgment + 1,
+        accurate_judgment = accurate_judgment + CASE
+            WHEN NEW.op = 'insert' OR NEW.op = 'update' THEN 1  -- Consider successful sync operations as accurate
+            ELSE 0
+        END
+    WHERE public_key = (
+        SELECT node_id FROM discovery_nodes WHERE node_id = NEW.public_key
+    );
+    
+    -- Update reputation score based on combined accuracy of both impact and judgment assessments
+    UPDATE participants
+    SET reputation_score = CASE
+        WHEN (total_impact + total_judgment) > 0 THEN
+            (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
+        ELSE 0.5
+    END
+    WHERE public_key = (
+        SELECT node_id FROM discovery_nodes WHERE node_id = NEW.public_key
+    );
+END;
+```
+
+-- Trigger to update discovery history when new node is discovered
+-- Implements the relationship: discovery_history.node_id → discovery_nodes.id
+```sql
+CREATE TRIGGER update_discovery_history_on_node_discovery
+AFTER INSERT ON discovery_nodes
+BEGIN
+    INSERT INTO discovery_history (
+        node_id,
+        discovery_type,
+        discovered_at,
+        ttl,
+        status,
+        source
+    )
+    VALUES (
+        NEW.id,
+        'beacon',  -- Default discovery type
+        NEW.created_at,
+        NEW.ttl,
+        'active',
+        'automatic'
+    );
+END;
+```
+
+-- Trigger to update node trust limits based on sync performance
+-- Implements the relationship: node_trust_limits.node_id → discovery_nodes.node_id
+```sql
+CREATE TRIGGER update_node_trust_limits_based_on_sync_performance
+AFTER UPDATE ON sync_attempts
+BEGIN
+    INSERT OR REPLACE INTO node_trust_limits (
+        node_id,
+        max_weight,
+        decay_factor,
+        small_constants,
+        last_adjusted_at
+    )
+    SELECT
+        dn.node_id,
+        CASE
+            WHEN sa.status = 'success' THEN
+                CASE
+                    WHEN ntl.max_weight < 1.0 THEN ntl.max_weight + 0.1
+                    ELSE 1.0
+                END
+            ELSE
+                CASE
+                    WHEN ntl.max_weight > 0.1 THEN ntl.max_weight - 0.1
+                    ELSE 0.1
+                END
+        END as max_weight,
+        CASE
+            WHEN sa.status = 'success' THEN
+                CASE
+                    WHEN ntl.decay_factor < 1.0 THEN ntl.decay_factor + 0.05
+                    ELSE 1.0
+                END
+            ELSE
+                CASE
+                    WHEN ntl.decay_factor > 0.01 THEN ntl.decay_factor - 0.05
+                    ELSE 0.01
+                END
+        END as decay_factor,
+        (CASE
+            WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
+            THEN 0.000001
+            ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
+        END) as small_constants,
+        (SELECT strftime('%s', 'now')) as last_adjusted_at
+    FROM discovery_nodes dn
+    JOIN sync_attempts sa ON dn.address = sa.peer_url
+    LEFT JOIN node_trust_limits ntl ON dn.node_id = ntl.node_id
+    WHERE dn.node_id = (
+        SELECT node_id FROM discovery_nodes WHERE address = NEW.peer_url
+    );
+END;
+```
+
+-- Trigger to update node behavior patterns based on sync patterns
+-- Implements the relationship: node_behavior_patterns.node_id → discovery_nodes.node_id
+```sql
+CREATE TRIGGER update_node_behavior_patterns_on_sync
+AFTER INSERT ON sync_attempts
+BEGIN
+    INSERT OR REPLACE INTO node_behavior_patterns (
+        node_id,
+        pattern_signature,
+        stability_score,
+        anomaly_score,
+        updated_at
+    )
+    SELECT
+        dn.node_id,
+        'SYNC_PATTERN_' || sa.status || '_' || sa.mode as pattern_signature,
+        CASE
+            WHEN sa.status = 'success' THEN
+                COALESCE((SELECT stability_score FROM node_behavior_patterns WHERE node_id = dn.node_id), 0.5) + 0.1
+            ELSE
+                COALESCE((SELECT stability_score FROM node_behavior_patterns WHERE node_id = dn.node_id), 0.5) - 0.1
+        END as stability_score,
+        CASE
+            WHEN sa.status = 'success' THEN
+                COALESCE((SELECT anomaly_score FROM node_behavior_patterns WHERE node_id = dn.node_id), 0.5) - 0.1
+            ELSE
+                COALESCE((SELECT anomaly_score FROM node_behavior_patterns WHERE node_id = dn.node_id), 0.5) + 0.1
+        END as anomaly_score,
+        (SELECT strftime('%s', 'now')) as updated_at
+    FROM discovery_nodes dn
+    JOIN sync_attempts sa ON dn.address = sa.peer_url
+    WHERE dn.node_id = (
+        SELECT node_id FROM discovery_nodes WHERE address = NEW.peer_url
+    );
+END;
+```
+
+-- Trigger to update manipulation indicators based on suspicious sync patterns
+-- Implements the relationship: manipulation_indicators.node_id → discovery_nodes.node_id
+```sql
+CREATE TRIGGER update_manipulation_indicators_on_suspicious_sync
+AFTER INSERT ON sync_attempts
+BEGIN
+    -- Check if there are suspicious patterns (too frequent sync attempts, etc.)
+    INSERT OR REPLACE INTO manipulation_indicators (
+        node_id,
+        indicator_type,
+        severity,
+        detected_at
+    )
+    SELECT
+        dn.node_id,
+        'HIGH_SYNC_FREQUENCY' as indicator_type,
+        CASE
+            WHEN sync_count > 100 THEN 3  -- High severity
+            WHEN sync_count > 50 THEN 2   -- Medium severity
+            ELSE 1                        -- Low severity
+        END as severity,
+        (SELECT strftime('%s', 'now')) as detected_at
+    FROM discovery_nodes dn
+    JOIN (
+        SELECT
+            sa.peer_url,
+            COUNT(*) as sync_count
+        FROM sync_attempts sa
+        WHERE sa.timestamp > (SELECT strftime('%s', 'now') - 3600)  -- Count syncs in last hour
+        GROUP BY sa.peer_url
+        HAVING COUNT(*) > 10  -- Threshold for considering high frequency
+    ) sync_freq ON dn.address = sync_freq.peer_url
+    WHERE dn.node_id = (
+        SELECT node_id FROM discovery_nodes WHERE address = NEW.peer_url
+    );
+END;
+```
