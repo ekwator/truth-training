@@ -316,13 +316,69 @@ Truth here is:
 
 ## 13. Why This Logic Is Resilient
 
-- lies may be profitable in the short term  
-- but their consequences accumulate  
-- collective evaluation does not require trust in participants  
-- only trust in statistics  
+- lies may be profitable in the short term
+- but their consequences accumulate
+- collective evaluation does not require trust in participants
+- only trust in statistics
 
-Thus, the system naturally identifies and suppresses fraud —  
+Thus, the system naturally identifies and suppresses fraud —
 not through control, but through observation of consequences.
+
+---
+
+## 14. Participant Reputation Model
+
+The system implements a reputation model to track participant accuracy and influence:
+
+- **Reputation Calculation**: Based on historical accuracy of participant's impact and judgment assessments
+- **Accuracy Tracking**: Monitors how well participant's predictions align with collective outcomes
+- **Dynamic Adjustment**: Reputation scores evolve based on continued performance
+- **Weighted Influence**: Higher reputation participants have proportionally greater impact on collective assessments
+- **Anonymous Identity**: Reputation is tied to cryptographic keys, preserving participant anonymity
+
+This model ensures that consistently accurate participants gradually gain more influence in the system while maintaining privacy.
+
+---
+
+## 15. Consequence Prediction Mechanism
+
+The system incorporates predictive capabilities for anticipating event consequences:
+
+- **Prediction Modeling**: Participants can forecast potential outcomes of events
+- **Accuracy Assessment**: Predictions are evaluated against actual outcomes over time
+- **Temporal Horizon**: Predictions include timing estimates for when consequences may manifest
+- **Probability Weighting**: Confidence levels are assigned to different prediction scenarios
+- **Learning Feedback**: Prediction accuracy contributes to participant reputation
+
+This mechanism enables proactive assessment of potential future impacts rather than solely reactive evaluation.
+
+---
+
+## 16. Temporal Axis
+
+Time plays a crucial role in the system's evaluation process:
+
+- **Event Timeline**: Each event has associated temporal boundaries and duration
+- **Consequence Timing**: Impacts may manifest with delays relative to event occurrence
+- **Truth Evolution**: Event truthfulness may change as more temporal data accumulates
+- **Stability Detection**: Events are evaluated for temporal consistency over time
+- **Decay Functions**: Older assessments may have reduced influence through temporal decay
+
+The temporal dimension allows the system to capture delayed consequences and evolving understanding of events.
+
+---
+
+## 17. Anti-Manipulation Protection
+
+The system implements multiple layers of protection against manipulation attempts:
+
+- **Behavioral Analysis**: Monitors for suspicious assessment patterns or coordinated activity
+- **Trust Limiting**: Caps maximum influence any single participant can have on outcomes
+- **Anomaly Detection**: Identifies unusual correlation patterns that may indicate manipulation
+- **Decentralized Control**: No single authority can override collective assessments
+- **Transparency**: All assessments and their origins remain traceable for verification
+
+These mechanisms maintain system integrity even when faced with deliberate attempts to skew results.
 
 ---
 
