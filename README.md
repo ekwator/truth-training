@@ -187,7 +187,7 @@ Event truthfulness ≈
 
 **Important:**
 
-- early evaluations carry less weight  
+- early evaluations carry are a predictions of the final result and carry more weight if this prediction turns out to be correct   
 - stable evaluations gain significance over time  
 - sharp changes indicate conflicting interpretations  
 
@@ -198,7 +198,7 @@ Event truthfulness ≈
 The system embeds key conditions for valid collective evaluation:
 
 - **Independence of participants**  
-  - participants do not see others’ evaluations  
+  - Participants see the ratings of others and can make their own assumptions based on these ratings  
 
 - **Diversity of sources**  
   - different contexts, motivations, experiences  
