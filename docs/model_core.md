@@ -789,6 +789,193 @@ IF impact.confirmed_accuracy = TRUE
 • Enables detection of reputation manipulation  
 • Supports reputation trend analysis  
 
+#### 2.1.1 Participants Groups and Group-Level Analysis
+
+Groups are **derived analytical constructs**, not **primary identity markers**.  
+They enable analysis of **participant behavior**, **event correlation across participant clusters**, and **representational balance assessment**, while mitigating structural asymmetry where **large or highly active clusters** may dominate collective outcomes due to **volume**, rather than **independent alignment**.
+
+Groups are introduced to mitigate structural asymmetry where **large or highly active clusters** may dominate collective outcomes due to **volume**, rather than **independent alignment**.
+
+Groups MUST :  
+• Be **optional** — **participants** may not belong to any **group**  
+• Be **non-exclusive** — a **participant** may belong to multiple **groups** simultaneously  
+• Be **temporal and revisable** — memberships may change over **time**  
+• Support both **manual** and **automatic** formation  
+• Never replace **individual-level evaluation**
+
+**Groups** serve **analytical**, **training**, and **correlation** purposes while maintaining **reputation computation** at the **individual level**.
+
+##### Table: participants_groups
+
+📝 **System-level** table of the Collective Intelligence Layer
+It is **not transmitted over the network**
+
+**Purpose** :
+- Stores analytical **group** entities
+- Distinguishes "manual" vs "automatic" **groups**
+
+**Fields** :
+```
+id             (INTEGER, PK, AUTOINCREMENT) — unique group identifier
+type           (TEXT, NOT NULL) — group type ('manual' or 'auto')
+created_at     (INTEGER, NOT NULL) — timestamp of group creation
+description    (TEXT) — optional description of the group
+```
+🏠 Database: truth_training.sqlite
+
+**Explain** :  
+"manual" — **participant-defined** analytical **groups**  
+'auto" — **system-inferred** analytical **groups**
+
+**Notes** :  
+**Groups** are analytical constructs, not identities.
+
+##### Table: participants_groups_members
+
+📝 **System-level** table of the Collective Intelligence Layer
+It is **not transmitted over the network**
+
+**Purpose** :  
+**Many-to-many** relation between **participants** and **groups**  
+**Time-aware** membership tracking
+
+**Fields** :
+```
+group_id         (INTEGER, NOT NULL) — FK → participants_groups.id — group identifier
+participant_id   (INTEGER, NOT NULL) — FK → participants.id — participant identifier
+joined_at        (INTEGER, NOT NULL) — timestamp when participant joined the group
+left_at          (INTEGER, NOT NULL) — timestamp when participant left the group
+```
+🏠 Database: truth_training.sqlite
+
+**Explain** :  
+*non-exclusive membership* — **participant** may belong to **multiple groups**  
+*historical membership* — no hard deletion, membership history preserved
+
+##### Table: group_ratings
+
+📝 **System-level** table of the Collective Intelligence Layer
+It is **not accept direct participant input**, and is **not transmitted over the network**
+
+**Purpose** :  
+Stores derived, non-authoritative **group** metrics.
+
+**Fields**:
+```
+group_id         (INTEGER, PK) — FK → participants_groups.id — unique group identifier
+avg_score        (REAL, NOT NULL) — average participant reputation in group
+coherence        (REAL, NOT NULL) — internal agreement metric
+last_updated     (INTEGER, NOT NULL) — timestamp of last update
+```
+🏠 Database: truth_training.sqlite
+
+**Explain** :  
+"avg_score" = mean **participant** reputation in **group**  
+"coherence" = internal agreement metric
+Values are observational, not normative (system metrics, not decision inputs)
+
+###### Reference Computation Logic (Non-Executable)
+
+The "group_ratings" table functions as a materialized view/cache that stores derived analytical metrics computed from **participant reputation** data. The values are deterministically recomputed by Core logic based on **participant** membership in **groups**.
+
+**Average Score Computation**:
+The "avg_score" field represents the mean **reputation** of all **participants** in the **group**, calculated through aggregation over the "participants" table via the **group** membership relationship :
+
+```sql
+-- Illustrative pseudocode - non-binding and non-executable
+avg_score = (
+    SELECT AVG(p.reputation_score)
+    FROM participants p
+    JOIN participants_groups_members pgm ON p.id = pgm.participant_id
+    WHERE pgm.group_id = group_ratings.group_id
+)
+```
+
+**Coherence Computation** :  
+The "coherence' field measures internal agreement within the **group**, calculated as a normalized deviation from the **group average** :
+
+```sql
+-- Illustrative pseudocode - non-binding and non-executable  
+coherence = (
+    SELECT 1 - (SUM(ABS(p.reputation_score - avg_score)) / (COUNT(*) * D_max))
+    FROM participants p
+    JOIN participants_groups_members pgm ON p.id = pgm.participant_id
+    WHERE pgm.group_id = group_ratings.group_id
+)
+```
+
+Where "D_max" represents the maximum possible deviation (normalization factor) typically calculated as the **difference** between **maximum** and **minimum** possible **reputation scores**, ensuring coherence remains within [0,1].
+```
+D_max = max_possible_reputation_score - min_possible_reputation_score = 1.0 - 0.0 = 1.0
+```
+
+**Important Notes** :  
+• "group_ratings" is a derived analytical table, not a source of **truth**  
+• Values MAY be recomputed by Core logic as **participant reputations** change  
+• Values MUST NOT be manually edited by **participants**
+• Values MUST NOT directly affect individual **participant reputation scores**
+• The table serves analytical and observational purposes only
+
+###### Mathematical Models
+
+**Group average reputation** :
+
+$$R_{group} = \frac{1}{N}\sum_{i=1}^{N} R_i$$
+
+Where :  
+- $R_{group}$ — group average reputation score  
+- $R_i$ — reputation score of participant $i$  
+- $N$ — number of participants in the group
+
+**Group coherence** :
+
+$$C_{group} = 1 - \frac{\sum|R_i - R_{group}|}{N \cdot D_{max}}$$
+
+Where :  
+- $C_{group}$ — internal agreement level of the **group**  
+- $R_i$ — **reputation score** of **participant** $i$  
+- $R_{group}$ — average **reputation** of the **group**  
+- $N$ — number of **participants** in the **group**  
+- $D_{max}$ — **maximum** possible **deviation** (scaling factor)
+
+Automatic **Group** Formation — Observables (NOT Algorithms)  
+**Groups** of type "auto" MAY be inferred by Core logic from observable signals only.
+
+The database does not decide groups — it only provides structured evidence.
+
+**Possible signals include** :
+• Network topology (**Node Discovery** tables)  
+• Interaction density between **nodes**  
+• Shared participation in linked events ("event_links")  
+• Temporal proximity of actions
+• Recurrent alignment in **judgment** / **impact** patterns
+
+**Group Signals** from **Network Topology**  
+**Node graphs** may reveal latent clusters via :  
+• Edge density
+• Edge persistence
+• Repeated co-occurrence in **event chains**
+
+Such clusters MAY be materialized as "participants_groups" (type = "auto") for analysis only, without affecting **reputation directly**.
+
+**Group-Level *Event Correlation (Preparatory Model)**  
+**Concept** :  
+Correlation is performed between independent **group structures**, not between individuals.
+
+Value emerges when structurally independent **groups** produce aligned interpretations.
+
+**Key principle** :  
+Alignment across independent structures > majority dominance
+
+❗ This model explicitly does NOT :
+
+• Define clustering algorithms
+• Enforce **group** membership
+• Modify **reputation** directly
+• Replace individual-level evaluation
+
+**Groups** are analytical lenses, not **authorities**.
+
 ### 2.2 Axes
 
 • **Truth** in **Truth Training** system is **not static** value  
@@ -1326,101 +1513,8 @@ The pseudocode represents the conceptual model for how global **truth** aggregat
 • Maintains **statistical validity** of **truth assessments**  
 • Enables **cross-node verification**
 
-#### 2.3.3 Table: group_ratings  
-📝 **System-level** table of the Collective Intelligence Layer
-It is **not accept direct participant input**, and is **not transmitted over the network**
+#### 2.3.3 Table: progress_metrics
 
-**Purpose** :  
-Stores **group assessment ratings** for **collective progress metrics**  
-**Fields** :
-```
-group_id     (INTEGER, PK, AUTOINCREMENT) — unique group identifier
-members      (INTEGER, NOT NULL) — list of group member IDs
-avg_score    (REAL, NOT NULL) — average score of the group
-coherence    (REAL, NOT NULL) — coherence of group assessments
-last_updated (INTEGER, NOT NULL) — timestamp of last update
-```
-🏠 Database: truth_training.sqlite
-
-**Model "group_ratings"** :  
-**Source relation**
-```sql
-group_ratings.group_id = participants.group_membership
-group_ratings.avg_score = (
-    SELECT AVG(participants.reputation_score)
-    FROM participants
-    WHERE participants.group_membership = group_ratings.group_id
-)
-group_ratings.coherence = (
-    SELECT 1 - (SUM(ABS(p.reputation_score - avg_score)) / (COUNT(*) * 2))
-    FROM participants p
-    WHERE p.group_membership = group_ratings.group_id
-)
-```
-**Base group mapping**
-```sql
-base_group_id =
-SELECT group_ratings.group_id
-FROM group_ratings
-WHERE group_ratings.group_id = participants.group_membership
-```
-**Aggregation formulas "avg_score"**
-```sql
-group_ratings.avg_score = (
-    SELECT AVG(reputation_score)
-    FROM participants
-    WHERE group_membership = base_group_id
-)
-```
-**Aggregation formulas "coherence"**
-```sql
-group_ratings.coherence = (
-    SELECT 1 - (SUM(ABS(reputation_score - avg_score)) / (COUNT(*) * 2))
-    FROM participants
-    WHERE group_membership = base_group_id
-)
-```
-**Aggregation formulas "last_updated"**
-```sql
-group_ratings.last_updated = CURRENT_TIMESTAMP
-```
-
-##### Model: Group Assessment Dynamics
-
-```
-R_group = (Σ Rᵢ) / N
-```
-**Where** :  
-- R_group — **group rating**  
-- Rᵢ — **rating of member** i  
-- N — **number of members**
-
-**Coherence Measurement** :
-```
-C_group = 1 - (Σ |Rᵢ - R_group|) / (N * max_deviation)
-```
-
-**Group Performance Metrics** :
-```
-Performance = f(avg_score, coherence, consistency)
-```
-
-**Coherence Rules** :
-```sql
-IF coherence > 0.8
-    group_decision_reliability = HIGH
-ELSE IF coherence > 0.6
-    group_decision_reliability = MEDIUM
-ELSE
-    group_decision_reliability = LOW
-```
-
-**Notes** :  
-• Measures collective intelligence effectiveness  
-• Tracks group consensus quality  
-• Enables group performance optimization
-
-#### 2.3.4 Table: progress_metrics  
 📝 **System-level** table of the Collective Intelligence Layer
 It is **not accept direct participant input**, and is **not transmitted over the network**
 
@@ -4125,7 +4219,7 @@ IF beacon_received
     discovery_type = "beacon"
     discovered_at = CURRENT_TIMESTAMP
     ttl = 3600  -- 1 hour
-
+    
 IF manual_addition
     discovery_type = "manual"
     discovered_at = CURRENT_TIMESTAMP
@@ -4149,6 +4243,35 @@ IF manual_addition
 • Enables **detection** of **discovery manipulation**  
 • Supports **discovery trend analysis**
 
+#### Group Inference Signals (Preparatory Infrastructure)
+
+**This section describes observable signals only** :  
+• network topology
+• edge density
+• event_links overlap
+• temporal proximity
+• repeated alignment
+
+**Explicitly states** :  
+• database does NOT infer groups  
+• core logic MAY materialize auto-groups  
+• no clustering algorithm is defined here
+
+#### Group-Level Event Correlation (Conceptual Model)
+
+**Conceptually**: **Event correlation**  may be performed between **group structures**, not only individuals  
+Correlation is based on structural similarity, not vote count.  
+Intersections of **event graphs** across independent **groups** are especially valuable.
+
+**Stated explicitly**: Group-level correlation evaluates alignment across independent structures, not majority dominance.
+
+❗ **This model does NOT** :  
+• Define clustering algorithms  
+• Enforce group membership  
+• Modify reputation directly  
+• Replace individual-level evaluation  
+
+Groups are analytical lenses, not authorities.
 
 ### Table: node_ratings
 
@@ -5145,7 +5268,7 @@ This :
 
 ## Summary of P2P Exchange and Participant Management
 
-The **Truth Trainin**g system implements the following **P2P exchange logic**:
+The **Truth Training** system implements the following **P2P exchange logic**:
 
 1. **No Users Table**: There is no "users" table in the system, in accordance with the principle of not duplicating information.
 
@@ -5161,6 +5284,12 @@ The **Truth Trainin**g system implements the following **P2P exchange logic**:
 6. **Foreign Key Relationships**: The "participant_id" field in "truth_event", "impact", and "judgment" tables is a foreign key referencing the "id" field in the "participants" table, which contains the **public key** value
 
 7. **Unique Constraint**: The combination of "global_id" and "participant_id" in the "truth_event" table creates a **unique constraint** ensuring that each **event** is **unique per participant**. This constraint is critical during **P2P synchronization** to prevent **duplication of events** from the same **participant**
+
+8. **Group Discovery During Sync**: When processing P2P data, if a participant belongs to groups that don't exist locally, group records are created in "participants_groups" with type 'auto' for analytical purposes only.
+
+9. **Membership Tracking**: Group membership information from synchronized data creates entries in "participants_groups_members" to maintain analytical groupings across the network.
+
+10. **Group Ratings**: The "group_ratings" table stores aggregated metrics for analytical purposes, computed from participant data in groups but not transmitted over the network.
 
 
 

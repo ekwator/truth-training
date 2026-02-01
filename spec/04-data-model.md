@@ -88,6 +88,31 @@ CREATE TABLE participants (
     FOREIGN KEY(reputation_history) REFERENCES reputation_history(id)
 );
 
+CREATE TABLE participants_groups (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    type        TEXT NOT NULL CHECK (type IN ('manual', 'auto')),
+    created_at  INTEGER NOT NULL,
+    description TEXT
+);
+
+CREATE TABLE participants_groups_members (
+    group_id INTEGER NOT NULL,
+    participant_id INTEGER NOT NULL,
+    joined_at INTEGER NOT NULL,
+    left_at INTEGER NOT NULL,
+    PRIMARY KEY (group_id, participant_id),
+    FOREIGN KEY (group_id) REFERENCES participants_groups(id),
+    FOREIGN KEY (participant_id) REFERENCES participants(id)
+);
+
+CREATE TABLE group_ratings (
+    group_id INTEGER PRIMARY KEY,
+    avg_score REAL NOT NULL,
+    coherence REAL NOT NULL,
+    last_updated INTEGER NOT NULL,
+    FOREIGN KEY (group_id) REFERENCES participants_groups(id)
+);
+
 CREATE TABLE reputation_history (
     id             INTEGER PRIMARY KEY,
     old_reputation REAL NOT NULL,

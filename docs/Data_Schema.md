@@ -353,6 +353,26 @@ Records when an event has become stable in truth and/or impact. This helps flag 
 | impact_stable | INTEGER | BOOLEAN 0/1 - true if impact is stabilized |
 | stabilized_at | INTEGER | When stabilization was detected |
 
+#### participants_groups Table
+Stores analytical group entities and distinguishes between manual and automatic groups.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INTEGER | Primary key (auto-increment) |
+| type | TEXT | Group type ('manual' or 'auto') |
+| created_at | INTEGER | Timestamp of group creation |
+| description | TEXT | Optional description of the group |
+
+#### participants_groups_members Table
+Manages many-to-many relationship between participants and groups with time-aware membership tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| group_id | INTEGER | Foreign key to participants_groups.id - group identifier |
+| participant_id | INTEGER | Foreign key to participants.id - participant identifier |
+| joined_at | INTEGER | Timestamp when participant joined the group |
+| left_at | INTEGER | Timestamp when participant left the group |
+
 ### 1.5 Collective Intelligence System Tables
 
 #### event_projection Table
@@ -378,14 +398,13 @@ Aggregates local training metrics (csᵢ) for global processing in group trainin
 | updated_at | INTEGER | Timestamp of last update |
 
 #### group_ratings Table
-Stores group assessment ratings for collective progress metrics.
+Stores derived, non-authoritative group metrics. System-only table, not writable by participants. Not transmitted over the network.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| group_id | INTEGER | Primary key (auto-increment) |
-| members | INTEGER | List of group member IDs |
-| avg_score | REAL | Average score of the group |
-| coherence | REAL | Coherence of group assessments |
+| group_id | INTEGER | Primary key, foreign key to participants_groups.id |
+| avg_score | REAL | Average participant reputation in group (mean participant reputation in group) |
+| coherence | REAL | Internal agreement metric (internal agreement level of the group) |
 | last_updated | INTEGER | Timestamp of last update |
 
 #### progress_metrics Table
