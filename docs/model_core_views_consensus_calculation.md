@@ -1,109 +1,137 @@
--- **Document Version:** v1.1.0  
--- **Status:** Specification  
--- **Updated:** 2025-12-28  
--- **Status:** Approved  
--- SQL Views for Calculates consensus values based on participant judgments and impact assessments
+# Consensus Calculation View
 
--- Function to calculate consensus based on participant judgments and impact assessments
--- Implements the aggregation function that computes collective agreement on event truth and impact values
--- Connects through the relationships: consensus_ci.event_id → event_ci.id → event_ci.created_by → truth_event.id → truth_event.participant_id → participants.id
--- Also connects: judgment.event_id → event_ci.id → event_ci.created_by → truth_event.id → truth_event.participant_id → participants.id
--- Also connects: impact.event_id → event_ci.id → event_ci.created_by → truth_event.id → truth_event.participant_id → participants.id
+**Document Version:** v1.1.1  
+**Status:** Specification  
+**Updated:** 2026-01-03  
+**Status:** Approved
+
+## Overview
+This view calculates consensus values based on participant judgments and impact assessments, implementing the aggregation function that computes collective agreement on event truth and impact values as described in section 2.6.4.
+
+## Purpose
+The `consensus_calculation` view computes the collective intelligence state by aggregating individual participant contributions into a unified consensus value that represents the collective agreement on truth and impact values for events.
+
+## SQL Implementation
+
 ```sql
+-- View to calculate consensus values based on participant judgments and impact assessments
 CREATE VIEW consensus_calculation AS
-SELECT
-    ec.id as event_id,
-    -- Calculate consensus based on judgments with participant reputation weighting
-    CASE
-        WHEN COUNT(j.id) = 0 THEN NULL
-        ELSE SUM(
-            CASE 
-                WHEN j.assessment = 'true' THEN 1.0 * COALESCE(p.reputation_score, 0.5)
-                WHEN j.assessment = 'false' THEN -1.0 * COALESCE(p.reputation_score, 0.5)
-                ELSE 0.0
-            END
-        ) / COUNT(j.id)
-    END as judgment_consensus,
-    -- Calculate consensus based on impact assessments with participant reputation weighting
-    CASE
-        WHEN COUNT(i.id) = 0 THEN NULL
-        ELSE SUM(
-            CASE 
-                WHEN i.value = 1 THEN 1.0 * COALESCE(p.reputation_score, 0.5)
-                WHEN i.value = 0 THEN -1.0 * COALESCE(p.reputation_score, 0.5)
-                ELSE 0.0
-            END
-        ) / COUNT(i.id)
-    END as impact_consensus,
-    -- Combined consensus score
-    CASE
-        WHEN COUNT(j.id) = 0 AND COUNT(i.id) = 0 THEN NULL
-        WHEN COUNT(j.id) = 0 THEN (
-            SELECT SUM(
-                CASE 
-                    WHEN i2.value = 1 THEN 1.0 * COALESCE(p2.reputation_score, 0.5)
-                    WHEN i2.value = 0 THEN -1.0 * COALESCE(p2.reputation_score, 0.5)
-                    ELSE 0.0
-                END
-            ) / COUNT(i2.id)
-            FROM impact i2
-            JOIN event_ci ec2 ON i2.event_id = ec2.id
-            JOIN truth_event te2 ON ec2.created_by = te2.id
-            JOIN participants p2 ON te2.participant_id = p2.id
-            WHERE ec2.id = ec.id
+SELECT 
+    event_ci.id AS event_id,
+    -- Calculate consensus value based on participant judgments and impact assessments
+    (
+        SELECT ROUND(AVG(j.assessment_value * jw.weight))
+        FROM judgment j
+        JOIN judgment_weights jw ON j.participant_id = jw.participant_id
+        WHERE j.event_id = event_ci.id
+    ) AS consensus_value,
+    
+    -- Calculate confidence score in the consensus
+    (
+        SELECT AVG(j.confidence_level * jw.weight)
+        FROM judgment j
+        JOIN judgment_weights jw ON j.participant_id = jw.participant_id
+        WHERE j.event_id = event_ci.id
+    ) AS confidence_score,
+    
+    -- Count of participants involved in consensus
+    (
+        SELECT COUNT(DISTINCT participant_id)
+        FROM judgment
+        WHERE event_id = event_ci.id
+    ) AS participant_count,
+    
+    -- Calculate impact-based consensus
+    (
+        SELECT AVG(i.value * p.reputation_score)
+        FROM impact i
+        JOIN truth_event te ON i.event_id = te.id
+        JOIN participants p ON te.participant_id = p.id
+        WHERE i.event_id = (
+            SELECT created_by FROM event_ci WHERE id = event_ci.id
         )
-        WHEN COUNT(i.id) = 0 THEN (
-            SELECT SUM(
-                CASE 
-                    WHEN j2.assessment = 'true' THEN 1.0 * COALESCE(p3.reputation_score, 0.5)
-                    WHEN j2.assessment = 'false' THEN -1.0 * COALESCE(p3.reputation_score, 0.5)
-                    ELSE 0.0
-                END
-            ) / COUNT(j2.id)
-            FROM judgment j2
-            JOIN event_ci ec3 ON j2.event_id = ec3.id
-            JOIN truth_event te3 ON ec3.created_by = te3.id
-            JOIN participants p3 ON te3.participant_id = p3.id
-            WHERE ec3.id = ec.id
-        )
-        ELSE (
-            SUM(
-                CASE 
-                    WHEN j.value = 1 THEN 1.0 * COALESCE(p.reputation_score, 0.5)
-                    WHEN j.value = 0 THEN -1.0 * COALESCE(p.reputation_score, 0.5)
-                    ELSE 0.0
-                END
-            ) / COUNT(j.id) +
-            SUM(
-                CASE 
-                    WHEN i.value = 1 THEN 1.0 * COALESCE(p.reputation_score, 0.5)
-                    WHEN i.value = 0 THEN -1.0 * COALESCE(p.reputation_score, 0.5)
-                    ELSE 0.0
-                END
-            ) / COUNT(i.id)
-        ) / 2.0
-    END as combined_consensus,
-    -- Confidence in the consensus based on number of participants and agreement level
-    CASE
-        WHEN COUNT(j.id) + COUNT(i.id) = 0 THEN 0.0
-        ELSE (
-            CASE 
-                WHEN AVG(ABS(COAALESCE(p.reputation_score, 0.5))) IS NOT NULL 
-                THEN AVG(ABS(COALESCE(p.reputation_score, 0.5)))
-                ELSE 0.0
-            END
-        ) * LEAST(1.0, (COUNT(j.id) + COUNT(i.id)) / 10.0)  -- Cap confidence at reasonable level
-    END as consensus_confidence
-FROM event_ci ec
-LEFT JOIN truth_event te ON ec.created_by = te.id
-LEFT JOIN participants p ON te.participant_id = p.id
-LEFT JOIN judgment j ON ec.id = j.event_id
-LEFT JOIN impact i ON ec.id = i.event_id
-GROUP BY ec.id;
-```
--- This view supports the consensus calculation logic by combining both judgment and impact assessments
--- weighted by participant reputation, providing a comprehensive consensus score that reflects both 
--- truth and consequence axes as described in the model.
+    ) AS impact_consensus,
+    
+    -- Overall consensus combining both axes
+    (
+        SELECT 
+            COALESCE(cc.confidence_score, 0) * 0.5 + 
+            COALESCE(ic.impact_score, 0) * 0.5
+        FROM consensus_ci cc
+        LEFT JOIN (
+            SELECT 
+                te.id as event_id,
+                AVG(i.value * pr.reputation_score) as impact_score
+            FROM truth_event te
+            JOIN impact i ON te.id = i.event_id
+            JOIN participants pr ON te.participant_id = pr.id
+            GROUP BY te.id
+        ) ic ON cc.event_id = ic.event_id
+        WHERE cc.event_id = event_ci.id
+    ) AS combined_consensus,
+    
+    CURRENT_TIMESTAMP AS calculated_at
+FROM event_ci;
 
--- Also reflects: consensus_ci.event_id → event_ci.id → event_ci.created_by → truth_event.id → truth_event.participant_id
--- Also reflects: impact_metrics.event_id → event_ci.id → event_ci.created_by → truth_event.id → truth_event.participant_id
+-- Alternative view for real-time consensus calculation
+CREATE VIEW real_time_consensus AS
+SELECT 
+    ec.event_id,
+    ec.consensus_value,
+    ec.confidence_score,
+    ec.participant_count,
+    CASE 
+        WHEN ec.confidence_score > 0.7 AND ec.participant_count >= 3 THEN 'HIGH'
+        WHEN ec.confidence_score > 0.5 AND ec.participant_count >= 2 THEN 'MEDIUM'
+        ELSE 'LOW'
+    END AS consensus_quality,
+    ec.calculated_at
+FROM consensus_calculation ec;
+```
+
+## Key Features
+
+### Consensus Value Calculation
+The view calculates the consensus value by taking the weighted average of all judgments, where weights are determined by participant reputation scores.
+
+### Confidence Scoring
+Confidence in the consensus is calculated based on both the confidence levels expressed by participants and their reputation weights.
+
+### Impact Integration
+The view also incorporates impact assessments to provide a more holistic consensus that considers both truth and consequence axes.
+
+### Quality Assessment
+The view includes a quality assessment that categorizes the reliability of the consensus based on confidence scores and participant count.
+
+## Relationship to Model Core
+This view implements the core consensus mechanism described in the model, where collective truth emerges from the aggregation of individual assessments. The view ensures that the consensus calculation aligns with the principles of collective intelligence and distributed truth assessment.
+
+## Usage Examples
+
+```sql
+-- Get current consensus for a specific event
+SELECT * FROM consensus_calculation WHERE event_id = ?;
+
+-- Get events with high-confidence consensus
+SELECT * FROM real_time_consensus WHERE consensus_quality = 'HIGH';
+
+-- Monitor consensus evolution over time
+SELECT 
+    event_id,
+    confidence_score,
+    participant_count,
+    calculated_at
+FROM consensus_calculation
+ORDER BY calculated_at DESC;
+```
+
+## Integration with Other Components
+- Works with `judgment_weights` to apply appropriate participant reputation weights
+- Integrates with `impact` assessments to provide comprehensive consensus
+- Feeds into `event_ci` state management for event classification
+- Supports the calculation of `truth_state` values
+
+## Notes
+- The view is designed to be refreshed regularly to reflect new participant contributions
+- Weights are based on participant reputation scores from the `participants` table
+- The consensus calculation supports both individual event analysis and cross-event comparisons

@@ -1,170 +1,302 @@
--- **Document Version:** v1.1.0  
--- **Status:** Specification  
--- **Updated:** 2025-12-28  
--- **Status:** Approved  
--- SQL Views for Event Convergence Analysis Between Impact and Judgment Axes  
+# Event Convergence Analysis View
 
--- Analyzes convergence between impact and judgment axes for event classification
--- Implements the logic for determining when an event reaches stable truth and impact values
--- Uses the relationships: event_ci.id → impact_metrics.event_id, event_ci.id → judgment_weights.event_id
+**Document Version:** v1.1.1  
+**Status:** Specification  
+**Updated:** 2026-01-03  
+**Status:** Approved
+
+## Overview
+This view analyzes convergence between impact and judgment axes for event classification, implementing the logic for determining when an event reaches stable truth and impact values as described in section 2.6.3.
+
+## Purpose
+The `event_convergence_analysis` view monitors the convergence of truth and consequence axes for events, helping to determine when an event has reached a stable state where further assessment changes are minimal. This is crucial for event classification and stability detection.
+
+## SQL Implementation
+
 ```sql
+-- View to analyze convergence between impact and judgment axes for events
 CREATE VIEW event_convergence_analysis AS
-SELECT
-    ec.id as event_id,
+SELECT 
+    ec.id AS event_id,
     ec.event_type,
     ec.status,
-    -- Determine if impact axis is active/converged
-    CASE
-        WHEN EXISTS (
-            SELECT 1 FROM impact_metrics im
-            WHERE im.event_id = ec.id
-            AND (im.positive_ratio IS NOT NULL OR im.negative_ratio IS NOT NULL OR im.uncertainty IS NOT NULL)
+    ec.resolution_data,
+    
+    -- Truth convergence analysis
+    (
+        SELECT 
+            CASE 
+                WHEN COUNT(*) >= 5 AND ABS(AVG(truth_score) - MEDIAN(truth_score)) < 0.05 THEN 1
+                ELSE 0
+            END
+        FROM (
+            SELECT truth_score
+            FROM event_state_history
+            WHERE event_id = ec.id
+            ORDER BY recorded_at DESC
+            LIMIT 10
         )
-        THEN 1
-        ELSE 0
-    END as impact_converged,
-    -- Determine if judgment axis is active/converged
-    CASE
-        WHEN EXISTS (
-            SELECT 1 FROM judgment_weights jw
-            WHERE jw.event_id = ec.id
-            AND jw.weight IS NOT NULL
+    ) AS truth_converged,
+    
+    -- Impact convergence analysis
+    (
+        SELECT 
+            CASE 
+                WHEN COUNT(*) >= 5 AND ABS(AVG(impact_score) - MEDIAN(impact_score)) < 0.05 THEN 1
+                ELSE 0
+            END
+        FROM (
+            SELECT impact_score
+            FROM event_state_history
+            WHERE event_id = ec.id
+            ORDER BY recorded_at DESC
+            LIMIT 10
         )
-        THEN 1
-        ELSE 0
-    END as judgment_converged,
-    -- Calculate convergence status
-    CASE
-        WHEN NOT (
-            EXISTS (
-                SELECT 1 FROM impact_metrics im
-                WHERE im.event_id = ec.id
-                AND (im.positive_ratio IS NOT NULL OR im.negative_ratio IS NOT NULL OR im.uncertainty IS NOT NULL)
-            ) OR
-            EXISTS (
-                SELECT 1 FROM judgment_weights jw
-                WHERE jw.event_id = ec.id
-                AND jw.weight IS NOT NULL
-            )
-        ) THEN 'unstable'
+    ) AS impact_converged,
+    
+    -- Combined convergence status
+    CASE 
         WHEN (
-            EXISTS (
-                SELECT 1 FROM impact_metrics im
-                WHERE im.event_id = ec.id
-                AND (im.positive_ratio IS NOT NULL OR im.negative_ratio IS NOT NULL OR im.uncertainty IS NOT NULL)
-            ) XOR
-            EXISTS (
-                SELECT 1 FROM judgment_weights jw
-                WHERE jw.event_id = ec.id
-                AND jw.weight IS NOT NULL
+            SELECT COUNT(*) >= 5 AND 
+                   ABS(AVG(truth_score) - MEDIAN(truth_score)) < 0.05
+            FROM (
+                SELECT truth_score
+                FROM event_state_history
+                WHERE event_id = ec.id
+                ORDER BY recorded_at DESC
+                LIMIT 10
             )
-        ) THEN 'suppose'
+        ) AND (
+            SELECT COUNT(*) >= 5 AND 
+                   ABS(AVG(impact_score) - MEDIAN(impact_score)) < 0.05
+            FROM (
+                SELECT impact_score
+                FROM event_state_history
+                WHERE event_id = ec.id
+                ORDER BY recorded_at DESC
+                LIMIT 10
+            )
+        ) THEN 'CONVERGED'
         WHEN (
-            EXISTS (
-                SELECT 1 FROM impact_metrics im
-                WHERE im.event_id = ec.id
-                AND (im.positive_ratio IS NOT NULL OR im.negative_ratio IS NOT NULL OR im.uncertainty IS NOT NULL)
-            ) AND
-            EXISTS (
-                SELECT 1 FROM judgment_weights jw
-                WHERE jw.event_id = ec.id
-                AND jw.weight IS NOT NULL
-            ) AND
-            ec.event_type = 'both' AND
-            (ec.status = 'resolved' OR ec.status = 'archived')
-        ) THEN 'consent'
-        ELSE 'unstable'
-    END as convergence_status,
-    -- Calculate how close the event is to convergence
-    CASE
-        WHEN EXISTS (
-            SELECT 1 FROM impact_metrics im
-            WHERE im.event_id = ec.id
-        ) AND EXISTS (
-            SELECT 1 FROM judgment_weights jw
-            WHERE jw.event_id = ec.id
+            SELECT COUNT(*) >= 5 AND 
+                   ABS(AVG(truth_score) - MEDIAN(truth_score)) < 0.05
+            FROM (
+                SELECT truth_score
+                FROM event_state_history
+                WHERE event_id = ec.id
+                ORDER BY recorded_at DESC
+                LIMIT 10
+            )
+        ) THEN 'TRUTH_ONLY'
+        WHEN (
+            SELECT COUNT(*) >= 5 AND 
+                   ABS(AVG(impact_score) - MEDIAN(impact_score)) < 0.05
+            FROM (
+                SELECT impact_score
+                FROM event_state_history
+                WHERE event_id = ec.id
+                ORDER BY recorded_at DESC
+                LIMIT 10
+            )
+        ) THEN 'IMPACT_ONLY'
+        ELSE 'DIVERGED'
+    END AS convergence_status,
+    
+    -- Rate of change for truth (derivative approximation)
+    (
+        SELECT 
+            CASE 
+                WHEN COUNT(*) >= 2 THEN
+                    ABS(MAX(truth_score) - MIN(truth_score)) / 
+                    (julianday(MAX(recorded_at)) - julianday(MIN(recorded_at)))
+                ELSE 0
+            END
+        FROM (
+            SELECT truth_score, recorded_at
+            FROM event_state_history
+            WHERE event_id = ec.id
+            ORDER BY recorded_at DESC
+            LIMIT 5
         )
-        THEN 1.0  -- Both axes active
-        WHEN EXISTS (
-            SELECT 1 FROM impact_metrics im
-            WHERE im.event_id = ec.id
-        ) OR EXISTS (
-            SELECT 1 FROM judgment_weights jw
-            WHERE jw.event_id = ec.id
+    ) AS truth_change_rate,
+    
+    -- Rate of change for impact (derivative approximation)
+    (
+        SELECT 
+            CASE 
+                WHEN COUNT(*) >= 2 THEN
+                    ABS(MAX(impact_score) - MIN(impact_score)) / 
+                    (julianday(MAX(recorded_at)) - julianday(MIN(recorded_at)))
+                ELSE 0
+            END
+        FROM (
+            SELECT impact_score, recorded_at
+            FROM event_state_history
+            WHERE event_id = ec.id
+            ORDER BY recorded_at DESC
+            LIMIT 5
         )
-        THEN 0.5  -- One axis active
-        ELSE 0.0  -- No axis active
-    END as convergence_score,
-    -- Timestamp of analysis
-    (SELECT strftime('%s', 'now')) as analyzed_at
+    ) AS impact_change_rate,
+    
+    -- Stability indicator (low change rate over time)
+    CASE 
+        WHEN (
+            SELECT 
+                CASE 
+                    WHEN COUNT(*) >= 2 THEN
+                        ABS(MAX(truth_score) - MIN(truth_score)) / 
+                        (julianday(MAX(recorded_at)) - julianday(MIN(recorded_at)))
+                    ELSE 999
+                END
+            FROM (
+                SELECT truth_score, recorded_at
+                FROM event_state_history
+                WHERE event_id = ec.id
+                ORDER BY recorded_at DESC
+                LIMIT 5
+            )
+        ) < 0.01 AND (
+            SELECT 
+                CASE 
+                    WHEN COUNT(*) >= 2 THEN
+                        ABS(MAX(impact_score) - MIN(impact_score)) / 
+                        (julianday(MAX(recorded_at)) - julianday(MIN(recorded_at)))
+                    ELSE 999
+                END
+            FROM (
+                SELECT impact_score, recorded_at
+                FROM event_state_history
+                WHERE event_id = ec.id
+                ORDER BY recorded_at DESC
+                LIMIT 5
+            )
+        ) < 0.01 THEN 1
+        ELSE 0
+    END AS is_stable,
+    
+    -- Number of recent assessments contributing to current state
+    (
+        SELECT COUNT(*)
+        FROM event_state_history
+        WHERE event_id = ec.id
+        AND recorded_at > datetime('now', '-1 day')
+    ) AS recent_assessment_count,
+    
+    -- Time since last significant change (>0.1 threshold)
+    (
+        SELECT 
+            CASE 
+                WHEN MAX(significant_change_time) IS NOT NULL THEN
+                    julianday('now') - julianday(MAX(significant_change_time))
+                ELSE julianday('now') - julianday(ec.created_at)
+            END
+        FROM (
+            SELECT recorded_at as significant_change_time
+            FROM event_state_history
+            WHERE event_id = ec.id
+            AND ABS(truth_score - LAG(truth_score, 1, truth_score) OVER (ORDER BY recorded_at)) > 0.1
+            OR ABS(impact_score - LAG(impact_score, 1, impact_score) OVER (ORDER BY recorded_at)) > 0.1
+            ORDER BY recorded_at DESC
+            LIMIT 1
+        )
+    ) AS days_since_last_significant_change,
+    
+    ec.created_at AS event_created_at,
+    CURRENT_TIMESTAMP AS analysis_timestamp
+
 FROM event_ci ec;
+
+-- View to identify events ready for classification
+CREATE VIEW convergence_ready_events AS
+SELECT 
+    eca.event_id,
+    eca.convergence_status,
+    eca.truth_change_rate,
+    eca.impact_change_rate,
+    eca.is_stable,
+    eca.days_since_last_significant_change,
+    -- Determine if event is ready for final classification
+    CASE 
+        WHEN eca.convergence_status = 'CONVERGED' 
+             AND eca.is_stable = 1 
+             AND eca.days_since_last_significant_change >= 7 THEN 1
+        ELSE 0
+    END AS ready_for_classification
+FROM event_convergence_analysis eca
+WHERE eca.recent_assessment_count > 0;
+
+-- View to monitor convergence trends
+CREATE VIEW convergence_trends AS
+SELECT 
+    convergence_status,
+    COUNT(*) as event_count,
+    AVG(truth_change_rate) as avg_truth_change_rate,
+    AVG(impact_change_rate) as avg_impact_change_rate,
+    AVG(days_since_last_significant_change) as avg_days_since_change,
+    COUNT(CASE WHEN is_stable = 1 THEN 1 END) as stable_events,
+    COUNT(CASE WHEN ready_for_classification = 1 THEN 1 END) as ready_for_classification
+FROM (
+    SELECT 
+        event_id,
+        convergence_status,
+        truth_change_rate,
+        impact_change_rate,
+        days_since_last_significant_change,
+        is_stable,
+        ready_for_classification
+    FROM convergence_ready_events
+) cre
+GROUP BY convergence_status;
 ```
 
--- Alternative view that includes more detailed convergence metrics
--- This view provides additional metrics for measuring convergence between axes
+## Key Features
+
+### Multi-Axis Convergence Detection
+The view analyzes convergence on both truth and impact axes independently, then determines the overall convergence status of the event.
+
+### Rate of Change Analysis
+Calculates the rate of change for both truth and impact scores to determine if an event is still evolving or has stabilized.
+
+### Stability Indicators
+Provides boolean flags to quickly identify whether an event has reached a stable state based on low change rates.
+
+### Time-Based Analysis
+Tracks how long it has been since the last significant change, which is important for determining when an event has truly converged.
+
+### Classification Readiness
+Determines when an event is ready for final classification based on convergence, stability, and time since last significant change.
+
+## Relationship to Model Core
+This view implements the convergence detection logic described in the model, where:
+- Events have two orthogonal axes (truth and impact) that must converge
+- Convergence is determined by low rates of change over time
+- Stability is a prerequisite for event classification
+- The system tracks how assessment axes evolve over time
+
+## Usage Examples
+
 ```sql
-CREATE VIEW event_convergence_detailed AS
-SELECT
-    ec.id as event_id,
-    ec.event_type,
-    ec.status,
-    -- Impact metrics
-    im.positive_ratio as impact_positive_ratio,
-    im.negative_ratio as impact_negative_ratio,
-    im.uncertainty as impact_uncertainty,
-    im.total_magnitude as impact_magnitude,
-    -- Judgment metrics
-    jw.weight as judgment_weight,
-    cc.confidence_score as judgment_confidence,
-    -- Calculate convergence delta between axes
-    ABS(
-        COALESCE(im.total_magnitude, 0) - 
-        COALESCE(cc.confidence_score, 0)
-    ) as axis_convergence_delta,
-    -- Stability indicators
-    CASE
-        WHEN ABS(
-            COALESCE(im.total_magnitude, 0) - 
-            COALESCE(cc.confidence_score, 0)
-        ) < (CASE
-            WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
-            THEN 0.000001
-            ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
-        END)
-        THEN 1
-        ELSE 0
-    END as axis_stable,
-    -- Timestamp
-    (SELECT strftime('%s', 'now')) as analyzed_at
-FROM event_ci ec
-LEFT JOIN impact_metrics im ON ec.id = im.event_id
-LEFT JOIN judgment_weights jw ON ec.id = jw.event_id
-LEFT JOIN consensus_ci cc ON ec.id = cc.event_id;
+-- Get convergence analysis for a specific event
+SELECT * FROM event_convergence_analysis WHERE event_id = ?;
+
+-- Find events ready for final classification
+SELECT * FROM convergence_ready_events WHERE ready_for_classification = 1;
+
+-- Monitor convergence trends across all events
+SELECT * FROM convergence_trends;
+
+-- Identify events that have recently changed significantly
+SELECT * FROM event_convergence_analysis 
+WHERE days_since_last_significant_change < 1;
 ```
 
--- View for detecting when events reach convergence thresholds
--- This view identifies events that have reached stable truth and impact values
-```sql
-CREATE VIEW event_convergence_detection AS
-SELECT
-    ecd.event_id,
-    ecd.convergence_score,
-    ecd.axis_convergence_delta,
-    ecd.axis_stable,
-    ecd.analyzed_at,
-    -- Determine if event has reached stable state
-    CASE
-        WHEN ecd.axis_stable = 1 
-             AND ecd.convergence_score = 1.0
-             AND ec.status IN ('resolved', 'archived')
-        THEN 1
-        ELSE 0
-    END as is_stable,
-    -- Days since event creation
-    (SELECT julianday('now') - julianday(te.created_at, 'unixepoch')
-     FROM truth_event te
-     JOIN event_ci eci ON te.id = eci.created_by
-     WHERE eci.id = ecd.event_id
-    ) as days_since_creation
-FROM event_convergence_detailed ecd
-JOIN event_ci ec ON ecd.event_id = ec.id;
+## Integration with Other Components
+- Works with `event_state_history` to track evolution over time
+- Feeds into `event_ci` status updates when convergence is achieved
+- Supports `event_stability` detection by providing stability indicators
+- Used in `event_projection` for final quadrant classification
+
+## Notes
+- The view uses a sliding window approach to analyze recent history
+- Convergence thresholds can be adjusted based on system requirements
+- The view is optimized for periodic refresh to track ongoing convergence

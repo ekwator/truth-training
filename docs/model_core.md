@@ -1,9 +1,9 @@
 # Formalized - Model Core and Database Schema
 ## Truth Training
 
-**Document Version:** v1.1.0  
+**Document Version:** v1.1.1  
 **Status:** Specification  
-**Updated:** 2025-12-28  
+**Updated:** 2026-01-03  
 **Status:** Approved
 
 **Purpose:** :  
@@ -317,6 +317,31 @@ as described in sections 3.6 and 3.7
 
 •  `update_node_performance_after_sync` - updates **performance metrics** when synchronization **events** are logged.
 
+**Triggers from [docs/model_core_anti_manipulation.md](model_core_anti_manipulation.md):**
+
+• `detect_sybil_attack_patterns` - detects potential Sybil attack patterns by monitoring for unusual clustering of participant activity based on IP addresses, temporal patterns, and behavioral similarities
+
+• `detect_coordinated_assessment_patterns` - identifies coordinated assessment patterns that may indicate manipulation attempts through synchronized judgments and impact assessments
+
+• `detect_anomalous_reputation_changes` - detects unusual reputation changes that might indicate manipulation by monitoring rapid reputation fluctuations and convergence anomalies
+
+• `update_participant_trust_on_anomaly_detection` - adjusts participant trust based on detected anomalies, reducing trust scores and propagation limits for participants with high severity manipulation indicators
+
+• `detect_group_formation_manipulation` - detects attempts to manipulate group formation or artificially inflate group metrics by monitoring rapid group joining patterns and artificial group creation
+
+• `detect_temporal_manipulation_patterns` - detects temporal patterns that might indicate manipulation attempts, including burst activity patterns and coordinated timing across participants
+
+• `update_node_trust_on_manipulation_detection` - reduces node trust when manipulation is detected by decreasing trust scores and propagation priority based on severity levels
+
+• `detect_convergence_manipulation` - detects attempts to manipulate the convergence of truth and impact axes by identifying unnaturally fast convergence and coordinated convergence patterns
+
+• `update_participant_influence_limits_on_manipulation` - adjusts influence limits when manipulation is detected by reducing daily assessment limits and increasing trust decay rates for participants with high severity violations
+
+• `detect_prediction_manipulation` - detects manipulation in prediction accuracy by identifying suspicious prediction patterns and monitoring for attempts to appear more accurate than historical performance
+
+• `reset_manipulation_flags_after_review` - resets manipulation indicators after manual review when anomalies are determined to be false positives, restoring normal trust levels for legitimate participants
+
+
 ### Views for Data Analysis and Calculations
 
 The **Truth Training** system implements several SQL views to support data analysis and calculation of various metrics. These views are organized by functional area:
@@ -439,9 +464,9 @@ Priority(n) = f(trust_score, validation_count, reuse_frequency)
 
 • **unreachable_nodes** - Identifies **unreachable nodes** that exceed half their "TTL", supporting the identification of **nodes** that may need special handling
 
-#### Missing Views That Should Be Implemented
+#### Implemented Views
 
-The following views are referenced in the model documentation but may not be fully implemented in the separate view files:
+The following views have been created as part of the system implementation:
 
 • **[small_constants_view](model_core_views_small_constants.md)** - Provides consistent **small random constants** for **quantum uncertainty** calculations as described in section 1.1.1, implementing the SQL expression for generating values in range (0, 2) excluding endpoints
 
@@ -975,6 +1000,430 @@ Alignment across independent structures > majority dominance
 • Replace individual-level evaluation
 
 **Groups** are analytical lenses, not **authorities**.
+
+#### Resolution Clarification: Group-Level Correlation via Fixed Parameter Priorities
+
+The group-level correlation problem described above is architecturally resolved through a fixed, global parameter space as defined in [model_core_parameters_for_participant_groups.md](model_core_parameters_for_participant_groups.md). The system operates within a **fixed parameter space** where participants cannot add or remove parameters; they only assign **priorities (weights)** to general parameters indirectly through the parameters of groups they create (type = manual).
+
+Manual groups (`type = manual`) do NOT define participant clusters but define **priority (weight) configurations** over the fixed parameters. Different participants express interpretation preferences via priorities rather than structural changes to the parameter space. These priority configurations are applied to existing system data (events, judgments, impacts, temporal/contextual relations, reputation) producing a **correlation result**, not a list of people.
+
+Automatic groups (`type = auto`) emerge when different manual priority configurations, applied to the same underlying data, produce convergent correlation outcomes. Importantly, convergence refers to **results**, not participants, and group size and activity volume are irrelevant to the correlation process—majority voting is not used.
+
+Truth is evaluated as **stability under variation of priorities**, not as consensus, authority, or dominance, which resolves the original fairness and dominance concerns. The authoritative parameter list and SQL representation are defined in: [model_core_parameters_for_participant_groups.md](model_core_parameters_for_participant_groups.md).
+
+##### 1. Parameter Space and Priority Representation
+
+The system operates within a **fixed parameter space** with parameters enumerated in [model_core_parameters_for_participant_groups.md](model_core_parameters_for_participant_groups.md). The parameter space includes:
+- Geographic proximity parameters (detection of network address patterns, node types classification)
+- Interaction density parameters (synchronization frequency, success rates, peer interaction history)
+- Temporal synchronization parameters (timing alignment of event, impact, and judgment assessments)
+- Reputation similarity parameters (participant reputation score alignment)
+- Context similarity parameters (shared event context usage)
+- Judgment similarity parameters (alignment in event assessment patterns)
+- Impact similarity parameters (alignment in consequence assessment patterns)
+- Event chain similarity parameters (graph structure alignment)
+- Judgment chain similarity parameters (logical relationship alignment)
+- Impact chain similarity parameters (consequence relationship alignment)
+
+Manual groups reference these parameters via priority values stored in their configuration. Each manual group corresponds to a **priority vector** P = (w₁, w₂, ..., wₙ) where parameters are shared and only weights differ between groups. Priorities are numerical values in the range [0, 1], where 0 indicates no emphasis and 1 indicates maximum emphasis on that parameter. Priorities are comparable across groups, enabling cross-group analysis. Absence of a priority value for a parameter implies neutral or zero weight for that parameter in the group's evaluation.
+
+##### 2. Input Data Used for Group-Level Correlation
+
+The correlation algorithm uses the following existing data sources as inputs:
+
+- **event_links and their context**: Relationships between events that indicate structural patterns
+- **judgments and impact evaluations**: Participant assessments of events and their consequences
+- **temporal alignment data**: Timing information from event_timeline, impact_timeline, and judgment_timeline tables
+- **contextual similarity**: Shared usage of context categories, forms, causes, developments, and effects
+- **reputation-weighted signals**: Participant reputation scores that influence the weight of their contributions
+- **synchronization patterns**: Node discovery and peer synchronization data showing interaction densities
+- **participant behavior patterns**: Historical data from node_behavior_patterns showing consistency
+- **manipulation indicators**: Data from manipulation_indicators showing anomalous patterns
+
+##### 3. Correlation Computation per Manual Group
+
+For each manual group (type = manual), the following algorithmic steps are executed:
+
+1. **Retrieve Priority Vector**: Load the group's parameter priority vector P = (w₁, w₂, ..., wₙ) from its configuration.
+
+2. **Apply Vector to Input Data**: For each input data source, apply the corresponding weight from the priority vector:
+   - Weight event link patterns by the group's geographic proximity parameter weight
+   - Weight judgment similarity by the group's judgment similarity parameter weight
+   - Weight impact assessments by the group's impact similarity parameter weight
+   - Weight temporal alignments by the group's temporal synchronization parameter weight
+   - Weight contextual similarities by the group's context similarity parameter weight
+
+3. **Produce Correlation Result**: Generate a correlation structure representing:
+   - Event-to-event alignment scores based on weighted parameters
+   - Judgment consistency measures across participants with similar priorities
+   - Impact coherence patterns reflecting consequence assessment alignment
+
+The output is a correlation structure or score distribution, NOT a participant set or membership list.
+
+##### 4. Cross-Group Result Comparison (Convergence Detection)
+
+Convergence is evaluated algorithmically by comparing correlation results from different manual groups:
+
+- Correlation results from different manual groups are retrieved and compared pairwise
+- Similarity between results is evaluated based on the overlap and consistency of correlation patterns
+- Convergence is identified when results from different priority vectors remain stable and similar despite different parameter emphases
+
+Convergence is evaluated on results, not on participants or group membership overlap. The algorithm identifies when structurally different groups (with different priority vectors) arrive at similar correlation conclusions, indicating robustness of the findings.
+
+##### 5. Automatic Group Formation Rule
+
+An automatic group (`type = auto`) is created or updated based on the following explicit rules:
+
+> An automatic group (`type = auto`) is created when multiple manual groups (type = manual) produce correlation results that demonstrate stable similarity across multiple evaluation cycles, with sufficient statistical confidence.
+
+Specifically:
+- **Creation Condition**: When N >= 2 manual groups with different priority vectors produce correlation results with similarity above threshold T_similarity for M consecutive evaluation cycles
+- **Update Condition**: When new correlation results from manual groups confirm or modify existing auto-group characteristics
+- **Dissolution Condition**: When correlation convergence breaks down for P consecutive evaluation cycles, indicating loss of stability
+
+The automatic group formation algorithm monitors for persistent patterns that emerge across diverse priority configurations, ensuring that auto-groups represent genuine systemic patterns rather than artifacts of specific parameter emphases.
+
+##### 6. Lifecycle and Re-evaluation
+
+Auto-groups are NOT permanent and undergo continuous re-evaluation:
+
+- **Re-evaluation Triggers**:
+  - New events appearing in the system
+  - Changes in participant priorities or manual group configurations
+  - Introduction of new manual groups
+  - Significant changes in synchronization patterns
+  - Updates to reputation scores affecting weighted assessments
+
+- **Stability Requirements**:
+  - Auto-groups require persistent convergence across multiple evaluation cycles to maintain validity
+  - Temporary fluctuations do not cause immediate dissolution
+  - Long-term instability leads to decay or removal of the auto-group
+
+- **Evaluation Frequency**: Auto-groups are re-evaluated during system-wide correlation assessments, typically triggered by significant system changes or at regular intervals.
+
+##### 7. Role of Auto-Groups in the System
+
+Auto-groups serve as analytical structures with the following constrained roles:
+
+- Auto-groups are **analytical constructs only**, used for pattern recognition and system analysis
+- Auto-groups do NOT vote or participate in consensus mechanisms
+- Auto-groups do NOT override individual evaluation or assessment
+- Auto-groups do NOT act as authorities or decision-making entities
+- Auto-groups do NOT have special privileges in data processing
+
+Auto-groups are intended to be used by the system as:
+- Stability signals indicating robust correlation patterns
+- Confidence indicators for assessments that emerge across diverse priority configurations
+- Meta-correlation layers that provide higher-order pattern recognition
+- Analytical tools for system administrators to understand participant behavior patterns
+- Input for anti-manipulation mechanisms to detect artificial group formations
+
+##### 8. Resolution of the Original Group-Level Correlation Problem
+
+The group-level correlation problem previously described in this section
+(i.e. dominance of large or highly active groups due to volume,
+and the absence of explicit group-level event correlation)
+is considered **architecturally resolved** by the mechanism defined above.
+
+Specifically:
+
+- The system no longer correlates information based on participant group membership
+  or cluster size.
+- Instead of constructing explicit group graphs based on participant membership,
+  the system correlates **correlation outcomes** produced by different
+  parameter-priority configurations.
+- This replaces graph intersection between participant groups with
+  **convergence detection across independent metric applications**.
+- The role originally envisioned for group-level event graphs and their intersections
+  is fulfilled by stability and convergence analysis of correlation results.
+
+As a result:
+- dominance by volume is structurally prevented;
+- representational balance is enforced through priority diversity;
+- group-level correlation is implemented without requiring explicit group affiliation
+  or participant clustering.
+
+No additional group-level graph construction is required beyond existing
+event correlation mechanisms.
+
+### Formal Meaning of Group-Level Correlation
+
+Define group-level correlation as:
+
+- Correlation of RESULT STRUCTURES
+- Produced by different priority configurations
+- Applied to the SAME underlying data
+
+Explicitly state:
+- Groups are not participant sets
+- Correlation applies to results, not people
+- Group size and activity volume are irrelevant
+
+### Algorithmic Definition of Group-Level Correlation
+
+#### Inputs
+- Fixed global parameter set (reference: [model_core_parameters_for_participant_groups.md](model_core_parameters_for_participant_groups.md))
+- Manual groups with priority vectors over the fixed parameters
+- System data: events, judgments, impacts, timelines, reputation
+
+#### Processing Steps
+1. Load priority vector of a manual group
+2. Apply weighted parameters to the same underlying system data
+3. Produce a correlation result structure
+4. Store the result independently of participant count
+5. Repeat for other manual groups
+6. Compare correlation result structures for stability
+
+#### Outputs
+- Correlation result structures
+- Stability indicators across priority variations
+
+#### Explicit Non-Outputs
+- Participant clusters
+- Group membership lists
+- Majority or voting scores
+- Volume-based dominance metrics
+
+### Closure of the Group-Level Correlation Concern
+
+Earlier descriptions assumed group-level aggregation of participants or events. The current architecture does NOT aggregate participants into groups. Group-level correlation is implemented via stability of results under priority variation. This replaces the need for group membership, graphs, or majority logic.
+
+The group-level correlation concern is closed by architectural design.
+
+### **Formal Resolution of the Group-Level Correlation Problem**
+
+#### A. Explicit Invalidiation of the Old Problem Framing
+
+The system does NOT correlate participant groups, does NOT define group membership of events or nodes, does NOT build group-level graphs, and does NOT use event_links for group aggregation across groups. This is NOT an open problem anymore.
+
+#### B. Formal Restatement of "Group-Level Correlation"
+
+Correlation of RESULT STRUCTURES produced by different priority configurations over the SAME underlying data.
+
+#### C. Algorithm Specification in IMPLEMENTABLE TERMS
+
+**Inputs**
+- fixed parameter set (reference only: [model_core_parameters_for_participant_groups.md](model_core_parameters_for_participant_groups.md))
+- manual group priority vectors
+- system data (events, judgments, impacts, timelines, reputation)
+
+**Processing Steps**
+1. Apply priority vector to data → correlation result
+2. Store result as an immutable outcome structure
+3. Compare outcomes across different manual groups
+4. Detect stability across priority variation
+
+**Outputs**
+- correlation result structures
+- auto-groups as labels for stable convergence zones
+
+**Non-Outputs (explicitly)**
+- participant sets
+- group membership lists
+- majority scores
+- volume-based metrics
+
+#### D. Correctness Criterion
+
+The algorithm is considered correct if: different priority vectors produce convergent correlation outcomes independent of participant count or activity volume.
+
+### Convergence Detection - Authoritative Layer Specification
+
+**IMPORTANT**: The database engine (SQL views and triggers) is the **authoritative execution layer** for all convergence detection operations. Rust code MUST NOT duplicate or replace database logic. Rust examples, if kept, must be explicitly marked as non-authoritative reference or validation examples.
+
+### Why the Original Issue Is Closed
+
+The original issue assumed group aggregation was required. The current architecture replaces aggregation with priority-space stability. Therefore the issue is CLOSED BY DESIGN, not postponed.
+
+### Architectural Constraints and Forbidden Implementation Patterns
+
+The following implementation patterns are FORBIDDEN in any implementation of the group-level correlation model:
+
+1. **Inferring or storing group membership for events or nodes** - This IS FORBIDDEN because groups are analytical lenses, not membership structures. The fixed-parameter model operates on priority vectors, not participant clusters.
+
+2. **Assigning events to groups** - This IS FORBIDDEN because events are correlated through result convergence, not through group membership. The priority-vector model applies weights to parameters, not to participant sets.
+
+3. **Constructing group-level event graphs** - This IS INVALID IMPLEMENTATION because correlation operates on outputs from different priority configurations, not on graph structures between groups. The model prohibits explicit group graphs based on participant membership.
+
+4. **Correlating groups based on shared participants** - This IS FORBIDDEN because the model correlates correlation results produced by different priority configurations applied to the same data, not participant intersections.
+
+5. **Detecting intersections between group graphs** - This IS INVALID IMPLEMENTATION because the architecture replaces graph intersection between participant groups with convergence detection across independent metric applications.
+
+6. **Voting, majority logic, or volume-weighted aggregation** - This IS FORBIDDEN because truth is evaluated as stability under variation of priorities, not as consensus, authority, or dominance. Group size and activity volume are irrelevant to the correlation process.
+
+7. **Treating groups as decision-making or authoritative entities** - This IS INVALID IMPLEMENTATION because groups are analytical constructs, not authorities. The model explicitly prevents groups from acting as authorities or decision-making entities.
+
+8. **Expanding or modifying the parameter space** - This IS FORBIDDEN because the system operates within a fixed parameter space. The architecture requires that participants only assign priorities to general parameters, not modify the parameter space itself.
+
+9. **Enumerating or searching over possible group patterns** - This IS INVALID IMPLEMENTATION because automatic groups emerge from convergence of results, not from searching participant combinations.
+
+The ONLY allowed interpretation is:
+- Groups are analytical lenses, not entities
+- Manual groups define priority vectors, not memberships
+- Auto-groups emerge from convergence of RESULTS
+- Correlation operates on outputs, not participants or graphs
+- Fairness is ensured by stability under priority variation
+
+These constraints MUST be followed to maintain compliance with the Truth Training architecture. Any implementation that violates these constraints IS NOT compliant with the fixed-parameter priority-vector model.
+
+Any future evaluation of this issue must treat the absence of
+participant clustering, group membership, or group graphs
+as an intentional architectural choice, not as a missing feature.
+
+### References to Analysis Documentation
+
+For comprehensive analysis of the group correlation system and its fairness properties, see the following documentation:
+
+- [`docs/convergence_independence_invariant.md`](convergence_independence_invariant.md) - Documents the critical convergence independence invariant that prevents volume-bias from returning in future versions
+- [`docs/architectural_fairness_audit.md`](architectural_fairness_audit.md) - Presents a comprehensive audit of the group correlation system implementation to verify that group size does not implicitly influence results
+- [`docs/final_fairness_compliance_report.md`](final_fairness_compliance_report.md) - Documents the completion of the architectural fairness audit and implementation of necessary corrections to ensure group size does not influence correlation results
+
+**IMPORTANT**: The database engine (SQL views and triggers) is the authoritative execution layer for all convergence detection operations. Rust code MUST NOT duplicate or replace database logic. Rust examples, if kept, must be explicitly marked as non-authoritative reference or validation examples.
+
+#### Code Examples from Analysis Documentation
+
+**From `docs/convergence_independence_invariant.md`:**
+
+SQL Level Safeguards:
+```sql
+-- Convergence detection compares correlation results between groups with different priorities
+-- NOT between groups with different participant counts
+SELECT
+    gc1.group_id as group1_id,
+    gc2.group_id as group2_id,
+    ABS(gc1.correlation_result - gc2.correlation_result) as result_difference
+FROM group_correlations gc1
+CROSS JOIN group_correlations gc2
+WHERE gc1.group_id < gc2.group_id  -- Compare different groups
+```
+
+Rust Level Safeguards:
+```rust
+// Convergence detection compares correlation results between groups with different priorities
+// Quality metric is 1.0 - result_difference (independent of participant count)
+for cz in &convergence_zones {
+    let quality = 1.0 - cz.result_difference;  // Pure quality metric
+    // Update quality metrics for the groups involved
+}
+```
+
+**From `docs/architectural_fairness_audit.md`:**
+
+SQL Fix:
+```sql
+-- Replace the auto_group_stability view with quality-focused thresholds
+CREATE VIEW auto_group_stability AS
+SELECT
+    ag.id as auto_group_id,
+    ag.description,
+    COUNT(cz.group1_id) as convergence_instances,
+    AVG(cz.result_difference) as avg_difference,
+    MIN(cz.result_difference) as min_difference,
+    MAX(cz.result_difference) as max_difference,
+    CASE
+        WHEN AVG(cz.result_difference) < 0.05 AND MIN(cz.result_difference) < 0.02 THEN 'STABLE' -- High quality convergence
+        WHEN AVG(cz.result_difference) < 0.10 AND COUNT(cz.group1_id) >= 2 THEN 'MODERATELY_STABLE' -- Require quality + minimum instances
+        WHEN AVG(cz.result_difference) < 0.20 AND COUNT(cz.group1_id) >= 1 THEN 'MINIMALLY_STABLE' -- Accept lower quality with at least one instance
+        ELSE 'UNSTABLE'
+    END as stability_status
+FROM participants_groups ag
+LEFT JOIN convergence_zones cz ON ag.description LIKE '%' || cz.group1_desc || '%'
+WHERE ag.type = 'auto'
+GROUP BY ag.id, ag.description;
+```
+
+Rust Fix:
+```rust
+// Replace the identify_stable_correlations method with quality-focused logic
+pub fn identify_stable_correlations(&self) -> Vec<u64> {
+    let correlations = self.calculate_all_manual_group_correlations();
+    let convergence_zones = self.detect_convergence();
+    
+    // Calculate quality metrics for each group
+    let mut group_qualities: HashMap<u64, (f64, usize)> = HashMap::new(); // (total_quality, instance_count)
+    
+    for cz in &convergence_zones {
+        // Quality is 1.0 - difference (lower difference = higher quality)
+        let quality = 1.0 - cz.result_difference;
+        
+        // Update quality metrics for group 1
+        let (sum, count) = group_qualities.entry(cz.group1_id).or_insert((0.0, 0));
+        *sum += quality;
+        *count += 1;
+        
+        // Update quality metrics for group 2
+        let (sum, count) = group_qualities.entry(cz.group2_id).or_insert((0.0, 0));
+        *sum += quality;
+        *count += 1;
+    }
+    
+    // Identify groups with high average convergence quality
+    let mut stable_groups = Vec::new();
+    for (group_id, (total_quality, instance_count)) in group_qualities {
+        if instance_count > 0 {
+            let avg_quality = total_quality / instance_count as f64;
+            // Prioritize quality over quantity: require both minimum instances AND high average quality
+            if instance_count >= 1 && avg_quality > 0.7 { // At least 1 instance with good quality
+                stable_groups.push(group_id);
+            } else if instance_count >= 2 && avg_quality > 0.5 { // With 2+ instances, accept slightly lower quality
+                stable_groups.push(group_id);
+            }
+        }
+    }
+    
+    stable_groups.sort(); // Sort for consistent output
+    stable_groups
+}
+```
+
+**From `docs/final_fairness_compliance_report.md`:**
+
+SQL Implementation Corrections:
+```sql
+CASE
+    WHEN AVG(cz.result_difference) < 0.05 AND MIN(cz.result_difference) < 0.02 THEN 'STABLE' -- Very high quality convergence
+    WHEN AVG(cz.result_difference) < 0.10 AND COUNT(cz.group1_id) >= 2 THEN 'MODERATELY_STABLE' -- Good quality with minimum instances
+    WHEN AVG(cz.result_difference) < 0.20 AND COUNT(cz.group1_id) >= 1 THEN 'MINIMALLY_STABLE' -- Acceptable quality with at least one instance
+    ELSE 'UNSTABLE'
+END as stability_status
+```
+
+Rust Implementation Corrections:
+```rust
+// Calculate quality metrics for each group
+let mut group_qualities: HashMap<u64, (f64, usize)> = HashMap::new(); // (total_quality, instance_count)
+
+for cz in &convergence_zones {
+    // Quality is 1.0 - difference (lower difference = higher quality)
+    let quality = 1.0 - cz.result_difference;
+    
+    // Update quality metrics for group 1
+    let (sum, count) = group_qualities.entry(cz.group1_id).or_insert((0.0, 0));
+    *sum += quality;
+    *count += 1;
+    
+    // Update quality metrics for group 2
+    let (sum, count) = group_qualities.entry(cz.group2_id).or_insert((0.0, 0));
+    *sum += quality;
+    *count += 1;
+}
+
+// Identify groups with high average convergence quality
+let mut stable_groups = Vec::new();
+for (group_id, (total_quality, instance_count)) in group_qualities {
+    if instance_count > 0 {
+        let avg_quality = total_quality / instance_count as f64;
+        // Prioritize quality over quantity: require both minimum instances AND high average quality
+        if instance_count >= 1 && avg_quality > 0.7 { // At least 1 instance with good quality (>70% quality)
+            stable_groups.push(group_id);
+        } else if instance_count >= 2 && avg_quality > 0.5 { // With 2+ instances, accept slightly lower quality
+            stable_groups.push(group_id);
+        }
+    }
+}
+```
+
+
 
 ### 2.2 Axes
 
@@ -4886,6 +5335,8 @@ WHERE timestamp < (strftime('%s', 'now') - 86400 * 7); -- Delete attempts older 
 - [model_core_views_scoring.md](model_core_views_scoring.md) — Views for impact and judgment score calculations
 - [model_core_aggregated_metrics.md](model_core_aggregated_metrics.md) — System metrics and expert functions schema
 - [model_core_views_aggregated_metrics.md](model_core_views_aggregated_metrics.md) — Views for system metrics and expert functions
+- [model_core_anti_manipulation.md](model_core_anti_manipulation.md) — SQL triggers for anti-manipulation mechanisms and detection of suspicious patterns
+
 
 ## 5 Constraints, Security and Anti-Manipulation Mechanisms
 
@@ -4979,10 +5430,25 @@ WHERE node_id IN (SELECT node_id FROM discovery_nodes)
 • Parameters are stored per-node in "node_trust_limits" table  
 • Prevents Sybil attacks and disproportionate influence  
 
-**Notes** :  
-• Ensures **resistance** to **manipulation** attempts  
-• Maintains **balanced distribution** of influence  
+**Notes** :
+• Ensures **resistance** to **manipulation** attempts
+• Maintains **balanced distribution** of influence
 • **Supports** system **stability** over **time**
+
+#### Anti-Manipulation Triggers
+
+For detailed implementation of anti-manipulation mechanisms, see [docs/model_core_anti_manipulation.md](model_core_anti_manipulation.md) which contains comprehensive SQL trigger definitions that detect and respond to various forms of manipulation attempts including:
+
+- **Sybil attack detection** - Identifies potential Sybil attack patterns by monitoring for unusual clustering of participant activity based on IP addresses, temporal patterns, and behavioral similarities
+- **Coordinated assessment detection** - Identifies coordinated assessment patterns that may indicate manipulation attempts through synchronized judgments and impact assessments
+- **Anomalous reputation change detection** - Monitors for unusual reputation changes that might indicate manipulation
+- **Group formation manipulation detection** - Detects attempts to manipulate group formation or artificially inflate group metrics
+- **Temporal manipulation pattern detection** - Identifies temporal patterns that might indicate coordinated manipulation attempts
+- **Node trust adjustment on manipulation detection** - Automatically reduces node trust when manipulation is detected
+- **Convergence manipulation detection** - Detects attempts to manipulate the convergence of truth and impact axes
+- **Prediction manipulation detection** - Identifies manipulation in prediction accuracy
+
+These triggers work in conjunction with the trust limit mechanisms to maintain system integrity and prevent various forms of manipulation attempts.
 
 #### Table: node_behavior_patterns
 

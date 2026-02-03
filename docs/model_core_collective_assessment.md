@@ -1,659 +1,669 @@
--- **Document Version:** v1.1.0  
--- **Status:** Specification  
--- **Updated:** 2025-12-28  
--- **Status:** Approved  
--- SQL Triggers for Collective Event Assessment Logic  
+# Collective Assessment Triggers
 
--- Trigger to create event record when a participant submits a new event  
--- Creates the initial event record in the truth_event table when a participant submits a new event  
+**Document Version:** v1.1.1  
+**Status:** Specification  
+**Updated:** 2026-01-03  
+**Status:** Approved
+
+## Overview
+This document describes the SQL triggers that implement the collective assessment logic for the Truth Training system. These triggers automatically update metrics when new assessments are added to the system.
+
+## Purpose
+The collective assessment triggers ensure that collective intelligence metrics are automatically updated when new impact or judgment data is added, maintaining data consistency and system efficiency across all nodes in the network.
+
+## Trigger Definitions
+
+### 1. create_event_record
+This trigger creates the initial event record in the "truth_event" table when a participant submits a new event. It also creates the corresponding entry in the "event_ci" table (event neuron) with default values.
+
 ```sql
 CREATE TRIGGER create_event_record
 AFTER INSERT ON truth_event
 FOR EACH ROW
-WHEN NEW.participant_id IS NOT NULL
 BEGIN
-    -- Create corresponding entry in event_ci table (event neuron)
     INSERT INTO event_ci (created_by, event_type, status, old_status, resolution_data, created_at)
+    VALUES (NEW.id, 'judgment', 'active', 'active', 'unstable', CURRENT_TIMESTAMP);
+    
+    -- Initialize event metrics
+    INSERT INTO event_state_history (event_id, judgment_count, truth_score, impact_count, impact_score, recorded_at)
     VALUES (
-        NEW.id,
-        'judgment',  -- Default event type
-        'active',    -- Default status
-        'active',    -- Default old status
-        'unstable',  -- Default resolution data
-        (SELECT strftime('%s', 'now'))  -- Current timestamp
+        (SELECT id FROM event_ci WHERE created_by = NEW.id),
+        0,
+        0.5,  -- Default neutral truth score
+        0,
+        0.0,  -- Default impact score
+        CURRENT_TIMESTAMP
     );
 END;
 ```
--- Trigger to initialize event metrics when a new event is created  
--- Initializes all metric fields (collective_score, impact_score, judgment_score) to default values  
+
+### 2. initialize_event_metrics
+This trigger initializes all metric fields ("collective_score", "impact_score", "judgment_score") to default values when a new event is inserted. Sets "collective_score" to 0.5 (neutral), "impact_score" to 0.0, and "judgment_score" to NULL.
+
 ```sql
 CREATE TRIGGER initialize_event_metrics
-BEFORE INSERT ON truth_event
+AFTER INSERT ON truth_event
 FOR EACH ROW
 BEGIN
-    -- Initialize collective_score to default value (0.5 - neutral)
-    SELECT CASE
-        WHEN NEW.collective_score IS NULL THEN 0.5
-        ELSE NEW.collective_score
-    END;
-    
-    -- Initialize impact_score to default value (0.0)
-    SELECT CASE
-        WHEN NEW.impact_score IS NULL THEN 0.0
-        ELSE NEW.impact_score
-    END;
-    
-    -- Initialize judgment_score to default value (NULL - undefined)
-    SELECT CASE
-        WHEN NEW.judgment_score IS NULL THEN NULL
-        ELSE NEW.judgment_score
-    END;
-END;
-```
--- Trigger to create impact predictions when corrected flag is set  
--- When the corrected flag is set during impact assessment, creates a new impact prediction record  
-```sql
-CREATE TRIGGER create_impact_prediction_on_correction
-AFTER UPDATE ON truth_event
-FOR EACH ROW
-WHEN NEW.corrected = 1 AND OLD.corrected = 0  -- Only when corrected flag changes from 0 to 1
-BEGIN
-    -- Insert a new record into impact_predictions based on the event's impact data
-    INSERT INTO impact_predictions (
-        event_id,
-        predicted_impact_type,
-        expected_strength,
-        probability,
-        horizon,
-        created_at
-    )
-    SELECT
-        ec.id,                                    -- event_id from event_ci
-        NEW.effect_id,                           -- predicted_impact_type from truth_event.effect_id
-        -- Calculate expected_strength based on collective_score and impact horizon
-        (SELECT SUM(te.collective_score / (COALESCE(ipt.horizon, 1) + (CASE
-   WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
-   THEN 0.000001
-   ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
-END)))
-         FROM truth_event te
-         JOIN event_ci ec2 ON te.id = ec2.created_by
-         LEFT JOIN impact_predictions ipt ON ec2.id = ipt.event_id
-         WHERE ec2.id = ec.id),                  -- expected_strength using formula from documentation
-        -- Calculate probability based on impact accuracy
-        (SELECT 1 - ABS(COALESCE(AVG(i.value), 0) - te.collective_score) / (COALESCE(te.collective_score, 0.5) + (CASE
-   WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
-   THEN 0.000001
-   ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
-END))
-         FROM impact i
-         JOIN truth_event te ON i.event_id = te.id
-         WHERE te.id = NEW.id),                  -- probability based on comparison of impact and collective score
-        -- Calculate horizon as (t_end - created_at) / (t_end - t_start) as specified in documentation
-        (SELECT (et.t_end - (SELECT created_at FROM event_ci WHERE created_by = NEW.id)) /
-                (et.t_end - et.t_start + (CASE
-   WHEN ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ) = 0.0
-   THEN 0.000001
-   ELSE MIN( ( ( CAST(strftime('%s', 'now') AS REAL) * 1000000 + strftime('%f', 'now') * 1000000 - CAST(strftime('%s', 'now') AS REAL) * 1000000 ) % 2.0 ), 1.99999 )
-END))  -- Adding small constant to avoid division by zero
-         FROM event_timeline et
-         WHERE et.id = NEW.timeline_id),         -- horizon from event timeline
-        (SELECT strftime('%s', 'now'))           -- created_at timestamp
-    FROM event_ci ec
-    WHERE ec.created_by = NEW.id
-    AND NOT EXISTS (                              -- Make sure we don't create duplicate predictions
-        SELECT 1 FROM impact_predictions
-        WHERE event_id = ec.id
-        AND predicted_impact_type = NEW.effect_id
-        AND DATE(created_at, 'unixepoch') = DATE('now', 'unixepoch')  -- Same day check to avoid duplicates
-    );
-    
-    -- Reset the corrected flag to 0 after processing
     UPDATE truth_event
-    SET corrected = 0
+    SET 
+        collective_score = 0.5,
+        impact_score = 0.0,
+        judgment_score = NULL
     WHERE id = NEW.id;
+    
+    -- Also update the associated event_ci record
+    UPDATE event_ci
+    SET created_at = CURRENT_TIMESTAMP
+    WHERE created_by = NEW.id;
 END;
 ```
--- Trigger to create impact prediction when a participant creates an impact record  
--- This trigger creates a new record in the impact_predictions table when a participant creates an impact record  
--- that relates to a future predicted factual consequence.  
+
+### 3. update_participant_reputation_on_impact
+This trigger updates participant's reputation based on the accuracy of their impact assessments, comparing against the "collective_score" as a reference value. Increases "accurate_impact" counter when the impact aligns with the collective assessment.
+
+```sql
+CREATE TRIGGER update_participant_reputation_on_impact
+AFTER INSERT ON impact
+FOR EACH ROW
+BEGIN
+    -- Get the collective score for the associated event
+    DECLARE @collective_score REAL;
+    SELECT @collective_score = te.collective_score
+    FROM truth_event te
+    JOIN event_ci ec ON te.id = ec.created_by
+    WHERE ec.id = NEW.event_id;
+    
+    -- Update participant reputation based on impact accuracy
+    UPDATE participants
+    SET 
+        total_impact = total_impact + 1,
+        accurate_impact = CASE 
+            WHEN (@collective_score >= 0.5 AND NEW.value = 1) OR 
+                 (@collective_score < 0.5 AND NEW.value = 0) THEN
+                accurate_impact + 1
+            ELSE accurate_impact
+        END,
+        reputation_score = (accurate_impact + 1) * 1.0 / (total_impact + 1),
+        last_activity = CURRENT_TIMESTAMP
+    WHERE id = NEW.participant_id;
+    
+    -- Update reputation history
+    INSERT INTO reputation_history (old_reputation, new_reputation, change_reason, updated_at)
+    SELECT 
+        (SELECT reputation_score FROM participants WHERE id = NEW.participant_id),
+        (SELECT reputation_score FROM participants WHERE id = NEW.participant_id),
+        'impact_accuracy',
+        CURRENT_TIMESTAMP;
+END;
+```
+
+### 4. update_participant_reputation_on_judgment
+This trigger updates participant's reputation based on the accuracy of their judgment assessments, comparing against the "collective_score" as a reference value. Increases "accurate_judgment" counter when the judgment aligns with the collective assessment.
+
+```sql
+CREATE TRIGGER update_participant_reputation_on_judgment
+AFTER INSERT ON judgment
+FOR EACH ROW
+BEGIN
+    -- Get the collective score for the associated event
+    DECLARE @collective_score REAL;
+    SELECT @collective_score = te.collective_score
+    FROM truth_event te
+    JOIN event_ci ec ON te.id = ec.created_by
+    WHERE ec.id = NEW.event_id;
+    
+    -- Update participant reputation based on judgment accuracy
+    UPDATE participants
+    SET 
+        total_judgment = total_judgment + 1,
+        accurate_judgment = CASE 
+            WHEN (@collective_score >= 0.5 AND NEW.assessment > 0) OR 
+                 (@collective_score < 0.5 AND NEW.assessment <= 0) THEN
+                accurate_judgment + 1
+            ELSE accurate_judgment
+        END,
+        reputation_score = (accurate_judgment + accurate_impact) * 1.0 / (total_judgment + total_impact + 1),
+        last_activity = CURRENT_TIMESTAMP
+    WHERE id = NEW.participant_id;
+    
+    -- Update reputation history
+    INSERT INTO reputation_history (old_reputation, new_reputation, change_reason, updated_at)
+    SELECT 
+        (SELECT reputation_score FROM participants WHERE id = NEW.participant_id),
+        (SELECT reputation_score FROM participants WHERE id = NEW.participant_id),
+        'judgment_accuracy',
+        CURRENT_TIMESTAMP;
+END;
+```
+
+### 5. create_impact_prediction_on_impact_creation
+This trigger creates a new record in the "impact_predictions" table when a participant creates an impact record that relates to a future predicted factual consequence. This trigger calculates prediction values based on the event's impact data and collective score when a new impact is recorded.
+
 ```sql
 CREATE TRIGGER create_impact_prediction_on_impact_creation
 AFTER INSERT ON impact
 FOR EACH ROW
-WHEN NEW.value IS NOT NULL  -- Only when the impact has a factual value (not NULL)
 BEGIN
-    -- Insert a new record into impact_predictions based on the newly created impact
-    INSERT INTO impact_predictions (
-        event_id,
-        predicted_impact_type,
-        expected_strength,
-        probability,
-        horizon,
-        created_at
-    )
-    SELECT
-        ec.id,                                    -- event_id from event_ci
-        NEW.type_id,                             -- predicted_impact_type from the new impact record
-        -- Calculate expected_strength based on collective_score and impact horizon
-        (SELECT COALESCE(te.collective_score, 0.5)
-         FROM truth_event te
-         WHERE te.id = NEW.event_id),            -- Use the collective score of the event
-        -- Set probability to a moderate value when creating prediction from impact
-        0.6,                                     -- Default probability for new predictions
-        -- Calculate horizon as a default value (could be adjusted based on event timeline)
-        30.0,                                    -- Default horizon of 30 days
-        (SELECT strftime('%s', 'now'))           -- created_at timestamp
+    -- Only create prediction if the impact is for a future event
+    -- Check if the event is still in 'active' status and has no end date set
+    DECLARE @event_status TEXT;
+    DECLARE @event_end_date INTEGER;
+    
+    SELECT @event_status = ec.status, @event_end_date = et.t_end
     FROM event_ci ec
-    WHERE ec.created_by = NEW.event_id
-    AND NOT EXISTS (                             -- Make sure we don't create duplicate predictions
-        SELECT 1 FROM impact_predictions
-        WHERE event_id = ec.id
-        AND predicted_impact_type = NEW.type_id
-        AND DATE(created_at, 'unixepoch') = DATE('now', 'unixepoch')  -- Same day check to avoid duplicates
-    );
+    JOIN truth_event te ON ec.created_by = te.id
+    JOIN event_timeline et ON te.timeline_id = et.id
+    WHERE ec.id = NEW.event_id;
+    
+    -- Create prediction if event is active and no end date is set
+    IF @event_status = 'active' AND @event_end_date IS NULL THEN
+        INSERT INTO impact_predictions (
+            event_id, 
+            predicted_impact_type, 
+            expected_strength, 
+            probability, 
+            horizon, 
+            created_at
+        )
+        VALUES (
+            NEW.event_id,
+            NEW.type_id,
+            (SELECT collective_score FROM truth_event WHERE id = (
+                SELECT created_by FROM event_ci WHERE id = NEW.event_id
+            )),  -- Use current collective score as expected strength
+            NEW.value,  -- Use the impact value as initial probability
+            0.5,  -- Default horizon value
+            CURRENT_TIMESTAMP
+        );
+    END IF;
 END;
 ```
--- Trigger to create impact predictions when event status changes  
--- This trigger creates new records in the impact_predictions table when an event's status changes in event_ci.status  
--- (e.g. from "active"/"resolved" to "archived"), preserving historical prediction data for aggregation  
+
+### 6. create_impact_predictions_on_status_change
+This trigger creates new records in the "impact_predictions" table when an event's status changes in "event_ci.status" (e.g. from "active"/"resolved" to "archived"). This trigger preserves historical prediction data and adjusts prediction probabilities based on the actual outcomes compared to expected values when the event reaches a resolution state.
+
 ```sql
 CREATE TRIGGER create_impact_predictions_on_status_change
 AFTER UPDATE ON event_ci
 FOR EACH ROW
 WHEN OLD.status != NEW.status
 BEGIN
-    -- Insert new prediction records based on the status change, preserving historical data
-    INSERT INTO impact_predictions (
-        event_id,
-        predicted_impact_type,
-        expected_strength,
-        probability,
-        horizon,
-        created_at
-    )
-    SELECT
-        ec.id,                                    -- event_id from event_ci
-        te.effect_id,                            -- predicted_impact_type from truth_event.effect_id
-        -- Calculate expected_strength based on collective_score
-        COALESCE(te.collective_score, 0.5) as expected_strength,
-        -- Calculate probability based on status change and impact accuracy
-        CASE
-            -- When an event moves to resolved or archived status, calculate probability based on actual outcomes
-            WHEN NEW.status IN ('resolved', 'archived') THEN
-                -- Calculate probability based on comparison between expected and actual impact
-                (SELECT
-                    1.0 - ABS(
-                        (SELECT COALESCE(AVG(i.value), 0.5)
-                         FROM impact i
-                         WHERE i.event_id = te.id) -
-                        (te.collective_score / 10.0)
-                    )
-                 FROM truth_event te2
-                 WHERE te2.id = te.id)
-            ELSE
-                -- Default probability for non-resolved statuses
-                0.6
-        END as probability,
-        -- Calculate horizon based on status
-        CASE
-            WHEN NEW.status = 'archived' THEN
-                -- If archived, set horizon to 0 as the prediction period has ended
-                0.0
-            ELSE
-                -- Default horizon for other statuses
-                30.0
-        END as horizon,
-        (SELECT strftime('%s', 'now')) as created_at  -- Current timestamp
-    FROM event_ci ec
-    JOIN truth_event te ON te.id = ec.created_by
-    WHERE ec.id = NEW.id
-    AND NOT EXISTS (                              -- Make sure we don't create duplicate predictions for the same status change on the same day
-        SELECT 1 FROM impact_predictions
-        WHERE event_id = ec.id
-        AND DATE(created_at, 'unixepoch') = DATE('now', 'unixepoch')  -- Same day check to avoid duplicates
-    );
+    -- Process when event transitions to resolved or archived state
+    IF NEW.status IN ('resolved', 'archived') AND OLD.status = 'active' THEN
+        -- Update existing predictions with actual outcomes
+        UPDATE impact_predictions
+        SET 
+            probability = CASE
+                WHEN (
+                    SELECT ABS(ip.expected_strength - te.collective_score)
+                    FROM truth_event te
+                    WHERE te.id = (SELECT created_by FROM event_ci WHERE id = impact_predictions.event_id)
+                ) < 0.2 THEN  -- If prediction was accurate
+                    1.0
+                ELSE  -- If prediction was inaccurate
+                    0.0
+            END,
+            horizon = julianday('now') - julianday(created_at, 'unixepoch')  -- Update horizon to reflect actual time elapsed
+        WHERE event_id = NEW.id;
+        
+        -- Also update participant reputation based on prediction accuracy
+        UPDATE participants
+        SET 
+            accurate_impact = accurate_impact + (
+                SELECT COUNT(*) 
+                FROM impact_predictions ip
+                JOIN truth_event te ON ip.event_id = (
+                    SELECT id FROM event_ci WHERE created_by = te.id
+                )
+                WHERE te.participant_id = participants.id
+                AND ABS(ip.expected_strength - te.collective_score) < 0.2
+            ),
+            total_impact = total_impact + (
+                SELECT COUNT(*) 
+                FROM impact_predictions ip
+                JOIN truth_event te ON ip.event_id = (
+                    SELECT id FROM event_ci WHERE created_by = te.id
+                )
+                WHERE te.participant_id = participants.id
+            )
+        WHERE id IN (
+            SELECT DISTINCT te.participant_id
+            FROM truth_event te
+            JOIN event_ci ec ON te.id = ec.created_by
+            WHERE ec.id = NEW.id
+        );
+    END IF;
 END;
 ```
--- Trigger to update participant reputation based on impact_predictions accuracy  
--- This trigger aggregates prediction accuracy across all events where the participant is the event creator  
--- Connection: impact_predictions.event_id -> event_ci.id -> event_ci.created_by -> truth_event.id -> truth_event.participant_id  
--- Updates reputation considering horizon (predictions made earlier have more weight)  
--- Reputation is calculated by aggregating all predictions for all events created by the participant  
+
+### 7. update_participant_reputation_on_prediction_accuracy
+This trigger updates participant reputation based on the accuracy of impact predictions. This trigger aggregates prediction accuracy across all events where the participant created impact records, comparing "impact_predictions.expected_strength" against actual "truth_event.collective_score". The calculation considers the "horizon" value: predictions made earlier (with larger "horizon" values) receive greater weight in reputation calculations. Reputation is updated when events transition to "resolved" or "archived" status.
+
 ```sql
 CREATE TRIGGER update_participant_reputation_on_prediction_accuracy
 AFTER UPDATE ON event_ci
 FOR EACH ROW
-WHEN NEW.status IN ('resolved', 'archived') AND OLD.status NOT IN ('resolved', 'archived')
+WHEN (OLD.status = 'active' OR OLD.status = 'resolved') AND NEW.status IN ('resolved', 'archived')
 BEGIN
-    -- Update reputation for the participant who created the event (identified via truth_event.participant_id)
-    -- Aggregate all predictions across all events and calculate weighted accuracy
+    -- Update participant reputation based on prediction accuracy
     UPDATE participants
-    SET
-        -- Recalculate reputation score considering horizon (predictions made earlier have more weight)
-        -- Aggregate all predictions for all events where participant created impact records
-        reputation_score = (
-            SELECT COALESCE(
-                -- Weighted accuracy: predictions with larger horizon (made earlier) have more weight
-                SUM(
-                    CASE
-                        -- Calculate accuracy: compare expected_strength with actual collective_score
-                        -- Prediction is accurate if the difference is small relative to expected_strength
-                        WHEN ABS(ip.expected_strength - COALESCE(te.collective_score, 0.5)) <=
-                            GREATEST(ABS(ip.expected_strength) * 0.2, 0.1)
-                        THEN (ip.horizon + 1.0)  -- Weight by horizon: larger horizon = more weight
-                        ELSE 0.0
-                    END
-                ) * 1.0 / NULLIF(
-                    SUM(ip.horizon + 1.0), 0
-                ),
-                0.5  -- Default reputation if no predictions
-            )
+    SET 
+        accurate_impact = (
+            SELECT SUM(CASE 
+                WHEN ABS(ip.expected_strength - te.collective_score) <= 
+                     (0.2 * ABS(ip.expected_strength) + 0.1) THEN 1 
+                ELSE 0 
+            END)
             FROM impact_predictions ip
-            JOIN event_ci ec ON ip.event_id = ec.id
-            JOIN truth_event te ON ec.created_by = te.id
+            JOIN truth_event te ON ip.event_id = (
+                SELECT id FROM event_ci WHERE created_by = te.id
+            )
             WHERE te.participant_id = participants.id
-            AND ec.status IN ('resolved', 'archived')
-        )
-    WHERE id = (
-        SELECT te.participant_id
+        ),
+        total_impact = (
+            SELECT COUNT(*)
+            FROM impact_predictions ip
+            JOIN truth_event te ON ip.event_id = (
+                SELECT id FROM event_ci WHERE created_by = te.id
+            )
+            WHERE te.participant_id = participants.id
+        ),
+        reputation_score = (
+            SELECT 
+                CASE 
+                    WHEN COUNT(*) > 0 THEN 
+                        SUM(CASE 
+                            WHEN ABS(ip.expected_strength - te.collective_score) <= 
+                                 (0.2 * ABS(ip.expected_strength) + 0.1) THEN 1 
+                            ELSE 0 
+                        END) * 1.0 / COUNT(*)
+                    ELSE 0.5  -- Default neutral reputation
+                END
+            FROM impact_predictions ip
+            JOIN truth_event te ON ip.event_id = (
+                SELECT id FROM event_ci WHERE created_by = te.id
+            )
+            WHERE te.participant_id = participants.id
+        ),
+        last_activity = CURRENT_TIMESTAMP
+    WHERE id IN (
+        SELECT DISTINCT te.participant_id
         FROM truth_event te
         JOIN event_ci ec ON te.id = ec.created_by
         WHERE ec.id = NEW.id
     );
 END;
 ```
--- Function to update participant reputation based on impact accuracy  
--- Uses collective_score as a reference/anchor value for system state  
-```sql
-CREATE TRIGGER update_participant_reputation_on_impact
-AFTER INSERT ON impact
-FOR EACH ROW
-BEGIN
-    -- Update participant's impact metrics based on new impact
-    UPDATE participants
-    SET
-        total_impact = total_impact + 1,
-        -- Check if the impact aligns with the collective_score (as a measure of accuracy)
-        accurate_impact = accurate_impact + CASE
-            WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) > 0.5 AND NEW.value = 1 THEN 1
-            WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) < 0.5 AND NEW.value = 0 THEN 1
-            ELSE 0
-        END
-    WHERE id = (
-        SELECT participant_id FROM truth_event WHERE id = NEW.event_id
-    );
-    
-    -- Update reputation score based on combined accuracy of both impact and judgment assessments
-        UPDATE participants
-        SET reputation_score = CASE
-            WHEN (total_impact + total_judgment) > 0 THEN
-                (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
-            ELSE 0.5
-        END
-        WHERE id = (
-            SELECT participant_id FROM truth_event WHERE id = NEW.event_id
-        );
-    END;
-```
--- Function to update participant reputation based on judgment accuracy  
--- Uses collective_score as a reference/anchor value for system state  
-```sql
-CREATE TRIGGER update_participant_reputation_on_judgment
-AFTER INSERT ON judgment
-FOR EACH ROW
-BEGIN
-    -- Update participant's judgment metrics based on new judgment
-    UPDATE participants
-    SET
-        total_judgment = total_judgment + 1,
-        -- Check if the judgment aligns with the collective_score (as a measure of accuracy)
-        accurate_judgment = accurate_judgment + CASE
-            WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) > 0.5 AND NEW.assessment = 'true' THEN 1
-            WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) < 0.5 AND NEW.assessment = 'false' THEN 1
-            ELSE 0
-        END
-    WHERE id = (
-        SELECT participant_id FROM truth_event WHERE id = (
-            SELECT created_by FROM event_ci WHERE id = NEW.event_id
-        )
-    );
-    
-    -- Update reputation score based on combined accuracy of both impact and judgment assessments
-        UPDATE participants
-        SET reputation_score = CASE
-            WHEN (total_impact + total_judgment) > 0 THEN
-                (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
-            ELSE 0.5
-        END
-        WHERE id = (
-            SELECT participant_id FROM truth_event WHERE id = (
-                SELECT created_by FROM event_ci WHERE id = NEW.event_id
-            )
-        );
-    END;
-```
--- Function to aggregate local collective scores for global processing  
--- This populates the statements table with local assessments for global calculation  
+
+### 8. aggregate_local_scores_for_global
+This trigger populates the statements table with local assessments for global calculation when "truth_event" is updated. This trigger fires when the "collective_score" changes and updates the statements table for cross-node aggregation.
+
 ```sql
 CREATE TRIGGER aggregate_local_scores_for_global
-AFTER UPDATE ON truth_event
+AFTER UPDATE OF collective_score ON truth_event
 FOR EACH ROW
-WHEN NEW.collective_score != OLD.collective_score
+WHEN OLD.collective_score != NEW.collective_score
 BEGIN
-    -- Insert or update the statement with the new collective score
+    -- Update or insert statement record for global aggregation
     INSERT OR REPLACE INTO statements (event_id, truth_score, created_at, updated_at)
     VALUES (
         NEW.id,
         NEW.collective_score,
-        CASE
-            WHEN (SELECT COUNT(*) FROM statements WHERE event_id = NEW.id) = 0
-            THEN (SELECT strftime('%s', 'now'))
-            ELSE (SELECT created_at FROM statements WHERE event_id = NEW.id LIMIT 1)
+        CASE 
+            WHEN (SELECT COUNT(*) FROM statements WHERE event_id = NEW.id) = 0 
+            THEN CURRENT_TIMESTAMP 
+            ELSE (SELECT created_at FROM statements WHERE event_id = NEW.id)
         END,
-        (SELECT strftime('%s', 'now'))
+        CURRENT_TIMESTAMP
     );
+    
+    -- Also update event_state_history for temporal analysis
+    INSERT INTO event_state_history (event_id, judgment_count, truth_score, impact_count, impact_score, recorded_at)
+    SELECT 
+        (SELECT id FROM event_ci WHERE created_by = NEW.id),
+        (SELECT COUNT(*) FROM judgment WHERE event_id = (SELECT id FROM event_ci WHERE created_by = NEW.id)),
+        NEW.collective_score,
+        (SELECT COUNT(*) FROM impact WHERE event_id = (SELECT id FROM event_ci WHERE created_by = NEW.id)),
+        NEW.impact_score,
+        CURRENT_TIMESTAMP
+    WHERE (SELECT COUNT(*) FROM event_ci WHERE created_by = NEW.id) > 0;
 END;
 ```
--- Trigger to validate incoming event structure and signatures  
--- Validates the structure and cryptographic signatures of events received from other nodes before processing  
+
+### 9. validate_incoming_event
+This trigger validates the structure and cryptographic signatures of events received from other nodes before processing. Verifies that required fields are present, "global_id" is properly formatted, signatures exist, and context fields reference valid entries in their respective tables.
+
 ```sql
 CREATE TRIGGER validate_incoming_event
 BEFORE INSERT ON truth_event
 FOR EACH ROW
-WHEN NEW.participant_id IS NOT NULL  -- This indicates it's coming from a node (not internal system operation)
 BEGIN
-    -- Verify that the global_id is properly formatted (UUID-like)
-    SELECT CASE
-        WHEN LENGTH(NEW.global_id) < 10 THEN RAISE(ABORT, 'Invalid global_id format')
-        ELSE NULL
-    END;
+    -- Validate required fields
+    SELECT RAISE(ROLLBACK, 'Missing global_id') WHERE NEW.global_id IS NULL OR NEW.global_id = '';
+    SELECT RAISE(ROLLBACK, 'Missing participant_id') WHERE NEW.participant_id IS NULL;
+    SELECT RAISE(ROLLBACK, 'Missing description') WHERE NEW.description IS NULL OR NEW.description = '';
+    SELECT RAISE(ROLLBACK, 'Missing signature') WHERE NEW.signature IS NULL OR NEW.signature = '';
     
-    -- Verify that required fields are present
-    SELECT CASE
-        WHEN NEW.description IS NULL OR LENGTH(TRIM(NEW.description)) = 0 THEN RAISE(ABORT, 'Event description is required')
-        ELSE NULL
-    END;
+    -- Validate that participant_id exists in participants table
+    SELECT RAISE(ROLLBACK, 'Invalid participant_id') 
+    WHERE NOT EXISTS (SELECT 1 FROM participants WHERE id = NEW.participant_id);
     
-    -- Verify that signature exists
-    SELECT CASE
-        WHEN NEW.signature IS NULL OR LENGTH(TRIM(NEW.signature)) = 0 THEN RAISE(ABORT, 'Event signature is required')
-        ELSE NULL
-    END;
+    -- Validate that context fields reference valid entries
+    SELECT RAISE(ROLLBACK, 'Invalid category_id') 
+    WHERE NEW.category_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM category WHERE id = NEW.category_id);
     
-    -- Verify that context fields are valid references
-    SELECT CASE
-        WHEN NOT EXISTS (SELECT 1 FROM category WHERE id = NEW.category_id) THEN RAISE(ABORT, 'Invalid category_id')
-        WHEN NOT EXISTS (SELECT 1 FROM forma WHERE id = NEW.forma_id) THEN RAISE(ABORT, 'Invalid forma_id')
-        WHEN NOT EXISTS (SELECT 1 FROM cause WHERE id = NEW.cause_id) THEN RAISE(ABORT, 'Invalid cause_id')
-        WHEN NOT EXISTS (SELECT 1 FROM develop WHERE id = NEW.develop_id) THEN RAISE(ABORT, 'Invalid develop_id')
-        WHEN NOT EXISTS (SELECT 1 FROM effect WHERE id = NEW.effect_id) THEN RAISE(ABORT, 'Invalid effect_id')
-        ELSE NULL
-    END;
+    SELECT RAISE(ROLLBACK, 'Invalid forma_id') 
+    WHERE NEW.forma_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM forma WHERE id = NEW.forma_id);
     
-    -- Verify that participant_id exists in participants table
-    SELECT CASE
-        WHEN NOT EXISTS (SELECT 1 FROM participants WHERE id = NEW.participant_id) THEN RAISE(ABORT, 'Invalid participant_id')
-        ELSE NULL
-    END;
+    SELECT RAISE(ROLLBACK, 'Invalid cause_id') 
+    WHERE NEW.cause_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM cause WHERE id = NEW.cause_id);
+    
+    SELECT RAISE(ROLLBACK, 'Invalid develop_id') 
+    WHERE NEW.develop_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM develop WHERE id = NEW.develop_id);
+    
+    SELECT RAISE(ROLLBACK, 'Invalid effect_id') 
+    WHERE NEW.effect_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM effect WHERE id = NEW.effect_id);
+    
+    -- Validate timeline reference
+    SELECT RAISE(ROLLBACK, 'Invalid timeline_id') 
+    WHERE NOT EXISTS (SELECT 1 FROM event_timeline WHERE id = NEW.timeline_id);
 END;
 ```
--- Trigger to process sync event record during synchronization  
--- Handles the creation of event records from other nodes during synchronization, potentially with different validation rules  
+
+### 10. process_sync_event_record
+This trigger handles the creation of event records from other nodes during synchronization, potentially with different validation rules. Checks for duplicate events, creates corresponding entries in the "event_ci" table, and updates participant activity timestamps.
+
 ```sql
 CREATE TRIGGER process_sync_event_record
 AFTER INSERT ON truth_event
 FOR EACH ROW
-WHEN NEW.participant_id IS NOT NULL  -- Indicates the event came from synchronization
+WHEN NEW.participant_id != 1  -- Only for events from other nodes (not local participant)
 BEGIN
-    -- Check if this is a duplicate event (same global_id and participant_id combination)
-    SELECT CASE
-        WHEN (SELECT COUNT(*) FROM truth_event WHERE global_id = NEW.global_id AND participant_id = NEW.participant_id) > 1
-        THEN RAISE(ABORT, 'Duplicate event detected')
-        ELSE NULL
-    END;
+    -- Check for duplicate event (same global_id and participant_id)
+    SELECT RAISE(IGNORE, 'Duplicate event detected') 
+    WHERE EXISTS (
+        SELECT 1 FROM truth_event 
+        WHERE global_id = NEW.global_id AND participant_id = NEW.participant_id
+    );
+    
+    -- Create participant record if it doesn't exist
+    INSERT OR IGNORE INTO participants (public_key, created_at, last_activity)
+    SELECT p.public_key, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    FROM participants p
+    WHERE p.id = NEW.participant_id;
+    
+    -- Update participant's last activity
+    UPDATE participants
+    SET last_activity = CURRENT_TIMESTAMP
+    WHERE id = NEW.participant_id;
+    
+    -- Create event_ci record if it doesn't exist
+    INSERT OR IGNORE INTO event_ci (created_by, event_type, status, old_status, resolution_data, created_at)
+    VALUES (NEW.id, 'judgment', 'active', 'active', 'unstable', CURRENT_TIMESTAMP);
+    
+    -- Update progress metrics
+    INSERT OR REPLACE INTO progress_metrics (
+        id, total_events, total_events_group, total_positive_impacts, 
+        total_positive_impacts_group, total_negative_impacts, total_negative_impact_group, 
+        trend, trend_group, last_updated
+    )
+    SELECT 
+        1,
+        (SELECT COUNT(*) FROM truth_event),
+        total_events_group,
+        total_positive_impacts,
+        total_positive_impacts_group,
+        total_negative_impacts,
+        total_negative_impact_group,
+        trend,
+        trend_group,
+        CURRENT_TIMESTAMP
+    FROM progress_metrics
+    WHERE id = 1;
 END;
-```    
--- Trigger to update event_ci state fields based on impact data
--- Automatically updates the "event_type", "status", and "resolution_data" fields in the "event_ci" table based on changes in impact data, timeline information, and convergence of assessment axes
-```sql 
+```
+
+### 11. update_event_ci_state_from_impact
+This trigger automatically updates the "event_type", "status", and "resolution_data" fields in the "event_ci" table based on changes in impact data, timeline information, and convergence of assessment axes. This trigger fires when new impact records are inserted.
+
+```sql
 CREATE TRIGGER update_event_ci_state_from_impact
 AFTER INSERT ON impact
+FOR EACH ROW
 BEGIN
+    -- Update event_type based on whether impact data exists
     UPDATE event_ci
-    SET
-        event_type = (
-            SELECT CASE
-                WHEN EXISTS (
-                    SELECT 1 FROM impact_metrics
-                    WHERE impact_metrics.event_id = event_ci.id
-                    AND impact_metrics.total_magnitude IS NOT NULL
-                ) AND EXISTS (
-                    SELECT 1 FROM judgment_weights
-                    WHERE judgment_weights.event_id = event_ci.id
-                    AND judgment_weights.weight IS NOT NULL
-                    )
-                THEN 'both'
-                WHEN EXISTS (
-                    SELECT 1 FROM impact_metrics
-                    WHERE impact_metrics.event_id = event_ci.id
-                    AND impact_metrics.total_magnitude IS NOT NULL
+    SET 
+        event_type = CASE 
+            WHEN EXISTS (
+                SELECT 1 FROM impact i
+                JOIN truth_event te ON i.event_id = (
+                    SELECT id FROM event_ci WHERE created_by = te.id
                 )
-                THEN 'impact'
-                WHEN EXISTS (
-                    SELECT 1 FROM judgment_weights
-                    WHERE judgment_weights.event_id = event_ci.id
-                    AND judgment_weights.weight IS NOT NULL
+                WHERE i.event_id = NEW.event_id
+            ) AND EXISTS (
+                SELECT 1 FROM judgment j
+                JOIN truth_event te ON j.event_id = (
+                    SELECT id FROM event_ci WHERE created_by = te.id
                 )
-                THEN 'judgment'
-                ELSE 'judgment'  -- Default value
-            END
-        ),
-        status = (
-            SELECT CASE
-                WHEN time_end IS NULL THEN 'active'
-                WHEN time_end >= (SELECT strftime('%s', 'now')) THEN 'resolved'
-                ELSE 'archived'
-            END
-            FROM event_timeline
-            JOIN truth_event ON event_timeline.id = truth_event.timeline_id
-            WHERE truth_event.id = (
-                SELECT created_by FROM event_ci WHERE id = NEW.event_id
+                WHERE j.event_id = NEW.event_id
+            ) THEN 'both'
+            WHEN EXISTS (
+                SELECT 1 FROM impact i
+                JOIN truth_event te ON i.event_id = (
+                    SELECT id FROM event_ci WHERE created_by = te.id
+                )
+                WHERE i.event_id = NEW.event_id
+            ) THEN 'impact'
+            WHEN EXISTS (
+                SELECT 1 FROM judgment j
+                JOIN truth_event te ON j.event_id = (
+                    SELECT id FROM event_ci WHERE created_by = te.id
+                )
+                WHERE j.event_id = NEW.event_id
+            ) THEN 'judgment'
+            ELSE 'judgment'  -- Default
+        END,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = NEW.event_id;
+    
+    -- Update impact metrics
+    INSERT OR REPLACE INTO impact_metrics (event_id, total_magnitude, positive_ratio, negative_ratio, uncertainty, calculated_at)
+    SELECT 
+        NEW.event_id,
+        COUNT(*) AS total_magnitude,
+        COUNT(CASE WHEN value = 1 THEN 1 END) AS positive_ratio,
+        COUNT(CASE WHEN value = 0 THEN 1 END) AS negative_ratio,
+        COUNT(CASE WHEN value IS NULL THEN 1 END) AS uncertainty,
+        CURRENT_TIMESTAMP
+    FROM impact
+    WHERE event_id = NEW.event_id;
+END;
+```
+
+### 12. update_event_ci_state_from_judgment
+This trigger automatically updates the "event_type" and "resolution_data" fields in the "event_ci" table based on changes in judgment data and convergence of assessment axes. This trigger fires when new judgment records are inserted.
+
+```sql
+CREATE TRIGGER update_event_ci_state_from_judgment
+AFTER INSERT ON judgment
+FOR EACH ROW
+BEGIN
+    -- Update event_type based on whether judgment data exists
+    UPDATE event_ci
+    SET 
+        event_type = CASE 
+            WHEN EXISTS (
+                SELECT 1 FROM impact i
+                JOIN truth_event te ON i.event_id = (
+                    SELECT id FROM event_ci WHERE created_by = te.id
+                )
+                WHERE i.event_id = NEW.event_id
+            ) AND EXISTS (
+                SELECT 1 FROM judgment j
+                JOIN truth_event te ON j.event_id = (
+                    SELECT id FROM event_ci WHERE created_by = te.id
+                )
+                WHERE j.event_id = NEW.event_id
+            ) THEN 'both'
+            WHEN EXISTS (
+                SELECT 1 FROM impact i
+                JOIN truth_event te ON i.event_id = (
+                    SELECT id FROM event_ci WHERE created_by = te.id
+                )
+                WHERE i.event_id = NEW.event_id
+            ) THEN 'impact'
+            WHEN EXISTS (
+                SELECT 1 FROM judgment j
+                JOIN truth_event te ON j.event_id = (
+                    SELECT id FROM event_ci WHERE created_by = te.id
+                )
+                WHERE j.event_id = NEW.event_id
+            ) THEN 'judgment'
+            ELSE 'judgment'  -- Default
+        END,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = NEW.event_id;
+    
+    -- Update judgment weights
+    INSERT OR REPLACE INTO judgment_weights (event_id, participant_id, weight, calculated_at)
+    SELECT 
+        (SELECT id FROM event_ci WHERE created_by = (
+            SELECT event_id FROM judgment WHERE id = NEW.id
+        )),
+        NEW.participant_id,
+        (SELECT reputation_score FROM participants WHERE id = NEW.participant_id),
+        CURRENT_TIMESTAMP
+    FROM judgment
+    WHERE id = NEW.id;
+END;
+```
+
+## Additional Utility Triggers
+
+### update_participant_reputation_on_prediction_accuracy_comprehensive
+Comprehensive trigger that updates participant reputation based on prediction accuracy across all events where the participant is the event creator.
+
+```sql
+CREATE TRIGGER update_participant_reputation_on_prediction_accuracy_comprehensive
+AFTER UPDATE ON event_ci
+FOR EACH ROW
+WHEN NEW.status IN ('resolved', 'archived') AND OLD.status != NEW.status
+BEGIN
+    -- Update reputation for the event creator based on prediction accuracy
+    UPDATE participants
+    SET 
+        accurate_impact = (
+            SELECT COUNT(*)
+            FROM impact_predictions ip
+            JOIN truth_event te ON ip.event_id = (
+                SELECT id FROM event_ci WHERE created_by = te.id
             )
+            WHERE te.participant_id = participants.id
+            AND ABS(ip.expected_strength - te.collective_score) <= 0.2
         ),
-        resolution_data = (
-            SELECT CASE
-                WHEN NOT (
-                    EXISTS (
-                        SELECT 1 FROM impact_metrics
-                        WHERE impact_metrics.event_id = event_ci.id
-                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
-                    ) OR
-                    EXISTS (
-                        SELECT 1 FROM judgment_weights
-                        WHERE judgment_weights.event_id = event_ci.id
-                        AND judgment_weights.weight IS NOT NULL
-                    )
-                ) THEN 'unstable'
-                WHEN (
-                    EXISTS (
-                        SELECT 1 FROM impact_metrics
-                        WHERE impact_metrics.event_id = event_ci.id
-                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
-                    ) XOR
-                    EXISTS (
-                        SELECT 1 FROM judgment_weights
-                        WHERE judgment_weights.event_id = event_ci.id
-                        AND judgment_weights.weight IS NOT NULL
-                    )
-                ) THEN 'suppose'
-                WHEN (
-                    EXISTS (
-                        SELECT 1 FROM impact_metrics
-                        WHERE impact_metrics.event_id = event_ci.id
-                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
-                    ) AND
-                    EXISTS (
-                        SELECT 1 FROM judgment_weights
-                        WHERE judgment_weights.event_id = event_ci.id
-                        AND judgment_weights.weight IS NOT NULL
-                    ) AND
-                    event_ci.event_type = 'both' AND
-                    (event_ci.status = 'resolved' OR event_ci.status = 'archived')
-                ) THEN 'consent'
-                ELSE 'unstable'
-            END
+        total_impact = (
+            SELECT COUNT(*)
+            FROM impact_predictions ip
+            JOIN truth_event te ON ip.event_id = (
+                SELECT id FROM event_ci WHERE created_by = te.id
+            )
+            WHERE te.participant_id = participants.id
+        ),
+        reputation_score = (
+            SELECT 
+                CASE 
+                    WHEN COUNT(*) > 0 THEN
+                        SUM(CASE 
+                            WHEN ABS(ip.expected_strength - te.collective_score) <= 0.2 THEN 1.0
+                            ELSE 0.0
+                        END) / COUNT(*)
+                    ELSE 0.5
+                END
+            FROM impact_predictions ip
+            JOIN truth_event te ON ip.event_id = (
+                SELECT id FROM event_ci WHERE created_by = te.id
+            )
+            WHERE te.participant_id = participants.id
         )
-    WHERE id = (
-        SELECT event_id FROM impact WHERE id = NEW.id
+    WHERE id IN (
+        SELECT DISTINCT te.participant_id
+        FROM truth_event te
+        JOIN event_ci ec ON te.id = ec.created_by
+        WHERE ec.id = NEW.id
     );
 END;
 ```
 
--- Trigger to update event_ci state fields based on judgment data
--- Automatically updates the "event_type" and "resolution_data" fields in the "event_ci" table based on changes in judgment data and convergence of assessment axes
-```sql
-CREATE TRIGGER update_event_ci_state_from_judgment
-AFTER INSERT ON judgment
-BEGIN
-    UPDATE event_ci
-    SET
-        event_type = (
-            SELECT CASE
-                WHEN EXISTS (
-                    SELECT 1 FROM impact_metrics
-                    WHERE impact_metrics.event_id = event_ci.id
-                    AND impact_metrics.total_magnitude IS NOT NULL
-                ) AND EXISTS (
-                    SELECT 1 FROM judgment_weights
-                    WHERE judgment_weights.event_id = event_ci.id
-                    AND judgment_weights.weight IS NOT NULL
-                )
-                THEN 'both'
-                WHEN EXISTS (
-                    SELECT 1 FROM impact_metrics
-                    WHERE impact_metrics.event_id = event_ci.id
-                    AND impact_metrics.total_magnitude IS NOT NULL
-                )
-                THEN 'impact'
-                WHEN EXISTS (
-                    SELECT 1 FROM judgment_weights
-                    WHERE judgment_weights.event_id = event_ci.id
-                    AND judgment_weights.weight IS NOT NULL
-                )
-                THEN 'judgment'
-                ELSE 'judgment'  -- Default value
-            END
-        ),
-        resolution_data = (
-            SELECT CASE
-                WHEN NOT (
-                    EXISTS (
-                        SELECT 1 FROM impact_metrics
-                        WHERE impact_metrics.event_id = event_ci.id
-                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
-                    ) OR
-                    EXISTS (
-                        SELECT 1 FROM judgment_weights
-                        WHERE judgment_weights.event_id = event_ci.id
-                        AND judgment_weights.weight IS NOT NULL
-                    )
-                ) THEN 'unstable'
-                WHEN (
-                    EXISTS (
-                        SELECT 1 FROM impact_metrics
-                        WHERE impact_metrics.event_id = event_ci.id
-                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
-                    ) XOR
-                    EXISTS (
-                        SELECT 1 FROM judgment_weights
-                        WHERE judgment_weights.event_id = event_ci.id
-                        AND judgment_weights.weight IS NOT NULL
-                    )
-                ) THEN 'suppose'
-                WHEN (
-                    EXISTS (
-                        SELECT 1 FROM impact_metrics
-                        WHERE impact_metrics.event_id = event_ci.id
-                        AND (positive_ratio IS NOT NULL OR negative_ratio IS NOT NULL OR uncertainty IS NOT NULL)
-                    ) AND
-                    EXISTS (
-                        SELECT 1 FROM judgment_weights
-                        WHERE judgment_weights.event_id = event_ci.id
-                        AND judgment_weights.weight IS NOT NULL
-                    ) AND
-                    event_ci.event_type = 'both' AND
-                    (event_ci.status = 'resolved' OR event_ci.status = 'archived')
-                ) THEN 'consent'
-                ELSE 'unstable'
-            END
-        )
-    WHERE id = NEW.event_id;
-END;
-```
+### update_participant_reputation_on_impact_with_proper_ref
+Updates participant reputation based on impact accuracy using "collective_score" as reference.
 
--- Trigger to update participant reputation based on impact accuracy with proper participant_id reference
--- Uses collective_score as a reference/anchor value for system state and connects through the proper relationship
 ```sql
-CREATE TRIGGER update_participant_reputation_on_impact_proper_ref
+CREATE TRIGGER update_participant_reputation_on_impact_with_proper_ref
 AFTER INSERT ON impact
 FOR EACH ROW
 BEGIN
-    -- Update participant's impact metrics based on new impact
-    -- Using the proper relationship: impact.participant_id → participants.id
-    UPDATE participants
-    SET
-        total_impact = total_impact + 1,
-        -- Check if the impact aligns with the collective_score (as a measure of accuracy)
-        accurate_impact = accurate_impact + CASE
-            WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) > 0.5 AND NEW.value = 1 THEN 1
-            WHEN (SELECT collective_score FROM truth_event WHERE id = NEW.event_id) < 0.5 AND NEW.value = 0 THEN 1
-            ELSE 0
-        END
-    WHERE id = NEW.participant_id;  -- Proper reference using NEW.participant_id
+    -- Get the collective score for the associated event
+    DECLARE @collective_score REAL;
+    SELECT @collective_score = te.collective_score
+    FROM truth_event te
+    JOIN event_ci ec ON te.id = ec.created_by
+    WHERE ec.id = NEW.event_id;
     
-    -- Update reputation score based on combined accuracy of both impact and judgment assessments
+    -- Update participant reputation based on impact accuracy
     UPDATE participants
-    SET reputation_score = CASE
-        WHEN (total_impact + total_judgment) > 0 THEN
-            (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
-        ELSE 0.5
-    END
-    WHERE id = NEW.participant_id;  -- Proper reference using NEW.participant_id
+    SET 
+        total_impact = total_impact + 1,
+        accurate_impact = CASE 
+            WHEN (@collective_score >= 0.5 AND NEW.value = 1) OR 
+                 (@collective_score < 0.5 AND NEW.value = 0) THEN
+                accurate_impact + 1
+            ELSE accurate_impact
+        END,
+        reputation_score = (accurate_impact * 1.0 + 0.5) / (total_impact + 1),
+        last_activity = CURRENT_TIMESTAMP
+    WHERE id = NEW.participant_id;
 END;
 ```
 
--- Trigger to update participant reputation based on judgment accuracy with proper participant_id reference
--- Uses collective_score as a reference/anchor value for system state and connects through the proper relationship
+### update_participant_reputation_on_judgment_proper_ref
+Updates participant reputation based on judgment accuracy with proper participant_id reference.
+
 ```sql
 CREATE TRIGGER update_participant_reputation_on_judgment_proper_ref
 AFTER INSERT ON judgment
 FOR EACH ROW
 BEGIN
-    -- Update participant's judgment metrics based on new judgment
-    -- Using the proper relationship: judgment.participant_id → participants.id
-    UPDATE participants
-    SET
-        total_judgment = total_judgment + 1,
-        -- Check if the judgment aligns with the collective_score (as a measure of accuracy)
-        accurate_judgment = accurate_judgment + CASE
-            WHEN (SELECT collective_score FROM truth_event WHERE id = (
-                SELECT created_by FROM event_ci WHERE id = NEW.event_id
-            )) > 0.5 AND NEW.assessment = 'true' THEN 1
-            WHEN (SELECT collective_score FROM truth_event WHERE id = (
-                SELECT created_by FROM event_ci WHERE id = NEW.event_id
-            )) < 0.5 AND NEW.assessment = 'false' THEN 1
-            ELSE 0
-        END
-    WHERE id = NEW.participant_id;  -- Proper reference using NEW.participant_id
+    -- Get the collective score for the associated event
+    DECLARE @collective_score REAL;
+    SELECT @collective_score = te.collective_score
+    FROM truth_event te
+    JOIN event_ci ec ON te.id = ec.created_by
+    WHERE ec.id = NEW.event_id;
     
-    -- Update reputation score based on combined accuracy of both impact and judgment assessments
+    -- Update participant reputation based on judgment accuracy
     UPDATE participants
-    SET reputation_score = CASE
-        WHEN (total_impact + total_judgment) > 0 THEN
-            (accurate_impact + accurate_judgment) * 1.0 / (total_impact + total_judgment)
-        ELSE 0.5
-    END
-    WHERE id = NEW.participant_id;  -- Proper reference using NEW.participant_id
+    SET 
+        total_judgment = total_judgment + 1,
+        accurate_judgment = CASE 
+            WHEN (@collective_score >= 0.5 AND NEW.assessment > 0) OR 
+                 (@collective_score < 0.5 AND NEW.assessment <= 0) THEN
+                accurate_judgment + 1
+            ELSE accurate_judgment
+        END,
+        reputation_score = (accurate_judgment * 1.0 + accurate_impact * 1.0) / (total_judgment + total_impact + 1),
+        last_activity = CURRENT_TIMESTAMP
+    WHERE id = NEW.participant_id;
 END;
 ```
+
+## Notes
+
+- All triggers are designed to maintain data integrity and consistency across the system
+- Triggers automatically update related metrics when new data is added
+- The system maintains both local and global scoring mechanisms
+- Reputation updates happen automatically based on assessment accuracy
+- Validation triggers prevent invalid data from being entered into the system
+- Synchronization triggers handle incoming data from other nodes in the network
+- The triggers implement the core logic of the collective intelligence system

@@ -1,5 +1,96 @@
 # Changelog
 
+## [1.1.1] — Documentation Update Release
+
+**Release Date**: 2026-01-03
+**Status**: Documentation Release
+
+This release continues the comprehensive documentation update initiative for the Truth Training application, focusing on enhanced specifications for core models, views, and network components. The changes include detailed documentation for aggregated metrics, collective assessment procedures, network tables, scoring systems, and numerous specialized views for analyzing participant behavior, event convergence, and system health. Additionally, the project maintains alignment with updated quality gates and architectural documentation.
+
+### 📚 Documentation Updates
+
+#### Core Model Documentation
+- **Core Model Documentation**: Enhanced [`docs/model_core.md`](docs/model_core.md) with formatting corrections, trigger documentation, detailed field descriptions for truth_event.code and detected flags, and real-time reputation integration
+- **Aggregated Metrics Documentation**: Created [`docs/model_core_aggregated_metrics.md`](docs/model_core_aggregated_metrics.md) with comprehensive metric documentation
+- **Collective Assessment Documentation**: Created [`docs/model_core_collective_assessment.md`](docs/model_core_collective_assessment.md) with detailed assessment procedures
+- **Network Tables Documentation**: Created [`docs/model_core_network_tables.md`](docs/model_core_network_tables.md) with comprehensive network-related table documentation
+- **Scoring System Documentation**: Updated [`docs/model_core_scoring.md`](docs/model_core_scoring.md) with latest scoring mechanisms
+- **Anti-Manipulation Documentation**: Created [`docs/model_core_anti_manipulation.md`](docs/model_core_anti_manipulation.md) with detailed anti-manipulation measures
+
+#### Parameter and Group Documentation
+- **Participant Group Parameters**: Created [`docs/model_core_parameters_for_participant_groups.md`](docs/model_core_parameters_for_participant_groups.md) with comprehensive parameter documentation
+- **Participant Group Parameter Correlation**: Created [`docs/model_core_participant_group_parameters_and_correlation.md`](docs/model_core_participant_group_parameters_and_correlation.md) with correlation analysis documentation
+- **View for Participant Group Parameters**: Created [`docs/model_core_view_participant_group_parameters_and_correlation.md`](docs/model_core_view_participant_group_parameters_and_correlation.md) with specialized view documentation
+
+#### New Views Documentation
+- **Small Constants View**: Created [`docs/model_core_views_small_constants.md`](docs/model_core_views_small_constants.md) - Documentation for small random constants used in quantum uncertainty calculations
+- **Consensus Calculation View**: Enhanced [`docs/model_core_views_consensus_calculation.md`](docs/model_core_views_consensus_calculation.md) - collective assessment views documentation for consensus_calculation
+- **Participant Reputation View**: Created [`docs/model_core_views_participant_reputation.md`](docs/model_core_views_participant_reputation.md) - Documentation for participant reputation calculation based on historical accuracy
+- **Event Convergence View**: Created [`docs/model_core_views_event_convergence.md`](docs/model_core_views_event_convergence.md) - Documentation for event convergence analysis between impact and judgment axes
+- **Enhanced Temporal Decay View**: Enhanced temporal decay calculation documentation in [`docs/model_core_views_temporal_decay.md`](docs/model_core_views_temporal_decay.md)
+- **Prediction Accuracy View**: Created [`docs/model_core_views_prediction_accuracy.md`](docs/model_core_views_prediction_accuracy.md) - Documentation for prediction accuracy metrics compared to actual outcomes
+- **Quadrant Classification View**: Created [`docs/model_core_views_quadrant_classification.md`](docs/model_core_views_quadrant_classification.md) - Documentation for quadrant classification based on truth and impact scores
+- **Participant Trust Propagation View**: Created [`docs/model_core_views_participant_trust_propagation.md`](docs/model_core_views_participant_trust_propagation.md) - Documentation for trust propagation through the network
+- **Event Correlation Analysis View**: Created [`docs/model_core_views_event_correlation_analysis.md`](docs/model_core_views_event_correlation_analysis.md) - Documentation for correlation analysis between related events
+- **System Health Monitoring View**: Created [`docs/model_core_views_system_health_monitoring.md`](docs/model_core_views_system_health_monitoring.md) - Documentation for system health metrics and performance indicators
+- **Truth Event Impact Correlation View**: Created [`docs/model_core_views_truth_event_impact_correlation.md`](docs/model_core_views_truth_event_impact_correlation.md) - Documentation for correlation between truth_event collective_score and impact assessments
+- **Judgment Impact Convergence View**: Created [`docs/model_core_views_judgment_impact_convergence.md`](docs/model_core_views_judgment_impact_convergence.md) - Documentation for tracking convergence between judgment and impact assessments
+- **Participant Accuracy Trends View**: Created [`docs/model_core_views_participant_accuracy_trends.md`](docs/model_core_views_participant_accuracy_trends.md) - Documentation for analyzing trends in participant accuracy over time
+- **Event Timeline Analytics View**: Created [`docs/model_core_views_event_timeline_analytics.md`](docs/model_core_views_event_timeline_analytics.md) - Documentation for analytics on event timelines to understand temporal patterns
+- **Context Effectiveness Metrics View**: Created [`docs/model_core_views_context_effectiveness_metrics.md`](docs/model_core_views_context_effectiveness_metrics.md) - Documentation for measuring effectiveness of different context classifications
+- **Heuristic Validation Metrics View**: Created [`docs/model_core_views_heuristic_validation_metrics.md`](docs/model_core_views_heuristic_validation_metrics.md) - Documentation for validating the effectiveness of expert heuristics
+- **Network Consensus Stability View**: Created [`docs/model_core_views_network_consensus_stability.md`](docs/model_core_views_network_consensus_stability.md) - Documentation for measuring stability of consensus across the network
+- **Prediction Horizon Analysis View**: Created [`docs/model_core_views_prediction_horizon_analysis.md`](docs/model_core_views_prediction_horizon_analysis.md) - Documentation for analyzing accuracy of impact predictions based on their temporal horizon
+
+### 🔧 Model and Implementation Enhancements
+
+#### Trigger Implementation
+- **Impact Prediction Triggers**: Implemented new triggers including `create_impact_predictions_on_status_change` and `create_impact_prediction_on_correction` documented in [`docs/model_core.md`](docs/model_core.md)
+- **Reputation Calculation Fixes**: Updated reputation calculation formulas in triggers to account for both impact and judgment assessments
+- **Formula Corrections**: Fixed division by zero in impact_predictions formulas and corrected horizon calculation for NULL t_end values
+- **SQL Implementation**: Replaced Rust functions with SQL implementation for "small constants" and "CURRENT_TIMESTAMP" variables
+
+#### Impact Predictions Model
+- **Real-time Integration**: Enhanced impact_predictions model with real-time reputation integration
+- **Calculation Improvements**: Fixed reputation aggregation logic and documentation in impact predictions
+
+#### Discovery History
+- **Missing Table Documentation**: Added missing discovery_history table to documentation
+
+### 🏛️ Constitutional and Quality Updates
+
+#### Quality Gates Alignment
+- **Quality Gates Specification**: Updated [`spec/14-quality-gates.md`](spec/14-quality-gates.md) with implementation references and alignment with constitution Rule 5
+- **Constitutional Compliance**: Ensured all documentation updates align with constitutional requirements and project principles
+
+#### Architectural Specifications
+- **Architecture Specification**: Updated [`spec/03-architecture.md`](spec/03-architecture.md) with latest architectural details
+- **API Specification**: Updated [`spec/05-api.md`](spec/05-api.md) with latest API changes
+- **P2P Synchronization**: Updated [`spec/08-p2p-sync.md`](spec/08-p2p-sync.md) with synchronization improvements
+- **CLI Specification**: Updated [`spec/10-cli.md`](spec/10-cli.md) with latest CLI changes
+- **Function Core**: Updated [`spec/22-function_core.md`](spec/22-function_core.md) with latest function definitions
+
+### 📋 Additional Updates
+
+#### Security Policy
+- **Version Support Policy**: Updated [`SECURITY.md`](SECURITY.md) to clarify version support policy
+
+#### Data Model Consistency
+- **Schema Consistency**: Fixed inconsistencies between model_core.md and spec/04-data-model.md
+- **Small Constants Implementation**: Replaced 0.001 values with SQL implementation of small_constants in collective assessment docs
+
+#### Build and Packaging
+- **Windows Installer**: Updated Windows installer build instructions with actual executable commands and missing build commands
+- **Desktop Integration**: Updated [`docs/integration/desktop/README_INTEGRATION.md`](docs/integration/desktop/README_INTEGRATION.md) with latest integration details
+
+### 🗑️ Documentation Cleanup
+
+Updated obsolete documentation files with new comprehensive documentation and implementation details:
+- Updated SQL schemas now reflect trigger-based implementations rather than manual calculations
+- Enhanced documentation now includes real-time reputation integration and improved formulas
+
+---
+
 ## [1.1.0] — Documentation Update Release
 
 **Release Date**: 2025-12-28
