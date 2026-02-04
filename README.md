@@ -93,7 +93,7 @@ To overcome **social inertia** (attract users), we first need to overcome **tech
 The project has frozen at this equilibrium point: the idea is too complex for quick hackathon implementation, but insufficiently developed and presented to reliably attract serious resources.
 
 ## 💡 What Does This Mean for the Future of the Model?
-The model remains intellectual property in text form. Its main value right now is stimulating thinking. It can inspire another team with different resources to create a similar, but already working project.
+The model remains intellectual property in text form. *Its main value right now is stimulating thinking*. It can inspire another team with different resources to create a similar, but already working project.
 
 ## 💎 Conclusion: Model as a Source of Inspiration
 The **Truth Training model** is not a ready-made product, but a source of breakthrough ideas for post-digital sociality. It offers an alternative where value is created not through attention to personalities, but through **collective intelligence** focused on content and agents.
